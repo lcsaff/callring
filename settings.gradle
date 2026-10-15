@@ -8,18 +8,3 @@ pluginManagement {
 
 rootProject.name = 'callring'
 include ':app', ':ui', ':backend'
-
-// A module-location override supports parallel worktrees without duplicating API sources.
-def backendLocation = providers.gradleProperty('callring.backendDir').orNull
-if (backendLocation != null) {
-    project(':backend').projectDir = file(backendLocation)
-}
-if (!new File(project(':backend').projectDir, 'build.gradle').isFile()) {
-    throw new GradleException('The production backend module is required. Integrate backend/ or provide -Pcallring.backendDir=<module-directory>.')
-}
-
-gradle.beforeProject { candidate ->
-    if (candidate.path == ':backend' && backendLocation != null) {
-        candidate.layout.buildDirectory.set(new File(rootDir, 'build/backend'))
-    }
-}

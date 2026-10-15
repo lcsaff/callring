@@ -6,7 +6,7 @@ import com.greatwall.callring.bootstrap.*
 import com.greatwall.callring.platform.UiNotificationEntryPoints
 
 /** Separate package/process/data directory. Never changes the production application's graph. */
-class BackendQaApplication : Application(), BackendProvider {
+class BackendQaApplication : CallringApplication() {
     override val backendGraph by lazy {
         BackendGraph(
             this,

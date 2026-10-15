@@ -1,12 +1,8 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <instrumentation android:name="android.test.InstrumentationTestRunner"
         android:targetPackage="${applicationId}" android:label="来电管理设备测试" />
-    <application android:name=".DebugQaApplication">
+    <application>
         <uses-library android:name="android.test.runner" android:required="false" />
         <uses-library android:name="android.test.base" android:required="false" />
-        <receiver android:name=".DebugProbeReceiver" android:exported="true" android:permission="android.permission.DUMP" />
-        <service android:name=".DebugConnectionService" android:exported="true" android:permission="android.permission.BIND_TELECOM_CONNECTION_SERVICE">
-            <intent-filter><action android:name="android.telecom.ConnectionService" /></intent-filter>
-        </service>
     </application>
 </manifest>

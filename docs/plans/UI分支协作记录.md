@@ -6,8 +6,7 @@
 
 - UI 代码位于新的 `ui/` Android library 模块；模块依赖业务侧的纯 JVM `backend`，只消费 `application.api`，不复制生产声明。
 - 新 Application 和新 UI 系统入口由 UI 侧接入业务 `BackendProvider`、`BackendGraph`；不编辑业务实现。
-- 并行构建使用 `-Pcallring.backendDir=../backend/backend`；合并后使用同仓库 `backend/`，该参数只用于模块位置，不选择运行时后端。
-- 外部业务模块的构建输出定向到 UI 工作树 `build/backend`，避免与业务侧构建产物相互覆盖。
+- 并行阶段曾使用模块位置覆盖；已集成业务检查点后移除该临时选项，当前只构建同仓库 `backend/`。
 - 设备安装和实际 UI 测试在执行前核对设备状态，避免两个工作树互相覆盖安装。
 
 ## UI 主题交接
@@ -28,4 +27,8 @@ AppearanceSettings(ThemeSelection.PRESET, "unicom_red", null, ColorMode.FOLLOW_S
 
 ## 已确认约束
 
-小组件样式已确认，显示字段和快捷操作未确认，进入该部分实现前另行核定。此条件不阻止普通页面、主题、ViewModel 和悬浮窗开发。整体交付必须删除旧 UI，不将中间状态当作最终迁移完成。
+小组件字段和操作已确认：姓名/号码、部门/职位、当前评分；提供查看报表和明确目标值的白名单切换。小尺寸显示姓名/号码与评分，大尺寸补充部门/职位。主题和评分语义与页面一致。
+
+UI 分支已快进集成业务侧已提交检查点 `e15e180`，采用同仓库 `backend/` 构建。生产 Application 负责单个 BackendGraph 和展示端口；整体交付必须删除旧 UI，不将中间状态当作最终迁移完成。
+
+UI 迁移已完成生产接线和旧代码清理，保留在 `refactor/ui` 工作树。本轮全量构建、边界检查、232 项本地测试、34 项 UI 实机及 31 项 Backend QA 实机测试通过。详细证据及尚待现场验收的系统项目见 [UI 重构验收](UI重构_验收.md)。业务工作树不作修改，主分支集成另行处理。

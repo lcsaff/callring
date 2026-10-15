@@ -26,6 +26,166 @@ import org.junit.Test
 class DomainRegressionTest {
     private val zone = ZoneId.of("Asia/Shanghai")
 
+    @Test
+    fun weeklyOvernightWindowRequiresItsStartDayAndKeepsAllFourBoundaries() {
+        val state = state()
+        val weekly = mapOf(5 to listOf(TimeWindow(1320, 120)))
+        setWeekly(state, weekly)
+        for ((local, expected) in listOf(
+            "2026-10-16T01:00:00" to false,
+            "2026-10-16T21:59:59" to false,
+            "2026-10-16T22:00:00" to true,
+            "2026-10-17T01:59:59" to true,
+            "2026-10-17T02:00:00" to false,
+        )) {
+            assertEquals(local, expected, work(state, local).working)
+            assertEquals(local, expected, WorkClassifier.inWeekly(weekly, zone, at(local)))
+        }
+    }
+
+    @Test
+    fun verifiedYearBoundaryWithoutAHolidayPreservesOvernightCarry() {
+        val state = state()
+        state.calendarYears[2027] = CalendarYear(2027, "source", "2026-01-01", "2027.1")
+        val date = LocalDate.parse("2026-12-31")
+        state.overrides[date] = DateOverride(date, DateOverrideKind.WORK, listOf(TimeWindow(1320, 120)))
+        for (local in listOf("2026-12-31T23:59:59", "2027-01-01T00:00:00", "2027-01-01T01:59:59")) {
+            val result = work(state, local)
+            assertTrue(local, result.working)
+            assertTrue(local, result.calendarVerified)
+        }
+        assertFalse(work(state, "2027-01-01T02:00:00").working)
+    }
+
+    @Test
+    fun dedicatedMakeupHoursAndOverlappingWindowsRetainTheirOpeningBoundary() {
+        val state = state()
+        setWeekly(state, emptyMap(), listOf(TimeWindow(600, 660)))
+        state.makeupDates += LocalDate.parse("2026-10-17")
+        assertFalse(work(state, "2026-10-17T09:30:00").working)
+        assertEquals(WorkReason.MAKEUP_WORKING, work(state, "2026-10-17T10:00:00").reason)
+        assertFalse(work(state, "2026-10-17T11:00:00").working)
+        setWeekly(state, mapOf(3 to listOf(TimeWindow(540, 660), TimeWindow(600, 720))))
+        assertFalse(work(state, "2026-10-14T08:59:59").working)
+    }
+
+    @Test
+    fun wholeDayAndMultiDayLeavesUseTheNextMidnightAndTimedExclusiveEnds() {
+        val state = state()
+        val next = LocalDate.parse("2026-10-15")
+        state.overrides[next] = DateOverride(next, DateOverrideKind.WORK, listOf(TimeWindow(0, 60)))
+        state.leaves[1] = LeaveRecord(1, at("2026-10-14T00:00:00"), at("2026-10-15T00:00:00"), "whole day")
+        for (local in listOf("2026-10-14T00:00:00", "2026-10-14T10:00:00", "2026-10-14T23:59:59")) {
+            assertEquals(local, WorkReason.PERSONAL_LEAVE, work(state, local).reason)
+        }
+        assertTrue(work(state, "2026-10-15T00:00:00").working)
+        state.overrides.clear()
+        state.leaves[1] = LeaveRecord(1, at("2026-10-14T10:00:00"), at("2026-10-16T11:00:00"), "multiple days")
+        assertTrue(work(state, "2026-10-14T09:59:59").working)
+        for (local in listOf("2026-10-14T10:00:00", "2026-10-15T10:00:00", "2026-10-16T10:59:59")) {
+            assertEquals(local, WorkReason.PERSONAL_LEAVE, work(state, local).reason)
+        }
+        assertTrue(work(state, "2026-10-16T11:00:00").working)
+    }
+
+    @Test
+    fun overlappingLeaveOrderDoesNotChangeTheActiveUnion() {
+        val state = state()
+        setWeekly(state, mapOf(3 to listOf(TimeWindow(540, 1080))))
+        state.leaves[1] = LeaveRecord(1, at("2026-10-14T10:00:00"), at("2026-10-14T11:00:00"), "first")
+        state.leaves[2] = LeaveRecord(2, at("2026-10-14T10:30:00"), at("2026-10-14T12:00:00"), "second")
+        for (reverse in listOf(false, true)) {
+            if (reverse) {
+                val reversed = state.leaves.values.reversed()
+                state.leaves.clear()
+                reversed.forEach { state.leaves[it.id] = it }
+            }
+            assertTrue(work(state, "2026-10-14T09:59:59").working)
+            for (local in listOf("2026-10-14T10:00:00", "2026-10-14T10:30:00", "2026-10-14T11:00:00", "2026-10-14T11:59:59")) {
+                assertEquals(local, WorkReason.PERSONAL_LEAVE, work(state, local).reason)
+            }
+            assertTrue(work(state, "2026-10-14T12:00:00").working)
+        }
+    }
+
+    @Test
+    fun invalidWindowMatrixIsRejectedByTheProductionApiBeforeStorageAccess() = runBlocking {
+        val api = createSettingsApi(calculations)
+        for ((start, end) in listOf(-1 to 60, 60 to -1, 1440 to 60, 60 to 1440, 60 to 60)) {
+            val window = TimeWindow(start, end)
+            val failures = listOf(
+                api.saveWorkSchedule(SaveWorkSchedule("UTC", mapOf(1 to listOf(window)), emptyList())),
+                api.saveWorkSchedule(SaveWorkSchedule("UTC", emptyMap(), listOf(window))),
+                api.saveQuietHours(QuietSettings(QuietMode.CUSTOM, false, mapOf(1 to listOf(window)))),
+            )
+            failures.forEach {
+                assertTrue("$window: $it", it is ApiResult.Failure)
+                assertEquals(ErrorCode.VALIDATION, (it as ApiResult.Failure).error.code)
+            }
+        }
+    }
+
+    @Test
+    fun nonpositivePositionLevelsAreRejectedBeforeStorageAccess() = runBlocking {
+        val api = createSettingsApi(calculations)
+        for (level in listOf(0, -1)) {
+            val result = api.savePosition(SavePosition(name = "invalid", level = level, active = true))
+            assertTrue(result is ApiResult.Failure)
+            assertEquals(ErrorCode.VALIDATION, (result as ApiResult.Failure).error.code)
+            assertTrue(result.error.fieldErrors.containsKey("level"))
+        }
+    }
+
+    @Test
+    fun addedOffHoursDisturbancesNeverIncreaseTheScore() {
+        val calls = mutableListOf<CallDetail>()
+        var previous = 100
+        repeat(30) { index ->
+            calls += call(index.toLong() + 1, index * 1000L, working = false)
+            val current = score(calls).points!!
+            assertTrue(current <= previous)
+            assertTrue(current >= 0)
+            previous = current
+        }
+    }
+
+    @Test
+    fun threeOffHoursCallsAndTwoRepeatsRetainTheLegacyScoreExample() {
+        val result = score(listOf(call(1, 1000, false), call(2, 2000, false), call(3, 3000, false)))
+        assertEquals(3L, result.totalCalls)
+        assertEquals(3L, result.offHoursCalls)
+        assertEquals(2L, result.repeatedCalls)
+        assertEquals(81, result.points)
+    }
+
+    @Test
+    fun incomingSnapshotUsesTheSameNumberFormattingMatrixAndNormalizedWhitelist() {
+        val state = state()
+        state.quiet = QuietSettings(QuietMode.NON_WORK, false, emptyMap())
+        val inputs = listOf(
+            " \t(31)-234\n" to true,
+            "3\u00a012\u300034" to true,
+            "30000" to true,
+            "39999" to true,
+            "+86 (31) 234" to false,
+            "0086 31234" to false,
+            "3.12#34" to false,
+            "３１２３４" to false,
+            "" to false,
+        )
+        val snapshot = DecisionSnapshot.capture(state)
+        inputs.forEach { (number, matched) ->
+            val result = snapshot.evaluate(number, at("2026-10-14T22:00:00"))
+            assertEquals(number, matched, result.matched)
+            assertEquals(number, matched, result.silence)
+            assertEquals(number, calculations.checkNumber(number).matchesRule, result.matched)
+        }
+        state.profiles["31234"] = ProfileRecord("31234", whitelisted = true)
+        val white = DecisionSnapshot.capture(state).evaluate("3\u00a012\u300034", at("2026-10-14T22:00:00"))
+        assertTrue(white.whitelisted)
+        assertFalse(white.silence)
+    }
+
     // These helpers are pure: any accidental access to an external port fails immediately.
     private val calculations by lazy {
         BackendContext(
@@ -452,6 +612,9 @@ class DomainRegressionTest {
 
     @Test
     fun csvEscapesSignedAndWhitespacePrefixedFormulasAndQuotedMultilineData() {
+        assertEquals("\"'=1+1\"", calculations.csvCell("=1+1"))
+        assertEquals("\"' +SUM(A1)\"", calculations.csvCell(" +SUM(A1)"))
+        assertEquals("\"'@name\"", calculations.csvCell("@name"))
         assertEquals("\"'+1\"", calculations.csvCell("+1"))
         assertEquals("\"'-1\"", calculations.csvCell("-1"))
         assertEquals("\"'  =1\"", calculations.csvCell("  =1"))

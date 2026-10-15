@@ -35,14 +35,10 @@ def test_counts(folder):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--legacy-ui-pending", action="store_true",
-                        help="Intermediate branch validation before the separate UI migration lands")
     parser.add_argument("--device", metavar="ADB_SERIAL", help="Install/run only the separate backendqa package")
     args = parser.parse_args()
     ARTIFACTS.mkdir(parents=True, exist_ok=True)
     boundary = [sys.executable, "tools/check_backend_boundaries.py"]
-    if args.legacy_ui_pending:
-        boundary.append("--legacy-ui-pending")
     print(run(boundary, "boundaries.log").strip())
     gradle = str(ROOT / ("gradlew.bat" if os.name == "nt" else "gradlew"))
     tasks = [":backend:test", ":app:testDebugUnitTest", ":app:assembleDebug", ":app:assembleRelease",
@@ -51,7 +47,6 @@ def main():
         tasks[:0] = [":ui:testDebugUnitTest", ":ui:assembleDebug", ":ui:assembleDebugAndroidTest", ":ui:lintDebug"]
     run([gradle, *tasks], "build.log")
     summary = {
-        "intermediateUiMigration": args.legacy_ui_pending,
         "backend": test_counts(ROOT / "backend/build/test-results/test"),
         "app": test_counts(ROOT / "app/build/test-results/testDebugUnitTest"),
         "device": "not_run",

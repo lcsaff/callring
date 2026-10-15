@@ -1,7 +1,7 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android" xmlns:tools="http://schemas.android.com/tools">
     <instrumentation android:name="android.test.InstrumentationTestRunner"
         android:targetPackage="${applicationId}" android:label="Backend device verification" />
-    <application android:name=".BackendQaApplication" android:label="Callring Backend QA" tools:replace="android:label">
+    <application android:name=".BackendQaApplication" android:label="Callring Backend QA" tools:replace="android:name,android:label">
         <uses-library android:name="android.test.runner" android:required="false" />
         <uses-library android:name="android.test.base" android:required="false" />
     </application>

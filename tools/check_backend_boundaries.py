@@ -1,6 +1,5 @@
 """Enforce the JVM business/UI boundary and the shared public contract."""
 from pathlib import Path
-import argparse
 import re
 import sys
 
@@ -28,7 +27,7 @@ def declarations(source):
     return re.sub(r'\s+', '', without_comments(source))
 
 
-def check(legacy_ui_pending=False):
+def check():
     errors = []
     sources = list((ROOT / "backend/src/main").rglob("*.kt"))
     sources += list((ROOT / "backend/src/main").rglob("*.java"))
@@ -69,8 +68,7 @@ def check(legacy_ui_pending=False):
                 if path.exists() and re.search(r'\b(?:CallerRepository|ManagementEvents|AppSettings|EventLog|CallerWidgetProvider|CallerOverlayService|MainActivity)\b|\bcom\.greatwall\.callring\.ui\.',
                                               without_comments(path.read_text(encoding="utf-8"))):
                     errors.append(f"{path.relative_to(ROOT)}: framework adapter depends on concrete UI/legacy service")
-    if not legacy_ui_pending:
-        errors.extend(f"Legacy production source remains: {name}" for name in LEGACY if (ROOT / BASE / name).exists())
+    errors.extend(f"Legacy production source remains: {name}" for name in LEGACY if (ROOT / BASE / name).exists())
     for directory in (ROOT / "app/src/main/kotlin/com/greatwall/callring/ui", ROOT / "ui/src/main"):
         for path in directory.rglob("*"):
             if path.suffix not in (".kt", ".java"):
@@ -81,11 +79,7 @@ def check(legacy_ui_pending=False):
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--legacy-ui-pending", action="store_true",
-                        help="Temporary branch check before the independent UI branch is integrated")
-    args = parser.parse_args()
-    sources, errors = check(args.legacy_ui_pending)
+    sources, errors = check()
     if errors:
         print("\n".join(errors))
         sys.exit(1)

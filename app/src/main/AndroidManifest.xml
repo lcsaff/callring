@@ -9,19 +9,8 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
     <uses-permission android:name="android.permission.WAKE_LOCK" />
     <uses-feature android:name="android.hardware.telephony" android:required="true" />
-    <application android:allowBackup="false" android:dataExtractionRules="@xml/data_extraction_rules" android:label="规则来电铃声"
+    <application android:name=".CallringApplication" android:allowBackup="false" android:dataExtractionRules="@xml/data_extraction_rules" android:label="规则来电铃声"
         android:icon="@drawable/ic_callring" android:theme="@android:style/Theme.Material.Light.NoActionBar">
-        <activity android:name=".CallerListActivity" android:exported="false" />
-        <activity android:name=".CallerEditActivity" android:exported="false" />
-        <activity android:name=".CallerReportActivity" android:exported="false" />
-        <activity android:name=".ManagementSettingsActivity" android:exported="false" />
-        <activity android:name=".CallerWidgetConfigActivity" android:exported="true">
-            <intent-filter><action android:name="android.appwidget.action.APPWIDGET_CONFIGURE" /></intent-filter>
-        </activity>
-        <receiver android:name=".CallerWidgetProvider" android:exported="false">
-            <intent-filter><action android:name="android.appwidget.action.APPWIDGET_UPDATE" /></intent-filter>
-            <meta-data android:name="android.appwidget.provider" android:resource="@xml/caller_widget_info" />
-        </receiver>
         <receiver android:name=".RuntimeReceiver" android:exported="false">
             <intent-filter>
                 <action android:name="android.intent.action.PHONE_STATE" />
@@ -32,9 +21,8 @@
                 <action android:name="android.intent.action.DATE_CHANGED" />
             </intent-filter>
         </receiver>
-        <service android:name=".CallerOverlayService" android:exported="false" />
         <service android:name=".SyncJobService" android:exported="true" android:permission="android.permission.BIND_JOB_SERVICE" />
-        <activity android:name=".MainActivity" android:exported="true">
+        <activity android:name="com.greatwall.callring.ui.app.CallringActivity" android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />

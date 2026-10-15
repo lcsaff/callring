@@ -82,6 +82,143 @@ class BackendApiDeviceTest : InstrumentationTestCase() {
         filter: CallFilter = CallFilter.ALL,
     ): CallerReport = success(fixture.graph.api.reports.load(ReportQuery(number, range, filter)))
 
+    fun testQuietScoreOverlayReopenAndEmptyCustomValidationPreserveCommittedState() = runBlocking {
+        val api = fixture.graph.api
+        val quiet = QuietSettings(QuietMode.CUSTOM, true, (1..7).associateWith { day ->
+            if (day == 1) listOf(TimeWindow(1439, 0)) else emptyList()
+        })
+        val score = ScoreSettings(7, 4, 8, 45)
+        success(api.settings.saveQuietHours(quiet))
+        success(api.settings.saveScoreSettings(score))
+        success(api.settings.setOverlayEnabled(false))
+        val revision = api.changes.observe().first().dataRevision
+        val snapshot = fixture.graph.backend.decisionSnapshot()
+        val raw = SQLiteDatabase.openDatabase(fixture.databaseFile.absolutePath, null, SQLiteDatabase.OPEN_READONLY).use { db ->
+            db.rawQuery("SELECT key,value,position_id FROM settings ORDER BY key", null).use { rows ->
+                buildList { while (rows.moveToNext()) add((0 until rows.columnCount).map { if (rows.isNull(it)) null else rows.getString(it) }) }
+            }
+        }
+        failure(api.settings.saveQuietHours(QuietSettings(QuietMode.CUSTOM, false, emptyMap())), ErrorCode.VALIDATION)
+        assertEquals(quiet, success(api.settings.getQuietHours()))
+        assertEquals(revision, api.changes.observe().first().dataRevision)
+        assertSame(snapshot, fixture.graph.backend.decisionSnapshot())
+        SQLiteDatabase.openDatabase(fixture.databaseFile.absolutePath, null, SQLiteDatabase.OPEN_READONLY).use { db ->
+            db.rawQuery("SELECT key,value,position_id FROM settings ORDER BY key", null).use { rows ->
+                val after = buildList { while (rows.moveToNext()) add((0 until rows.columnCount).map { if (rows.isNull(it)) null else rows.getString(it) }) }
+                assertEquals(raw, after)
+            }
+        }
+        fixture.reopen()
+        assertEquals(quiet, success(fixture.graph.api.settings.getQuietHours()))
+        assertEquals(score, success(fixture.graph.api.settings.getScoreSettings()))
+        assertFalse(success(fixture.graph.api.settings.getSummary()).overlayEnabled)
+    }
+
+    fun testPositionReferenceProtectionTrimmedNamesAndActiveEditorOptions() = runBlocking {
+        val api = fixture.graph.api
+        val mine = success(api.settings.savePosition(SavePosition(name = " mine ", level = 2, active = true)))
+        assertEquals("mine", mine.name)
+        success(api.settings.setMyPosition(mine.id))
+        val revision = api.changes.observe().first().dataRevision
+        failure(api.settings.deletePosition(mine.id), ErrorCode.IN_USE)
+        failure(api.settings.savePosition(SavePosition(name = "mine ", level = 1, active = true)), ErrorCode.VALIDATION)
+        assertEquals(revision, api.changes.observe().first().dataRevision)
+        val inactive = success(api.settings.savePosition(SavePosition(name = "retired", level = 3, active = false)))
+        val active = success(api.settings.savePosition(SavePosition(name = "active", level = 1, active = true)))
+        val blankEditor = success(api.callers.getEditor(null))
+        assertTrue(blankEditor.selectablePositions.any { it.id == active.id })
+        assertFalse(blankEditor.selectablePositions.any { it.id == inactive.id })
+        val white = success(api.callers.setWhitelisted("31234", true))
+        assertTrue(white.stored)
+        assertEquals("", white.name)
+        assertEquals("", white.department)
+        assertNull(white.position)
+        val unwhite = success(api.callers.setWhitelisted("31234", false))
+        assertEquals(white.copy(whitelisted = false), unwhite)
+        assertEquals(1L, success(api.callers.search(CallerSearch())).totalItems)
+    }
+
+    fun testCsvExportKeepsLeadingZeroNumbersAndNullCellsThroughRealDocuments() = runBlocking {
+        val api = fixture.graph.api
+        success(api.callers.saveProfile(SaveCallerProfile("03123", "", "", null)))
+        val receipt = success(api.reports.exportCsv(ReportExportQuery("03123", range), fixture.output("zero.csv")))
+        assertEquals(0L, receipt.recordCount)
+        val bytes = fixture.documentBytes("zero.csv")
+        assertTrue(bytes.take(3).toByteArray().contentEquals(byteArrayOf(0xef.toByte(), 0xbb.toByte(), 0xbf.toByte())))
+        val rows = bytes.toString(Charsets.UTF_8).removePrefix("\uFEFF").split("\r\n")
+        assertTrue(rows[1].startsWith("\"'03123\",\"\",\"\",\"\",\"UNKNOWN\",\"\",\"\",\"\","))
+        assertEquals("\"0\",\"0\",\"0\",\"0\",\"0\",\"0\",\"0\",\"0\",\"\"", rows[3])
+    }
+
+    fun testStatisticsIntervalsHaveExactEndpointsAndIndependentSameTimeLogIds() = runBlocking {
+        configureWorkingDay()
+        val api = fixture.graph.api
+        fixture.clock.at("2026-06-01T11:00:00Z")
+        success(api.settings.setStatisticsEnabled(false))
+        fixture.clock.at("2026-06-01T12:00:00Z")
+        success(api.settings.setStatisticsEnabled(true))
+        val times = listOf("10:59:59.999", "11:00:00", "11:59:59.999", "12:00:00")
+        withContext(Dispatchers.IO) {
+            fixture.graph.backend.importSystemCalls(times.mapIndexed { index, time ->
+                SystemCallRecord("endpoint-$index", "31234", millis("2026-06-01T${time}Z"), 1, CallResult.ANSWERED, "fixture-account")
+            } + listOf(
+                SystemCallRecord("same-time-a", "31234", millis("2026-06-01T12:30:00Z"), 2, CallResult.ANSWERED, "fixture-account"),
+                SystemCallRecord("same-time-b", "31234", millis("2026-06-01T12:30:00Z"), 3, CallResult.MISSED, "fixture-account"),
+            ))
+        }
+        val report = report()
+        assertEquals(4L, report.totals.totalCalls)
+        assertEquals(7L, report.totals.knownDurationSeconds)
+        assertEquals(4L, report.details.totalItems)
+        assertEquals(2, report.details.items.count { it.startedAtEpochMillis == millis("2026-06-01T12:30:00Z") })
+        assertNull(success(api.callers.getOverview(OverviewQuery("39999"))).latestCall)
+    }
+
+    fun testProviderFirstThenSecondScreeningCreatesAmbiguityWithoutDoubleCounting() = runBlocking {
+        configureWorkingDay()
+        val at = millis("2026-06-01T10:00:00Z")
+        withContext(Dispatchers.IO) {
+            fixture.graph.backend.importSystemCalls(listOf(SystemCallRecord("first-provider", "31234", at + 1000, 12, CallResult.ANSWERED, "fixture-account")))
+        }
+        val first = record("31234", at)
+        assertTrue(first > 0)
+        assertEquals(CallSource.MERGED, report().details.items.single().source)
+        val second = record("31234", at + 2000)
+        assertTrue(second > first)
+        val report = report()
+        assertEquals(1L, report.totals.totalCalls)
+        assertEquals(12L, report.totals.knownDurationSeconds)
+        assertEquals(0L, report.totals.unknownDurationCount)
+        assertEquals(3L, report.details.totalItems)
+        val unresolved = report.details.items.filter { it.id == first || it.id == second }
+        assertEquals(2, unresolved.size)
+        assertTrue(unresolved.all { !it.counted && it.result == CallResult.UNRESOLVED })
+    }
+
+    fun testActualCallsInsertFailurePreservesQuietAndDisabledAudioWhitelistBypass() = runBlocking {
+        configureWorkingDay()
+        val api = fixture.graph.api
+        success(api.ringtone.setEnabled(false))
+        success(api.settings.saveQuietHours(QuietSettings(QuietMode.NON_WORK, false, emptyMap())))
+        SQLiteDatabase.openDatabase(fixture.databaseFile.absolutePath, null, SQLiteDatabase.OPEN_READWRITE).use { db ->
+            db.execSQL("CREATE TRIGGER qa_reject_incoming BEFORE INSERT ON calls BEGIN SELECT RAISE(ABORT,'fixture rejection'); END")
+        }
+        val coordinator = fixture.graph.incomingCalls
+        val session = coordinator.inspect("failed-insert", "31234", millis("2026-06-01T22:00:00Z"), "fixture-account")
+        assertTrue(session.assessment.silence)
+        assertEquals(CallDecision.QUIET_SILENCED, session.initialDecision)
+        withContext(Dispatchers.IO) { coordinator.complete(session, CallDecision.QUIET_SILENCED).get(5, TimeUnit.SECONDS) }
+        assertTrue(coordinator.inspectAgain(session).silence)
+        assertEquals(0L, report().totals.totalCalls)
+        success(api.callers.setWhitelisted("31234", true))
+        val white = coordinator.inspect("white-disabled-audio", "31234", millis("2026-06-01T22:00:00Z"), "fixture-account")
+        assertTrue(white.assessment.whitelisted)
+        assertFalse(white.assessment.silence)
+        assertEquals(CallDecision.WHITELIST_ALLOWED, white.initialDecision)
+        withContext(Dispatchers.IO) { coordinator.complete(white, CallDecision.WHITELIST_ALLOWED).get(5, TimeUnit.SECONDS) }
+        assertFalse(success(api.ringtone.getSettings()).enabled)
+    }
+
     fun testGraphAndApiConstructionAreLazyAndFixturePersistenceIsIsolated() = runBlocking {
         fixture.reopen(fixture.configuration.copy(audioDirectory = null))
         val mainThreadApi = AtomicReference<CallringUiApi>()
