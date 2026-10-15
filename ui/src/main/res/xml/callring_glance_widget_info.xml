@@ -8,7 +8,5 @@
     android:targetCellHeight="3"
     android:updatePeriodMillis="3600000"
     android:initialLayout="@layout/glance_default_loading_layout"
-    android:configure="com.greatwall.callring.ui.widget.WidgetConfigurationActivity"
     android:resizeMode="horizontal|vertical"
-    android:widgetCategory="home_screen"
-    android:widgetFeatures="reconfigurable" />
+    android:widgetCategory="home_screen" />

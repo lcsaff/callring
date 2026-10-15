@@ -8,8 +8,9 @@ import com.greatwall.callring.ui.feature.settings.*
 import com.greatwall.callring.ui.feature.shared.LoadFeedback
 
 @Composable internal fun SettingsRoute(
-    page: SettingsPage, api: CallringUiApi, summaryModel: SettingsSummaryViewModel,
-    signal: Long, onBack: () -> Unit, onCapability: (Capability) -> Unit, onAppSettings: () -> Unit
+    page: SettingsPage, api: CallringUiApi, summaryModel: SettingsSummaryViewModel, appearanceModel: AppearanceViewModel,
+    signal: Long, onBack: () -> Unit, onCapability: (Capability) -> Unit, onAppSettings: () -> Unit,
+    onTestOverlay: () -> Unit = {}
 ) {
     when (page) {
         SettingsPage.QUIET -> {
@@ -37,12 +38,13 @@ import com.greatwall.callring.ui.feature.shared.LoadFeedback
             ScoreSettingsScreen(state, draft, mutation, onBack, model::refresh, model::edit, model::save, model::reset)
         }
         SettingsPage.APPEARANCE -> {
-            val model: AppearanceViewModel = uiViewModel { AppearanceViewModel(api, it) }
+            val model = appearanceModel
             val state by model.state.collectAsStateWithLifecycle()
             val draft by model.draft.collectAsStateWithLifecycle()
             val mutation by model.mutation.collectAsStateWithLifecycle()
             ActiveRefresh(signal, refresh = model::refresh)
-            AppearanceScreen(state, draft, mutation, onBack, model::refresh, model::edit, model::save)
+            AppearanceScreen(state, draft, mutation, onBack, model::refresh, model::edit, model::save,
+                onColorChange = model::editColor)
         }
         SettingsPage.POSITIONS -> {
             val model: PositionsViewModel = uiViewModel { PositionsViewModel(api) }
@@ -82,7 +84,7 @@ import com.greatwall.callring.ui.feature.shared.LoadFeedback
             val state by model.state.collectAsStateWithLifecycle()
             val mutation by model.mutation.collectAsStateWithLifecycle()
             ActiveRefresh(signal, intervalMillis = 10_000, refresh = model::refresh)
-            RuntimeScreen(state, mutation, onBack, model::refresh, onCapability, model::synchronize, onAppSettings)
+            RuntimeScreen(state, mutation, onBack, model::refresh, onCapability, model::synchronize, onAppSettings, onTestOverlay)
         }
     }
 }

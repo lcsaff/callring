@@ -8,6 +8,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import android.os.Build
 import androidx.compose.ui.unit.dp
 import com.greatwall.callring.application.api.*
 import com.greatwall.callring.ui.designsystem.components.*
@@ -22,7 +23,7 @@ import java.time.ZoneId
 fun RuntimeScreen(
     state: LoadState<RuntimeUiData>, mutation: MutationState,
     onBack: () -> Unit, onRetry: () -> Unit, onCapability: (Capability) -> Unit,
-    onSynchronize: () -> Unit, onAppSettings: () -> Unit,
+    onSynchronize: () -> Unit, onAppSettings: () -> Unit, onTestOverlay: () -> Unit = {},
 ) {
     ScreenFrame("运行状态与权限", onBack) {
         Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -31,6 +32,18 @@ fun RuntimeScreen(
             MutationFeedback(mutation, onCapability)
             state.data?.let { data ->
                 val status = data.status
+                SettingsCard("悬浮窗检查") {
+                    Text("无需来电记录，可显示一张只读测试卡片，不会拨打电话或播放铃声。")
+                    BrandButton(onTestOverlay, enabled = !mutation.busy, modifier = Modifier.fillMaxWidth()) {
+                        Text("测试悬浮窗")
+                    }
+                    Text("测试成功仅代表当前显示正常；后台来电显示还受系统后台限制影响。", style = MaterialTheme.typography.bodySmall)
+                    Text("请先允许“在其他应用上层显示”权限。", style = MaterialTheme.typography.bodySmall)
+                    if (Build.MANUFACTURER.equals("Xiaomi", ignoreCase = true) ||
+                        Build.BRAND.equals("Redmi", ignoreCase = true) || Build.BRAND.equals("POCO", ignoreCase = true)) {
+                        Text("MIUI / HyperOS：还请在应用权限中检查“后台弹出界面”等限制。标准悬浮窗权限已允许，并不代表后台弹出权限也已允许。", style = MaterialTheme.typography.bodySmall)
+                    }
+                }
                 SettingsCard("应用能力") {
                     Capability.entries.forEach { capability ->
                         val access = status.capabilities[capability] ?: AccessState.UNKNOWN

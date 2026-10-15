@@ -1,52 +1,108 @@
-﻿package com.greatwall.callring.ui.widget
+package com.greatwall.callring.ui.widget
 
 import com.greatwall.callring.application.api.*
 import com.greatwall.callring.ui.designsystem.DefaultAppearance
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
+import java.time.Instant
+import java.time.LocalDate
+import java.time.ZoneId
 
-/** A rendering snapshot only; score, caller and work facts always come from the business API. */
 data class WidgetSnapshot(
-    val binding: WidgetBinding? = null,
-    val overview: CallerOverview? = null,
     val appearance: AppearanceSettings = DefaultAppearance,
+    val quiet: QuietSettings? = null,
+    val today: LocalDate,
+    val leaveGranted: Boolean? = null,
     val error: ApiError? = null,
-) {
-    val needsConfiguration: Boolean get() = binding == null || overview == null
-}
+)
 
+/** Global controls deliberately never read callers or per-widget number bindings. */
 class WidgetModel(
     private val api: CallringUiApi,
     private val now: () -> Long = System::currentTimeMillis,
+    private val zone: () -> ZoneId = ZoneId::systemDefault,
 ) {
-    suspend fun load(widgetId: Int): WidgetSnapshot = try {
-        val appearance = api.settings.getAppearance()
-        val colors = (appearance as? ApiResult.Success)?.value ?: DefaultAppearance
-        when (val binding = api.widgets.getBinding(widgetId)) {
-            is ApiResult.Failure -> WidgetSnapshot(appearance = colors, error = binding.error)
-            is ApiResult.Success -> {
-                val bound = binding.value
-                if (bound == null) WidgetSnapshot(appearance = colors)
-                else when (val overview = api.callers.getOverview(OverviewQuery(bound.number, now()))) {
-                    is ApiResult.Success -> WidgetSnapshot(bound, overview.value, colors, (appearance as? ApiResult.Failure)?.error)
-                    is ApiResult.Failure -> WidgetSnapshot(bound, appearance = colors, error = overview.error)
+    suspend fun load(): WidgetSnapshot {
+        val day = currentDay()
+        val appearance = attempt { api.settings.getAppearance() }
+        val quiet = attempt { api.settings.getQuietHours() }
+        val leaves = attempt { api.settings.getLeaves() }
+        return WidgetSnapshot(
+            appearance = (appearance as? ApiResult.Success)?.value ?: DefaultAppearance,
+            quiet = (quiet as? ApiResult.Success)?.value,
+            today = day.date,
+            leaveGranted = (leaves as? ApiResult.Success)?.value?.let { coversDay(it, day) },
+            error = listOf(quiet, leaves, appearance).filterIsInstance<ApiResult.Failure>().firstOrNull()?.error,
+        )
+    }
+
+    suspend fun setQuietEnabled(
+        enabled: Boolean,
+        preferredMode: () -> QuietMode,
+        rememberMode: (QuietMode) -> Unit = {},
+    ): ApiResult<QuietSettings> = controlsMutex.withLock {
+        attempt {
+            when (val result = api.settings.getQuietHours()) {
+                is ApiResult.Failure -> result
+                is ApiResult.Success -> {
+                    val current = result.value
+                    if (current.mode != QuietMode.OFF) rememberMode(current.mode)
+                    val target = when {
+                        !enabled -> QuietMode.OFF
+                        current.mode != QuietMode.OFF -> current.mode
+                        preferredMode() == QuietMode.CUSTOM && current.weeklyWindows.values.any { it.isNotEmpty() } -> QuietMode.CUSTOM
+                        else -> QuietMode.NON_WORK
+                    }
+                    if (current.mode == target) result else api.settings.setQuietMode(target)
                 }
             }
         }
-    } catch (cancelled: CancellationException) {
-        throw cancelled
-    } catch (_: Exception) {
-        WidgetSnapshot(error = ApiError(ErrorCode.INTERNAL, "小组件暂时无法读取，请重试或重新选择号码"))
     }
 
-    /** A delayed click must never mutate a widget's newly selected number. */
-    suspend fun setWhitelisted(widgetId: Int, expectedNumber: String, enabled: Boolean): ApiResult<CallerProfile> {
-        return when (val binding = api.widgets.getBinding(widgetId)) {
-            is ApiResult.Failure -> binding
-            is ApiResult.Success -> if (binding.value?.number == expectedNumber) {
-                api.callers.setWhitelisted(expectedNumber, enabled)
-            } else ApiResult.Failure(ApiError(ErrorCode.VALIDATION, "小组件号码已更改，请刷新后重试"))
+    /** Resolve the device date at the click, and serialize all widget instances against duplicates. */
+    suspend fun requestTodayLeave(): ApiResult<Unit> {
+        val day = currentDay()
+        return controlsMutex.withLock {
+            attempt {
+                when (val existing = api.settings.getLeaves()) {
+                    is ApiResult.Failure -> existing
+                    is ApiResult.Success -> if (coversDay(existing.value, day)) ApiResult.Success(Unit)
+                    else when (val saved = api.settings.saveLeave(SaveLeave(
+                        period = LeavePeriod.AllDay(day.date, day.date, day.zone.id), note = "桌面快捷请假",
+                    ))) {
+                        is ApiResult.Failure -> saved
+                        is ApiResult.Success -> ApiResult.Success(Unit)
+                    }
+                }
+            }
         }
     }
 
-    suspend fun remove(widgetId: Int): ApiResult<Unit> = api.widgets.removeBinding(widgetId)
+    private fun currentDay(): DeviceDay {
+        val deviceZone = zone()
+        return DeviceDay(Instant.ofEpochMilli(now()).atZone(deviceZone).toLocalDate(), deviceZone)
+    }
+
+    private data class DeviceDay(val date: LocalDate, val zone: ZoneId) {
+        val start: Long get() = date.atStartOfDay(zone).toInstant().toEpochMilli()
+        val end: Long get() = date.plusDays(1).atStartOfDay(zone).toInstant().toEpochMilli()
+    }
+
+    private fun coversDay(leaves: List<LeaveEntry>, day: DeviceDay): Boolean {
+        var coveredUntil = day.start
+        for (entry in leaves.sortedBy { it.startInclusiveEpochMillis }) {
+            if (entry.startInclusiveEpochMillis > coveredUntil) break
+            coveredUntil = maxOf(coveredUntil, entry.endExclusiveEpochMillis)
+            if (coveredUntil >= day.end) return true
+        }
+        return false
+    }
+
+    private suspend fun <T> attempt(block: suspend () -> ApiResult<T>): ApiResult<T> = try {
+        block()
+    } catch (cancelled: CancellationException) { throw cancelled }
+    catch (_: Exception) { ApiResult.Failure(ApiError(ErrorCode.INTERNAL, "小组件操作未完成，请重试", retryable = true)) }
+
+    private companion object { val controlsMutex = Mutex() }
 }

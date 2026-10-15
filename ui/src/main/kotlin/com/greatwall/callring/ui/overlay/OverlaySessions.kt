@@ -11,7 +11,8 @@ data class OverlaySessionState(
     val collapsed: Boolean = false,
     val callEnded: Boolean = false,
     val hasQueuedCall: Boolean = false,
-    val preview: Boolean = false
+    val preview: Boolean = false,
+    val testPreview: Boolean = false
 )
 
 /** Presentation lifetime only. Original call decisions and work facts stay with the API. */
@@ -34,9 +35,9 @@ class OverlaySessions(
     fun dismissOwned(owner: Long) { if (windowOwner == owner) dismiss() }
 
     /** Explicit user preview keeps historical facts without claiming a live incoming call. */
-    fun preview(request: IncomingCallUiRequest): Boolean {
+    fun preview(request: IncomingCallUiRequest, testPreview: Boolean = false): Boolean {
         if (mutable.value != null) return false
-        display(request, preview = true)
+        display(request, preview = true, testPreview = testPreview)
         return true
     }
 
@@ -113,10 +114,10 @@ class OverlaySessions(
         mutable.value = null
     }
 
-    private fun display(request: IncomingCallUiRequest, preview: Boolean = false) {
+    private fun display(request: IncomingCallUiRequest, preview: Boolean = false, testPreview: Boolean = false) {
         shownAt = monotonicMillis()
         seenRinging = false
-        mutable.value = OverlaySessionState(request, preview = preview)
+        mutable.value = OverlaySessionState(request, preview = preview, testPreview = testPreview)
     }
 
     private fun expired(request: IncomingCallUiRequest) = epochMillis() - request.startedAtEpochMillis > 120_000

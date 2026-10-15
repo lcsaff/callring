@@ -242,7 +242,7 @@ abstract class SettingsScreenCases {
         compose.runOnIdle { assertEquals(1, settingsOpened) }
     }
 
-    @Test fun invalidHexDisablesSaveAndPreservesLastValidDraft() {
+    @Test fun invalidHexStaysLocalAndPreservesLastValidAppliedColor() {
         val initial = DefaultAppearance.copy(selection = ThemeSelection.CUSTOM, customSeedRgb = 0x123456)
         val draft = mutableStateOf(initial)
         compose.setContent {
@@ -252,7 +252,8 @@ abstract class SettingsScreenCases {
             }
         }
         compose.onNodeWithTag("appearance-hex").performScrollTo().performTextReplacement("#GGGGGG")
-        compose.onNodeWithTag("settings-save").performScrollTo().assertIsNotEnabled()
+        compose.onNodeWithTag("settings-save").assertDoesNotExist()
+        compose.onNodeWithText("请输入六位十六进制颜色").performScrollTo().assertIsDisplayed()
         compose.runOnIdle { assertEquals(0x123456, draft.value.customSeedRgb) }
     }
 
@@ -354,23 +355,74 @@ abstract class SettingsScreenCases {
         }
     }
 
-    @Test fun selectingPresetAllowsSaveAfterInvalidCustomHexWithoutLosingStoredPreferences() {
+    @Test fun selectingPresetAppliesAfterInvalidCustomHexWithoutLosingStoredPreferences() {
         val initial = DefaultAppearance.copy(selection = ThemeSelection.CUSTOM, customSeedRgb = 0x123456, colorMode = ColorMode.DARK)
         val draft = mutableStateOf(initial)
-        var saved: AppearanceSettings? = null
         compose.setContent {
             CallringTheme {
                 AppearanceScreen(LoadState(initial, loaded = true), draft.value, MutationState(), {}, {},
-                    { draft.value = it }, { saved = draft.value })
+                    { draft.value = it }, {})
             }
         }
         compose.onNodeWithTag("appearance-hex").performScrollTo().performTextReplacement("#GGGGGG")
-        compose.onNodeWithTag("settings-save").performScrollTo().assertIsNotEnabled()
+        compose.onNodeWithTag("settings-save").assertDoesNotExist()
         compose.onNodeWithTag("preset-sky_blue").performScrollTo().performClick()
-        compose.onNodeWithTag("settings-save").performScrollTo().assertIsEnabled().performClick()
         compose.runOnIdle {
-            assertEquals(initial.copy(selection = ThemeSelection.PRESET, presetId = "sky_blue"), saved)
+            assertEquals(initial.copy(selection = ThemeSelection.PRESET, presetId = "sky_blue"), draft.value)
         }
+    }
+
+    @Test fun appearancePresetsScrollHorizontallyAndModePrecedesIntegratedCustomPreview() {
+        compose.setContent {
+            CallringTheme {
+                AppearanceScreen(LoadState(DefaultAppearance, loaded = true), DefaultAppearance,
+                    MutationState(busy = true), {}, {}, {}, {})
+            }
+        }
+        compose.onNodeWithTag("settings-save").assertDoesNotExist()
+        compose.onNodeWithText("效果预览").assertDoesNotExist()
+        compose.onNodeWithTag("appearance-presets")
+            .assert(SemanticsMatcher.keyIsDefined(SemanticsProperties.HorizontalScrollAxisRange))
+        compose.onNodeWithTag("preset-sky_blue").performScrollTo().assertIsEnabled()
+        val modeY = compose.onNodeWithText("显示模式").fetchSemanticsNode().positionInRoot.y
+        val customY = compose.onNodeWithText("自定义主题色").fetchSemanticsNode().positionInRoot.y
+        assertTrue(modeY < customY)
+        compose.onNode(hasTestTag("appearance-custom-preview") and hasAnyAncestor(hasTestTag("appearance-custom")),
+            useUnmergedTree = true).assertExists()
+    }
+
+    @Test fun appearanceBackLeavesImmediatelyAfterAppliedChoiceAndInvalidLocalHex() {
+        val initial = DefaultAppearance.copy(selection = ThemeSelection.CUSTOM, customSeedRgb = 0x123456)
+        val draft = mutableStateOf(initial)
+        var backedOut = 0
+        compose.setContent {
+            CallringTheme {
+                AppearanceScreen(LoadState(initial, loaded = true), draft.value, MutationState(),
+                    { backedOut++ }, {}, { draft.value = it }, {})
+            }
+        }
+        compose.onNodeWithTag("appearance-hex").performScrollTo().performTextReplacement("#ABCDEF")
+        compose.runOnIdle { assertEquals(0xABCDEF, draft.value.customSeedRgb) }
+        compose.onNodeWithTag("appearance-hex").performTextReplacement("#invalid")
+        compose.onNodeWithContentDescription("返回").performClick()
+        compose.runOnIdle { assertEquals(1, backedOut) }
+        compose.onNodeWithText("放弃更改").assertDoesNotExist()
+    }
+
+    @Test fun appearanceFailureOffersRetryAndKeepsChoicesEnabled() {
+        var retries = 0
+        compose.setContent {
+            CallringTheme {
+                AppearanceScreen(LoadState(DefaultAppearance, loaded = true), DefaultAppearance,
+                    MutationState(error = ApiError(ErrorCode.STORAGE_FAILURE, "颜色保存失败")),
+                    {}, {}, {}, { retries++ })
+            }
+        }
+        compose.onNodeWithText("颜色保存失败").assertIsDisplayed()
+        compose.onNodeWithText("重试保存").performClick()
+        compose.runOnIdle { assertEquals(1, retries) }
+        compose.onNodeWithTag("preset-sky_blue").performScrollTo().assertIsEnabled()
+        compose.onNodeWithTag("settings-save").assertDoesNotExist()
     }
 
     @Test fun rgbSlidersHaveAccessibleNamesAndAdjustableSemantics() {

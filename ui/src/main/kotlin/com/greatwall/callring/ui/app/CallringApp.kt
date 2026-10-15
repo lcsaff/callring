@@ -32,12 +32,17 @@ import java.time.LocalDate
     refreshSignal: Long = 0, onCapability: (Capability) -> Unit,
     onPreviewCall: (CallDetail) -> Unit, onPinWidget: () -> Unit, onAppSettings: () -> Unit,
     notice: UiNotice? = null, onNoticeConsumed: (Long) -> Unit = {},
+    onTestOverlay: () -> Unit = {},
 ) {
     val settings: SettingsSummaryViewModel = uiViewModel("application-settings") { SettingsSummaryViewModel(api) }
+    val appearanceModel: AppearanceViewModel = uiViewModel("application-appearance") { AppearanceViewModel(api, it) }
     val navigationState: UiNavigationState = uiViewModel("application-navigation") { UiNavigationState(it) }
     val summary by settings.state.collectAsStateWithLifecycle()
+    val appearance by appearanceModel.draft.collectAsStateWithLifecycle()
+    val appearanceState by appearanceModel.state.collectAsStateWithLifecycle()
     ActiveRefresh(refreshSignal, refresh = settings::refresh)
-    CallringTheme(summary.data?.appearance ?: DefaultAppearance) {
+    ActiveRefresh(refreshSignal, refresh = appearanceModel::refresh)
+    CallringTheme(appearance ?: appearanceState.data ?: DefaultAppearance) {
         ThemeWindowSupport()
         val navigation = rememberNavController()
         val entry by navigation.currentBackStackEntryAsState()
@@ -132,7 +137,8 @@ import java.time.LocalDate
                         { open(UiDestination.Setting(it)) })
                 }
                 SettingsPage.entries.forEach { page -> composable(UiDestination.Setting(page).route) {
-                    SettingsRoute(page, api, settings, refreshSignal, back, onCapability, onAppSettings)
+                    SettingsRoute(page, api, settings, appearanceModel, refreshSignal, back, onCapability, onAppSettings,
+                        onTestOverlay = onTestOverlay)
                 } }
             }
         }

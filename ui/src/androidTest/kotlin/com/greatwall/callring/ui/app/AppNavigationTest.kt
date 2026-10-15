@@ -52,7 +52,7 @@ class AppNavigationTest {
         compose.onNodeWithText("外观").performScrollTo().performClick()
         compose.captureArtifact("appearance")
         compose.onNodeWithTag("preset-sky_blue").performScrollTo().performClick()
-        compose.onNodeWithTag("settings-save").performScrollTo().performClick()
+        compose.onNodeWithTag("settings-save").assertDoesNotExist()
         compose.waitUntil { api.appearance.presetId == "sky_blue" }
         compose.onNodeWithContentDescription("返回").performClick()
         compose.onNodeWithText("主题色与深浅模式").assertExists()

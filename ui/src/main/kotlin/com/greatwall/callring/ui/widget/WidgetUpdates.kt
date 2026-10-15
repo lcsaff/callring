@@ -26,7 +26,7 @@ private val displayDomains = setOf(DataDomain.WIDGET_BINDINGS, DataDomain.CALLER
     DataDomain.CALLS, DataDomain.REPORTS, DataDomain.WORK_CALENDAR, DataDomain.QUIET_HOURS,
     DataDomain.SCORE_SETTINGS, DataDomain.STATISTICS, DataDomain.APPEARANCE)
 
-/** System time changes also invalidate current-score windows. */
+/** System time changes invalidate the device-day leave acknowledgement. */
 class WidgetTimeReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
         if (intent.action !in actions) return

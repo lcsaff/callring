@@ -50,7 +50,8 @@ class CallringOverlayService : Service() {
         lastStartId = startId
         val request = intent?.let(::readRequest)
         if (request != null) {
-            if (intent.getBooleanExtra(PREVIEW, false)) controller.sessions.preview(request) else controller.show(request)
+            if (intent.getBooleanExtra(PREVIEW, false)) controller.sessions.preview(request, intent.getBooleanExtra(TEST_PREVIEW, false))
+            else controller.show(request)
         }
         reconcileWindow()
         return START_NOT_STICKY
@@ -102,6 +103,10 @@ class CallringOverlayService : Service() {
         private const val START = "start"
         private const val DECISION = "decision"
         private const val PREVIEW = "preview"
+        private const val TEST_PREVIEW = "testPreview"
+        fun testPreviewIntent(context: Context) = intent(context, IncomingCallUiRequest(
+            "overlay-test-${java.util.UUID.randomUUID()}", "100", System.currentTimeMillis(), CallDecision.NORMAL_RINGING))
+            .putExtra(PREVIEW, true).putExtra(TEST_PREVIEW, true)
         fun previewIntent(context: Context, call: CallDetail) = intent(context, IncomingCallUiRequest(
             "preview-${java.util.UUID.randomUUID()}", call.number, call.startedAtEpochMillis, call.decision)).putExtra(PREVIEW, true)
         fun intent(context: Context, request: IncomingCallUiRequest) = Intent(context, CallringOverlayService::class.java)

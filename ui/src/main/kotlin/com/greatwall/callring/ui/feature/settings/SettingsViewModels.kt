@@ -17,11 +17,6 @@ class QuietViewModel(api: CallringUiApi, state: SavedStateHandle) : DraftEditor<
     api.settings::getQuietHours, api.settings::saveQuietHours
 )
 
-class AppearanceViewModel(api: CallringUiApi, state: SavedStateHandle) : DraftEditor<AppearanceSettings>(
-    api.changes, setOf(DataDomain.APPEARANCE), state, SettingsDraftCodecs.appearance,
-    api.settings::getAppearance, api.settings::saveAppearance
-)
-
 class WorkScheduleViewModel(private val api: CallringUiApi, state: SavedStateHandle) : DraftEditor<WorkScheduleSettings>(
     api.changes, setOf(DataDomain.WORK_CALENDAR), state, SettingsDraftCodecs.work,
     api.settings::getWorkSchedule, { value -> api.settings.saveWorkSchedule(SaveWorkSchedule(value.zoneId, value.weekly, value.makeup)) }

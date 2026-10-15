@@ -40,7 +40,7 @@ class CallringActivity : ComponentActivity() {
         requestSequence = savedInstanceState?.getLong(STATE_REQUEST_SEQUENCE) ?: 0
         destination = readDestination(intent)
         val api = (application as UiApiOwner).uiApi
-        setContent { CallringApp(api, destination, requestSequence, refreshSignal, ::requestCapability, ::previewCall, ::pinWidget, ::openApplicationSettings, notice, { if (notice?.id == it) notice = null }) }
+        setContent { CallringApp(api, destination, requestSequence, refreshSignal, ::requestCapability, ::previewCall, ::pinWidget, ::openApplicationSettings, notice, { if (notice?.id == it) notice = null }, onTestOverlay = ::testOverlay) }
     }
 
     override fun onResume() {
@@ -125,6 +125,16 @@ class CallringActivity : ComponentActivity() {
         if (!Settings.canDrawOverlays(this)) { requestCapability(Capability.OVERLAY); return }
         try { startForegroundService(CallringOverlayService.previewIntent(this, call)) }
         catch (_: RuntimeException) { notifyUser("系统未允许显示来电卡片，请检查运行条件") }
+    }
+
+    private fun testOverlay() {
+        if (!Settings.canDrawOverlays(this)) {
+            notifyUser("开启悬浮窗权限后，请再次点击“测试悬浮窗”。")
+            requestCapability(Capability.OVERLAY)
+            return
+        }
+        try { startForegroundService(CallringOverlayService.testPreviewIntent(this)) }
+        catch (_: RuntimeException) { notifyUser("系统未允许显示测试卡片，请检查悬浮窗及后台弹出界面权限。") }
     }
 
     private fun pinWidget() {

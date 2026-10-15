@@ -10,7 +10,7 @@ import androidx.glance.appwidget.GlanceAppWidgetManager
 
 internal data class WidgetRefreshRequest(val revision: Long, val error: ApiError? = null)
 
-/** Signals are presentation invalidations, never a replacement for API persisted bindings. */
+/** Signals invalidate presentation; persisted control state always comes from the API. */
 internal object WidgetRefreshSignals {
     val requests = MutableStateFlow<Map<Int, WidgetRefreshRequest>>(emptyMap())
     fun signal(widgetIds: Iterable<Int>, error: ApiError? = null) {

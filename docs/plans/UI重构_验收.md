@@ -83,3 +83,23 @@ UI 日志、构建结果与 `summary.json` 位于 `ui/build/qa/`，该目录被 
 悬浮窗补验实际复现了服务 Context 打开普通 Compose Dialog 时的 BadTokenException，随后改用官方 MaterialAlertDialogBuilder 与公开 Material 3 对话框主题，在显示前设置悬浮窗口类型。补验覆盖实际职位下拉菜单、取消退出提示保留草稿、确认放弃后退出编辑；同一共享用例也已通过最终 Robolectric 全量运行。截图已检查首页、设置、档案表单等间距，位于 `ui/build/screenshots/android-interactions/`。规格审查和代码质量审查均已通过。
 
 真实系统返回手势的逐帧动效、厂商键盘的所有高度组合和系统锁屏仍需现场观察；预测返回接入与窗口尺寸切换的自动测试不替代这些人工项目。上文真实 SIM、长时间息屏和重启项目继续按原范围记录。
+
+## 桌面快捷操作、即时外观与悬浮窗检查（2026-10-15）
+
+本轮分支 `feat/widget-controls-live-appearance`；需求见 [专项设计](../superpowers/specs/2026-10-15-widget-live-appearance-design.md)，取代上文旧小部件的号码绑定方案。小部件只展示全局免打扰开关与当天请假快捷操作；添加组件无需配置号码，也不提供档案、评分、报告或请假详情。请假按回调触发时设备日期和时区创建当天全天记录，不启动 Activity。读取失败禁止盲写，多实例和旧 RemoteViews 的重复回调通过串行读取去重；旧“今日已请假”仍保留安全回调，避免系统尚未刷新跨日画面时阻止当天操作。
+
+免打扰使用 Glance 原生 Switch 及显式目标状态，只切换应用免打扰模式，不修改原时段、适用号码范围；关闭前记住有效模式，重新开启恢复。偏好读取与 API 写入在同一锁内，已用挂起读操作复现并修复快速 OFF→ON 恢复错模式的竞争。另用挂起跨午夜回归验证日期在排队前捕获。全天边界以相邻日期本地零点计算，覆盖 25 小时夏令时日。
+
+外观页采用根级 ViewModel 即时更新应用主题并串行自动保存；RGB 滑块 250ms 合并写入，新的选择不会被旧结果覆盖，失败保留当前效果并原位重试。预设主题横排，显示模式紧随其后，自定义颜色与专属预览合并，删除保存按钮和离开确认。
+
+“运行状态与权限”新增无历史记录依赖的“测试悬浮窗”。未授权时进入官方系统权限页；已授权时启动只读测试会话，不创建来电、档案、白名单或铃声。界面说明当前窗口显示与后台来电显示的验证边界，并为 MIUI/HyperOS 提示独立的后台弹出限制。
+
+本地 UI 全量 **144 项测试通过，零失败/错误/跳过**；UI Lint、测试 APK、正式 Debug APK 及 App Lint 通过。严格后端边界检查通过，生产 API 契约未变。独立审查发现的两项日期边界及免打扰竞争均已修正。
+
+最终 `python tools/verify_ui.py --device 192.168.10.149:5555` 退出 0，完整隔离设备 **61 项通过**，含真实双尺寸全局组件和新悬浮窗服务。此前两项重点路径单独运行 **2 项通过**，为相同用例补验，不额外累计。完整摘要/日志位于 `ui/build/qa/summary.json`、`device-tests.log`，补验位于 `ui/build/qa/widget-overlay/`；两次均恢复测试包 `SYSTEM_ALERT_WINDOW` 和 HyperOS `10021` 到原始 default，cleanup 无错误。首次实机运行暴露测试宿主对前台 Activity 和 CompoundButton 点击返回值的错误假设，已修正为验证真实可见窗口、实际关闭动作、持久化 API 结果与两实例状态；首次失败日志保留在 `ui/build/qa/controls-first-device/`。
+
+已核对 `ui/build/screenshots/widget-live-appearance/` 中外观页、双尺寸组件、自定义主题与真实服务窗口截图。自测窗口可见测试标题和解释，没有编辑/白名单/报表入口，并验证点击关闭后物理系统窗口移除。自动化检查使用测试框架的标准节点查询，没有增加应用无障碍功能。
+
+设备排查确认：小米 15 Pro / Android 16 / HyperOS 上没有安装 `com.greatwall.callring`；已安装 `com.greatwall.callring.backendqa` 的来电显示 sink 按 QA 设计为空实现，其标准悬浮窗权限允许，但后台弹出 app-op `10021` 为 ignore。该 QA 包真实来电不显示不能直接认定为生产窗口故障。未安装正式包、未改变 QA 包权限或数据；真实 SIM 后台来电和系统锁屏项目仍待现场验证。
+
+实现参考官方 [Glance 交互](https://developer.android.com/develop/ui/compose/glance/user-interaction)。跨日处理不依赖清单中的 DATE_CHANGED 必达，依据官方 [隐式广播例外](https://developer.android.com/develop/background-work/background-tasks/broadcasts/broadcast-exceptions)保留安全的即时计算操作。

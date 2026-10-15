@@ -34,9 +34,12 @@ class OverlayController(
     fun collapse() = sessions.toggleCollapsed()
     fun refreshRuntime() { mutableModels.value?.presentation?.refreshRuntime() }
     fun refreshOverview() { mutableModels.value?.presentation?.refreshOverview() }
-    fun whitelist(enabled: Boolean) { mutableModels.value?.presentation?.whitelist(enabled) }
+    fun whitelist(enabled: Boolean) {
+        if (sessions.state.value?.testPreview != true) mutableModels.value?.presentation?.whitelist(enabled)
+    }
 
     fun beginEditing() {
+        if (sessions.state.value?.testPreview == true) return
         val current = mutableModels.value ?: return
         if (current.editor != null) return
         val parent = sessionScope ?: return

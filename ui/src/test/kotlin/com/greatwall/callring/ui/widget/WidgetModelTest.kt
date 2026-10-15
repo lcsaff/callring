@@ -1,79 +1,135 @@
-﻿package com.greatwall.callring.ui.widget
+package com.greatwall.callring.ui.widget
 
 import com.greatwall.callring.application.api.*
 import com.greatwall.callring.ui.testing.UiFakeApi
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.*
 import org.junit.Test
+import java.time.*
 
+@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
 class WidgetModelTest {
-    private val failed = ApiResult.Failure(ApiError(ErrorCode.STORAGE_FAILURE, "无法读取"))
+    private val zone = ZoneId.of("Asia/Shanghai")
+    private val date = LocalDate.of(2026, 10, 15)
+    private val noon = date.atTime(12, 0).atZone(zone).toInstant().toEpochMilli()
 
-    @Test fun eachWidgetLoadsItsOwnBindingAndOverviewAtCurrentTime() = runTest {
-        val queries = mutableListOf<OverviewQuery>()
-        val api = object : UiFakeApi() {
-            override suspend fun getBinding(widgetId: Int) = ApiResult.Success(WidgetBinding(widgetId, "number-$widgetId"))
-            override suspend fun getOverview(query: OverviewQuery): ApiResult<CallerOverview> {
-                queries += query
-                return super.getOverview(query)
-            }
+    private open class ControlsApi : UiFakeApi() {
+        var quiet = QuietSettings(QuietMode.CUSTOM, true, mapOf(1 to listOf(TimeWindow(60, 120))))
+        val leaves = mutableListOf<LeaveEntry>()
+        val commands = mutableListOf<SaveLeave>()
+        override suspend fun getQuietHours() = ApiResult.Success(quiet)
+        override suspend fun setQuietMode(mode: QuietMode): ApiResult<QuietSettings> {
+            quiet = quiet.copy(mode = mode)
+            return ApiResult.Success(quiet)
         }
-        val model = WidgetModel(api) { 1234L }
-        assertEquals("number-7", model.load(7).binding?.number)
-        assertEquals("number-8", model.load(8).binding?.number)
-        assertEquals(listOf(OverviewQuery("number-7", 1234L), OverviewQuery("number-8", 1234L)), queries)
-    }
-
-    @Test fun missingBindingAndReadFailureBothOfferRecovery() = runTest {
-        val absent = WidgetModel(object : UiFakeApi() {
-            override suspend fun getBinding(widgetId: Int): ApiResult<WidgetBinding?> = ApiResult.Success(null)
-        }).load(1)
-        assertNull(absent.overview)
-        assertTrue(absent.needsConfiguration)
-        val failure = WidgetModel(object : UiFakeApi() {
-            override suspend fun getBinding(widgetId: Int): ApiResult<WidgetBinding?> = failed
-        }).load(2)
-        assertTrue(failure.needsConfiguration)
-        assertEquals(ErrorCode.STORAGE_FAILURE, failure.error?.code)
-    }
-
-    @Test fun overviewFailureKeepsBindingAndRecoverableError() = runTest {
-        val api = object : UiFakeApi() {
-            override suspend fun getBinding(widgetId: Int) = ApiResult.Success(WidgetBinding(widgetId, "100"))
-            override suspend fun getOverview(query: OverviewQuery): ApiResult<CallerOverview> = failed
+        override suspend fun getLeaves(): ApiResult<List<LeaveEntry>> = ApiResult.Success(leaves.toList())
+        override suspend fun saveLeave(command: SaveLeave): ApiResult<LeaveEntry> {
+            commands += command
+            val period = command.period as LeavePeriod.AllDay
+            val entry = LeaveEntry(commands.size.toLong(), period.startDate.atStartOfDay(ZoneId.of(period.zoneId)).toInstant().toEpochMilli(),
+                period.endDateInclusive.plusDays(1).atStartOfDay(ZoneId.of(period.zoneId)).toInstant().toEpochMilli(), command.note, LeaveState.ACTIVE)
+            leaves += entry
+            return ApiResult.Success(entry)
         }
-        val snapshot = WidgetModel(api).load(4)
-        assertEquals("100", snapshot.binding?.number)
-        assertTrue(snapshot.needsConfiguration)
-        assertNotNull(snapshot.error)
     }
 
-    @Test fun whitelistSubmitsExplicitTargetAndRejectsOldBindingAction() = runTest {
-        var target: Pair<String, Boolean>? = null
-        val api = object : UiFakeApi() {
-            override suspend fun getBinding(widgetId: Int) = ApiResult.Success(WidgetBinding(widgetId, "100"))
-            override suspend fun setWhitelisted(number: String, enabled: Boolean): ApiResult<CallerProfile> {
-                target = number to enabled
-                return super.setWhitelisted(number, enabled)
+    @Test fun globalControlsLoadWithoutReadingAnyNumberOrWidgetBinding() = runTest {
+        val snapshot = WidgetModel(ControlsApi(), { noon }, { zone }).load()
+        assertEquals(QuietMode.CUSTOM, snapshot.quiet?.mode)
+        assertEquals(date, snapshot.today)
+        assertEquals(false, snapshot.leaveGranted)
+        assertNull(snapshot.error)
+    }
+
+    @Test fun quickLeaveUsesSystemDateAtClickAndRepeatedConcurrentClicksSaveOnlyOnce() = runTest {
+        val api = ControlsApi()
+        var time = noon
+        val model = WidgetModel(api, { time }, { zone })
+        model.load()
+        time = date.plusDays(1).atTime(0, 1).atZone(zone).toInstant().toEpochMilli()
+        listOf(async { model.requestTodayLeave() }, async { WidgetModel(api, { time }, { zone }).requestTodayLeave() }).awaitAll()
+        assertEquals(1, api.commands.size)
+        assertEquals(LeavePeriod.AllDay(date.plusDays(1), date.plusDays(1), zone.id), api.commands.single().period)
+        assertEquals(true, model.load().leaveGranted)
+    }
+
+    @Test fun existingTimedCoveragePreventsDuplicateAllDayLeaveAndRespectsDst() = runTest {
+        val api = ControlsApi()
+        val dstZone = ZoneId.of("America/New_York")
+        val dstDay = LocalDate.of(2026, 11, 1)
+        val start = dstDay.atStartOfDay(dstZone).toInstant().toEpochMilli()
+        val end = dstDay.plusDays(1).atStartOfDay(dstZone).toInstant().toEpochMilli()
+        assertEquals(25 * 60 * 60 * 1000L, end - start)
+        api.leaves += LeaveEntry(7, start, end, "existing", LeaveState.UPCOMING)
+        assertTrue(WidgetModel(api, { start + 1 }, { dstZone }).requestTodayLeave() is ApiResult.Success)
+        assertTrue(api.commands.isEmpty())
+    }
+
+    @Test fun quietSwitchPreservesRulesAndRestoresPreviousCustomMode() = runTest {
+        val api = ControlsApi()
+        val model = WidgetModel(api, { noon }, { zone })
+        val original = api.quiet
+        model.setQuietEnabled(false, { QuietMode.CUSTOM })
+        assertEquals(original.copy(mode = QuietMode.OFF), api.quiet)
+        model.setQuietEnabled(true, { QuietMode.CUSTOM })
+        assertEquals(original, api.quiet)
+    }
+
+    @Test fun failedLeaveReadCannotSubmitBlindDuplicateAndUnknownStateIsNotFalse() = runTest {
+        val error = ApiError(ErrorCode.STORAGE_FAILURE, "read failed")
+        val api = object : ControlsApi() {
+            override suspend fun getLeaves(): ApiResult<List<LeaveEntry>> = ApiResult.Failure(error)
+        }
+        val model = WidgetModel(api, { noon }, { zone })
+        assertNull(model.load().leaveGranted)
+        assertEquals(error, model.load().error)
+        assertTrue(model.requestTodayLeave() is ApiResult.Failure)
+        assertTrue(api.commands.isEmpty())
+    }
+
+    @Test fun queuedOnActionReadsRememberedModeOnlyAfterOffActionFinishes() = runTest {
+        val entered = CompletableDeferred<Unit>()
+        val release = CompletableDeferred<Unit>()
+        var first = true
+        var remembered = QuietMode.NON_WORK
+        val api = object : ControlsApi() {
+            override suspend fun getQuietHours(): ApiResult.Success<QuietSettings> {
+                if (first) { first = false; entered.complete(Unit); release.await() }
+                return super.getQuietHours()
             }
         }
         val model = WidgetModel(api)
-        assertTrue(model.setWhitelisted(3, "100", true) is ApiResult.Success)
-        assertEquals("100" to true, target)
-        target = null
-        assertTrue(model.setWhitelisted(3, "old-number", false) is ApiResult.Failure)
-        assertNull(target)
+        val off = async { model.setQuietEnabled(false, { remembered }) { remembered = it } }
+        entered.await()
+        val on = async { model.setQuietEnabled(true, { remembered }) { remembered = it } }
+        runCurrent()
+        release.complete(Unit)
+        off.await(); on.await()
+        assertEquals(QuietMode.CUSTOM, api.quiet.mode)
     }
 
-    @Test fun deletionRemovesOnlyTheRequestedBinding() = runTest {
-        val removed = mutableListOf<Int>()
-        val api = object : UiFakeApi() {
-            override suspend fun removeBinding(widgetId: Int): ApiResult<Unit> {
-                removed += widgetId
-                return ApiResult.Success(Unit)
+    @Test fun leaveQueuedAcrossMidnightKeepsCallbackDate() = runTest {
+        val entered = CompletableDeferred<Unit>()
+        val release = CompletableDeferred<Unit>()
+        var time = noon
+        val api = object : ControlsApi() {
+            override suspend fun getQuietHours(): ApiResult.Success<QuietSettings> {
+                entered.complete(Unit); release.await()
+                return super.getQuietHours()
             }
         }
-        WidgetModel(api).remove(42)
-        assertEquals(listOf(42), removed)
+        val model = WidgetModel(api, { time }, { zone })
+        val quiet = async { model.setQuietEnabled(false, { QuietMode.CUSTOM }) }
+        entered.await()
+        val leave = async { model.requestTodayLeave() }
+        runCurrent()
+        time = date.plusDays(1).atStartOfDay(zone).toInstant().toEpochMilli()
+        release.complete(Unit)
+        quiet.await(); leave.await()
+        assertEquals(LeavePeriod.AllDay(date, date, zone.id), api.commands.single().period)
     }
 }

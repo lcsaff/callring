@@ -69,21 +69,24 @@ data class OverlayContentState(
                 }, contentAlignment = Alignment.Center) {
                     Box(Modifier.size(20.dp, 4.dp).background(MaterialTheme.colorScheme.outline, MaterialTheme.shapes.small))
                 }
-                Text(if (session.preview) "最近来电档案" else "来电档案", Modifier.weight(1f), style = MaterialTheme.typography.titleSmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text(when { session.testPreview -> "悬浮窗测试"; session.preview -> "最近来电档案"; else -> "来电档案" }, Modifier.weight(1f), style = MaterialTheme.typography.titleSmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 if (!session.editing) TextButton(onClick = onCollapse) { Text(if (session.collapsed) "展开" else "收起") }
                 TextButton(onClick = { dismiss("close") }, enabled = !commitBusy) { Text("关闭") }
             }
             if (session.hasQueuedCall) Text("有新的来电，完成编辑后显示", style = MaterialTheme.typography.bodySmall)
             if (session.callEnded && session.editing) Text("通话已结束，保存或取消后关闭卡片", style = MaterialTheme.typography.bodySmall)
-            if (session.editing) {
+            if (session.testPreview && !session.collapsed) {
+                Text("仅检查悬浮窗显示，不会拨打电话、播放铃声或保存示例档案。", style = MaterialTheme.typography.bodyMedium)
+                Text("可拖动卡片、收起或关闭。", style = MaterialTheme.typography.bodySmall)
+            } else if (session.editing) {
                 CallerEditorForm(state.editor, state.draft, state.editorMutation, false, onRetryEditor, onChange, onSave,
                     Modifier.weight(1f, fill = false), showSuccess = false)
                 TextButton(onClick = { dismiss("cancel") }, enabled = !state.editorMutation.busy) { Text("取消编辑") }
             } else if (session.collapsed) {
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text(overview?.profile?.name?.ifBlank { session.request.number } ?: session.request.number,
+                    Text(if (session.testPreview) "悬浮窗显示正常" else overview?.profile?.name?.ifBlank { session.request.number } ?: session.request.number,
                         Modifier.weight(1f), maxLines = 1, overflow = TextOverflow.Ellipsis)
-                    if (overview != null) ScoreBadge(overview.rollingScore.points)
+                    if (overview != null && !session.testPreview) ScoreBadge(overview.rollingScore.points)
                 }
             } else {
                 Column(Modifier.weight(1f, fill = false).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
