@@ -42,10 +42,10 @@ UI 日志、构建结果与 `summary.json` 位于 `ui/build/qa/`，该目录被 
 
 | 项目 | 当前证据或状态 | 验收要求 |
 | --- | --- | --- |
-| UI 单元测试 | 本轮完整运行 106 项通过，零失败/错误/跳过 | 日志 `ui/build/qa/summary.json`、`ui/build/qa/build.log` |
-| Compose 设备测试 | 本轮独立 UI 包完整运行 35 项通过 | 日志 `ui/build/qa/device-tests.log`；包含实际 Window、桌面宿主与原色按钮像素检查 |
-| 设置对话框状态恢复 | 14 项共享设置用例通过；三个计数重置回归和一个旋转期间完成回归均实际执行失败→修复→通过 | 覆盖草稿、首次成功关闭及单次提交；不等于真实杀进程验收 |
-| 完整 App/Backend/UI 构建 | 本轮通过 Debug、Release、AndroidTest、Backend QA、App/UI Lint；Backend 66、App 66、UI 106 项单元测试均零失败/错误/跳过 | 摘要 `app/build/qa/backend-refactor/summary.json`，日志 `build/theme-brand-full.log` |
+| UI 单元测试 | 主分支最终完整运行 111 项通过，零失败/错误/跳过 | 日志 `ui/build/qa/summary.json`、`ui/build/qa/build.log` |
+| Compose 设备测试 | 主分支独立 UI 包完整运行 39 项通过 | 日志 `ui/build/qa/device-tests.log`；包含实际 Window、桌面宿主、原色按钮及新增 4 项共享回归 |
+| 设置对话框状态恢复 | 18 项共享设置用例通过；三个计数重置回归和一个旋转期间完成回归均实际执行失败→修复→通过，新增默认设置重置及权限恢复入口回归也已实机通过 | 覆盖草稿、首次成功关闭及单次提交；不等于真实杀进程验收 |
+| 完整 App/Backend/UI 构建 | 主分支最终通过 Debug、Release、AndroidTest、Backend QA、App/UI Lint；Backend 66、App 66、UI 111 项单元测试均零失败/错误/跳过 | 摘要 `app/build/qa/backend-refactor/summary.json`，日志 `app/build/qa/backend-refactor/build.log` |
 | 后端设备测试 | 本轮隔离 Backend QA 31 项通过，包含新增回归 | 证据 `app/build/qa/backend-refactor/device-tests.log`；与 UI 独立包分开运行 |
 | 实际悬浮 Window | 真机显示、收起/展开、隐藏/重挂载、编辑焦点及已有草稿跨隐藏恢复通过；已核对截图 | 实际手势拖动边界仍待现场验收 |
 | IME 与锁屏 | 编辑窗口已核对可聚焦标志；键盘遮挡和系统安全锁屏仍待现场验证 | 键盘避让、长表单滚动、保存/取消、锁屏隐藏及解锁草稿恢复；窗口 hide/show 不等于系统锁屏 |
@@ -66,6 +66,6 @@ UI 日志、构建结果与 `summary.json` 位于 `ui/build/qa/`，该目录被 
 
 ## 最终验收记录方式
 
-主分支集成补充（2026-10-15）：UI `89382a9` 与审查修复 `4260d1f` 已合入 `main`。增加权限设置恢复入口、权限授予后恢复同步、默认设置清理无效输入；5 个回归中先观察到 4 个预期失败，修复后核心 66 / app 66 / UI 111 项本地测试及完整构建、Lint、严格边界检查通过，并在主工作区复验。UI `89382a9` 合入后 Backend QA 曾复跑 31 项通过；最终修复后的设备安装遭遇无线 ADB 离线，UI 新增共享回归的实机复跑保持待验。上表 35/31 项设备结果保留其各自阶段，不作为最终修复的重新执行证据。
+主分支集成补充（2026-10-15）：UI `89382a9` 与审查修复 `4260d1f` 已合入 `main`。增加权限设置恢复入口、权限授予后恢复同步、默认设置清理无效输入；5 个回归中先观察到 4 个预期失败，修复后核心 66 / app 66 / UI 111 项本地测试及完整构建、Lint、严格边界检查通过，并在主工作区复验。用户恢复无线 ADB 后，在主工作区 `2580ce7` 再次执行两个设备验证脚本，均退出 0：Backend QA 31 项、UI 39 项通过，其中含新增的 4 项共享回归。外部权限授予后 resume 的 Activity 行为由新增 Robolectric 用例验证。UI 测试包的悬浮窗及 HyperOS `10021` app-op 已恢复为测试前的 `default`，cleanup 无错误。仍未执行的现场项目保持上表待验状态。
 
 统一重跑后，记录源码提交、时间、设备型号/系统、脚本退出码、单元与设备计数、日志路径及未通过项目。现场项目应逐项附实际操作与观察结果；未执行、设备断线、权限阻断和测试失败均保持待验或失败，不能以模拟或旧记录替代。
