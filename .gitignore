@@ -1,0 +1,23 @@
+*.iml
+.gradle
+/local.properties
+/.idea/caches
+/.idea/libraries
+/.idea/modules.xml
+/.idea/workspace.xml
+/.idea/navEditor.xml
+/.idea/assetWizardSettings.xml
+.DS_Store
+/build
+/app/build
+/captures
+.externalNativeBuild
+.cxx
+
+# Python bytecode
+__pycache__/
+*.py[cod]
+
+# Brainstorm scratch state (regenerable: bundled browser profile, npm installs)
+.superpowers/**/state/preview-browser/
+.superpowers/**/state/**/node_modules/
