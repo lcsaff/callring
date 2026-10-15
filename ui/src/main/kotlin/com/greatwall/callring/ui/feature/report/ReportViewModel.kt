@@ -47,7 +47,7 @@ class ReportViewModel(
 
     fun export(destination: DocumentRef) {
         val captured = query.value
-        writer.run({ api.exportCsv(ReportExportQuery(number, captured.range), destination) }) {}
+        writer.run({ api.exportCsv(ReportExportQuery(number, captured.range), destination) }, "报表已导出") {}
     }
 
     private fun update(value: ReportQuery) {

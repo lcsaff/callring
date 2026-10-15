@@ -31,7 +31,7 @@ class SharedComponentsTest {
         var returned = false
         compose.setContent { CallringTheme { ScreenFrame("外观设置", onBack = { returned = true }) {} } }
         compose.onNodeWithText("外观设置").assertIsDisplayed()
-        compose.onNodeWithText("返回").performClick()
+        compose.onNodeWithContentDescription("返回").performClick()
         assertTrue(returned)
     }
 

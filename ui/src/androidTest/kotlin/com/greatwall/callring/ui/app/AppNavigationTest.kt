@@ -46,7 +46,7 @@ class AppNavigationTest {
             compose.onNodeWithTag("tab-settings").assertDoesNotExist()
             compose.onNodeWithText(title).assertExists()
             compose.captureArtifact("settings-${destinations.indexOf(title)}")
-            compose.onNodeWithText("返回").performClick()
+            compose.onNodeWithContentDescription("返回").performClick()
             compose.onNodeWithTag("tab-settings").assertExists()
         }
         compose.onNodeWithText("外观").performScrollTo().performClick()
@@ -54,7 +54,7 @@ class AppNavigationTest {
         compose.onNodeWithTag("preset-sky_blue").performScrollTo().performClick()
         compose.onNodeWithTag("settings-save").performScrollTo().performClick()
         compose.waitUntil { api.appearance.presetId == "sky_blue" }
-        compose.onNodeWithText("返回").performClick()
+        compose.onNodeWithContentDescription("返回").performClick()
         compose.onNodeWithText("主题色与深浅模式").assertExists()
     }
 

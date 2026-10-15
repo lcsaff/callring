@@ -90,5 +90,8 @@ class OverlayControllerTest {
         assertEquals("已保存", api.savedProfile?.name)
         assertNull(api.savedProfile?.whitelisted)
         assertNull(sessions.state.value)
+        assertEquals(1L, controller.savedRevision.value)
+        controller.cancelEditing(); runCurrent()
+        assertEquals(1L, controller.savedRevision.value)
     }
 }

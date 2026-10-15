@@ -16,6 +16,7 @@ import com.greatwall.callring.ui.state.MutationState
 @Composable internal fun OverlayRoute(controller: OverlayController, maxHeight: Dp, onDrag: (Offset) -> Unit, onReport: (String) -> Unit) {
     val session by controller.sessions.state.collectAsState()
     val models by controller.models.collectAsState()
+    val savedRevision by controller.savedRevision.collectAsState()
     val current = session ?: return
     val model = models?.takeIf { it.presentation.request.sessionId == current.request.sessionId }
     if (model == null) {
@@ -30,7 +31,7 @@ import com.greatwall.callring.ui.state.MutationState
     val draft = if (editor != null) editor.draft.collectAsState().value else null
     val editorMutation = if (editor != null) editor.mutation.collectAsState().value else MutationState()
     CallringTheme(settings.data?.appearance ?: DefaultAppearance) {
-        OverlayScreen(OverlayContentState(current, overview, editorState, draft, mutation, editorMutation),
+        OverlayScreen(OverlayContentState(current, overview, editorState, draft, mutation, editorMutation, savedRevision),
             onDrag, controller::dismiss, controller::collapse, controller::beginEditing, controller::cancelEditing,
             controller::save, controller::changeDraft, controller::whitelist, { onReport(current.request.number) },
             controller::refreshOverview, controller::retryEditor, maxHeight)

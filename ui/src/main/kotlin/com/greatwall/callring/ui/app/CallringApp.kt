@@ -1,13 +1,10 @@
 package com.greatwall.callring.ui.app
 
-import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavType
@@ -19,14 +16,22 @@ import com.greatwall.callring.ui.feature.callers.*
 import com.greatwall.callring.ui.feature.home.*
 import com.greatwall.callring.ui.feature.report.*
 import com.greatwall.callring.ui.feature.settings.*
+import androidx.compose.material3.adaptive.currentWindowAdaptiveInfo
+import androidx.compose.material3.adaptive.navigationsuite.*
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.Settings
+import com.greatwall.callring.ui.designsystem.components.LocalFeedbackHost
+import com.greatwall.callring.ui.designsystem.components.LocalFeedbackScope
+import com.greatwall.callring.ui.designsystem.components.FeedbackSnackbar
 import java.time.LocalDate
-import kotlin.math.cos
-import kotlin.math.sin
 
 @Composable fun CallringApp(
     api: CallringUiApi, requestedDestination: UiDestination = UiDestination.Home, requestSequence: Long = 0,
     refreshSignal: Long = 0, onCapability: (Capability) -> Unit,
-    onPreviewCall: (CallDetail) -> Unit, onPinWidget: () -> Unit, onAppSettings: () -> Unit
+    onPreviewCall: (CallDetail) -> Unit, onPinWidget: () -> Unit, onAppSettings: () -> Unit,
+    notice: UiNotice? = null, onNoticeConsumed: (Long) -> Unit = {},
 ) {
     val settings: SettingsSummaryViewModel = uiViewModel("application-settings") { SettingsSummaryViewModel(api) }
     val navigationState: UiNavigationState = uiViewModel("application-navigation") { UiNavigationState(it) }
@@ -45,16 +50,30 @@ import kotlin.math.sin
         }
         fun open(destination: UiDestination) { navigation.navigate(destination.route) { launchSingleTop = true } }
         val back: () -> Unit = { navigation.popBackStack() }
-        Scaffold(bottomBar = {
-            if (tabs.any { it.first.route == route }) NavigationBar {
-                tabs.forEachIndexed { index, (destination, title) -> NavigationBarItem(
-                    selected = route == destination.route, modifier = Modifier.testTag("tab-${destination.route}"),
+        val feedbackHost = remember { SnackbarHostState() }
+        LaunchedEffect(notice?.id) {
+            notice?.let { value ->
+                feedbackHost.showSnackbar(value.text, withDismissAction = true)
+                onNoticeConsumed(value.id)
+            }
+        }
+        val adaptiveInfo = currentWindowAdaptiveInfo()
+        CompositionLocalProvider(LocalFeedbackHost provides feedbackHost, LocalFeedbackScope provides rememberCoroutineScope()) {
+        NavigationSuiteScaffold(
+            layoutType = if (tabs.any { it.first.route == route })
+                NavigationSuiteScaffoldDefaults.calculateFromAdaptiveInfo(adaptiveInfo) else NavigationSuiteType.None,
+            navigationSuiteItems = {
+                tabs.forEachIndexed { index, (destination, title) -> item(
+                    selected = route == destination.route,
+                    modifier = Modifier.testTag("tab-${destination.route}"),
                     onClick = { navigation.navigate(destination.route) {
                         popUpTo(navigation.graph.startDestinationId) { saveState = true }
                         launchSingleTop = true; restoreState = true
-                    } }, icon = { NavigationGlyph(index) }, label = { Text(title) }) }
-            }
-        }) { insets ->
+                    } }, icon = { NavigationGlyph(index) }, label = { Text(title) },
+                ) }
+            },
+        ) {
+        Scaffold(modifier = Modifier.imePadding(), snackbarHost = { FeedbackSnackbar(feedbackHost) }) { insets ->
             NavHost(navigation, UiDestination.Home.route, Modifier.padding(insets).consumeWindowInsets(insets)) {
                 composable("home") {
                     val model: HomeViewModel = uiViewModel { HomeViewModel(api) }
@@ -109,7 +128,7 @@ import kotlin.math.sin
                 }
                 composable("settings") {
                     val mutation by settings.mutation.collectAsStateWithLifecycle()
-                    SettingsOverviewScreen(summary, mutation, back, settings::refresh, settings::statistics, settings::overlay,
+                    SettingsOverviewScreen(summary, mutation, null, settings::refresh, settings::statistics, settings::overlay,
                         { open(UiDestination.Setting(it)) })
                 }
                 SettingsPage.entries.forEach { page -> composable(UiDestination.Setting(page).route) {
@@ -117,33 +136,13 @@ import kotlin.math.sin
                 } }
             }
         }
+        }
+        }
     }
 }
 
 @Composable private fun NavigationGlyph(index: Int) {
-    val color = LocalContentColor.current
-    Canvas(Modifier.size(24.dp)) {
-        val stroke = 1.8.dp.toPx()
-        when (index) {
-            0 -> {
-                drawLine(color, Offset(size.width * .12f, size.height * .45f), Offset(size.width * .5f, size.height * .12f), stroke)
-                drawLine(color, Offset(size.width * .5f, size.height * .12f), Offset(size.width * .88f, size.height * .45f), stroke)
-                drawRect(color, Offset(size.width * .25f, size.height * .45f), androidx.compose.ui.geometry.Size(size.width * .5f, size.height * .43f), style = Stroke(stroke))
-            }
-            1 -> {
-                drawCircle(color, size.width * .17f, Offset(size.width * .5f, size.height * .3f), style = Stroke(stroke))
-                drawArc(color, 180f, 180f, false, Offset(size.width * .2f, size.height * .55f), androidx.compose.ui.geometry.Size(size.width * .6f, size.height * .55f), style = Stroke(stroke))
-            }
-            else -> {
-                drawCircle(color, size.width * .32f, style = Stroke(stroke))
-                drawCircle(color, size.width * .1f, style = Stroke(stroke))
-                repeat(8) { tooth ->
-                    val angle = tooth * Math.PI / 4
-                    drawLine(color,
-                        Offset(center.x + cos(angle).toFloat() * size.width * .32f, center.y + sin(angle).toFloat() * size.height * .32f),
-                        Offset(center.x + cos(angle).toFloat() * size.width * .45f, center.y + sin(angle).toFloat() * size.height * .45f), stroke)
-                }
-            }
-        }
-    }
+    Icon(when (index) { 0 -> Icons.Filled.Home; 1 -> Icons.Filled.Person; else -> Icons.Filled.Settings }, contentDescription = null)
 }
+
+data class UiNotice(val id: Long, val text: String)

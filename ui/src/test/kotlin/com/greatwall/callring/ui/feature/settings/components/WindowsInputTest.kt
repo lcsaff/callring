@@ -6,6 +6,16 @@ import org.junit.Assert.assertNull
 import org.junit.Test
 
 class WindowsInputTest {
+    @Test fun timeWindowSerializationUsesIsoDigitsInArabicLocale() {
+        val original = java.util.Locale.getDefault()
+        try {
+            java.util.Locale.setDefault(java.util.Locale.forLanguageTag("ar-EG"))
+            assertEquals("09:30", com.greatwall.callring.ui.designsystem.components.clockTimeText(9, 30))
+            assertEquals("09:00-12:00", windowsText(listOf(TimeWindow(540, 720))))
+        } finally {
+            java.util.Locale.setDefault(original)
+        }
+    }
     @Test fun midnightMustUseZeroInsteadOfOutOfRangeMinute1440() {
         assertNull(parseWindows("09:00-24:00"))
         assertEquals(listOf(TimeWindow(1320, 0)), parseWindows("22:00-00:00"))

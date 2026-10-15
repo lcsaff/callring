@@ -141,10 +141,10 @@ fun AppearanceSettings.usesDarkColors(systemDark: Boolean): Boolean = when (colo
 val LocalCallringDarkMode = staticCompositionLocalOf { false }
 
 object CallringSpacing {
-    val screen = 20.dp
-    val section = 24.dp
-    val item = 12.dp
-    val compact = 8.dp
+    val screen = 16.dp
+    val section = 20.dp
+    val item = 8.dp
+    val compact = 6.dp
 }
 
 private val CallringTypography = Typography()

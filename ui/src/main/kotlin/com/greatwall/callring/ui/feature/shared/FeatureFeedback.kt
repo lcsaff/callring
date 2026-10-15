@@ -10,7 +10,9 @@ import com.greatwall.callring.ui.format.UiLabels
 import com.greatwall.callring.ui.state.*
 
 @Composable fun <T> LoadFeedback(state: LoadState<T>, onRetry: () -> Unit) {
-    if (state.loading) LoadingContent()
+    if (state.loading) {
+        if (state.data == null) LoadingContent() else LinearProgressIndicator(Modifier.fillMaxWidth())
+    }
     state.error?.let { ErrorContent(it.message, onRetry) }
 }
 
@@ -21,10 +23,13 @@ import com.greatwall.callring.ui.state.*
     }
 }
 
-@Composable fun MutationFeedback(state: MutationState, onCapability: ((Capability) -> Unit)? = null) {
+@Composable fun MutationFeedback(
+    state: MutationState, onCapability: ((Capability) -> Unit)? = null,
+    successMessage: String = "已保存", showSuccess: Boolean = true,
+) {
     if (state.busy) LinearProgressIndicator(Modifier.fillMaxWidth())
     state.error?.let { ApiErrorNotice(it, onCapability) }
-    if (!state.busy && state.error == null) state.message?.let { Text(it, color = MaterialTheme.colorScheme.primary) }
+    MutationSuccessEffect(state.completed, state.busy, state.message?.takeUnless { it == "操作成功" } ?: successMessage, showSuccess)
 }
 
 @Composable fun PageControls(pageIndex: Int, pageSize: Int, totalItems: Long, loading: Boolean, onPage: (Int) -> Unit) {

@@ -6,7 +6,8 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
@@ -29,7 +30,8 @@ data class OverlayContentState(
     val editor: LoadState<CallerEditorData> = LoadState(),
     val draft: CallerDraft? = null,
     val mutation: MutationState = MutationState(),
-    val editorMutation: MutationState = MutationState()
+    val editorMutation: MutationState = MutationState(),
+    val savedRevision: Long = 0L,
 )
 
 @Composable fun OverlayScreen(
@@ -40,7 +42,17 @@ data class OverlayContentState(
 ) {
     val session = state.session
     val overview = state.overview.data
+    var pendingDismiss by rememberSaveable { mutableStateOf<String?>(null) }
+    val dirty = session.editing && state.draft != null && state.editor.data?.draft != state.draft
+    val commitBusy = state.editorMutation.busy || state.mutation.busy
+    fun dismiss(kind: String) {
+        if (!commitBusy) {
+            if (dirty) pendingDismiss = kind else if (kind == "close") onClose() else onCancel()
+        }
+    }
     val dragStep = with(LocalDensity.current) { 24.dp.toPx() }
+    FeedbackPanel {
+    MutationSuccessEffect(state.savedRevision, false, "档案已保存")
     Surface(modifier.fillMaxWidth().heightIn(max = maxHeight), shape = MaterialTheme.shapes.large,
         color = MaterialTheme.colorScheme.surfaceContainer, shadowElevation = 12.dp) {
         Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -59,14 +71,14 @@ data class OverlayContentState(
                 }
                 Text(if (session.preview) "最近来电档案" else "来电档案", Modifier.weight(1f), style = MaterialTheme.typography.titleSmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 if (!session.editing) TextButton(onClick = onCollapse) { Text(if (session.collapsed) "展开" else "收起") }
-                TextButton(onClick = onClose) { Text("关闭") }
+                TextButton(onClick = { dismiss("close") }, enabled = !commitBusy) { Text("关闭") }
             }
             if (session.hasQueuedCall) Text("有新的来电，完成编辑后显示", style = MaterialTheme.typography.bodySmall)
             if (session.callEnded && session.editing) Text("通话已结束，保存或取消后关闭卡片", style = MaterialTheme.typography.bodySmall)
             if (session.editing) {
                 CallerEditorForm(state.editor, state.draft, state.editorMutation, false, onRetryEditor, onChange, onSave,
-                    Modifier.weight(1f, fill = false))
-                TextButton(onClick = onCancel, enabled = !state.editorMutation.busy) { Text("取消编辑") }
+                    Modifier.weight(1f, fill = false), showSuccess = false)
+                TextButton(onClick = { dismiss("cancel") }, enabled = !state.editorMutation.busy) { Text("取消编辑") }
             } else if (session.collapsed) {
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text(overview?.profile?.name?.ifBlank { session.request.number } ?: session.request.number,
@@ -85,7 +97,7 @@ data class OverlayContentState(
                         Text(UiFormat.workReason(overview.work.classification.reason))
                     }
                     Text(UiFormat.decision(session.request.decision), color = MaterialTheme.colorScheme.primary)
-                    MutationFeedback(state.mutation)
+                    MutationFeedback(state.mutation, successMessage = "白名单已更新")
                 }
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                     TextButton(onClick = onEdit) { Text("编辑") }
@@ -96,5 +108,11 @@ data class OverlayContentState(
                 }
             }
         }
+    }
+    }
+    pendingDismiss?.let { kind ->
+        OverlayConfirmationDialog("放弃未保存的修改？", "本次档案修改不会保存。", "放弃修改",
+            onConfirm = { pendingDismiss = null; if (kind == "close") onClose() else onCancel() },
+            onDismiss = { pendingDismiss = null }, busy = commitBusy)
     }
 }

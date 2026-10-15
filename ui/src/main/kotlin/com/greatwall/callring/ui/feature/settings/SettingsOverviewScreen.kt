@@ -4,6 +4,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import com.greatwall.callring.application.api.SettingsSummary
 import com.greatwall.callring.ui.designsystem.components.SettingRow
+import com.greatwall.callring.ui.designsystem.components.SwitchSettingRow
 import com.greatwall.callring.ui.feature.settings.components.*
 import com.greatwall.callring.ui.format.UiLabels
 import com.greatwall.callring.ui.state.LoadState
@@ -14,18 +15,14 @@ enum class SettingsPage { QUIET, POSITIONS, WORK, CALENDAR, LEAVES, SCORE, RINGT
 @Composable
 fun SettingsOverviewScreen(
     state: LoadState<SettingsSummary>, mutation: MutationState,
-    onBack: () -> Unit, onRetry: () -> Unit, onStatistics: (Boolean) -> Unit,
+    onBack: (() -> Unit)?, onRetry: () -> Unit, onStatistics: (Boolean) -> Unit,
     onOverlay: (Boolean) -> Unit, onNavigate: (SettingsPage) -> Unit,
 ) {
     SettingsLayout("设置", state, mutation, onBack, onRetry) { data ->
         SettingsCard("来电管理") {
-            SettingRow("来电统计", "记录并统计来电情况", trailing = {
-                SettingsSwitch("来电统计", data.statisticsEnabled, onStatistics, enabled = !mutation.busy)
-            })
+            SwitchSettingRow("来电统计", data.statisticsEnabled, onStatistics, "记录并统计来电情况", enabled = !mutation.busy)
             FieldError(mutation, "statisticsEnabled")
-            SettingRow("来电悬浮提示", "来电时显示号码与处理信息", trailing = {
-                SettingsSwitch("来电悬浮提示", data.overlayEnabled, onOverlay, enabled = !mutation.busy)
-            })
+            SwitchSettingRow("来电悬浮提示", data.overlayEnabled, onOverlay, "来电时显示号码与处理信息", enabled = !mutation.busy)
             FieldError(mutation, "overlayEnabled")
             SettingRow("免打扰", UiLabels.quiet(data.quietMode), { onNavigate(SettingsPage.QUIET) })
             SettingRow("职位管理", data.myPosition?.let { it.name + if (it.active) "" else "（已停用）" } ?: "尚未设置我的职位", { onNavigate(SettingsPage.POSITIONS) })

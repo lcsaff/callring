@@ -18,7 +18,11 @@ import com.greatwall.callring.ui.designsystem.ThemeRegistry
 import com.greatwall.callring.ui.feature.settings.components.*
 import com.greatwall.callring.ui.format.UiLabels
 import com.greatwall.callring.ui.state.*
+import com.greatwall.callring.ui.designsystem.components.rememberFormBack
 import java.util.Locale
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.text.input.ImeAction
+import com.greatwall.callring.ui.designsystem.components.formKeyboardActions
 
 @Composable
 fun AppearanceScreen(
@@ -26,13 +30,18 @@ fun AppearanceScreen(
     onBack: () -> Unit, onRetry: () -> Unit, onChange: (AppearanceSettings) -> Unit,
     onSave: () -> Unit, registry: ThemeRegistry = ThemeRegistry.Default,
 ) {
-    SettingsLayout("外观", state, mutation, onBack, onRetry) { saved ->
+    var invalidCustomInput by remember { mutableStateOf(false) }
+    val back = rememberFormBack(onBack, (draft != null && state.data != null && draft != state.data)
+        || invalidCustomInput, mutation, onSave, canSave = !invalidCustomInput)
+    SettingsLayout("外观", state, mutation, back, onRetry) { saved ->
         val value = draft ?: saved
         val seed = value.customSeedRgb?.takeIf { it in 0x000000..0xFFFFFF } ?: registry.resolve(value).seedRgb
         var hex by rememberSaveable(value.customSeedRgb) { mutableStateOf("#%06X".format(Locale.ROOT, seed)) }
         val rgb = hex.removePrefix("#").takeIf { Regex("[0-9a-fA-F]{6}").matches(it) }?.toIntOrNull(16)
         val customHexInvalid = value.selection == ThemeSelection.CUSTOM && rgb == null
+        LaunchedEffect(customHexInvalid) { invalidCustomInput = customHexInvalid }
         SettingsCard("预设主题") {
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             registry.presets.forEach { preset ->
                 FilterChip(selected = value.selection == ThemeSelection.PRESET && value.presetId == preset.id,
                     onClick = { onChange(value.copy(selection = ThemeSelection.PRESET, presetId = preset.id)) },
@@ -40,6 +49,7 @@ fun AppearanceScreen(
                     label = { Text(preset.name) },
                     leadingIcon = { Box(Modifier.size(18.dp).background(Color(preset.seedRgb or 0xFF000000.toInt()), CircleShape)) },
                     modifier = Modifier.testTag("preset-${preset.id}"))
+            }
             }
             FieldError(mutation, "presetId", "selection")
         }
@@ -53,6 +63,7 @@ fun AppearanceScreen(
                     onChange(value.copy(selection = ThemeSelection.CUSTOM, customSeedRgb = it))
                 }
             }, label = { Text("十六进制颜色") }, supportingText = { Text("六位 RGB，例如 #E60012") },
+                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done), keyboardActions = formKeyboardActions(),
                 isError = customHexInvalid, enabled = !mutation.busy, singleLine = true,
                 modifier = Modifier.fillMaxWidth().testTag("appearance-hex"))
             InputError(if (customHexInvalid) "请输入六位十六进制颜色" else null)
@@ -69,9 +80,11 @@ fun AppearanceScreen(
             }
         }
         SettingsCard("显示模式") {
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             ColorMode.entries.forEach { mode ->
                 FilterChip(value.colorMode == mode, { onChange(value.copy(colorMode = mode)) },
                     enabled = !mutation.busy, label = { Text(UiLabels.colorMode(mode)) })
+            }
             }
             FieldError(mutation, "colorMode")
         }
@@ -81,7 +94,7 @@ fun AppearanceScreen(
                 Text("在此查看主题效果，保存后应用。")
                 LinearProgressIndicator(progress = { 0.65f }, modifier = Modifier.fillMaxWidth())
                 Surface(color = MaterialTheme.colorScheme.primaryFixed, shape = MaterialTheme.shapes.medium) {
-                    Text("主题色预览", Modifier.padding(16.dp), color = MaterialTheme.colorScheme.onPrimaryFixed)
+                    Text("主题色预览", Modifier.padding(12.dp), color = MaterialTheme.colorScheme.onPrimaryFixed)
                 }
             }
         }

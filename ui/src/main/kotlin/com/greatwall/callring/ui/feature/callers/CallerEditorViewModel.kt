@@ -43,7 +43,7 @@ class CallerEditorViewModel(
         val draft = mutableDraft.value ?: return
         val command = SaveCallerProfile(draft.number, draft.name, draft.department, draft.positionId,
             if (savedState.get<Boolean>("whitelistTouched") == true) draft.whitelisted else null)
-        writer.run({ api.saveProfile(command) }) { profile ->
+        writer.run({ api.saveProfile(command) }, "档案已保存") { profile ->
             savedState["whitelistTouched"] = false
             mutableDraft.value = draft.copy(number = profile.number, whitelisted = profile.whitelisted)
             persist(mutableDraft.value!!)

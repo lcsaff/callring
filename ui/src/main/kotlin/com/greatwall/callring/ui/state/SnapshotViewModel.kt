@@ -18,8 +18,8 @@ open class SnapshotViewModel<T>(
 
     fun refresh() = loader.load { load() }
 
-    protected fun <R> write(operation: suspend () -> ApiResult<R>, onSuccess: (R) -> Unit = { refresh() }) =
-        writer.run(operation, onSuccess)
+    protected fun <R> write(operation: suspend () -> ApiResult<R>, successMessage: String = "设置已更新", onSuccess: (R) -> Unit = { refresh() }) =
+        writer.run(operation, successMessage, onSuccess)
 
     // Useful for composed presentation models whose operations are injected alongside their query.
     fun <R> execute(operation: suspend () -> ApiResult<R>) = write(operation)

@@ -9,7 +9,12 @@ import com.greatwall.callring.application.api.WorkScheduleSettings
 import com.greatwall.callring.ui.feature.settings.components.*
 import com.greatwall.callring.ui.format.UiFormat
 import com.greatwall.callring.ui.state.*
+import com.greatwall.callring.ui.designsystem.components.ConfirmAction
+import com.greatwall.callring.ui.designsystem.components.rememberFormBack
 import java.time.ZoneId
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.text.input.ImeAction
+import com.greatwall.callring.ui.designsystem.components.formKeyboardActions
 
 @Composable
 fun WorkScheduleScreen(
@@ -17,16 +22,21 @@ fun WorkScheduleScreen(
     onBack: () -> Unit, onRetry: () -> Unit, onChange: (WorkScheduleSettings) -> Unit,
     onSave: () -> Unit, onReset: () -> Unit,
 ) {
-    SettingsLayout("工作时间", state, mutation, onBack, onRetry) { saved ->
+    val valid = remember { mutableStateMapOf<Int, Boolean>() }
+    var invalidZone by remember { mutableStateOf(false) }
+    val back = rememberFormBack(onBack, (draft != null && state.data != null && draft != state.data)
+        || invalidZone || valid.values.any { !it }, mutation, onSave, canSave = !invalidZone && valid.values.all { it })
+    SettingsLayout("工作时间", state, mutation, back, onRetry) { saved ->
         val value = draft ?: saved
-        val valid = remember { mutableStateMapOf<Int, Boolean>() }
         var zone by rememberSaveable(value.zoneId, mutation.completed) { mutableStateOf(value.zoneId) }
         val parsedZone = runCatching { ZoneId.of(zone) }.getOrNull()
+        LaunchedEffect(parsedZone) { invalidZone = parsedZone == null }
         SettingsCard("时区与版本") {
             OutlinedTextField(zone, { raw ->
                 zone = raw
                 if (runCatching { ZoneId.of(raw) }.isSuccess) onChange(value.copy(zoneId = raw))
             }, label = { Text("时区") }, placeholder = { Text("Asia/Shanghai") }, singleLine = true,
+                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done), keyboardActions = formKeyboardActions(),
                 isError = parsedZone == null, enabled = !mutation.busy, modifier = Modifier.fillMaxWidth())
             InputError(if (parsedZone == null) "请输入有效时区，例如 Asia/Shanghai" else null)
             FieldError(mutation, "zoneId")
@@ -34,7 +44,7 @@ fun WorkScheduleScreen(
             Text("生效时间：${UiFormat.time(saved.effectiveFromEpochMillis, runCatching { ZoneId.of(saved.zoneId) }.getOrDefault(ZoneId.of("UTC")))}")
         }
         SettingsCard("每周工作时段") {
-            Text("留空表示当天无时段。跨午夜时段归属开始日，例如 22:00-07:00。")
+            Text("无时段表示当天休息。结束时间早于开始时间时，时段跨到次日。")
             weekLabels.forEachIndexed { index, label ->
                 val day = index + 1
                 WindowsField(label, value.weekly[day].orEmpty(), !mutation.busy,
@@ -48,6 +58,7 @@ fun WorkScheduleScreen(
                 { onChange(value.copy(makeup = it)) }, { valid[0] = it }, mutation, "makeup")
         }
         SaveAction(mutation, parsedZone != null && valid.values.all { it }, onSave)
-        OutlinedButton(onReset, enabled = !mutation.busy, modifier = Modifier.fillMaxWidth()) { Text("恢复默认工作时间") }
+        ConfirmAction("恢复默认工作时间", "恢复默认工作时间？", "每周工作时段和时区将被默认值替换。", onReset,
+            enabled = !mutation.busy, modifier = Modifier.fillMaxWidth())
     }
 }

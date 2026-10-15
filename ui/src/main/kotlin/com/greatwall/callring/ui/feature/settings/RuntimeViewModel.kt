@@ -16,5 +16,5 @@ class RuntimeViewModel(private val api: CallringUiApi) : SnapshotViewModel<Runti
         }
     }
 ) {
-    fun synchronize() = write({ api.runtime.requestCallLogSync() })
+    fun synchronize() = write({ api.runtime.requestCallLogSync() }, "已提交同步请求")
 }

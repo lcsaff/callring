@@ -1,26 +1,7 @@
 package com.greatwall.callring.ui.designsystem.components
 
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ColumnScope
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.RowScope
-import androidx.compose.foundation.layout.consumeWindowInsets
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.heightIn
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.statusBarsPadding
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -30,6 +11,16 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material3.*
+import androidx.compose.foundation.layout.*
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.text.style.TextOverflow
 import com.greatwall.callring.application.api.CallerProfile
 import com.greatwall.callring.ui.R
 import com.greatwall.callring.ui.designsystem.CallringSpacing
@@ -40,6 +31,7 @@ import com.greatwall.callring.ui.format.UiFormat
 
 /** A shared header and inset-aware content frame. The caller chooses its scrolling container. */
 @Composable
+@OptIn(ExperimentalMaterial3Api::class)
 fun ScreenFrame(
     title: String,
     onBack: (() -> Unit)? = null,
@@ -47,33 +39,36 @@ fun ScreenFrame(
     modifier: Modifier = Modifier,
     content: @Composable ColumnScope.() -> Unit,
 ) {
-    Scaffold(
-        modifier = modifier,
-        topBar = {
-            Surface(color = MaterialTheme.colorScheme.surface) {
-                Row(
-                    Modifier.fillMaxWidth().statusBarsPadding().heightIn(min = 64.dp)
-                        .padding(horizontal = CallringSpacing.compact, vertical = CallringSpacing.compact),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(CallringSpacing.compact),
-                ) {
-                    if (onBack != null) TextButton(onClick = onBack) { Text(stringResource(R.string.callring_back)) }
-                    Text(
-                        title,
-                        modifier = Modifier.weight(1f).padding(horizontal = CallringSpacing.compact).semantics { heading() },
-                        style = MaterialTheme.typography.titleLarge,
-                    )
-                    actions()
-                }
+    val inheritedHost = LocalFeedbackHost.current
+    val host = inheritedHost ?: remember { SnackbarHostState() }
+    val hostScope = LocalFeedbackScope.current ?: rememberCoroutineScope()
+    val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior()
+    CompositionLocalProvider(LocalFeedbackHost provides host, LocalFeedbackScope provides hostScope) {
+        Scaffold(
+            modifier = modifier.nestedScroll(scrollBehavior.nestedScrollConnection).imePadding(),
+            snackbarHost = { if (inheritedHost == null) FeedbackSnackbar(host) },
+            topBar = {
+                TopAppBar(
+                    title = { Text(title, maxLines = 1, overflow = TextOverflow.Ellipsis) },
+                    navigationIcon = {
+                        if (onBack != null) IconButton(onClick = onBack) {
+                            Icon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.callring_back))
+                        }
+                    },
+                    actions = actions,
+                    scrollBehavior = scrollBehavior,
+                )
+            },
+        ) { insets ->
+            Box(Modifier.fillMaxSize().padding(insets).consumeWindowInsets(insets), contentAlignment = Alignment.TopCenter) {
+                Column(
+                    modifier = Modifier.widthIn(max = 840.dp).fillMaxSize()
+                        .padding(horizontal = CallringSpacing.screen, vertical = CallringSpacing.item),
+                    verticalArrangement = Arrangement.spacedBy(CallringSpacing.item),
+                    content = content,
+                )
             }
-        },
-    ) { insets ->
-        Column(
-            modifier = Modifier.fillMaxSize().padding(insets).consumeWindowInsets(insets)
-                .padding(horizontal = CallringSpacing.screen, vertical = CallringSpacing.item),
-            verticalArrangement = Arrangement.spacedBy(CallringSpacing.item),
-            content = content,
-        )
+        }
     }
 }
 
@@ -115,7 +110,7 @@ fun ErrorContent(message: String, onRetry: (() -> Unit)? = null, modifier: Modif
 fun EmptyContent(message: String, modifier: Modifier = Modifier) {
     Text(
         message,
-        modifier = modifier.fillMaxWidth().padding(vertical = CallringSpacing.section),
+        modifier = modifier.fillMaxWidth().padding(vertical = CallringSpacing.item),
         style = MaterialTheme.typography.bodyLarge,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
     )
@@ -141,7 +136,7 @@ fun SettingRow(
 ) {
     val actionModifier = if (onClick == null) modifier else modifier.clickable(onClick = onClick)
     Row(
-        modifier = actionModifier.fillMaxWidth().heightIn(min = 64.dp).padding(vertical = CallringSpacing.item),
+        modifier = actionModifier.fillMaxWidth().heightIn(min = 56.dp).padding(vertical = CallringSpacing.item),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(CallringSpacing.item),
     ) {
@@ -155,6 +150,16 @@ fun SettingRow(
         }
         trailing()
     }
+}
+
+@Composable
+fun SwitchSettingRow(
+    title: String, checked: Boolean, onCheckedChange: (Boolean) -> Unit,
+    summary: String? = null, enabled: Boolean = true, modifier: Modifier = Modifier,
+) {
+    SettingRow(title, summary, modifier = modifier.semantics { contentDescription = title }.toggleable(
+        value = checked, enabled = enabled, role = Role.Switch, onValueChange = onCheckedChange,
+    ), trailing = { Switch(checked, onCheckedChange = null, enabled = enabled) })
 }
 
 @Composable

@@ -12,13 +12,17 @@ import androidx.compose.ui.platform.ViewCompositionStrategy
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.*
 import androidx.savedstate.*
+import androidx.activity.OnBackPressedDispatcher
+import androidx.activity.OnBackPressedDispatcherOwner
+import androidx.activity.setViewTreeOnBackPressedDispatcherOwner
 
 /** Owns only the system window and its Compose tree lifecycle. All calls are on main. */
 internal class OverlayWindow(private val context: Context, controller: OverlayController, onReport: (String) -> Unit) :
-    LifecycleOwner, ViewModelStoreOwner, SavedStateRegistryOwner {
+    LifecycleOwner, ViewModelStoreOwner, SavedStateRegistryOwner, OnBackPressedDispatcherOwner {
     private val lifecycleRegistry = LifecycleRegistry(this)
     override val lifecycle: Lifecycle get() = lifecycleRegistry
     override val viewModelStore = ViewModelStore()
+    override val onBackPressedDispatcher = OnBackPressedDispatcher()
     private val savedState = SavedStateRegistryController.create(this)
     override val savedStateRegistry: SavedStateRegistry get() = savedState.savedStateRegistry
     private val manager = context.getSystemService(WindowManager::class.java)
@@ -45,6 +49,19 @@ internal class OverlayWindow(private val context: Context, controller: OverlayCo
             setViewTreeLifecycleOwner(this@OverlayWindow)
             setViewTreeViewModelStoreOwner(this@OverlayWindow)
             setViewTreeSavedStateRegistryOwner(this@OverlayWindow)
+            setViewTreeOnBackPressedDispatcherOwner(this@OverlayWindow)
+            setOnKeyListener { _, keyCode, event ->
+                if (keyCode == KeyEvent.KEYCODE_BACK && onBackPressedDispatcher.hasEnabledCallbacks()) {
+                    if (event.action == KeyEvent.ACTION_UP) onBackPressedDispatcher.onBackPressed()
+                    true
+                } else false
+            }
+            if (Build.VERSION.SDK_INT >= 33) addOnAttachStateChangeListener(object : View.OnAttachStateChangeListener {
+                override fun onViewAttachedToWindow(view: View) {
+                    view.findOnBackInvokedDispatcher()?.let(onBackPressedDispatcher::setOnBackInvokedDispatcher)
+                }
+                override fun onViewDetachedFromWindow(view: View) = Unit
+            })
             setViewCompositionStrategy(ViewCompositionStrategy.DisposeOnViewTreeLifecycleDestroyed)
             setContent {
                 OverlayRoute(controller, (availableHeightPx / density).dp, ::drag, onReport)

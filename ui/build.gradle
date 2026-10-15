@@ -35,6 +35,8 @@ dependencies {
     implementation 'androidx.compose.ui:ui-tooling-preview'
     implementation 'androidx.compose.foundation:foundation'
     implementation 'androidx.compose.material3:material3'
+    implementation 'androidx.compose.material3:material3-adaptive-navigation-suite'
+    implementation 'androidx.compose.material:material-icons-core'
     implementation 'androidx.activity:activity-compose:1.11.0'
     implementation 'androidx.lifecycle:lifecycle-runtime-compose:2.9.4'
     implementation 'androidx.lifecycle:lifecycle-viewmodel-compose:2.9.4'
@@ -46,6 +48,7 @@ dependencies {
     testImplementation 'junit:junit:4.13.2'
     testImplementation 'org.robolectric:robolectric:4.16.1'
     testImplementation 'androidx.compose.ui:ui-test-junit4'
+    testImplementation 'androidx.test.espresso:espresso-core:3.7.0'
     testImplementation "org.jetbrains.kotlinx:kotlinx-coroutines-test:${rootProject.ext.callringVersions.coroutines}"
     androidTestImplementation platform("androidx.compose:compose-bom:${rootProject.ext.callringVersions.composeBom}")
     androidTestImplementation 'androidx.compose.ui:ui-test-junit4'

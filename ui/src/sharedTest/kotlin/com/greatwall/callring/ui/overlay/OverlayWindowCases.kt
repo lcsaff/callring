@@ -14,6 +14,13 @@ import kotlinx.coroutines.*
 import org.junit.Rule
 import org.junit.Test
 import org.junit.Assert.assertEquals
+import androidx.test.espresso.Espresso.onView
+import androidx.test.espresso.matcher.ViewMatchers.withText
+import androidx.test.espresso.matcher.ViewMatchers.isDisplayed
+import androidx.test.espresso.assertion.ViewAssertions.matches
+import androidx.test.espresso.action.ViewActions.click
+import androidx.test.espresso.matcher.RootMatchers.withDecorView
+import androidx.test.espresso.matcher.ViewMatchers.hasDescendant
 
 abstract class OverlayWindowCases {
     @get:Rule val compose = createComposeRule()
@@ -63,12 +70,24 @@ abstract class OverlayWindowCases {
             }
             compose.runOnIdle { WindowRecomposerPolicy.withFactory(WindowRecomposerFactory.LifecycleAware) { window.show(true) } }
             compose.onNodeWithText("重新挂载后可编辑").assertIsDisplayed()
+            compose.onNodeWithText("未设置").performScrollTo().performClick()
+            compose.onAllNodesWithText("未设置").onLast().performClick()
+            compose.onNodeWithText("取消编辑").performClick()
+            compose.waitForIdle()
+            val confirmationRoot = withDecorView(hasDescendant(withText("放弃未保存的修改？")))
+            onView(withText("放弃未保存的修改？")).inRoot(confirmationRoot).check(matches(isDisplayed()))
+            onView(withText("取消")).inRoot(confirmationRoot).perform(click())
+            compose.onNodeWithText("重新挂载后可编辑").assertIsDisplayed()
             if (Build.FINGERPRINT != "robolectric") instrumentation.uiAutomation.takeScreenshot()?.let { bitmap ->
                 java.io.File(instrumentation.targetContext.filesDir, "overlay-editor-restored.png").outputStream().use {
                     bitmap.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, it)
                 }
                 bitmap.recycle()
             }
+            compose.onNodeWithText("取消编辑").performClick()
+            compose.waitForIdle()
+            onView(withText("放弃修改")).inRoot(confirmationRoot).perform(click())
+            compose.onNodeWithText("编辑").assertExists()
         } finally {
             compose.runOnIdle { if (windowCreated) window.close(); if (controllerCreated) controller.close(); scope.cancel() }
         }

@@ -11,10 +11,12 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import com.greatwall.callring.application.api.*
 import com.greatwall.callring.ui.designsystem.components.EmptyContent
 import com.greatwall.callring.ui.designsystem.components.SettingRow
+import com.greatwall.callring.ui.designsystem.components.*
 import com.greatwall.callring.ui.feature.settings.components.*
 import com.greatwall.callring.ui.feature.shared.MutationFeedback
 import com.greatwall.callring.ui.state.*
@@ -29,11 +31,16 @@ fun PositionsScreen(
     var name by rememberSaveable { mutableStateOf("") }
     var level by rememberSaveable { mutableStateOf("1") }
     var active by rememberSaveable { mutableStateOf(true) }
+    var initialName by rememberSaveable { mutableStateOf("") }
+    var initialLevel by rememberSaveable { mutableStateOf("1") }
+    var initialActive by rememberSaveable { mutableStateOf(true) }
     var openedAt by rememberSaveable { mutableStateOf(mutation.completed) }
     var lastDeletedId by rememberSaveable { mutableStateOf<Long?>(null) }
+    var pendingDeleteId by rememberSaveable { mutableStateOf<Long?>(null) }
     fun edit(option: PositionOption?) {
         editingId = option?.id; name = option?.name.orEmpty(); level = (option?.level ?: 1).toString()
         active = option?.active ?: true; openedAt = mutation.completed; editorOpen = true
+        initialName = name; initialLevel = level; initialActive = active
     }
     LaunchedEffect(mutation.completed) {
         if (mutation.completed < openedAt) openedAt = mutation.completed
@@ -63,7 +70,7 @@ fun PositionsScreen(
                 if (option.id == data.myPositionId) Text("我的职位", color = MaterialTheme.colorScheme.primary)
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     TextButton({ edit(option) }, enabled = !mutation.busy) { Text("编辑") }
-                    TextButton({ lastDeletedId = option.id; onDelete(option.id) }, enabled = !mutation.busy) { Text("删除") }
+                    TextButton({ pendingDeleteId = option.id }, enabled = !mutation.busy) { Text("删除") }
                 }
                 if (option.id != data.myPositionId && option.active) OutlinedButton({ onMine(option.id) }, enabled = !mutation.busy) { Text("设为我的职位") }
             }
@@ -71,27 +78,32 @@ fun PositionsScreen(
     }
     if (editorOpen) {
         val parsedLevel = level.toIntOrNull()
-        AlertDialog(onDismissRequest = { if (!mutation.busy) editorOpen = false },
-            title = { Text(if (editingId == null) "添加职位" else "编辑职位") },
-            text = {
-                Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    MutationFeedback(mutation)
+        FormDialog(title = if (editingId == null) "添加职位" else "编辑职位",
+            busy = mutation.busy, canSave = name.isNotBlank() && parsedLevel != null && parsedLevel > 0,
+            dirty = name != initialName || level != initialLevel || active != initialActive,
+            onDismiss = { editorOpen = false },
+            onSave = { onSave(SavePosition(editingId, name.trim(), parsedLevel!!, active)) }) {
+                Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    MutationFeedback(mutation, showSuccess = false)
                     OutlinedTextField(name, { name = it }, label = { Text("职位名称") }, singleLine = true,
+                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next), keyboardActions = formKeyboardActions(),
                         enabled = !mutation.busy, isError = name.isBlank(), modifier = Modifier.fillMaxWidth())
                     InputError(if (name.isBlank()) "请输入职位名称" else null)
                     FieldError(mutation, "name")
                     OutlinedTextField(level, { level = it }, label = { Text("职位级别") }, singleLine = true,
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), enabled = !mutation.busy,
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Done),
+                        keyboardActions = formKeyboardActions(), enabled = !mutation.busy,
                         isError = parsedLevel == null || parsedLevel <= 0, modifier = Modifier.fillMaxWidth())
                     InputError(if (parsedLevel == null || parsedLevel <= 0) "级别必须为正整数" else null)
                     FieldError(mutation, "level")
-                    SettingRow("启用职位", trailing = { SettingsSwitch("启用职位", active, { active = it }, enabled = !mutation.busy) })
+                    SwitchSettingRow("启用职位", active, { active = it }, enabled = !mutation.busy)
                     FieldError(mutation, "active", "id")
                 }
-            },
-            confirmButton = {
-                TextButton({ onSave(SavePosition(editingId, name.trim(), parsedLevel!!, active)) },
-                    enabled = !mutation.busy && name.isNotBlank() && parsedLevel != null && parsedLevel > 0) { Text("保存") }
-            }, dismissButton = { TextButton({ editorOpen = false }, enabled = !mutation.busy) { Text("取消") } })
+        }
+    }
+    pendingDeleteId?.let { id ->
+        ConfirmationDialog("删除职位？", "删除后无法恢复；正在使用的职位需要先解除引用。", "删除",
+            onConfirm = { pendingDeleteId = null; lastDeletedId = id; onDelete(id) },
+            onDismiss = { pendingDeleteId = null }, busy = mutation.busy)
     }
 }

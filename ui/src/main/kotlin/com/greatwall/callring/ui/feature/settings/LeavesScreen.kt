@@ -12,12 +12,19 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.greatwall.callring.application.api.*
 import com.greatwall.callring.ui.designsystem.components.EmptyContent
+import com.greatwall.callring.ui.designsystem.components.DateSelectionField
+import com.greatwall.callring.ui.designsystem.components.TimeSelectionField
+import com.greatwall.callring.ui.designsystem.components.ConfirmationDialog
+import com.greatwall.callring.ui.designsystem.components.FormDialog
 import com.greatwall.callring.ui.feature.settings.components.*
 import com.greatwall.callring.ui.feature.shared.MutationFeedback
 import com.greatwall.callring.ui.format.UiFormat
 import com.greatwall.callring.ui.state.*
 import java.time.*
 import java.time.format.DateTimeFormatter
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.text.input.ImeAction
+import com.greatwall.callring.ui.designsystem.components.formKeyboardActions
 
 @Composable
 fun LeavesScreen(
@@ -25,6 +32,7 @@ fun LeavesScreen(
     onBack: () -> Unit, onRetry: () -> Unit, onSave: (SaveLeave) -> Unit, onDelete: (Long) -> Unit,
 ) {
     val zone = runCatching { ZoneId.of(zoneId) }.getOrNull()
+    var deleteId by rememberSaveable { mutableStateOf<Long?>(null) }
     var open by rememberSaveable { mutableStateOf(false) }
     var editingId by rememberSaveable { mutableStateOf<Long?>(null) }
     var allDay by rememberSaveable { mutableStateOf(true) }
@@ -37,6 +45,7 @@ fun LeavesScreen(
     var originalStart by rememberSaveable { mutableStateOf<Long?>(null) }
     var originalEnd by rememberSaveable { mutableStateOf<Long?>(null) }
     var note by rememberSaveable { mutableStateOf("") }
+    var initialFields by rememberSaveable { mutableStateOf("") }
     var openedAt by rememberSaveable { mutableStateOf(mutation.completed) }
     fun edit(entry: LeaveEntry?) {
         editingId = entry?.id
@@ -46,8 +55,10 @@ fun LeavesScreen(
         val displayZone = zone ?: ZoneOffset.UTC
         originalStartText = entry?.let { localTimestamp(it.startInclusiveEpochMillis, displayZone) }.orEmpty()
         originalEndText = entry?.let { localTimestamp(it.endExclusiveEpochMillis, displayZone) }.orEmpty()
-        startTime = originalStartText; endTime = originalEndText
-        startDate = ""; endDate = ""; note = entry?.note.orEmpty()
+        val today = LocalDate.now(displayZone).toString()
+        startTime = originalStartText.ifBlank { "$today 09:00" }; endTime = originalEndText.ifBlank { "$today 18:00" }
+        startDate = today; endDate = today; note = entry?.note.orEmpty()
+        initialFields = listOf(allDay.toString(), startDate, endDate, startTime, endTime, note).joinToString("\u0000")
         openedAt = mutation.completed; open = true
     }
     LaunchedEffect(mutation.completed) {
@@ -70,7 +81,7 @@ fun LeavesScreen(
                 if (entry.note.isNotBlank()) Text(entry.note)
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     TextButton({ edit(entry) }, enabled = !mutation.busy && zone != null) { Text("编辑") }
-                    TextButton({ onDelete(entry.id) }, enabled = !mutation.busy) { Text("删除") }
+                    TextButton({ deleteId = entry.id }, enabled = !mutation.busy) { Text("删除") }
                 }
             }
         }
@@ -82,11 +93,16 @@ fun LeavesScreen(
         val lastInstant = if (originalEnd != null && endTime == originalEndText) originalEnd else zone?.let { parseTimestamp(endTime, it) }
         val validDates = firstDate != null && lastDate != null && !lastDate.isBefore(firstDate)
         val validTimes = firstInstant != null && lastInstant != null && lastInstant > firstInstant
-        AlertDialog(onDismissRequest = { if (!mutation.busy) open = false },
-            title = { Text(if (editingId == null) "添加请假" else "编辑请假") },
-            text = {
-                Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    MutationFeedback(mutation)
+        FormDialog(title = if (editingId == null) "添加请假" else "编辑请假",
+            busy = mutation.busy, canSave = zone != null && (if (allDay) validDates else validTimes),
+            dirty = initialFields != listOf(allDay.toString(), startDate, endDate, startTime, endTime, note).joinToString("\u0000"),
+            onDismiss = { open = false }, onSave = {
+                val period = if (allDay) LeavePeriod.AllDay(firstDate!!, lastDate!!, zoneId)
+                    else LeavePeriod.Timed(firstInstant!!, lastInstant!!)
+                onSave(SaveLeave(editingId, period, note))
+            }) {
+                Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    MutationFeedback(mutation, showSuccess = false)
                     Text("时区：$zoneId")
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         FilterChip(allDay, { allDay = true }, enabled = !mutation.busy, label = { Text("全天") })
@@ -94,36 +110,42 @@ fun LeavesScreen(
                     }
                     if (allDay) {
                         Text("结束日期包含当天。")
-                        OutlinedTextField(startDate, { startDate = it }, label = { Text("开始日期（yyyy-MM-dd）") }, singleLine = true,
-                            isError = firstDate == null, enabled = !mutation.busy, modifier = Modifier.fillMaxWidth())
-                        InputError(if (firstDate == null) "请输入有效开始日期" else null)
+                        DateSelectionField("开始日期", startDate, { startDate = it }, enabled = !mutation.busy)
+                        InputError(if (firstDate == null) "请选择开始日期" else null)
                         FieldError(mutation, "period.startDate", "startDate")
-                        OutlinedTextField(endDate, { endDate = it }, label = { Text("结束日期（含当天）") }, singleLine = true,
-                            isError = !validDates, enabled = !mutation.busy, modifier = Modifier.fillMaxWidth())
-                        InputError(if (lastDate == null) "请输入有效结束日期" else if (!validDates) "结束日期不能早于开始日期" else null)
+                        DateSelectionField("结束日期（含当天）", endDate, { endDate = it }, enabled = !mutation.busy)
+                        InputError(if (lastDate == null) "请选择结束日期" else if (!validDates) "结束日期不能早于开始日期" else null)
                         FieldError(mutation, "period.endDateInclusive", "endDateInclusive")
                     } else {
-                        Text("格式：2026-10-15 09:00；结束时刻不包含在请假期间内。")
-                        OutlinedTextField(startTime, { startTime = it }, label = { Text("开始日期与时间") },
-                            isError = firstInstant == null, enabled = !mutation.busy, modifier = Modifier.fillMaxWidth())
-                        InputError(if (firstInstant == null) "请输入有效开始时间" else null)
+                        Text("结束时刻不包含在请假期间内。")
+                        DateSelectionField("开始日期", startTime.substringBefore(' '), { selected ->
+                            if (selected != startTime.substringBefore(' ')) startTime = "$selected ${startTime.substringAfter(' ')}"
+                        }, enabled = !mutation.busy)
+                        TimeSelectionField("开始时间", startTime.substringAfter(' ').take(5), { selected ->
+                            if (selected != startTime.substringAfter(' ').take(5)) startTime = "${startTime.substringBefore(' ')} $selected"
+                        }, enabled = !mutation.busy)
+                        InputError(if (firstInstant == null) "开始时间不存在，请检查时区的夏令时切换" else null)
                         FieldError(mutation, "period.startInclusiveEpochMillis", "startInclusiveEpochMillis")
-                        OutlinedTextField(endTime, { endTime = it }, label = { Text("结束日期与时间") },
-                            isError = !validTimes, enabled = !mutation.busy, modifier = Modifier.fillMaxWidth())
-                        InputError(if (lastInstant == null) "请输入有效结束时间" else if (!validTimes) "结束时间必须晚于开始时间" else null)
+                        DateSelectionField("结束日期", endTime.substringBefore(' '), { selected ->
+                            if (selected != endTime.substringBefore(' ')) endTime = "$selected ${endTime.substringAfter(' ')}"
+                        }, enabled = !mutation.busy)
+                        TimeSelectionField("结束时间", endTime.substringAfter(' ').take(5), { selected ->
+                            if (selected != endTime.substringAfter(' ').take(5)) endTime = "${endTime.substringBefore(' ')} $selected"
+                        }, enabled = !mutation.busy)
+                        InputError(if (lastInstant == null) "结束时间不存在，请检查时区的夏令时切换" else if (!validTimes) "结束时间必须晚于开始时间" else null)
                         FieldError(mutation, "period.endExclusiveEpochMillis", "endExclusiveEpochMillis")
                     }
                     FieldError(mutation, "period", "period.zoneId", "zoneId")
-                    OutlinedTextField(note, { note = it }, label = { Text("备注") }, enabled = !mutation.busy, modifier = Modifier.fillMaxWidth())
+                    OutlinedTextField(note, { note = it }, label = { Text("备注") }, enabled = !mutation.busy,
+                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done), keyboardActions = formKeyboardActions(),
+                        modifier = Modifier.fillMaxWidth())
                     FieldError(mutation, "note", "id")
                 }
-            }, confirmButton = {
-                TextButton({
-                    val period = if (allDay) LeavePeriod.AllDay(firstDate!!, lastDate!!, zoneId)
-                        else LeavePeriod.Timed(firstInstant!!, lastInstant!!)
-                    onSave(SaveLeave(editingId, period, note))
-                }, enabled = !mutation.busy && zone != null && (if (allDay) validDates else validTimes)) { Text("保存") }
-            }, dismissButton = { TextButton({ open = false }, enabled = !mutation.busy) { Text("取消") } })
+            }
+    }
+    deleteId?.let { target ->
+        ConfirmationDialog("删除请假", "删除这条请假记录？", "删除",
+            onConfirm = { deleteId = null; onDelete(target) }, onDismiss = { deleteId = null }, busy = mutation.busy)
     }
 }
 

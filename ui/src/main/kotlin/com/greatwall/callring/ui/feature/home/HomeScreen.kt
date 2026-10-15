@@ -24,11 +24,11 @@ import java.time.ZoneId
     latestPreview: LoadState<CallDetail?>, onPreviewLatest: () -> Unit, onPinWidget: () -> Unit
 ) {
     ScreenFrame("规则来电", actions = { TextButton(onClick = onSettings) { Text("设置") } }) {
-        Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             LoadFeedback(state, onRetry)
             state.data?.let { data ->
                 Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer), shape = MaterialTheme.shapes.large) {
-                    Column(Modifier.fillMaxWidth().padding(24.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                    Column(Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         Text("来电有记录，工作有分寸。", style = MaterialTheme.typography.headlineSmall)
                         Text(UiLabels.quiet(data.quietMode), style = MaterialTheme.typography.titleMedium)
                         Text(UiFormat.workReason(data.currentWork.classification.reason), style = MaterialTheme.typography.bodyLarge)
@@ -36,22 +36,19 @@ import java.time.ZoneId
                         TextButton(onClick = onQuietSettings) { Text("调整免打扰") }
                     }
                 }
-                MutationFeedback(mutation) { onRuntime() }
+                MutationFeedback(mutation, onCapability = { onRuntime() }, successMessage = "设置已更新")
                 Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow)) {
-                    Column(Modifier.padding(horizontal = 20.dp)) {
-                        SettingRow("来电统计", "记录开启期间的来电，关闭后保留历史", trailing = {
-                            Switch(data.statisticsEnabled, onStatistics, Modifier.semantics { contentDescription = "来电统计" }, enabled = !mutation.busy)
-                        })
+                    Column(Modifier.padding(horizontal = 12.dp)) {
+                        SwitchSettingRow("来电统计", data.statisticsEnabled, onStatistics,
+                            "记录开启期间的来电，关闭后保留历史", enabled = !mutation.busy)
                         HorizontalDivider()
-                        SettingRow("来电悬浮窗", "来电时显示号码档案", trailing = {
-                            Switch(data.overlayEnabled, onOverlay, Modifier.semantics { contentDescription = "来电悬浮窗" }, enabled = !mutation.busy)
-                        })
+                        SwitchSettingRow("来电悬浮窗", data.overlayEnabled, onOverlay, "来电时显示号码档案", enabled = !mutation.busy)
                     }
                 }
                 SectionTitle("最近来电")
                 val latest = data.latestCall
                 if (latest == null) EmptyContent("暂无来电记录") else Card(onClick = { onReport(latest.number) }) {
-                    Column(Modifier.fillMaxWidth().padding(20.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Column(Modifier.fillMaxWidth().padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                         Text(latest.number, style = MaterialTheme.typography.titleLarge)
                         Text(UiFormat.time(latest.startedAtEpochMillis, ZoneId.of(latest.classification.zoneId)))
                         Text("${UiFormat.result(latest.result)} · ${UiFormat.duration(latest.durationSeconds)}")
@@ -70,8 +67,8 @@ import java.time.ZoneId
                     Text("添加桌面小组件")
                 }
                 SectionTitle("规则铃声")
-                SettingRow(data.ringtone.displayName, "${if (data.ringtone.source == AudioSource.BUILT_IN) "内置铃声" else "导入音频"} · 试听 ${data.ringtone.previewSeconds} 秒",
-                    trailing = { Switch(data.ringtone.enabled, onRingtone, Modifier.semantics { contentDescription = "规则铃声" }, enabled = !mutation.busy) })
+                SwitchSettingRow("规则铃声", data.ringtone.enabled, onRingtone,
+                    "${data.ringtone.displayName} · ${data.ringtone.previewSeconds} 秒", enabled = !mutation.busy)
                 TextButton(onClick = onRingtoneSettings) { Text("管理铃声与试听") }
                 OutlinedButton(onClick = onRuntime, modifier = Modifier.fillMaxWidth()) { Text("权限与运行条件") }
                 Text("${UiLabels.audibility(data.runtime.audibility)} · ${UiLabels.phoneActivity(data.runtime.phoneActivity)}",

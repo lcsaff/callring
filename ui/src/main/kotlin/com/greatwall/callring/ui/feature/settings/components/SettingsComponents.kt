@@ -16,6 +16,8 @@ import androidx.compose.ui.unit.dp
 import com.greatwall.callring.application.api.TimeWindow
 import com.greatwall.callring.ui.designsystem.components.LoadingContent
 import com.greatwall.callring.ui.designsystem.components.ScreenFrame
+import com.greatwall.callring.ui.designsystem.components.rememberSubmit
+import com.greatwall.callring.ui.designsystem.components.clockTimeText
 import com.greatwall.callring.ui.feature.shared.LoadFeedback
 import com.greatwall.callring.ui.feature.shared.MutationFeedback
 import com.greatwall.callring.ui.state.LoadState
@@ -24,16 +26,16 @@ import com.greatwall.callring.ui.state.MutationState
 @Composable
 internal fun <T> SettingsLayout(
     title: String, state: LoadState<T>, mutation: MutationState,
-    onBack: () -> Unit, onRetry: () -> Unit,
+    onBack: (() -> Unit)?, onRetry: () -> Unit,
     content: @Composable ColumnScope.(T) -> Unit,
 ) {
     ScreenFrame(title, onBack) {
-        Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             if (!state.loaded && state.data == null && !state.loading && state.error == null) LoadingContent()
             LoadFeedback(state, onRetry)
             MutationFeedback(mutation)
             state.data?.let { content(it) }
-            Spacer(Modifier.height(12.dp))
+            Spacer(Modifier.height(8.dp))
         }
     }
 }
@@ -41,7 +43,7 @@ internal fun <T> SettingsLayout(
 @Composable
 internal fun SettingsCard(title: String? = null, content: @Composable ColumnScope.() -> Unit) {
     Card(Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow)) {
-        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             if (title != null) Text(title, style = MaterialTheme.typography.titleMedium)
             content()
         }
@@ -66,7 +68,7 @@ internal fun InputError(message: String?) {
 
 @Composable
 internal fun SaveAction(mutation: MutationState, enabled: Boolean = true, onSave: () -> Unit) {
-    BrandButton(onClick = onSave, enabled = enabled && !mutation.busy,
+    BrandButton(onClick = rememberSubmit(onSave), enabled = enabled && !mutation.busy,
         modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).testTag("settings-save")) {
         Text(if (mutation.busy) "保存中…" else "保存")
     }
@@ -78,7 +80,7 @@ internal fun SettingsSwitch(title: String, checked: Boolean, onCheckedChange: (B
 }
 
 internal fun windowsText(windows: List<TimeWindow>): String = windows.joinToString(",") {
-    "%02d:%02d-%02d:%02d".format(it.startMinute / 60, it.startMinute % 60, it.endMinute / 60, it.endMinute % 60)
+    "${clockTimeText(it.startMinute / 60, it.startMinute % 60)}-${clockTimeText(it.endMinute / 60, it.endMinute % 60)}"
 }
 
 /** Input syntax only: the application API owns work and quiet classifications. */
@@ -102,17 +104,47 @@ internal fun WindowsField(
     onChange: (List<TimeWindow>) -> Unit, onValidity: (Boolean) -> Unit,
     mutation: MutationState, vararg errorKeys: String,
 ) {
+    // Keep a local, saveable draft so equal endpoints can be corrected without changing the valid API draft.
     var text by rememberSaveable(windowsText(windows), mutation.completed) { mutableStateOf(windowsText(windows)) }
-    val parsed = parseWindows(text)
-    LaunchedEffect(text) { onValidity(parsed != null) }
-    OutlinedTextField(text, { raw ->
-        text = raw
-        val result = parseWindows(raw)
-        onValidity(result != null)
-        if (result != null) onChange(result)
-    }, label = { Text(label) }, placeholder = { Text("09:00-12:00,13:00-18:00") }, enabled = enabled,
-        isError = parsed == null, modifier = Modifier.fillMaxWidth(), minLines = 1)
-    InputError(if (parsed == null) "请输入有效时段，例如 09:00-12:00；多个时段用逗号分隔" else null)
+    val rows = if (text.isBlank()) emptyList() else text.split(',').map { token ->
+        val parts = token.split('-').map { time -> time.split(':').let { it[0].toInt() * 60 + it[1].toInt() } }
+        TimeWindow(parts[0], parts[1])
+    }
+    val valid = rows.all { it.startMinute != it.endMinute }
+    LaunchedEffect(text) { onValidity(valid) }
+    fun update(next: List<TimeWindow>) {
+        text = windowsText(next)
+        val nextValid = next.all { it.startMinute != it.endMinute }
+        onValidity(nextValid)
+        if (nextValid) onChange(next)
+    }
+    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        Text(label, style = MaterialTheme.typography.titleSmall)
+        rows.forEachIndexed { index, window ->
+            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    com.greatwall.callring.ui.designsystem.components.TimeSelectionField("开始",
+                        clockTimeText(window.startMinute / 60, window.startMinute % 60), { raw ->
+                            val parts = raw.split(':').map(String::toInt)
+                            update(rows.toMutableList().also { it[index] = window.copy(startMinute = parts[0] * 60 + parts[1]) })
+                        }, enabled, modifier = Modifier.weight(1f), selectionKey = "$label-${index + 1}-开始")
+                    com.greatwall.callring.ui.designsystem.components.TimeSelectionField("结束",
+                        clockTimeText(window.endMinute / 60, window.endMinute % 60), { raw ->
+                            val parts = raw.split(':').map(String::toInt)
+                            update(rows.toMutableList().also { it[index] = window.copy(endMinute = parts[0] * 60 + parts[1]) })
+                        }, enabled, modifier = Modifier.weight(1f), selectionKey = "$label-${index + 1}-结束")
+                }
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                    Text(if (window.endMinute < window.startMinute) "跨至次日" else "当天结束",
+                        style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(top = 12.dp))
+                    TextButton({ update(rows.toMutableList().also { it.removeAt(index) }) }, enabled = enabled) { Text("移除时段 ${index + 1}") }
+                }
+                InputError(if (window.startMinute == window.endMinute) "开始和结束时间不能相同" else null)
+            }
+        }
+        TextButton({ update(rows + TimeWindow(540, 720)) }, enabled = enabled) { Text("添加时段") }
+        if (rows.isEmpty()) Text("当天无时段", style = MaterialTheme.typography.bodySmall)
+    }
     FieldError(mutation, *errorKeys)
 }
 

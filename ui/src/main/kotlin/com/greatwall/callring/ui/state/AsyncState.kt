@@ -60,14 +60,14 @@ class MutationRunner(private val scope: CoroutineScope) {
     private val mutable = MutableStateFlow(MutationState())
     val state: StateFlow<MutationState> = mutable.asStateFlow()
 
-    fun <T> run(request: suspend () -> ApiResult<T>, onSuccess: (T) -> Unit = {}) {
+    fun <T> run(request: suspend () -> ApiResult<T>, successMessage: String = "操作已完成", onSuccess: (T) -> Unit = {}) {
         if (mutable.value.busy) return
         mutable.value = mutable.value.copy(busy = true, error = null, message = null)
         scope.launch {
             try {
                 when (val result = request()) {
                     is ApiResult.Success -> {
-                        mutable.value = mutable.value.copy(completed = mutable.value.completed + 1, message = "操作成功")
+                        mutable.value = mutable.value.copy(completed = mutable.value.completed + 1, message = successMessage)
                         onSuccess(result.value)
                     }
                     is ApiResult.Failure -> mutable.value = mutable.value.copy(error = result.error)

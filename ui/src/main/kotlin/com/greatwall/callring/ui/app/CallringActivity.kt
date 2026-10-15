@@ -9,7 +9,6 @@ import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.provider.Settings
-import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -23,6 +22,9 @@ import com.greatwall.callring.ui.overlay.CallringOverlayService
 import kotlinx.coroutines.launch
 
 class CallringActivity : ComponentActivity() {
+    private var notice by mutableStateOf<UiNotice?>(null)
+    private var noticeSequence = 0L
+    private fun notifyUser(text: String) { notice = UiNotice(++noticeSequence, text) }
     private var destination by mutableStateOf<UiDestination>(UiDestination.Home)
     private var requestSequence by mutableLongStateOf(0)
     private var refreshSignal by mutableLongStateOf(0)
@@ -38,7 +40,7 @@ class CallringActivity : ComponentActivity() {
         requestSequence = savedInstanceState?.getLong(STATE_REQUEST_SEQUENCE) ?: 0
         destination = readDestination(intent)
         val api = (application as UiApiOwner).uiApi
-        setContent { CallringApp(api, destination, requestSequence, refreshSignal, ::requestCapability, ::previewCall, ::pinWidget, ::openApplicationSettings) }
+        setContent { CallringApp(api, destination, requestSequence, refreshSignal, ::requestCapability, ::previewCall, ::pinWidget, ::openApplicationSettings, notice, { if (notice?.id == it) notice = null }) }
     }
 
     override fun onResume() {
@@ -99,13 +101,13 @@ class CallringActivity : ComponentActivity() {
                 Capability.CALL_SCREENING_ROLE -> {
                     val roles = getSystemService(RoleManager::class.java)
                     if (roles.isRoleAvailable(RoleManager.ROLE_CALL_SCREENING)) systemScreen.launch(roles.createRequestRoleIntent(RoleManager.ROLE_CALL_SCREENING))
-                    else Toast.makeText(this, "系统不支持来电筛选角色", Toast.LENGTH_LONG).show()
+                    else notifyUser("系统不支持来电筛选角色")
                 }
             }
         } catch (_: ActivityNotFoundException) {
-            Toast.makeText(this, "系统没有提供该设置入口", Toast.LENGTH_LONG).show()
+            notifyUser("系统没有提供该设置入口")
         } catch (_: SecurityException) {
-            Toast.makeText(this, "系统限制了该操作，请在系统设置中调整", Toast.LENGTH_LONG).show()
+            notifyUser("系统限制了该操作，请在系统设置中调整")
         }
     }
 
@@ -113,24 +115,24 @@ class CallringActivity : ComponentActivity() {
         try {
             systemScreen.launch(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:$packageName")))
         } catch (_: ActivityNotFoundException) {
-            Toast.makeText(this, "系统没有提供该设置入口", Toast.LENGTH_LONG).show()
+            notifyUser("系统没有提供该设置入口")
         } catch (_: SecurityException) {
-            Toast.makeText(this, "系统限制了该操作，请在系统设置中调整", Toast.LENGTH_LONG).show()
+            notifyUser("系统限制了该操作，请在系统设置中调整")
         }
     }
 
     private fun previewCall(call: CallDetail) {
         if (!Settings.canDrawOverlays(this)) { requestCapability(Capability.OVERLAY); return }
         try { startForegroundService(CallringOverlayService.previewIntent(this, call)) }
-        catch (_: RuntimeException) { Toast.makeText(this, "系统未允许显示来电卡片，请检查运行条件", Toast.LENGTH_LONG).show() }
+        catch (_: RuntimeException) { notifyUser("系统未允许显示来电卡片，请检查运行条件") }
     }
 
     private fun pinWidget() {
         val manager = AppWidgetManager.getInstance(this)
         try {
             if (!manager.isRequestPinAppWidgetSupported || !manager.requestPinAppWidget(ComponentName(this, CallringWidgetReceiver::class.java), null, null))
-                Toast.makeText(this, "请在桌面长按并选择添加小组件", Toast.LENGTH_LONG).show()
-        } catch (_: RuntimeException) { Toast.makeText(this, "请在桌面长按并选择添加小组件", Toast.LENGTH_LONG).show() }
+                notifyUser("请在桌面长按并选择添加小组件")
+        } catch (_: RuntimeException) { notifyUser("请在桌面长按并选择添加小组件") }
     }
 
     companion object {

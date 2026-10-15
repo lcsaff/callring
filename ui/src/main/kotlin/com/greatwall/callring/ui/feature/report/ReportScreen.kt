@@ -26,7 +26,7 @@ import java.time.ZoneId
     var dateDialog by rememberSaveable { mutableStateOf(false) }
     var filterMenu by remember { mutableStateOf(false) }
     ScreenFrame("号码报表", onBack, actions = { TextButton(onClick = onEdit) { Text("编辑档案") } }) {
-        LazyColumn(Modifier.testTag("report-list"), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        LazyColumn(Modifier.testTag("report-list"), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             item {
                 OutlinedButton(onClick = { dateDialog = true }, modifier = Modifier.fillMaxWidth()) {
                     Text("${query.range.startDate} 至 ${query.range.endDateInclusive}")
@@ -38,7 +38,7 @@ import java.time.ZoneId
                 item { CallerCard(report.profile) }
                 item {
                     Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)) {
-                        Column(Modifier.fillMaxWidth().padding(20.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                        Column(Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                             Text("区间汇总", style = MaterialTheme.typography.titleMedium)
                             Text("来电总数 ${report.totals.totalCalls}", style = MaterialTheme.typography.headlineSmall)
                             Text("工作时间 ${report.totals.workingCalls} · 非工作时间 ${report.totals.offHoursCalls}")
@@ -90,7 +90,7 @@ import java.time.ZoneId
 @Composable fun CallDetailCard(call: CallDetail) {
     var expanded by rememberSaveable(call.id) { mutableStateOf(false) }
     Card(Modifier.fillMaxWidth().clickable { expanded = !expanded }) {
-        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
             Text(UiFormat.time(call.startedAtEpochMillis, ZoneId.of(call.classification.zoneId)), style = MaterialTheme.typography.titleSmall)
             Text(UiFormat.result(call.result), style = MaterialTheme.typography.bodyLarge)
             Text(UiFormat.duration(call.durationSeconds))
@@ -112,17 +112,6 @@ import java.time.ZoneId
 }
 
 @Composable private fun ReportRangeDialog(value: DateRange, onDismiss: () -> Unit, onSave: (DateRange) -> Unit) {
-    var start by rememberSaveable { mutableStateOf(value.startDate.toString()) }
-    var end by rememberSaveable { mutableStateOf(value.endDateInclusive.toString()) }
-    val startDate = runCatching { LocalDate.parse(start) }.getOrNull()
-    val endDate = runCatching { LocalDate.parse(end) }.getOrNull()
-    val valid = startDate != null && endDate != null && endDate >= startDate
-    AlertDialog(onDismissRequest = onDismiss, title = { Text("报表日期区间") }, text = {
-        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            OutlinedTextField(start, { start = it }, label = { Text("开始日期") }, supportingText = { Text("YYYY-MM-DD") }, singleLine = true)
-            OutlinedTextField(end, { end = it }, label = { Text("结束日期（含当日）") }, supportingText = { Text("YYYY-MM-DD") }, singleLine = true)
-            if (!valid) Text("请输入有效日期，结束日期不能早于开始日期", color = MaterialTheme.colorScheme.error)
-        }
-    }, confirmButton = { TextButton(onClick = { onSave(DateRange(startDate!!, endDate!!, value.zoneId)) }, enabled = valid) { Text("查询") } },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("取消") } })
+    DateRangeSelectionDialog("报表日期区间", value.startDate, value.endDateInclusive, onDismiss,
+        { start, end -> onSave(DateRange(start, end, value.zoneId)) }, confirmLabel = "查询")
 }

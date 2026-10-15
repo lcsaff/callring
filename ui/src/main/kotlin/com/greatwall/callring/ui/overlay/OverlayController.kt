@@ -16,6 +16,8 @@ class OverlayController(
 ) {
     private val mutableModels = MutableStateFlow<OverlayModels?>(null)
     val models = mutableModels.asStateFlow()
+    private val mutableSavedRevision = MutableStateFlow(0L)
+    val savedRevision = mutableSavedRevision.asStateFlow()
     private var sessionScope: CoroutineScope? = null
     private var editorScope: CoroutineScope? = null
     private val sessionObserver = scope.launch {
@@ -43,7 +45,14 @@ class OverlayController(
         val editor = CallerEditorViewModel(current.presentation.request.number, api.callers, api.changes, SavedStateHandle(), editLifetime)
         mutableModels.value = current.copy(editor = editor)
         sessions.beginEditing()
-        editLifetime.launch { editor.mutation.collect { if (it.completed > 0) finishEditing(editor) } }
+        editLifetime.launch {
+            editor.mutation.collect { mutation ->
+                if (mutation.completed > 0 && !mutation.busy && mutableModels.value?.editor === editor) {
+                    mutableSavedRevision.value++
+                    finishEditing(editor)
+                }
+            }
+        }
     }
 
     fun changeDraft(draft: CallerDraft) { mutableModels.value?.editor?.edit { draft } }

@@ -20,9 +20,147 @@ import org.junit.Rule
 import org.junit.Test
 import java.time.Instant
 import java.time.LocalDate
+import java.time.format.DateTimeFormatter
+import java.util.Locale
 
 abstract class SettingsScreenCases {
     @get:Rule val compose = createComposeRule()
+
+    @Test fun timeWindowPickerCancellationKeepsDraftAndOvernightIsExplicit() {
+        val windows = mutableStateOf(listOf(TimeWindow(1320, 420)))
+        compose.setContent {
+            CallringTheme {
+                Column {
+                    com.greatwall.callring.ui.feature.settings.components.WindowsField(
+                        "测试时段", windows.value, true, { windows.value = it }, {}, MutationState())
+                }
+            }
+        }
+        compose.onNodeWithText("跨至次日").assertIsDisplayed()
+        compose.onNodeWithTag("time-测试时段-1-开始").performClick()
+        compose.onNodeWithText("切换为键盘输入").performClick()
+        compose.onNodeWithText("取消").performClick()
+        compose.runOnIdle { assertEquals(listOf(TimeWindow(1320, 420)), windows.value) }
+        compose.onNodeWithText("添加时段").performClick()
+        compose.runOnIdle { assertEquals(listOf(TimeWindow(1320, 420), TimeWindow(540, 720)), windows.value) }
+    }
+
+    @Test fun calendarDeletionRequiresConfirmationAndCancelKeepsEntry() {
+        val date = LocalDate.of(2026, 10, 15)
+        val entry = DateOverride(date, DateOverrideKind.REST, emptyList())
+        val deleted = mutableListOf<LocalDate>()
+        compose.setContent {
+            CallringTheme {
+                CalendarScreen(LoadState(CalendarInfo(emptyList(), listOf(entry)), loaded = true),
+                    MutationState(), {}, {}, {}, {}, { deleted += it })
+            }
+        }
+        compose.onNodeWithText("删除").performScrollTo().performClick()
+        compose.runOnIdle { assertTrue(deleted.isEmpty()) }
+        compose.onNodeWithText("取消").performClick()
+        compose.runOnIdle { assertTrue(deleted.isEmpty()) }
+    }
+
+    @Test fun equalWindowEndpointsStayLocalAndDisableSaving() {
+        val initial = listOf(TimeWindow(540, 720))
+        val windows = mutableStateOf(initial)
+        val valid = mutableStateOf(true)
+        compose.setContent {
+            CallringTheme {
+                Column {
+                    com.greatwall.callring.ui.feature.settings.components.WindowsField(
+                        "测试时段", windows.value, true, { windows.value = it }, { valid.value = it }, MutationState())
+                }
+            }
+        }
+        compose.onNodeWithTag("time-测试时段-1-开始").performClick()
+        compose.onNodeWithText("切换为键盘输入").performClick()
+        compose.onAllNodes(hasSetTextAction() and hasAnyAncestor(hasTestTag("time-input")))[0].performTextReplacement("12")
+        compose.onNodeWithText("确定").performClick()
+        compose.onNodeWithText("开始和结束时间不能相同").assertIsDisplayed()
+        compose.runOnIdle {
+            assertTrue(!valid.value)
+            assertEquals(initial, windows.value)
+        }
+        compose.onNodeWithText("移除时段 1").performClick()
+        compose.runOnIdle {
+            assertTrue(valid.value)
+            assertTrue(windows.value.isEmpty())
+        }
+    }
+
+    @Test fun timedLeaveRejectsNonexistentDstLocalTimeAfterDateSelection() {
+        val entry = LeaveEntry(17L, Instant.parse("2026-03-07T07:30:00Z").toEpochMilli(),
+            Instant.parse("2026-03-09T08:00:00Z").toEpochMilli(), "", LeaveState.UPCOMING)
+        var command: SaveLeave? = null
+        compose.setContent {
+            CallringTheme {
+                LeavesScreen(LoadState(listOf(entry), loaded = true), MutationState(), "America/New_York", {}, {}, { command = it }, {})
+            }
+        }
+        compose.onNodeWithText("编辑").performScrollTo().performClick()
+        selectDate("开始日期", LocalDate.of(2026, 3, 8))
+        compose.onNodeWithText("开始时间不存在，请检查时区的夏令时切换").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("保存").assertIsNotEnabled()
+        compose.runOnIdle { assertEquals(null, command) }
+    }
+
+    @Test fun pickerDatesRoundTripAsUtcDatesRegardlessOfBusinessZone() {
+        val date = LocalDate.of(2026, 11, 1)
+        val millis = com.greatwall.callring.ui.designsystem.components.dateToPickerMillis(date)
+        assertEquals(Instant.parse("2026-11-01T00:00:00Z").toEpochMilli(), millis)
+        assertEquals(date, com.greatwall.callring.ui.designsystem.components.pickerMillisToDate(millis))
+    }
+
+    @Test fun timePickerDraftSurvivesRestorationBeforeConfirmation() {
+        val value = mutableStateOf("09:00")
+        val restoration = StateRestorationTester(compose)
+        restoration.setContent {
+            CallringTheme {
+                com.greatwall.callring.ui.designsystem.components.TimeSelectionField("测试时间", value.value, { value.value = it })
+            }
+        }
+        compose.onNodeWithTag("time-测试时间").performClick()
+        compose.onNodeWithText("切换为键盘输入").performClick()
+        compose.onAllNodes(hasSetTextAction() and hasAnyAncestor(hasTestTag("time-input")))[0].performTextReplacement("11")
+        restoration.emulateSavedInstanceStateRestore()
+        compose.onNodeWithText("切换为表盘选择").assertExists()
+        compose.onAllNodes(hasSetTextAction() and hasAnyAncestor(hasTestTag("time-input")))[0].assertTextContains("11")
+        compose.runOnIdle { assertEquals("09:00", value.value) }
+        compose.onNodeWithText("确定").performClick()
+        compose.runOnIdle { assertEquals("11:00", value.value) }
+    }
+
+    @Test fun reportRangeCancellationAndConfirmationPreserveBusinessZone() {
+        val range = DateRange(LocalDate.of(2026, 10, 1), LocalDate.of(2026, 10, 15), "Pacific/Honolulu")
+        val commands = mutableListOf<DateRange>()
+        compose.setContent {
+            CallringTheme {
+                com.greatwall.callring.ui.feature.report.ReportScreen(
+                    LoadState<CallerReport>(), ReportQuery("100", range), MutationState(), {}, {}, { commands += it }, {}, {}, {}, {}, {})
+            }
+        }
+        compose.onNodeWithText("2026-10-01 至 2026-10-15").performClick()
+        compose.onNodeWithText("取消").performClick()
+        compose.runOnIdle { assertTrue(commands.isEmpty()) }
+        compose.onNodeWithText("2026-10-01 至 2026-10-15").performClick()
+        compose.onNodeWithText("查询").performClick()
+        compose.runOnIdle { assertEquals(listOf(range), commands) }
+    }
+
+    @Test fun changedLeaveNoteRequiresDiscardConfirmation() {
+        compose.setContent {
+            CallringTheme {
+                LeavesScreen(LoadState<List<LeaveEntry>>(emptyList(), loaded = true), MutationState(), "Asia/Shanghai", {}, {}, {}, {})
+            }
+        }
+        compose.onNodeWithText("添加请假").performClick()
+        compose.onNode(hasSetTextAction() and hasText("备注")).performScrollTo().performTextReplacement("保留草稿")
+        compose.onNodeWithText("取消").performClick()
+        compose.onNodeWithText("放弃未保存的修改？").assertIsDisplayed()
+        compose.onNodeWithText("放弃修改").performClick()
+        compose.onNodeWithText("备注").assertDoesNotExist()
+    }
 
     @Test fun scoreResetReplacesInvalidTextEvenWhenDefaultsHaveNotChanged() {
         val saved = ScoreSettings(5, 2, 10, 30)
@@ -40,6 +178,7 @@ abstract class SettingsScreenCases {
         compose.onNodeWithTag("score-repeatMinutes").performScrollTo().performTextClearance()
         compose.onNodeWithTag("settings-save").performScrollTo().assertIsNotEnabled()
         compose.onNodeWithText("恢复默认评分设置").performScrollTo().performClick()
+        compose.onNodeWithText("确认").performClick()
         compose.onNodeWithTag("score-repeatMinutes").performScrollTo().assertTextContains("10")
         compose.onNodeWithTag("settings-save").performScrollTo().assertIsEnabled()
     }
@@ -56,11 +195,12 @@ abstract class SettingsScreenCases {
         }
         compose.onNodeWithTag("score-repeatMinutes").performScrollTo().performTextClearance()
         compose.onNodeWithText("恢复默认评分设置").performScrollTo().performClick()
+        compose.onNodeWithText("确认").performClick()
         compose.onNodeWithTag("score-repeatMinutes").performScrollTo().assertTextEquals("重复来电窗口（分钟）", "")
         compose.onNodeWithTag("settings-save").performScrollTo().assertIsNotEnabled()
     }
 
-    @Test fun workResetReplacesInvalidZoneAndWindowTextWhenDefaultsHaveNotChanged() {
+    @Test fun workResetReplacesInvalidZoneAndEditedWindowWhenDefaultsHaveNotChanged() {
         val saved = WorkScheduleSettings("Asia/Shanghai", mapOf(1 to listOf(TimeWindow(540, 720))),
             listOf(TimeWindow(540, 720)), 1, 0)
         val draft = mutableStateOf(saved)
@@ -75,11 +215,16 @@ abstract class SettingsScreenCases {
             }
         }
         compose.onNode(hasSetTextAction() and hasText("时区")).performScrollTo().performTextReplacement("invalid-zone")
-        compose.onNode(hasSetTextAction() and hasText("星期一")).performScrollTo().performTextReplacement("invalid-window")
+        compose.onNodeWithTag("time-星期一-1-开始").performScrollTo().performClick()
+        compose.onNodeWithText("切换为键盘输入").performClick()
+        compose.onAllNodes(hasSetTextAction() and hasAnyAncestor(hasTestTag("time-input")))[0].performTextReplacement("12")
+        compose.onNodeWithText("确定").performClick()
+        compose.onNodeWithText("开始和结束时间不能相同").performScrollTo().assertIsDisplayed()
         compose.onNodeWithTag("settings-save").performScrollTo().assertIsNotEnabled()
         compose.onNodeWithText("恢复默认工作时间").performScrollTo().performClick()
+        compose.onNodeWithText("确认").performClick()
         compose.onNode(hasSetTextAction() and hasText("时区")).performScrollTo().assertTextContains("Asia/Shanghai")
-        compose.onNode(hasSetTextAction() and hasText("星期一")).performScrollTo().assertTextContains("09:00-12:00")
+        compose.onNodeWithTag("time-星期一-1-开始").performScrollTo().assertTextContains("开始 09:00")
         compose.onNodeWithTag("settings-save").performScrollTo().assertIsEnabled()
     }
 
@@ -283,13 +428,14 @@ abstract class SettingsScreenCases {
             }
         }
         compose.onNodeWithText("添加日期覆盖").performClick()
-        compose.onNode(hasSetTextAction() and hasText("日期（yyyy-MM-dd）")).performTextReplacement("2026-11-02")
+        selectDate("日期", LocalDate.of(2026, 11, 2))
         compose.onNodeWithText("工作日").performClick()
-        compose.onNode(hasSetTextAction() and hasText("工作时段")).performScrollTo().performTextReplacement("09:00-12:00")
+        compose.onNodeWithText("添加时段").performScrollTo().performClick()
         compose.runOnIdle { mutation.value = MutationState() }
         restoration.emulateSavedInstanceStateRestore()
-        compose.onNode(hasSetTextAction() and hasText("日期（yyyy-MM-dd）")).assertTextContains("2026-11-02")
-        compose.onNode(hasSetTextAction() and hasText("工作时段")).performScrollTo().assertTextContains("09:00-12:00")
+        compose.onNodeWithTag("date-日期").assertTextContains("日期：2026-11-02")
+        compose.onNodeWithTag("time-工作时段-1-开始").performScrollTo().assertTextContains("开始 09:00")
+        compose.onNodeWithTag("time-工作时段-1-结束").performScrollTo().assertTextContains("结束 12:00")
         compose.onNodeWithText("保存").performClick()
         compose.runOnIdle {
             assertEquals(listOf(DateOverride(LocalDate.of(2026, 11, 2), DateOverrideKind.WORK, listOf(TimeWindow(540, 720)))), commands)
@@ -308,13 +454,13 @@ abstract class SettingsScreenCases {
             }
         }
         compose.onNodeWithText("添加请假").performClick()
-        compose.onNode(hasSetTextAction() and hasText("开始日期（yyyy-MM-dd）")).performScrollTo().performTextReplacement("2026-10-20")
-        compose.onNode(hasSetTextAction() and hasText("结束日期（含当天）")).performScrollTo().performTextReplacement("2026-10-22")
+        selectDate("开始日期", LocalDate.of(2026, 10, 20))
+        selectDate("结束日期（含当天）", LocalDate.of(2026, 10, 22))
         compose.onNode(hasSetTextAction() and hasText("备注")).performScrollTo().performTextReplacement("恢复请假草稿")
         compose.runOnIdle { mutation.value = MutationState() }
         restoration.emulateSavedInstanceStateRestore()
-        compose.onNode(hasSetTextAction() and hasText("开始日期（yyyy-MM-dd）")).assertTextContains("2026-10-20")
-        compose.onNode(hasSetTextAction() and hasText("结束日期（含当天）")).assertTextContains("2026-10-22")
+        compose.onNodeWithTag("date-开始日期").assertTextContains("开始日期：2026-10-20")
+        compose.onNodeWithTag("date-结束日期（含当天）").assertTextContains("结束日期（含当天）：2026-10-22")
         compose.onNode(hasSetTextAction() and hasText("备注")).performScrollTo().assertTextContains("恢复请假草稿")
         compose.onNodeWithText("保存").performClick()
         compose.runOnIdle {
@@ -353,5 +499,15 @@ abstract class SettingsScreenCases {
         restoration.emulateSavedInstanceStateRestore()
         compose.runOnIdle { assertEquals(1L, mutation.value.completed) }
         compose.onNodeWithText("取消").assertDoesNotExist()
+    }
+    private fun selectDate(label: String, date: LocalDate) {
+        compose.onNodeWithTag("date-$label").performScrollTo().performClick()
+        compose.onNodeWithText("输入日期").performClick()
+        val pattern = android.text.format.DateFormat.getBestDateTimePattern(Locale.getDefault(), "yMd")
+            .replace(Regex("y+"), "yyyy").replace(Regex("M+"), "MM").replace(Regex("d+"), "dd")
+        val input = date.format(DateTimeFormatter.ofPattern(pattern)).filter(Char::isDigit)
+        compose.onNode(hasSetTextAction() and hasAnyAncestor(hasTestTag("date-picker-$label")))
+            .performTextReplacement(input)
+        compose.onNodeWithText("确定").performClick()
     }
 }

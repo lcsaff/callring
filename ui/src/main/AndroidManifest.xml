@@ -1,7 +1,7 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <application>
         <service android:name="com.greatwall.callring.ui.overlay.CallringOverlayService" android:exported="false" />
-        <activity android:name="com.greatwall.callring.ui.widget.WidgetConfigurationActivity" android:exported="true">
+        <activity android:name="com.greatwall.callring.ui.widget.WidgetConfigurationActivity" android:exported="true" android:enableOnBackInvokedCallback="true" android:windowSoftInputMode="adjustResize">
             <intent-filter><action android:name="android.appwidget.action.APPWIDGET_CONFIGURE" /></intent-filter>
         </activity>
         <receiver android:name="com.greatwall.callring.ui.widget.CallringWidgetReceiver" android:exported="false">
@@ -17,6 +17,6 @@
                 <action android:name="android.intent.action.BOOT_COMPLETED" />
             </intent-filter>
         </receiver>
-        <activity android:name="com.greatwall.callring.ui.app.CallringActivity" android:exported="true" />
+        <activity android:name="com.greatwall.callring.ui.app.CallringActivity" android:exported="true" android:enableOnBackInvokedCallback="true" android:windowSoftInputMode="adjustResize" />
     </application>
 </manifest>

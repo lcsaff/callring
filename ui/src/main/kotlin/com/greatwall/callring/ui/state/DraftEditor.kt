@@ -35,11 +35,11 @@ open class DraftEditor<T : Any>(
 
     fun save() {
         val value = mutableDraft.value ?: return
-        writer.run({ save(value) }) { replaceDraft(it); refresh() }
+        writer.run({ save(value) }, "设置已保存") { replaceDraft(it); refresh() }
     }
 
     fun <R> execute(operation: suspend () -> ApiResult<R>, onSuccess: (R) -> Unit = { refresh() }) =
-        writer.run(operation, onSuccess)
+        writer.run(operation, "设置已恢复", onSuccess)
 
     fun replaceDraft(value: T) {
         mutableDraft.value = value

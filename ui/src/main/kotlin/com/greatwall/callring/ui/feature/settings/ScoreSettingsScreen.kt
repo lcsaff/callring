@@ -8,9 +8,13 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.ImeAction
+import com.greatwall.callring.ui.designsystem.components.formKeyboardActions
 import com.greatwall.callring.application.api.ScoreSettings
 import com.greatwall.callring.ui.feature.settings.components.*
 import com.greatwall.callring.ui.state.*
+import com.greatwall.callring.ui.designsystem.components.ConfirmAction
+import com.greatwall.callring.ui.designsystem.components.rememberFormBack
 
 @Composable
 fun ScoreSettingsScreen(
@@ -18,9 +22,11 @@ fun ScoreSettingsScreen(
     onBack: () -> Unit, onRetry: () -> Unit, onChange: (ScoreSettings) -> Unit,
     onSave: () -> Unit, onReset: () -> Unit,
 ) {
-    SettingsLayout("评分设置", state, mutation, onBack, onRetry) { saved ->
+    val validity = remember { mutableStateMapOf<String, Boolean>() }
+    val back = rememberFormBack(onBack, (draft != null && state.data != null && draft != state.data)
+        || validity.values.any { !it }, mutation, onSave, canSave = validity.values.all { it })
+    SettingsLayout("评分设置", state, mutation, back, onRetry) { saved ->
         val value = draft ?: saved
-        val validity = remember { mutableStateMapOf<String, Boolean>() }
         SettingsCard("评分参数") {
             Text("权重可为零；重复来电窗口与观察天数必须大于零。")
             ScoreNumber("非工作来电权重", "offHoursWeight", value.offHoursWeight, 0, mutation,
@@ -33,7 +39,8 @@ fun ScoreSettingsScreen(
                 { onChange(value.copy(observationDays = it)) }, { validity["observationDays"] = it })
         }
         SaveAction(mutation, validity.values.all { it }, onSave)
-        OutlinedButton(onReset, enabled = !mutation.busy, modifier = Modifier.fillMaxWidth()) { Text("恢复默认评分设置") }
+        ConfirmAction("恢复默认评分设置", "恢复默认评分设置？", "当前评分参数将被默认值替换。", onReset,
+            enabled = !mutation.busy, modifier = Modifier.fillMaxWidth())
     }
 }
 
@@ -52,7 +59,9 @@ private fun ScoreNumber(
         onValidity(parsed != null && parsed >= minimum)
         if (parsed != null && parsed >= minimum) onChange(parsed)
     }, enabled = !mutation.busy, label = { Text(label) }, singleLine = true,
-        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), isError = !valid,
+        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number,
+            imeAction = if (key == "observationDays") ImeAction.Done else ImeAction.Next),
+        keyboardActions = formKeyboardActions(), isError = !valid,
         modifier = Modifier.fillMaxWidth().testTag("score-$key"))
     InputError(if (valid) null else if (minimum == 0) "请输入非负整数" else "请输入正整数")
     FieldError(mutation, key)
