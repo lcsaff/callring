@@ -32,10 +32,12 @@ UI 预设 ID 为 `unicom_red`、`sky_blue`、`teal_green`。默认外观为 `App
 
 文件：`ui/src/main/kotlin/com/greatwall/callring/ui/designsystem/`、`ui/src/main/kotlin/com/greatwall/callring/ui/format/`，测试放在 `ui/src/test/kotlin/` 对应包。
 
-- [ ] 先编写评分分界、未知时长与零秒、未知职位关系和主题配置测试，确认缺失行为导致失败。
-- [ ] 实现共享评分样式、格式化、三套预设、可扩展注册表和自定义主色生成。评分语义不随主题改变。
-- [ ] 实现 Material 3 Theme、标准间距和基础组件。未识别预设只显示兜底，不修改原保存 ID。
-- [ ] 执行对应单元测试和 `:ui:assembleDebug`，再进行契约与代码质量审查。
+- [x] 先编写评分分界、未知时长与零秒、未知职位关系和主题配置测试，确认缺失行为导致失败。
+- [x] 实现共享评分样式、格式化、三套预设、可扩展注册表和自定义主色生成。评分语义不随主题改变。
+- [x] 实现 Material 3 Theme、标准间距和基础组件。未识别预设只显示兜底，不修改原保存 ID。
+- [x] 执行对应单元测试和 `:ui:assembleDebug`，再进行契约与代码质量审查。
+
+验证记录：2026-10-15，新模块 38 项单元测试通过，Debug AAR 与 AndroidTest APK 构建通过。设计系统已完成独立契约审查与代码质量审查。设备执行尚未进行，APK 构建不代表实机验收。
 
 评分测试的固定用例：
 
