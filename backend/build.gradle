@@ -10,6 +10,6 @@ tasks.withType(org.jetbrains.kotlin.gradle.tasks.KotlinCompile).configureEach {
 }
 
 dependencies {
-    api 'org.jetbrains.kotlinx:kotlinx-coroutines-core:1.6.4'
+    api "org.jetbrains.kotlinx:kotlinx-coroutines-core:${rootProject.ext.callringVersions.coroutines}"
     testImplementation 'junit:junit:4.13.2'
 }

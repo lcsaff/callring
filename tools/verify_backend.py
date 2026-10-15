@@ -47,6 +47,8 @@ def main():
     gradle = str(ROOT / ("gradlew.bat" if os.name == "nt" else "gradlew"))
     tasks = [":backend:test", ":app:testDebugUnitTest", ":app:assembleDebug", ":app:assembleRelease",
              ":app:lintDebug", ":app:assembleDebugAndroidTest", ":app:assembleBackendQa", "--console=plain"]
+    if (ROOT / "ui/build.gradle").exists():
+        tasks[:0] = [":ui:testDebugUnitTest", ":ui:assembleDebug"]
     run([gradle, *tasks], "build.log")
     summary = {
         "intermediateUiMigration": args.legacy_ui_pending,
@@ -54,6 +56,8 @@ def main():
         "app": test_counts(ROOT / "app/build/test-results/testDebugUnitTest"),
         "device": "not_run",
     }
+    if (ROOT / "ui/build.gradle").exists():
+        summary["ui"] = test_counts(ROOT / "ui/build/test-results/testDebugUnitTest")
     if args.device:
         metadata_path = ROOT / "app/build/outputs/apk/backendQa/output-metadata.json"
         metadata = json.loads(metadata_path.read_text(encoding="utf-8"))

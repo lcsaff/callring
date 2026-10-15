@@ -47,6 +47,11 @@ public class DebugProbeReceiver extends BroadcastReceiver {
                 case "preview": RingPlaybackService.preview(context); break;
                 case "stop": RingPlaybackService.stop(context); break;
                 case "status":
+                    if (context.checkSelfPermission(android.Manifest.permission.READ_PHONE_STATE)
+                            != android.content.pm.PackageManager.PERMISSION_GRANTED) {
+                        setResultData("enabled=" + AppSettings.enabled(context) + ", callState=unknown, inCall=unknown");
+                        return;
+                    }
                     setResultData("enabled=" + AppSettings.enabled(context) + ", callState=" + context.getSystemService(android.telephony.TelephonyManager.class).getCallState() + ", inCall=" + telecom.isInCall());
                     return;
                 default: throw new IllegalArgumentException();

@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="callring_back">返回</string>
+    <string name="callring_loading">正在加载…</string>
+    <string name="callring_retry">重试</string>
+    <string name="callring_whitelisted">白名单</string>
+    <string name="callring_inactive_position">（已停用）</string>
+    <string name="callring_score_points">%1$d 分</string>
+    <string name="callring_score_accessibility">评分 %1$d 分，%2$s</string>
+</resources>
