@@ -1,6 +1,6 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <instrumentation android:name="android.test.InstrumentationTestRunner"
-        android:targetPackage="com.greatwall.callring" android:label="来电管理设备测试" />
+        android:targetPackage="${applicationId}" android:label="来电管理设备测试" />
     <application android:name=".DebugQaApplication">
         <uses-library android:name="android.test.runner" android:required="false" />
         <uses-library android:name="android.test.base" android:required="false" />

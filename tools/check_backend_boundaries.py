@@ -1,0 +1,88 @@
+"""Enforce the JVM business/UI boundary and the shared public contract."""
+from pathlib import Path
+import argparse
+import re
+import sys
+
+ROOT = Path(__file__).resolve().parents[1]
+BASE = Path("app/src/main/java/com/greatwall/callring")
+LEGACY = (
+    "CallerRepository.java", "IncomingCallManager.java", "ManagementEvents.java",
+    "MainActivity.java", "ManagementActivity.java", "ManagementSettingsActivity.java",
+    "CallerEditActivity.java", "CallerListActivity.java", "CallerReportActivity.java",
+    "CallerWidgetConfigActivity.java", "CallerOverlayService.java",
+    "CallerWidgetProvider.java", "Ui.java",
+    "AppSettings.java", "CallLogSynchronizer.java", "EventLog.java", "CsvReport.java",
+    "CallerScore.java", "WorkSchedulePolicy.java", "QuietHoursPolicy.java",
+    "PositionRelationPolicy.java", "NumberNormalizer.java", "RulePolicy.java", "WorkConfigCodec.java",
+)
+
+
+def without_comments(source):
+    # Preserve quoted URIs and comment markers inside strings when checking Kotlin/Java.
+    return re.sub(r'(""".*?"""|"(?:\\.|[^"\\])*")|/\*.*?\*/|//[^\n]*',
+                  lambda match: match.group(1) or '', source, flags=re.S)
+
+
+def declarations(source):
+    return re.sub(r'\s+', '', without_comments(source))
+
+
+def check(legacy_ui_pending=False):
+    errors = []
+    sources = list((ROOT / "backend/src/main").rglob("*.kt"))
+    sources += list((ROOT / "backend/src/main").rglob("*.java"))
+    if not sources:
+        errors.append("No pure JVM backend sources")
+    build = (ROOT / "backend/build.gradle").read_text(encoding="utf-8")
+    if re.search(r'com\.android|androidx|project\([\'\"]:(?:app|ui)', build):
+        errors.append("JVM backend build depends on Android or a presentation module")
+    for path in sources:
+        text = without_comments(path.read_text(encoding="utf-8"))
+        for pattern in (r'\bandroid(?:x)?\.', r'\bcom\.greatwall\.callring\.ui\.',
+                        r'\b(?:Toast|WindowManager|RemoteViews|CallerRepository|ManagementEvents)\b'):
+            if re.search(pattern, text):
+                errors.append(f"{path.relative_to(ROOT)}: forbidden business dependency {pattern}")
+        for literal in re.findall(r'"(?:\\.|[^"\\])*"', text):
+            if re.search(r'[\u3400-\u9fff]', literal):
+                errors.append(f"{path.relative_to(ROOT)}: localized presentation text in JVM backend")
+                break
+    contract = ROOT / "docs/contracts/CallringUiApi.kt"
+    actual = ROOT / "backend/src/main/kotlin/com/greatwall/callring/application/api/CallringUiApi.kt"
+    if not actual.exists() or declarations(actual.read_text(encoding="utf-8")) != declarations(contract.read_text(encoding="utf-8")):
+        errors.append("Production API differs from shared v1 contract")
+    for directory in (ROOT / "app/src/main/kotlin/com/greatwall/callring/data",
+                      ROOT / "app/src/main/kotlin/com/greatwall/callring/platform",
+                      ROOT / "app/src/main/java/com/greatwall/callring/data"):
+        for path in directory.rglob("*"):
+            if path.suffix not in (".kt", ".java"):
+                continue
+            text = without_comments(path.read_text(encoding="utf-8"))
+            if re.search(r'\b(?:CallerRepository|ManagementEvents|CallerWidgetProvider|CallerOverlayService|MainActivity)\b|\bcom\.greatwall\.callring\.ui\.', text):
+                errors.append(f"{path.relative_to(ROOT)}: concrete UI/legacy dependency")
+    for name in ("RuleScreeningService", "RingPlaybackService", "SyncJobService", "RuntimeReceiver"):
+        for directory in (ROOT / "app/src/main/java/com/greatwall/callring", ROOT / "app/src/main/kotlin/com/greatwall/callring"):
+            for suffix in (".java", ".kt"):
+                path = directory / (name + suffix)
+                if path.exists() and re.search(r'\b(?:CallerRepository|ManagementEvents|AppSettings|EventLog|CallerWidgetProvider|CallerOverlayService|MainActivity)\b|\bcom\.greatwall\.callring\.ui\.',
+                                              without_comments(path.read_text(encoding="utf-8"))):
+                    errors.append(f"{path.relative_to(ROOT)}: framework adapter depends on concrete UI/legacy service")
+    if not legacy_ui_pending:
+        errors.extend(f"Legacy production source remains: {name}" for name in LEGACY if (ROOT / BASE / name).exists())
+    for directory in (ROOT / "app/src/main/kotlin/com/greatwall/callring/ui", ROOT / "ui/src/main"):
+        for path in directory.rglob("*.kt"):
+            if re.search(r'\b(?:CallerRepository|ManagementEvents|SQLiteDatabase|SQLiteOpenHelper)\b|com\.greatwall\.callring\.(?:data|platform|domain)\.|com\.greatwall\.callring\.application\.(?:ports|CallringBackend)', without_comments(path.read_text(encoding="utf-8"))):
+                errors.append(f"{path.relative_to(ROOT)}: UI depends on a business/storage implementation")
+    return sources, errors
+
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--legacy-ui-pending", action="store_true",
+                        help="Temporary branch check before the independent UI branch is integrated")
+    args = parser.parse_args()
+    sources, errors = check(args.legacy_ui_pending)
+    if errors:
+        print("\n".join(errors))
+        sys.exit(1)
+    print(f"PASS: {len(sources)} JVM sources; no Android/UI/presentation dependencies; v1 contract matches")
