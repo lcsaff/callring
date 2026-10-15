@@ -22,7 +22,7 @@ import java.time.ZoneId
 fun RuntimeScreen(
     state: LoadState<RuntimeUiData>, mutation: MutationState,
     onBack: () -> Unit, onRetry: () -> Unit, onCapability: (Capability) -> Unit,
-    onSynchronize: () -> Unit,
+    onSynchronize: () -> Unit, onAppSettings: () -> Unit,
 ) {
     ScreenFrame("运行状态与权限", onBack) {
         Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -39,6 +39,10 @@ fun RuntimeScreen(
                                 TextButton({ onCapability(capability) }, enabled = !mutation.busy) { Text("前往设置") }
                             }
                         })
+                    }
+                    Text("若系统不再弹出授权提示，请在应用设置中调整权限。")
+                    OutlinedButton(onAppSettings, enabled = !mutation.busy, modifier = Modifier.fillMaxWidth()) {
+                        Text("打开应用设置")
                     }
                 }
                 SettingsCard("当前运行状态") {

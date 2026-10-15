@@ -102,7 +102,7 @@ internal fun WindowsField(
     onChange: (List<TimeWindow>) -> Unit, onValidity: (Boolean) -> Unit,
     mutation: MutationState, vararg errorKeys: String,
 ) {
-    var text by rememberSaveable(windowsText(windows)) { mutableStateOf(windowsText(windows)) }
+    var text by rememberSaveable(windowsText(windows), mutation.completed) { mutableStateOf(windowsText(windows)) }
     val parsed = parseWindows(text)
     LaunchedEffect(text) { onValidity(parsed != null) }
     OutlinedTextField(text, { raw ->

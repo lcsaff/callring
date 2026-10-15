@@ -42,7 +42,8 @@ private fun ScoreNumber(
     label: String, key: String, value: Int, minimum: Int, mutation: MutationState,
     onChange: (Int) -> Unit, onValidity: (Boolean) -> Unit,
 ) {
-    var raw by rememberSaveable(value) { mutableStateOf(value.toString()) }
+    // A committed reset replaces invalid raw text even when the typed value is unchanged.
+    var raw by rememberSaveable(value, mutation.completed) { mutableStateOf(value.toString()) }
     val valid = raw.toIntOrNull()?.let { it >= minimum } == true
     LaunchedEffect(raw) { onValidity(valid) }
     OutlinedTextField(raw, {

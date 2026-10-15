@@ -4,6 +4,7 @@ import android.Manifest
 import android.app.role.RoleManager
 import android.appwidget.AppWidgetManager
 import android.content.*
+import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
@@ -14,10 +15,12 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.*
+import androidx.lifecycle.lifecycleScope
 import com.greatwall.callring.application.api.Capability
 import com.greatwall.callring.application.api.CallDetail
 import com.greatwall.callring.ui.widget.CallringWidgetReceiver
 import com.greatwall.callring.ui.overlay.CallringOverlayService
+import kotlinx.coroutines.launch
 
 class CallringActivity : ComponentActivity() {
     private var destination by mutableStateOf<UiDestination>(UiDestination.Home)
@@ -35,7 +38,16 @@ class CallringActivity : ComponentActivity() {
         requestSequence = savedInstanceState?.getLong(STATE_REQUEST_SEQUENCE) ?: 0
         destination = readDestination(intent)
         val api = (application as UiApiOwner).uiApi
-        setContent { CallringApp(api, destination, requestSequence, refreshSignal, ::requestCapability, ::previewCall, ::pinWidget) }
+        setContent { CallringApp(api, destination, requestSequence, refreshSignal, ::requestCapability, ::previewCall, ::pinWidget, ::openApplicationSettings) }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        refreshSignal++
+        // A grant made in system settings must restore the observer as well as refresh its status.
+        if (checkSelfPermission(Manifest.permission.READ_CALL_LOG) == PackageManager.PERMISSION_GRANTED) {
+            lifecycleScope.launch { (application as UiApiOwner).uiApi.runtime.requestCallLogSync() }
+        }
     }
 
     override fun onNewIntent(intent: Intent) {
@@ -90,6 +102,16 @@ class CallringActivity : ComponentActivity() {
                     else Toast.makeText(this, "系统不支持来电筛选角色", Toast.LENGTH_LONG).show()
                 }
             }
+        } catch (_: ActivityNotFoundException) {
+            Toast.makeText(this, "系统没有提供该设置入口", Toast.LENGTH_LONG).show()
+        } catch (_: SecurityException) {
+            Toast.makeText(this, "系统限制了该操作，请在系统设置中调整", Toast.LENGTH_LONG).show()
+        }
+    }
+
+    private fun openApplicationSettings() {
+        try {
+            systemScreen.launch(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:$packageName")))
         } catch (_: ActivityNotFoundException) {
             Toast.makeText(this, "系统没有提供该设置入口", Toast.LENGTH_LONG).show()
         } catch (_: SecurityException) {

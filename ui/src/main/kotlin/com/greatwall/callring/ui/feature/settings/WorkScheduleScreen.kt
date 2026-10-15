@@ -20,7 +20,7 @@ fun WorkScheduleScreen(
     SettingsLayout("工作时间", state, mutation, onBack, onRetry) { saved ->
         val value = draft ?: saved
         val valid = remember { mutableStateMapOf<Int, Boolean>() }
-        var zone by rememberSaveable(value.zoneId) { mutableStateOf(value.zoneId) }
+        var zone by rememberSaveable(value.zoneId, mutation.completed) { mutableStateOf(value.zoneId) }
         val parsedZone = runCatching { ZoneId.of(zone) }.getOrNull()
         SettingsCard("时区与版本") {
             OutlinedTextField(zone, { raw ->

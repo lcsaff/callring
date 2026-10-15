@@ -9,7 +9,7 @@ import com.greatwall.callring.ui.feature.shared.LoadFeedback
 
 @Composable internal fun SettingsRoute(
     page: SettingsPage, api: CallringUiApi, summaryModel: SettingsSummaryViewModel,
-    signal: Long, onBack: () -> Unit, onCapability: (Capability) -> Unit
+    signal: Long, onBack: () -> Unit, onCapability: (Capability) -> Unit, onAppSettings: () -> Unit
 ) {
     when (page) {
         SettingsPage.QUIET -> {
@@ -82,7 +82,7 @@ import com.greatwall.callring.ui.feature.shared.LoadFeedback
             val state by model.state.collectAsStateWithLifecycle()
             val mutation by model.mutation.collectAsStateWithLifecycle()
             ActiveRefresh(signal, intervalMillis = 10_000, refresh = model::refresh)
-            RuntimeScreen(state, mutation, onBack, model::refresh, onCapability, model::synchronize)
+            RuntimeScreen(state, mutation, onBack, model::refresh, onCapability, model::synchronize, onAppSettings)
         }
     }
 }

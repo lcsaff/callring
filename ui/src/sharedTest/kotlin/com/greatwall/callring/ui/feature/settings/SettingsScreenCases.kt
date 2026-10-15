@@ -24,6 +24,79 @@ import java.time.LocalDate
 abstract class SettingsScreenCases {
     @get:Rule val compose = createComposeRule()
 
+    @Test fun scoreResetReplacesInvalidTextEvenWhenDefaultsHaveNotChanged() {
+        val saved = ScoreSettings(5, 2, 10, 30)
+        val draft = mutableStateOf(saved)
+        val mutation = mutableStateOf(MutationState())
+        compose.setContent {
+            CallringTheme {
+                ScoreSettingsScreen(LoadState(saved, loaded = true), draft.value, mutation.value, {}, {},
+                    { draft.value = it }, {}, {
+                        draft.value = saved
+                        mutation.value = MutationState(completed = mutation.value.completed + 1)
+                    })
+            }
+        }
+        compose.onNodeWithTag("score-repeatMinutes").performScrollTo().performTextClearance()
+        compose.onNodeWithTag("settings-save").performScrollTo().assertIsNotEnabled()
+        compose.onNodeWithText("恢复默认评分设置").performScrollTo().performClick()
+        compose.onNodeWithTag("score-repeatMinutes").performScrollTo().assertTextContains("10")
+        compose.onNodeWithTag("settings-save").performScrollTo().assertIsEnabled()
+    }
+
+    @Test fun failedScoreResetKeepsInvalidInputForCorrection() {
+        val saved = ScoreSettings(5, 2, 10, 30)
+        val mutation = mutableStateOf(MutationState())
+        compose.setContent {
+            CallringTheme {
+                ScoreSettingsScreen(LoadState(saved, loaded = true), saved, mutation.value, {}, {}, {}, {}, {
+                    mutation.value = MutationState(error = ApiError(ErrorCode.STORAGE_FAILURE, "reset failed"))
+                })
+            }
+        }
+        compose.onNodeWithTag("score-repeatMinutes").performScrollTo().performTextClearance()
+        compose.onNodeWithText("恢复默认评分设置").performScrollTo().performClick()
+        compose.onNodeWithTag("score-repeatMinutes").performScrollTo().assertTextEquals("重复来电窗口（分钟）", "")
+        compose.onNodeWithTag("settings-save").performScrollTo().assertIsNotEnabled()
+    }
+
+    @Test fun workResetReplacesInvalidZoneAndWindowTextWhenDefaultsHaveNotChanged() {
+        val saved = WorkScheduleSettings("Asia/Shanghai", mapOf(1 to listOf(TimeWindow(540, 720))),
+            listOf(TimeWindow(540, 720)), 1, 0)
+        val draft = mutableStateOf(saved)
+        val mutation = mutableStateOf(MutationState())
+        compose.setContent {
+            CallringTheme {
+                WorkScheduleScreen(LoadState(saved, loaded = true), draft.value, mutation.value, {}, {},
+                    { draft.value = it }, {}, {
+                        draft.value = saved
+                        mutation.value = MutationState(completed = mutation.value.completed + 1)
+                    })
+            }
+        }
+        compose.onNode(hasSetTextAction() and hasText("时区")).performScrollTo().performTextReplacement("invalid-zone")
+        compose.onNode(hasSetTextAction() and hasText("星期一")).performScrollTo().performTextReplacement("invalid-window")
+        compose.onNodeWithTag("settings-save").performScrollTo().assertIsNotEnabled()
+        compose.onNodeWithText("恢复默认工作时间").performScrollTo().performClick()
+        compose.onNode(hasSetTextAction() and hasText("时区")).performScrollTo().assertTextContains("Asia/Shanghai")
+        compose.onNode(hasSetTextAction() and hasText("星期一")).performScrollTo().assertTextContains("09:00-12:00")
+        compose.onNodeWithTag("settings-save").performScrollTo().assertIsEnabled()
+    }
+
+    @Test fun deniedPermissionsHaveAnApplicationSettingsRecoveryEntry() {
+        var settingsOpened = 0
+        val status = RuntimeStatus(Capability.entries.associateWith { AccessState.DENIED }, Audibility.UNKNOWN,
+            PhoneActivity.UNKNOWN, PlaybackStatus(PlaybackMode.NONE, PlaybackState.IDLE), false, 0)
+        compose.setContent {
+            CallringTheme {
+                RuntimeScreen(LoadState(RuntimeUiData(status, emptyList(), null), loaded = true),
+                    MutationState(), {}, {}, {}, {}, { settingsOpened++ })
+            }
+        }
+        compose.onNodeWithText("打开应用设置").performScrollTo().assertIsDisplayed().performClick()
+        compose.runOnIdle { assertEquals(1, settingsOpened) }
+    }
+
     @Test fun invalidHexDisablesSaveAndPreservesLastValidDraft() {
         val initial = DefaultAppearance.copy(selection = ThemeSelection.CUSTOM, customSeedRgb = 0x123456)
         val draft = mutableStateOf(initial)

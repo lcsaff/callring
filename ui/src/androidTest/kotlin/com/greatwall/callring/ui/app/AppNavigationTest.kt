@@ -17,7 +17,7 @@ class AppNavigationTest {
 
     @Test fun callerReportEditorNavigateAndSaveThroughViewModel() {
         val api = UiFakeApi()
-        compose.setContent { CallringApp(api, onCapability = {}, onPreviewCall = {}, onPinWidget = {}) }
+        compose.setContent { CallringApp(api, onCapability = {}, onPreviewCall = {}, onPinWidget = {}, onAppSettings = {}) }
         compose.captureArtifact("home")
         compose.onNodeWithTag("tab-callers").performClick()
         compose.captureArtifact("callers")
@@ -37,7 +37,7 @@ class AppNavigationTest {
 
     @Test fun everySettingsDestinationOpensAndThemeSavesThroughApi() {
         val api = UiFakeApi()
-        compose.setContent { CallringApp(api, onCapability = {}, onPreviewCall = {}, onPinWidget = {}) }
+        compose.setContent { CallringApp(api, onCapability = {}, onPreviewCall = {}, onPinWidget = {}, onAppSettings = {}) }
         compose.onNodeWithTag("tab-settings").performClick()
         compose.captureArtifact("settings")
         val destinations = listOf("免打扰", "职位管理", "工作时间", "节假日与日期覆盖", "请假管理", "评分设置", "铃声", "运行状态与权限")
@@ -60,7 +60,7 @@ class AppNavigationTest {
 
     @Test fun presetAndCustomThemesRenderInBothModes() {
         val api = UiFakeApi()
-        compose.setContent { CallringApp(api, onCapability = {}, onPreviewCall = {}, onPinWidget = {}) }
+        compose.setContent { CallringApp(api, onCapability = {}, onPreviewCall = {}, onPinWidget = {}, onAppSettings = {}) }
         val appearances = ThemeRegistry.presets.map { DefaultAppearance.copy(presetId = it.id) } +
             DefaultAppearance.copy(selection = ThemeSelection.CUSTOM, customSeedRgb = 0x663399)
         appearances.forEach { appearance ->

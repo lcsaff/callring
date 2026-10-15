@@ -26,7 +26,7 @@ import kotlin.math.sin
 @Composable fun CallringApp(
     api: CallringUiApi, requestedDestination: UiDestination = UiDestination.Home, requestSequence: Long = 0,
     refreshSignal: Long = 0, onCapability: (Capability) -> Unit,
-    onPreviewCall: (CallDetail) -> Unit, onPinWidget: () -> Unit
+    onPreviewCall: (CallDetail) -> Unit, onPinWidget: () -> Unit, onAppSettings: () -> Unit
 ) {
     val settings: SettingsSummaryViewModel = uiViewModel("application-settings") { SettingsSummaryViewModel(api) }
     val navigationState: UiNavigationState = uiViewModel("application-navigation") { UiNavigationState(it) }
@@ -113,7 +113,7 @@ import kotlin.math.sin
                         { open(UiDestination.Setting(it)) })
                 }
                 SettingsPage.entries.forEach { page -> composable(UiDestination.Setting(page).route) {
-                    SettingsRoute(page, api, settings, refreshSignal, back, onCapability)
+                    SettingsRoute(page, api, settings, refreshSignal, back, onCapability, onAppSettings)
                 } }
             }
         }
