@@ -53,11 +53,13 @@ assertEquals(ScoreBand.UNRATED, scoreBand(null))
 
 文件：`ui/.../state/`，`ui/.../feature/home/`、`callers/`、`report/`、`settings/` 中的 ViewModel 和 UiState；Fake 仅在测试源集及设计预览中。
 
-- [ ] 测试旧查询晚返回、取消不报错、错误字段映射、无记录、未知时长、真实零秒、权限缺失、保存失败和变更通知。
-- [ ] 实现请求序号、领域和对象匹配、生命周期刷新与草稿分离。`RUNTIME` 相同修订号通知仍然有效。
-- [ ] 档案未修改白名单时传 `whitelisted=null`；明确修改使用目标值。收到保存数据变化不覆盖草稿。
-- [ ] 报表只展示返回的 totals、score、quality；筛选和分页只作用于 details。
-- [ ] 外观通过正式 API 保存，不额外写 SharedPreferences。保存失败保留编辑值。
+- [x] 测试旧查询晚返回、取消不报错、错误字段映射、无记录、未知时长、真实零秒、权限缺失、保存失败和变更通知。
+- [ ] 实现请求序号、领域和对象匹配、生命周期刷新与草稿分离。`RUNTIME` 相同修订号通知仍然有效。状态与变更处理已完成，前台生命周期刷新随任务 4 接入。
+- [x] 档案未修改白名单时传 `whitelisted=null`；明确修改使用目标值。收到保存数据变化不覆盖草稿。
+- [x] 报表只展示返回的 totals、score、quality；筛选和分页只作用于 details。
+- [x] 外观通过正式 API 保存，不额外写 SharedPreferences。保存失败保留编辑值。
+
+状态与 ViewModel 已完成独立契约及代码质量审查；38 项单元测试和 Debug AAR 验证通过。测试 Fake 限定在测试源集，未添加生产契约副本或生产 Fake。
 
 核心并发验收：先发 A 查询，再发 B，最后返回 A；显示值必须保持 B。调用被取消后不出现保存失败提示。此逻辑通过可控挂起 Fake 和协程虚拟时间验证。
 
