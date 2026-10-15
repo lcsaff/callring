@@ -36,7 +36,7 @@ UI 与业务侧交接 API 注入点、主题预设稳定 ID、`IncomingCallUiSin
 
 ## UI 目录和职责
 
-新 UI 集中在 `app/src/main/kotlin/com/greatwall/callring/ui/`。按功能组织页面及其状态逻辑，共享视觉规范由设计系统统一提供。
+新 UI 集中在独立 Android library 模块 `ui/`，源码位于 `ui/src/main/kotlin/com/greatwall/callring/ui/`。按功能组织页面及其状态逻辑，共享视觉规范由设计系统统一提供；`app` 负责应用与业务图组装。
 
 ```text
 ui/
