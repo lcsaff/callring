@@ -1,5 +1,7 @@
 package com.greatwall.callring.ui.feature.settings
 
+import com.greatwall.callring.ui.designsystem.components.BrandButton
+
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -56,7 +58,7 @@ fun LeavesScreen(
         SettingsCard {
             Text("请假时区：$zoneId")
             InputError(if (zone == null) "当前工作时区无效，请先修改工作时间设置" else null)
-            Button({ edit(null) }, enabled = !mutation.busy && zone != null, modifier = Modifier.fillMaxWidth()) { Text("添加请假") }
+            BrandButton({ edit(null) }, enabled = !mutation.busy && zone != null, modifier = Modifier.fillMaxWidth()) { Text("添加请假") }
         }
         if (entries.isEmpty()) EmptyContent("暂无请假记录")
         entries.forEach { entry ->

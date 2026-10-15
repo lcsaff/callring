@@ -1,5 +1,7 @@
 package com.greatwall.callring.ui.feature.settings
 
+import com.greatwall.callring.ui.designsystem.components.BrandButton
+
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -38,7 +40,7 @@ fun CalendarScreen(
     SettingsLayout("节假日与日期覆盖", state, mutation, onBack, onRetry) { data ->
         SettingsCard("日历数据") {
             Text("导入年度日历后，将更新节假日与调休依据。")
-            Button(onImport, enabled = !mutation.busy, modifier = Modifier.fillMaxWidth()) { Text("导入日历文件") }
+            BrandButton(onImport, enabled = !mutation.busy, modifier = Modifier.fillMaxWidth()) { Text("导入日历文件") }
             FieldError(mutation, "source", "uri")
             if (data.years.isEmpty()) EmptyContent("暂无已导入日历")
             data.years.forEach { year ->
@@ -46,7 +48,7 @@ fun CalendarScreen(
                 Text("来源：${year.source}\n发布日期：${year.published}\n版本：${year.version}")
             }
         }
-        Button({ edit(null) }, enabled = !mutation.busy, modifier = Modifier.fillMaxWidth()) { Text("添加日期覆盖") }
+        BrandButton({ edit(null) }, enabled = !mutation.busy, modifier = Modifier.fillMaxWidth()) { Text("添加日期覆盖") }
         if (data.overrides.isEmpty()) EmptyContent("暂无日期覆盖")
         data.overrides.forEach { entry ->
             SettingsCard(entry.date.toString()) {

@@ -1,5 +1,7 @@
 package com.greatwall.callring.ui.feature.settings
 
+import com.greatwall.callring.ui.designsystem.components.BrandButton
+
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -49,7 +51,7 @@ fun RuntimeScreen(
                 }
                 SettingsCard("通话记录同步") {
                     Text("请求同步系统通话记录。同步结果以运行状态和统计数据为准。")
-                    Button(onSynchronize, enabled = !mutation.busy, modifier = Modifier.fillMaxWidth()) { Text("同步通话记录") }
+                    BrandButton(onSynchronize, enabled = !mutation.busy, modifier = Modifier.fillMaxWidth()) { Text("同步通话记录") }
                 }
                 SettingsCard("诊断记录") {
                     data.diagnosticsError?.let {

@@ -1,5 +1,7 @@
 package com.greatwall.callring.ui.feature.settings
 
+import com.greatwall.callring.ui.designsystem.components.BrandButton
+
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
@@ -24,12 +26,12 @@ fun RingtoneScreen(
             Text(data.displayName.ifBlank { "未命名铃声" }, style = MaterialTheme.typography.titleMedium)
             Text("来源：" + when (data.source) { AudioSource.BUILT_IN -> "内置"; AudioSource.IMPORTED -> "导入音频" })
             Text("试听时长：${data.previewSeconds} 秒")
-            Button(onImport, enabled = !mutation.busy, modifier = Modifier.fillMaxWidth()) { Text("导入音频") }
+            BrandButton(onImport, enabled = !mutation.busy, modifier = Modifier.fillMaxWidth()) { Text("导入音频") }
             FieldError(mutation, "source", "uri")
             OutlinedButton(onRestore, enabled = !mutation.busy, modifier = Modifier.fillMaxWidth()) { Text("恢复内置铃声") }
         }
         SettingsCard("试听") {
-            Button(onPreview, enabled = !mutation.busy, modifier = Modifier.fillMaxWidth()) { Text("试听铃声") }
+            BrandButton(onPreview, enabled = !mutation.busy, modifier = Modifier.fillMaxWidth()) { Text("试听铃声") }
             OutlinedButton(onStop, enabled = !mutation.busy, modifier = Modifier.fillMaxWidth()) { Text("停止播放") }
         }
     }

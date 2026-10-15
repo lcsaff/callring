@@ -42,10 +42,10 @@ UI 日志、构建结果与 `summary.json` 位于 `ui/build/qa/`，该目录被 
 
 | 项目 | 当前证据或状态 | 验收要求 |
 | --- | --- | --- |
-| UI 单元测试 | 本轮完整运行 100 项通过，零失败/错误/跳过 | 日志 `ui/build/qa/summary.json`、`ui/build/qa/build.log` |
-| Compose 设备测试 | 本轮独立 UI 包完整运行 34 项通过 | 日志 `ui/build/qa/device-tests.log`；包含实际 Window 和桌面宿主 |
+| UI 单元测试 | 本轮完整运行 106 项通过，零失败/错误/跳过 | 日志 `ui/build/qa/summary.json`、`ui/build/qa/build.log` |
+| Compose 设备测试 | 本轮独立 UI 包完整运行 35 项通过 | 日志 `ui/build/qa/device-tests.log`；包含实际 Window、桌面宿主与原色按钮像素检查 |
 | 设置对话框状态恢复 | 14 项共享设置用例通过；三个计数重置回归和一个旋转期间完成回归均实际执行失败→修复→通过 | 覆盖草稿、首次成功关闭及单次提交；不等于真实杀进程验收 |
-| 完整 App/Backend/UI 构建 | 本轮通过 Debug、Release、AndroidTest、Backend QA、App/UI Lint；Backend 66、App 66、UI 100 项单元测试均零失败/错误/跳过 | 摘要 `app/build/qa/backend-refactor/summary.json`，日志 `build/backend-final-device.log` |
+| 完整 App/Backend/UI 构建 | 本轮通过 Debug、Release、AndroidTest、Backend QA、App/UI Lint；Backend 66、App 66、UI 106 项单元测试均零失败/错误/跳过 | 摘要 `app/build/qa/backend-refactor/summary.json`，日志 `build/theme-brand-full.log` |
 | 后端设备测试 | 本轮隔离 Backend QA 31 项通过，包含新增回归 | 证据 `app/build/qa/backend-refactor/device-tests.log`；与 UI 独立包分开运行 |
 | 实际悬浮 Window | 真机显示、收起/展开、隐藏/重挂载、编辑焦点及已有草稿跨隐藏恢复通过；已核对截图 | 实际手势拖动边界仍待现场验收 |
 | IME 与锁屏 | 编辑窗口已核对可聚焦标志；键盘遮挡和系统安全锁屏仍待现场验证 | 键盘避让、长表单滚动、保存/取消、锁屏隐藏及解锁草稿恢复；窗口 hide/show 不等于系统锁屏 |
@@ -61,6 +61,8 @@ UI 日志、构建结果与 `summary.json` 位于 `ui/build/qa/`，该目录被 
 本轮设备：小米 15 Pro，Android 16。两个验证脚本均退出 0；UI 包临时 app-op 已恢复。Release DEX 检查确认新页面、悬浮窗和组件入口存在，旧 UI/业务副本及 UI 测试夹具不存在；生产入口使用正式业务图。源码对应本验收文件所在提交，业务基线为 `e15e180`。
 
 窗口回归同时复现并修正了 `ComposeView` 同名 `height` 遮蔽可用高度而导致初始高度为零的问题。使用明确的 `availableHeightPx`，保持系统窗口 `WRAP_CONTENT`，不保留手工测量或固定高度的诊断补丁。截图位于忽略目录 `ui/build/screenshots/`；测试源中的共享用例可重复生成。
+
+主题已按用户后续确认修正：主按钮与原色预览保留原始 RGB，背景及通用容器中性，文字/图标独立适配明度。正红 `#E60012` 的深浅模式实机像素已核对；蓝、绿、黑、白也纳入相同回归，评分角色保持独立。完整记录见 [主题原色修正](UI主题原色修正.md)。
 
 ## 最终验收记录方式
 

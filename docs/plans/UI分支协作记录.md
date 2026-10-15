@@ -31,4 +31,4 @@ AppearanceSettings(ThemeSelection.PRESET, "unicom_red", null, ColorMode.FOLLOW_S
 
 UI 分支已快进集成业务侧已提交检查点 `e15e180`，采用同仓库 `backend/` 构建。生产 Application 负责单个 BackendGraph 和展示端口；整体交付必须删除旧 UI，不将中间状态当作最终迁移完成。
 
-UI 迁移已完成生产接线和旧代码清理，保留在 `refactor/ui` 工作树。本轮全量构建、边界检查、232 项本地测试、34 项 UI 实机及 31 项 Backend QA 实机测试通过。详细证据及尚待现场验收的系统项目见 [UI 重构验收](UI重构_验收.md)。业务工作树不作修改，主分支集成另行处理。
+UI 迁移已完成生产接线和旧代码清理，保留在 `refactor/ui` 工作树。含后续主题原色修正的本轮全量构建、边界检查、238 项本地测试、35 项 UI 实机及 31 项 Backend QA 实机测试通过。详细证据及尚待现场验收的系统项目见 [UI 重构验收](UI重构_验收.md)。业务工作树不作修改，主分支集成另行处理。

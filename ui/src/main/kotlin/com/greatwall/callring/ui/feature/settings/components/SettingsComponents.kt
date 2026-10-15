@@ -1,5 +1,7 @@
 package com.greatwall.callring.ui.feature.settings.components
 
+import com.greatwall.callring.ui.designsystem.components.BrandButton
+
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -64,7 +66,7 @@ internal fun InputError(message: String?) {
 
 @Composable
 internal fun SaveAction(mutation: MutationState, enabled: Boolean = true, onSave: () -> Unit) {
-    Button(onClick = onSave, enabled = enabled && !mutation.busy,
+    BrandButton(onClick = onSave, enabled = enabled && !mutation.busy,
         modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).testTag("settings-save")) {
         Text(if (mutation.busy) "保存中…" else "保存")
     }

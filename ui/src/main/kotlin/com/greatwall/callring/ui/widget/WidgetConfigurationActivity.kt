@@ -1,5 +1,7 @@
 package com.greatwall.callring.ui.widget
 
+import com.greatwall.callring.ui.designsystem.components.BrandButton
+
 import android.app.Activity
 import android.appwidget.AppWidgetManager
 import android.content.ComponentName
@@ -125,7 +127,7 @@ fun WidgetConfigurationScreen(
         Surface(tonalElevation = 3.dp) {
             Row(Modifier.fillMaxWidth().navigationBarsPadding().padding(16.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 OutlinedButton(onClick = onCancel, enabled = !blocked, modifier = Modifier.weight(1f)) { Text("取消") }
-                Button(onClick = onSave, enabled = selected != null && !blocked, modifier = Modifier.weight(1f)) {
+                BrandButton(onClick = onSave, enabled = selected != null && !blocked, modifier = Modifier.weight(1f)) {
                     Text(if (mutation.busy) "正在保存…" else "保存")
                 }
             }

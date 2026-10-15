@@ -95,7 +95,7 @@ assertEquals(ScoreBand.UNAVAILABLE, ScorePalette.band(null))
 - [x] 完成 Debug、Release、AndroidTest、Lint、单元与隔离数据设备回归。
 - [x] 核查生产依赖图没有旧 UI、Fake、旧入口转发或双 UI 路由，再完成整体集成。
 
-最终自动检查结果：Backend 66、App 66、UI 100 项本地测试；独立 UI 包 34 项、Backend QA 包 31 项实机测试通过。Release DEX 与边界脚本无旧入口或 UI 测试夹具。系统现场项目独立保留于 [验收记录](UI重构_验收.md)，不影响上述源码迁移状态，也不计作已验收。
+最终自动检查结果（含主题原色修正）：Backend 66、App 66、UI 106 项本地测试；独立 UI 包 35 项、Backend QA 包 31 项实机测试通过。Release DEX 与边界脚本无旧入口或 UI 测试夹具。系统现场项目独立保留于 [验收记录](UI重构_验收.md)，不影响上述源码迁移状态，也不计作已验收。
 
 ## 执行与检查点
 

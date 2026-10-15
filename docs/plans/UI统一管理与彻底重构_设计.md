@@ -143,7 +143,7 @@ UI 实现契约中的 `IncomingCallUiSink`，由组装入口注入来电处理�
 
 主题使用稳定标识、显示名称、浅色方案和深色方案定义。页面和组件消费颜色角色，不根据具体主题名称编写分支。添加预设时只增加主题定义和注册记录。
 
-自定义主题保存用户选择的主色，通过 Material 配色工具生成配套的主色、容器色、背景、表面、文字和边框颜色。用户可以用颜色选择器或六位十六进制色值调节，实时预览后应用保存。配色生成支持从单一主色构建完整方案，依据 [Material Color Utilities](https://github.com/material-foundation/material-color-utilities)。
+自定义主题保存用户选择的主色，主按钮及原色预览使用完全一致的 RGB，两种显示模式不将原色转成柔和色。背景、表面、卡片、通用选中容器及边框采用中性色；文字、图标与普通强调角色独立调整明度以保持对比度。`primaryFixed/onPrimaryFixed` 表示原色填充与其黑白文字，`primary` 表示中性表面上的可读强调色；所有主按钮统一使用 `BrandButton`。通用 `secondaryContainer` 保留中性角色，避免滑杆轨道同色及黑白主题的选中指示消失。用户可以用颜色选择器或六位十六进制色值调节，实时预览后应用保存。中性色板与强调色明度计算使用已锁定版本的 Material Color Utilities，不再保留旧柔和配色分支。
 
 外观偏好通过 `settings.getAppearance()` 和 `settings.saveAppearance()` 读取和保存，UI 不另建一份持久化配置。`AppearanceSettings` 使用 `ThemeSelection`、`presetId`、`customSeedRgb` 和 `ColorMode`；自定义 RGB 为不带透明通道的 `0x000000..0xFFFFFF`，`CUSTOM` 必须有色值。切换预设保留已保存的自定义主色；默认联通红、跟随系统。输入中的预览色与已提交偏好分开管理，无效色值不能覆盖当前有效配置。用户选定的主题不会被系统壁纸配色覆盖；跟随系统只决定深浅模式。
 

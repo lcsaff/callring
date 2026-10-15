@@ -14,10 +14,11 @@ import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.unit.dp
 import com.google.android.material.color.utilities.DynamicScheme
 import com.google.android.material.color.utilities.Hct
-import com.google.android.material.color.utilities.SchemeTonalSpot
+import com.google.android.material.color.utilities.SchemeMonochrome
 import com.greatwall.callring.application.api.AppearanceSettings
 import com.greatwall.callring.application.api.ColorMode
 import com.greatwall.callring.application.api.ThemeSelection
@@ -44,19 +45,60 @@ data class ThemeDefinition(
     }
 
     companion object {
-        /** Material Color Utilities supplies every role; no wallpaper colors enter this palette. */
+        /** Fixed fills preserve the selected RGB; text accents adapt independently on neutral surfaces. */
         @SuppressLint("RestrictedApi") // Published utilities in the pinned Material 1.13.0 artifact.
         fun fromSeed(id: String, name: String, seedRgb: Int): ThemeDefinition {
             require(seedRgb in 0x000000..0xFFFFFF) { "主色必须为六位 RGB 颜色" }
             val seed = Hct.fromInt(seedRgb or 0xFF000000.toInt())
             return ThemeDefinition(
                 id, name, seedRgb,
-                SchemeTonalSpot(seed, false, 0.0).toComposeColors(),
-                SchemeTonalSpot(seed, true, 0.0).toComposeColors(),
+                brandScheme(seed, false),
+                brandScheme(seed, true),
             )
         }
     }
 }
+
+@SuppressLint("RestrictedApi")
+private fun brandScheme(seed: Hct, dark: Boolean): ColorScheme {
+    val neutral = SchemeMonochrome(Hct.fromInt(0xFF000000.toInt()), dark, 0.0).toComposeColors()
+    val fill = Color(seed.toInt())
+    val onFill = if (colorContrast(Color.Black, fill) >= colorContrast(Color.White, fill)) Color.Black else Color.White
+    val surfaces = listOf(neutral.surface, neutral.surfaceContainerLowest, neutral.surfaceContainerLow,
+        neutral.surfaceContainer, neutral.surfaceContainerHigh, neutral.surfaceContainerHighest,
+        neutral.surfaceBright, neutral.surfaceDim)
+    val accent = readableAccent(seed, surfaces, dark)
+    val onAccent = if (colorContrast(Color.Black, accent) >= colorContrast(Color.White, accent)) Color.Black else Color.White
+    return neutral.copy(
+        primary = accent, onPrimary = onAccent,
+        primaryContainer = neutral.surfaceContainerHigh, onPrimaryContainer = neutral.onSurface,
+        secondary = accent, onSecondary = onAccent,
+        tertiary = accent, onTertiary = onAccent,
+        tertiaryContainer = neutral.surfaceContainerHigh, onTertiaryContainer = neutral.onSurface,
+        inversePrimary = readableAccent(seed, listOf(neutral.inverseSurface), !dark),
+        primaryFixed = fill, primaryFixedDim = fill, onPrimaryFixed = onFill, onPrimaryFixedVariant = onFill,
+        secondaryFixed = fill, secondaryFixedDim = fill, onSecondaryFixed = onFill, onSecondaryFixedVariant = onFill,
+        tertiaryFixed = fill, tertiaryFixedDim = fill, onTertiaryFixed = onFill, onTertiaryFixedVariant = onFill,
+    )
+}
+
+@SuppressLint("RestrictedApi")
+private fun readableAccent(seed: Hct, surfaces: List<Color>, dark: Boolean): Color {
+    fun readable(color: Color) = surfaces.all { colorContrast(color, it) >= 4.5 }
+    val original = Color(seed.toInt())
+    if (readable(original)) return original
+    // Move only toward the needed luminance; do not replace the brand with a pastel palette.
+    val tones = if (dark) kotlin.math.ceil(seed.tone).toInt()..100
+        else kotlin.math.floor(seed.tone).toInt() downTo 0
+    for (tone in tones) {
+        val candidate = Color(Hct.from(seed.hue, seed.chroma, tone.toDouble()).toInt())
+        if (readable(candidate)) return candidate
+    }
+    return if (dark) Color.White else Color.Black
+}
+
+internal fun colorContrast(a: Color, b: Color): Double =
+    (maxOf(a.luminance(), b.luminance()) + 0.05) / (minOf(a.luminance(), b.luminance()) + 0.05)
 
 /** A registry is an immutable snapshot; extending it only requires additional definitions. */
 @Immutable

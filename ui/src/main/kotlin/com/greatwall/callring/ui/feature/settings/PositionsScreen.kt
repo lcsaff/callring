@@ -1,5 +1,7 @@
 package com.greatwall.callring.ui.feature.settings
 
+import com.greatwall.callring.ui.designsystem.components.BrandButton
+
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
@@ -52,7 +54,7 @@ fun PositionsScreen(
                 TextButton(onRetry, enabled = !mutation.busy) { Text("刷新职位状态") }
             }
         }
-        Button({ edit(null) }, enabled = !mutation.busy, modifier = Modifier.fillMaxWidth()) { Text("添加职位") }
+        BrandButton({ edit(null) }, enabled = !mutation.busy, modifier = Modifier.fillMaxWidth()) { Text("添加职位") }
         if (data.options.isEmpty()) EmptyContent("暂无职位，请添加职位后选择我的职位")
         data.options.forEach { option ->
             SettingsCard {

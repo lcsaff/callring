@@ -80,8 +80,8 @@ fun AppearanceScreen(
                 Text("来电管理", color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.titleLarge)
                 Text("在此查看主题效果，保存后应用。")
                 LinearProgressIndicator(progress = { 0.65f }, modifier = Modifier.fillMaxWidth())
-                Surface(color = MaterialTheme.colorScheme.primaryContainer, shape = MaterialTheme.shapes.medium) {
-                    Text("主题色预览", Modifier.padding(16.dp), color = MaterialTheme.colorScheme.onPrimaryContainer)
+                Surface(color = MaterialTheme.colorScheme.primaryFixed, shape = MaterialTheme.shapes.medium) {
+                    Text("主题色预览", Modifier.padding(16.dp), color = MaterialTheme.colorScheme.onPrimaryFixed)
                 }
             }
         }
