@@ -21,3 +21,6 @@ __pycache__/
 # Brainstorm scratch state (regenerable: bundled browser profile, npm installs)
 .superpowers/**/state/preview-browser/
 .superpowers/**/state/**/node_modules/
+
+# Isolated development worktrees
+/.worktrees/
