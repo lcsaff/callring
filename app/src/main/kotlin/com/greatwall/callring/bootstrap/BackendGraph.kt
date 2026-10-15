@@ -1,10 +1,13 @@
 package com.greatwall.callring.bootstrap
 
+import android.Manifest
 import android.content.Context
+import android.content.pm.PackageManager
 import com.greatwall.callring.application.CallringBackend
 import com.greatwall.callring.application.api.*
 import com.greatwall.callring.data.SqliteBackendStore
 import com.greatwall.callring.platform.*
+import com.greatwall.callring.platform.calling.AndroidCallWorkLease
 import com.greatwall.callring.platform.calling.BackendIncomingCallEngine
 import com.greatwall.callring.platform.calling.IncomingCallCoordinator
 import java.io.Closeable
@@ -20,6 +23,9 @@ class BackendGraph(
 ) : Closeable {
     private val application = context.applicationContext
     private val lifetime = Any()
+    // Scheduler binder calls never hold the lock used by Telecom's graph getters.
+    private val recoveryLifetime = Any()
+    private val callWorkLease = AndroidCallWorkLease(application)
     @Volatile private var closed = false
     private val store = LazyBackendStore {
         SqliteBackendStore(application, configuration.databaseName)
@@ -108,7 +114,22 @@ class BackendGraph(
 
     private val incomingDelegate = lazy {
         ensureOpen()
-        IncomingCallCoordinator(BackendIncomingCallEngine(backend), incomingCallUi) {
+        IncomingCallCoordinator(
+            BackendIncomingCallEngine(backend),
+            incomingCallUi,
+            workLease = { callWorkLease.acquire() },
+            afterCompletion = {
+                synchronized(recoveryLifetime) {
+                    if (
+                        !closed &&
+                            application.checkSelfPermission(Manifest.permission.READ_CALL_LOG) ==
+                                PackageManager.PERMISSION_GRANTED
+                    ) {
+                        syncScheduler.requestSync(configuration.clock.millis())
+                    }
+                }
+            },
+        ) {
             diagnostics.enqueue(DiagnosticEvent.CALL_RECORD_FAILED)
         }
     }
@@ -123,16 +144,19 @@ class BackendGraph(
         check(!closed) { "backend.closed" }
     }
 
+    /** Drains asynchronous writes and closes persistence; call from a background thread. */
     override fun close() {
         val resources =
-            synchronized(lifetime) {
-                if (closed) return
-                closed = true
-                Triple(
-                    if (incomingDelegate.isInitialized()) incomingDelegate.value else null,
-                    if (audioDelegate.isInitialized()) audioDelegate.value else null,
-                    if (diagnosticsDelegate.isInitialized()) diagnosticsDelegate.value else null,
-                )
+            synchronized(recoveryLifetime) {
+                synchronized(lifetime) {
+                    if (closed) return
+                    closed = true
+                    Triple(
+                        if (incomingDelegate.isInitialized()) incomingDelegate.value else null,
+                        if (audioDelegate.isInitialized()) audioDelegate.value else null,
+                        if (diagnosticsDelegate.isInitialized()) diagnosticsDelegate.value else null,
+                    )
+                }
             }
         // The coordinator drains persistence work. Its callbacks may need graph-owned diagnostics;
         // never wait for its executors while holding the graph's lifetime lock.

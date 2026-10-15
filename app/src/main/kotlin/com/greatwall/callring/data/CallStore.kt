@@ -4,7 +4,8 @@ import android.content.ContentValues
 import android.database.Cursor
 import android.database.sqlite.SQLiteDatabase
 import com.greatwall.callring.application.api.*
-import com.greatwall.callring.application.ports.*
+import com.greatwall.callring.domain.BackendState
+import com.greatwall.callring.domain.RawCallRecord
 
 /**
  * Stores independent screening/provider rows. Joining screening facts belongs to the application.

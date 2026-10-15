@@ -2,7 +2,8 @@ package com.greatwall.callring.data
 
 import android.database.sqlite.SQLiteDatabase
 import com.greatwall.callring.application.api.*
-import com.greatwall.callring.application.ports.*
+import com.greatwall.callring.domain.BackendState
+import com.greatwall.callring.domain.LeaveRecord
 import java.time.LocalDate
 import org.json.JSONArray
 

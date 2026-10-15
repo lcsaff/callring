@@ -2,6 +2,7 @@ package com.greatwall.callring.bootstrap
 
 import com.greatwall.callring.application.api.*
 import com.greatwall.callring.application.ports.*
+import com.greatwall.callring.domain.BackendState
 import java.io.Closeable
 
 /**

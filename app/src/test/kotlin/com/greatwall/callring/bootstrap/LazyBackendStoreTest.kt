@@ -1,6 +1,7 @@
 package com.greatwall.callring.bootstrap
 
 import com.greatwall.callring.application.ports.*
+import com.greatwall.callring.domain.BackendState
 import org.junit.Assert.*
 import org.junit.Test
 

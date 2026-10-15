@@ -1,7 +1,9 @@
 package com.greatwall.callring.data
 
 import android.database.sqlite.SQLiteDatabase
-import com.greatwall.callring.application.ports.*
+import com.greatwall.callring.domain.BackendState
+import com.greatwall.callring.domain.PositionRecord
+import com.greatwall.callring.domain.ProfileRecord
 
 internal class ProfileStore(private val db: SQLiteDatabase) {
     private val positions = TableSnapshot(db, "positions", "id")

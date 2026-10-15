@@ -48,7 +48,7 @@ def main():
     tasks = [":backend:test", ":app:testDebugUnitTest", ":app:assembleDebug", ":app:assembleRelease",
              ":app:lintDebug", ":app:assembleDebugAndroidTest", ":app:assembleBackendQa", "--console=plain"]
     if (ROOT / "ui/build.gradle").exists():
-        tasks[:0] = [":ui:testDebugUnitTest", ":ui:assembleDebug"]
+        tasks[:0] = [":ui:testDebugUnitTest", ":ui:assembleDebug", ":ui:assembleDebugAndroidTest", ":ui:lintDebug"]
     run([gradle, *tasks], "build.log")
     summary = {
         "intermediateUiMigration": args.legacy_ui_pending,
@@ -67,7 +67,9 @@ def main():
         adb = ["adb", "-s", args.device]
         run([*adb, "install", "-r", "-t", str(apk)], "device-install.log")
         classes = ",".join(("com.greatwall.callring.data.SqliteBackendStoreDeviceTest",
-                            "com.greatwall.callring.backend.BackendApiDeviceTest"))
+                            "com.greatwall.callring.backend.BackendApiDeviceTest",
+                            "com.greatwall.callring.backend.BackendMutationDeviceTest",
+                            "com.greatwall.callring.BackendSchedulerDeviceTest"))
         output = run([*adb, "shell", "am", "instrument", "-w", "-e", "class", classes,
                       f"{QA_PACKAGE}/android.test.InstrumentationTestRunner"], "device-tests.log")
         # adb may return zero even when the instrumentation runner failed.

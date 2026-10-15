@@ -2,8 +2,8 @@ package com.greatwall.callring.data
 
 import android.content.Context
 import android.database.sqlite.SQLiteDatabase
-import com.greatwall.callring.application.ports.BackendState
 import com.greatwall.callring.application.ports.BackendStore
+import com.greatwall.callring.domain.BackendState
 
 /** Android persistence adapter; all business rules live behind the BackendStore port. */
 class SqliteBackendStore

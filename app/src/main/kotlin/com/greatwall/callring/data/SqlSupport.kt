@@ -52,8 +52,19 @@ internal class TableSnapshot(
     init {
         db.query(table, null, null, null, null, null, null).use { cursor ->
             while (cursor.moveToNext()) {
+                // DatabaseUtils.cursorRowToContentValues converts every non-blob value to String.
+                // Keep SQLite types so unchanged numeric columns stay out of UPDATE statements.
                 val row = ContentValues()
-                android.database.DatabaseUtils.cursorRowToContentValues(cursor, row)
+                for (column in 0 until cursor.columnCount) {
+                    val name = cursor.getColumnName(column)
+                    when (cursor.getType(column)) {
+                        Cursor.FIELD_TYPE_NULL -> row.putNull(name)
+                        Cursor.FIELD_TYPE_INTEGER -> row.put(name, cursor.getLong(column))
+                        Cursor.FIELD_TYPE_FLOAT -> row.put(name, cursor.getDouble(column))
+                        Cursor.FIELD_TYPE_BLOB -> row.put(name, cursor.getBlob(column))
+                        else -> row.put(name, cursor.getString(column))
+                    }
+                }
                 original[row.getAsString(key)] = row
             }
         }

@@ -73,21 +73,28 @@ internal constructor(
 class IncomingCallCoordinator(
     private val engine: IncomingCallEngine,
     private val presentation: IncomingCallUiSink,
+    private val workLease: () -> Closeable = { Closeable {} },
+    private val afterCompletion: () -> Unit = {},
     private val onFailure: () -> Unit,
-) : Closeable {
+) : IncomingCallOperations, Closeable {
     private val lifetime = Any()
     private var closed = false
     private val decisions: ExecutorService = Executors.newFixedThreadPool(2)
     private val writer: ExecutorService = Executors.newSingleThreadExecutor()
     private val pending = ConcurrentHashMap.newKeySet<CompletableFuture<*>>()
 
-    fun execute(task: Runnable) =
+    override fun execute(task: Runnable) =
         synchronized(lifetime) {
             check(!closed) { "backend.closed" }
-            decisions.execute(task)
+            decisions.execute { withWorkLease { task.run() } }
         }
 
-    fun inspect(sessionId: String, raw: String, at: Long, account: String?): IncomingCallSession {
+    override fun inspect(
+        sessionId: String,
+        raw: String,
+        at: Long,
+        account: String?,
+    ): IncomingCallSession {
         val number = engine.normalize(raw)
         val assessment = engine.evaluate(number, at)
         val initial =
@@ -104,13 +111,15 @@ class IncomingCallCoordinator(
                     tracked(
                         CompletableFuture.supplyAsync(
                             {
-                                engine.record(
-                                    number,
-                                    at,
-                                    initial,
-                                    account,
-                                    assessment.classification,
-                                )
+                                withWorkLease {
+                                    engine.record(
+                                        number,
+                                        at,
+                                        initial,
+                                        account,
+                                        assessment.classification,
+                                    )
+                                }
                             },
                             writer,
                         )
@@ -119,10 +128,13 @@ class IncomingCallCoordinator(
         return IncomingCallSession(sessionId, number, at, assessment, record)
     }
 
-    fun inspectAgain(session: IncomingCallSession): IncomingDecision =
+    override fun inspectAgain(session: IncomingCallSession): IncomingDecision =
         engine.evaluate(session.number, session.at)
 
-    fun complete(session: IncomingCallSession, decision: CallDecision): CompletableFuture<Unit> =
+    override fun complete(
+        session: IncomingCallSession,
+        decision: CallDecision,
+    ): CompletableFuture<Unit> =
         synchronized(lifetime) {
             check(!closed) { "backend.closed" }
             synchronized(session) {
@@ -130,14 +142,24 @@ class IncomingCallCoordinator(
                     ?: tracked(
                             session.record.handleAsync(
                                 { id, error ->
-                                    if (error != null) safeFailure()
-                                    else if (id > 0)
-                                        try {
-                                            engine.complete(id, decision)
-                                        } catch (_: Exception) {
-                                            safeFailure()
+                                    if (!session.assessment.statisticsEnabled) Unit
+                                    else {
+                                        withWorkLease {
+                                            if (error != null) safeFailure()
+                                            else if (id > 0)
+                                                try {
+                                                    engine.complete(id, decision)
+                                                } catch (_: Exception) {
+                                                    safeFailure()
+                                                }
+                                            try {
+                                                afterCompletion()
+                                            } catch (_: Exception) {
+                                                safeFailure()
+                                            }
+                                            Unit
                                         }
-                                    Unit
+                                    }
                                 },
                                 writer,
                             )
@@ -146,7 +168,11 @@ class IncomingCallCoordinator(
             }
         }
 
-    fun show(session: IncomingCallSession, decision: CallDecision, latest: IncomingDecision) {
+    override fun show(
+        session: IncomingCallSession,
+        decision: CallDecision,
+        latest: IncomingDecision,
+    ) {
         if (!latest.overlayEnabled || !latest.matched) return
         try {
             presentation.show(
@@ -168,6 +194,25 @@ class IncomingCallCoordinator(
             onFailure()
         } catch (_: Exception) {
             /* Diagnostics cannot affect a call. */
+        }
+    }
+
+    private inline fun <T> withWorkLease(work: () -> T): T {
+        val lease =
+            try {
+                workLease()
+            } catch (_: Exception) {
+                safeFailure()
+                null
+            }
+        try {
+            return work()
+        } finally {
+            try {
+                lease?.close()
+            } catch (_: Exception) {
+                safeFailure()
+            }
         }
     }
 

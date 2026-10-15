@@ -3,7 +3,11 @@ package com.greatwall.callring.data
 import android.database.sqlite.SQLiteDatabase
 import android.test.InstrumentationTestCase
 import com.greatwall.callring.application.api.*
-import com.greatwall.callring.application.ports.*
+import com.greatwall.callring.domain.AuditRecord
+import com.greatwall.callring.domain.LeaveRecord
+import com.greatwall.callring.domain.PositionRecord
+import com.greatwall.callring.domain.ProfileRecord
+import com.greatwall.callring.domain.RawCallRecord
 import com.greatwall.callring.domain.WorkClassifier
 import java.time.LocalDate
 import java.time.ZoneId

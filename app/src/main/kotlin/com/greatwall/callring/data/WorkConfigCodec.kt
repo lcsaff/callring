@@ -1,7 +1,7 @@
 package com.greatwall.callring.data
 
 import com.greatwall.callring.application.api.*
-import com.greatwall.callring.application.ports.CalendarImport
+import com.greatwall.callring.domain.CalendarImport
 import java.io.ByteArrayOutputStream
 import java.io.InputStream
 import java.nio.ByteBuffer

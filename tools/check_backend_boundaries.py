@@ -39,6 +39,8 @@ def check(legacy_ui_pending=False):
         errors.append("JVM backend build depends on Android or a presentation module")
     for path in sources:
         text = without_comments(path.read_text(encoding="utf-8"))
+        if "/domain/" in path.as_posix() and re.search(r'\bimport\s+com\.greatwall\.callring\.application\.(?!api\.)', text):
+            errors.append(f"{path.relative_to(ROOT)}: domain algorithm depends on application implementation/ports")
         for pattern in (r'\bandroid(?:x)?\.', r'\bcom\.greatwall\.callring\.ui\.',
                         r'\b(?:Toast|WindowManager|RemoteViews|CallerRepository|ManagementEvents)\b'):
             if re.search(pattern, text):
@@ -70,8 +72,10 @@ def check(legacy_ui_pending=False):
     if not legacy_ui_pending:
         errors.extend(f"Legacy production source remains: {name}" for name in LEGACY if (ROOT / BASE / name).exists())
     for directory in (ROOT / "app/src/main/kotlin/com/greatwall/callring/ui", ROOT / "ui/src/main"):
-        for path in directory.rglob("*.kt"):
-            if re.search(r'\b(?:CallerRepository|ManagementEvents|SQLiteDatabase|SQLiteOpenHelper)\b|com\.greatwall\.callring\.(?:data|platform|domain)\.|com\.greatwall\.callring\.application\.(?:ports|CallringBackend)', without_comments(path.read_text(encoding="utf-8"))):
+        for path in directory.rglob("*"):
+            if path.suffix not in (".kt", ".java"):
+                continue
+            if re.search(r'\b(?:CallerRepository|ManagementEvents|SQLiteDatabase|SQLiteOpenHelper|CallringBackend|BackendStore)\b|com\.greatwall\.callring\.(?:data|domain)\.|com\.greatwall\.callring\.platform\.(?!UiNotificationEntryPoints\b)|com\.greatwall\.callring\.application\.(?!api\.)', without_comments(path.read_text(encoding="utf-8"))):
                 errors.append(f"{path.relative_to(ROOT)}: UI depends on a business/storage implementation")
     return sources, errors
 

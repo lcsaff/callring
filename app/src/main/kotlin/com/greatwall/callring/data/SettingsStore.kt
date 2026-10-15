@@ -2,7 +2,8 @@ package com.greatwall.callring.data
 
 import android.database.sqlite.SQLiteDatabase
 import com.greatwall.callring.application.api.*
-import com.greatwall.callring.application.ports.*
+import com.greatwall.callring.domain.BackendState
+import com.greatwall.callring.domain.StatisticsInterval
 import org.json.JSONObject
 
 internal class SettingsStore(private val db: SQLiteDatabase) {

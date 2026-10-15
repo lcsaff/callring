@@ -3,7 +3,8 @@ package com.greatwall.callring.data
 import android.content.Context
 import android.database.sqlite.SQLiteDatabase
 import android.database.sqlite.SQLiteOpenHelper
-import com.greatwall.callring.application.ports.defaultWorkSchedule
+import com.greatwall.callring.domain.AuditRecord
+import com.greatwall.callring.domain.defaultWorkSchedule
 
 /** Exact shipped version-3 schema. Unsupported versions fail without deleting user data. */
 internal class CallringDatabase(private val context: Context, name: String) :
@@ -83,7 +84,7 @@ internal class CallringDatabase(private val context: Context, name: String) :
             state.holidays.putAll(data.holidays)
             state.makeupDates.addAll(data.makeupDates)
             state.pendingAudits.add(
-                com.greatwall.callring.application.ports.AuditRecord(
+                com.greatwall.callring.domain.AuditRecord(
                     "calendar",
                     data.metadata.year.toString(),
                     raw,
