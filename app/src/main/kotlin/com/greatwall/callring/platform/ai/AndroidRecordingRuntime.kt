@@ -42,6 +42,11 @@ class AndroidRecordingRuntime(
     private var player: MediaPlayer? = null
     private val playbackGeneration = AtomicLong()
     private val filesLock = Any()
+    fun folderAccess(): AccessState {
+        val folder = store.settings().systemFolder ?: return AccessState.NOT_REQUIRED
+        return if(context.contentResolver.persistedUriPermissions.any { it.uri.toString() == folder && it.isReadPermission }) AccessState.GRANTED else AccessState.DENIED
+    }
+    fun playbackStatus(): PlaybackStatus = synchronized(filesLock) { PlaybackStatus(if(player == null) PlaybackMode.NONE else PlaybackMode.PREVIEW, if(player?.isPlaying == true) PlaybackState.PLAYING else PlaybackState.IDLE) }
 
     private suspend fun <T> result(block: () -> T): ApiResult<T> = withContext(Dispatchers.IO) {
         try { ApiResult.Success(block()) }
