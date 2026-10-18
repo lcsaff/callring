@@ -9,7 +9,7 @@ import com.greatwall.callring.ui.feature.settings.components.*
 import com.greatwall.callring.ui.state.LoadState
 import com.greatwall.callring.ui.state.MutationState
 
-enum class SettingsPage { QUIET, POSITIONS, MY_POSITION, WORK, CALENDAR, LEAVES, SCORE, RINGTONE, RUNTIME, APPEARANCE, RECORDING }
+enum class SettingsPage { QUIET, POSITIONS, MY_POSITION, WORK, CALENDAR, LEAVES, SCORE, RINGTONE, RUNTIME, APPEARANCE, RECORDING, AI }
 
 @Composable
 fun SettingsOverviewScreen(
@@ -35,7 +35,8 @@ fun SettingsOverviewScreen(
             SettingRow("评分设置", "非工作来电权重 ${data.score.offHoursWeight} · 重复来电权重 ${data.score.repeatWeight}", { onNavigate(SettingsPage.SCORE) })
         }
         SettingsCard("录音与 AI") {
-            SettingRow("录音与 AI", "录音来源、转写与内容分析", { onNavigate(SettingsPage.RECORDING) })
+            SettingRow("录音设置", "录音来源、归档与自动分析开关", { onNavigate(SettingsPage.RECORDING) })
+            SettingRow("AI 设置", "分析、转写连接与上下文预算", { onNavigate(SettingsPage.AI) })
         }
         SettingsCard("显示") {
             SettingRow("外观", "主题色与深浅模式", { onNavigate(SettingsPage.APPEARANCE) })

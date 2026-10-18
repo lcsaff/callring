@@ -8,16 +8,18 @@ class ForegroundResourceRegistry(private val clock: Clock = Clock.systemUTC()) {
     private data class Resource(val document: DocumentRef, val signature: String, val expires: Long, val generation: Long, var target: Long? = null)
     private val resources = linkedMapOf<String, Resource>()
     private var generation = 0L
+    private fun signature(file: RecordingFile) = "${file.name}:${file.modifiedAt}:${file.size}:${file.modifiedKnown}"
     @Synchronized fun reset() { generation++; resources.clear() }
     @Synchronized fun issue(file: RecordingFile): String {
-        val signature = "${file.name}:${file.modifiedAt}:${file.size}:${file.modifiedKnown}"
+        val signature = signature(file)
         resources.entries.removeAll { it.value.expires <= clock.millis() }
         return resources.entries.firstOrNull { it.value.document.uri == file.uri && it.value.signature == signature }?.key
             ?: UUID.randomUUID().toString().also { resources[it] = Resource(DocumentRef(file.uri), signature, clock.millis() + 600000, generation) }
     }
-    @Synchronized fun resolve(handle: String, target: Long): DocumentRef {
+    @Synchronized fun resolve(handle: String, target: Long, currentFiles: List<RecordingFile>): DocumentRef {
         val resource = requireNotNull(resources[handle]) { "action.invalid_handle" }
         require(resource.expires > clock.millis() && resource.generation == generation && (resource.target == null || resource.target == target)) { "action.stale" }
+        require(currentFiles.any { it.uri == resource.document.uri && signature(it) == resource.signature }) { "action.resource_changed" }
         resource.target = target
         return resource.document
     }

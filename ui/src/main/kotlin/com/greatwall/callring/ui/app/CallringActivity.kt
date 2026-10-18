@@ -22,14 +22,13 @@ import com.greatwall.callring.ui.overlay.CallringOverlayService
 import kotlinx.coroutines.launch
 
 class CallringActivity : ComponentActivity() {
+    private lateinit var actionHost: ForegroundActionHost
     private var notice by mutableStateOf<UiNotice?>(null)
     private var noticeSequence = 0L
     private fun notifyUser(text: String) { notice = UiNotice(++noticeSequence, text) }
     private var destination by mutableStateOf<UiDestination>(UiDestination.Home)
     private var requestSequence by mutableLongStateOf(0)
     private var refreshSignal by mutableLongStateOf(0)
-    private val permission = registerForActivityResult(ActivityResultContracts.RequestPermission()) { refreshSignal++ }
-    private val systemScreen = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { refreshSignal++ }
     private val timeChanges = object : BroadcastReceiver() {
         override fun onReceive(context: Context, intent: Intent) { refreshSignal++ }
     }
@@ -40,7 +39,8 @@ class CallringActivity : ComponentActivity() {
         requestSequence = savedInstanceState?.getLong(STATE_REQUEST_SEQUENCE) ?: 0
         destination = readDestination(intent)
         val api = (application as UiApiOwner).uiApi
-        setContent { CallringApp(api, destination, requestSequence, refreshSignal, ::requestCapability, ::previewCall, ::pinWidget, ::openApplicationSettings, notice, { if (notice?.id == it) notice = null }, onTestOverlay = ::testOverlay) }
+        actionHost = ForegroundActionHost(this,api,::notifyUser)
+        setContent { CallringApp(api, destination, requestSequence, refreshSignal, ::requestCapability, ::previewCall, ::pinWidget, ::openApplicationSettings, notice, { if (notice?.id == it) notice = null }, onTestOverlay = ::testOverlay); ForegroundActionDialogs(api) }
     }
 
     override fun onResume() {
@@ -88,64 +88,26 @@ class CallringActivity : ComponentActivity() {
         }
     }
 
-    private fun requestCapability(capability: Capability) {
-        try {
-            when (capability) {
-                Capability.PHONE_STATE -> permission.launch(Manifest.permission.READ_PHONE_STATE)
-                Capability.MICROPHONE -> permission.launch(Manifest.permission.RECORD_AUDIO)
-                Capability.CALL_LOG -> permission.launch(Manifest.permission.READ_CALL_LOG)
-                Capability.CONTACTS -> permission.launch(Manifest.permission.READ_CONTACTS)
-                Capability.NOTIFICATIONS -> if (Build.VERSION.SDK_INT >= 33) permission.launch(Manifest.permission.POST_NOTIFICATIONS)
-                    else systemScreen.launch(Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).putExtra(Settings.EXTRA_APP_PACKAGE, packageName))
-                Capability.OVERLAY -> systemScreen.launch(Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:$packageName")))
-                Capability.BATTERY_OPTIMIZATION_EXEMPTION -> systemScreen.launch(Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS))
-                Capability.CALL_SCREENING_ROLE -> {
-                    val roles = getSystemService(RoleManager::class.java)
-                    if (roles.isRoleAvailable(RoleManager.ROLE_CALL_SCREENING)) systemScreen.launch(roles.createRequestRoleIntent(RoleManager.ROLE_CALL_SCREENING))
-                    else notifyUser("系统不支持来电筛选角色")
-                }
-            }
-        } catch (_: ActivityNotFoundException) {
-            notifyUser("系统没有提供该设置入口")
-        } catch (_: SecurityException) {
-            notifyUser("系统限制了该操作，请在系统设置中调整")
-        }
-    }
-
-    private fun openApplicationSettings() {
-        try {
-            systemScreen.launch(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:$packageName")))
-        } catch (_: ActivityNotFoundException) {
-            notifyUser("系统没有提供该设置入口")
-        } catch (_: SecurityException) {
-            notifyUser("系统限制了该操作，请在系统设置中调整")
-        }
-    }
-
+    private fun requestCapability(capability: Capability) = actionHost.requestCapability(capability)
+    private fun openApplicationSettings() = actionHost.openApplicationSettings()
     private fun previewCall(call: CallDetail) {
-        if (!Settings.canDrawOverlays(this)) { requestCapability(Capability.OVERLAY); return }
-        try { startForegroundService(CallringOverlayService.previewIntent(this, call)) }
-        catch (_: RuntimeException) { notifyUser("系统未允许显示来电卡片，请检查运行条件") }
-    }
-
-    private fun testOverlay() {
-        if (!Settings.canDrawOverlays(this)) {
-            notifyUser("开启悬浮窗权限后，请再次点击“测试悬浮窗”。")
-            requestCapability(Capability.OVERLAY)
-            return
+        when(actionHost.previewCall(call)) {
+            com.greatwall.callring.application.api.ForegroundResultStatus.DENIED -> requestCapability(Capability.OVERLAY)
+            com.greatwall.callring.application.api.ForegroundResultStatus.UNAVAILABLE -> notifyUser("系统未允许显示来电卡片")
+            else -> Unit
         }
-        try { startForegroundService(CallringOverlayService.testPreviewIntent(this)) }
-        catch (_: RuntimeException) { notifyUser("系统未允许显示测试卡片，请检查悬浮窗及后台弹出界面权限。") }
     }
-
+    private fun testOverlay() {
+        when(actionHost.testOverlay()) {
+            com.greatwall.callring.application.api.ForegroundResultStatus.DENIED -> { notifyUser("开启悬浮窗权限后，请再次测试"); requestCapability(Capability.OVERLAY) }
+            com.greatwall.callring.application.api.ForegroundResultStatus.UNAVAILABLE -> notifyUser("系统未允许显示测试卡片")
+            else -> Unit
+        }
+    }
     private fun pinWidget() {
-        val manager = AppWidgetManager.getInstance(this)
-        try {
-            if (!manager.isRequestPinAppWidgetSupported || !manager.requestPinAppWidget(ComponentName(this, CallringWidgetReceiver::class.java), null, null))
-                notifyUser("请在桌面长按并选择添加小组件")
-        } catch (_: RuntimeException) { notifyUser("请在桌面长按并选择添加小组件") }
+        if(actionHost.pinWidget() == com.greatwall.callring.application.api.ForegroundResultStatus.LAUNCHED) notifyUser("已发起桌面添加，请以系统桌面为准")
+        else notifyUser("请在桌面长按并选择添加小组件")
     }
-
     companion object {
         private const val EXTRA_TARGET = "callring.ui.target"
         private const val EXTRA_NUMBER = "callring.ui.number"
@@ -157,6 +119,7 @@ class CallringActivity : ComponentActivity() {
                 UiDestination.Callers -> "callers"
                 UiDestination.RecordingArchives -> "recording-archives"
                 UiDestination.Settings -> "settings"
+                UiDestination.Conversation -> "conversation"
                 is UiDestination.Report -> "report"
                 is UiDestination.Archive -> "report"
                 is UiDestination.EditCaller -> "edit"

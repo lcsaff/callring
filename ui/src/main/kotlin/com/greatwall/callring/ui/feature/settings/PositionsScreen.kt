@@ -25,6 +25,7 @@ import com.greatwall.callring.ui.state.*
 fun PositionsScreen(
     state: LoadState<PositionSettings>, mutation: MutationState, onBack: () -> Unit, onRetry: () -> Unit,
     onSave: (SavePosition) -> Unit, onDelete: (Long) -> Unit, onMine: (Long?) -> Unit,
+    onSaveDraft: ((SavePosition, SavePosition?) -> Unit)? = null,
 ) {
     var editorOpen by rememberSaveable { mutableStateOf(false) }
     var editingId by rememberSaveable { mutableStateOf<Long?>(null) }
@@ -75,7 +76,11 @@ fun PositionsScreen(
             busy = mutation.busy, canSave = name.isNotBlank() && parsedLevel != null && parsedLevel > 0,
             dirty = name != initialName || level != initialLevel || active != initialActive,
             onDismiss = { editorOpen = false },
-            onSave = { onSave(SavePosition(editingId, name.trim(), parsedLevel!!, active)) }) {
+            onSave = {
+                val command = SavePosition(editingId, name.trim(), parsedLevel!!, active)
+                val base = editingId?.let { SavePosition(it, initialName, initialLevel.toInt(), initialActive) }
+                if (onSaveDraft != null) onSaveDraft(command, base) else onSave(command)
+            }) {
                 Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     MutationFeedback(mutation, showSuccess = false)
                     OutlinedTextField(name, { name = it }, label = { Text("职位名称") }, singleLine = true,

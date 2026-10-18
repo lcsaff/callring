@@ -30,6 +30,12 @@ class AppearanceViewModel(
     private var loadJob: Job? = null
     private var loadRevision = 0L
     private var refreshRequested = false
+    private var baseline = savedState.get<String>("appearance-base")?.let(SettingsDraftCodecs.appearance::decode)
+
+    private fun setBaseline(value: AppearanceSettings) {
+        baseline = value
+        savedState["appearance-base"] = SettingsDraftCodecs.appearance.encode(value)
+    }
 
     init { observeChanges(api.changes, setOf(DataDomain.APPEARANCE), refresh = ::refresh) }
 
@@ -45,7 +51,8 @@ class AppearanceViewModel(
                 is ApiResult.Failure -> mutableState.value = state.value.copy(loading = false, error = result.error)
                 is ApiResult.Success -> {
                     mutableState.value = LoadState(result.value, loaded = true)
-                    if (!unpersisted) mutableDraft.value = result.value
+                    if (!unpersisted) { mutableDraft.value = result.value; setBaseline(result.value) }
+                    else if (baseline == null) setBaseline(result.value)
                     if (restoring) {
                         restoring = false
                         if (draft.value == result.value) {
@@ -89,15 +96,27 @@ class AppearanceViewModel(
             try {
                 while (pendingReady) {
                     val value = pending ?: break
+                    val base = baseline ?: break
                     val ticket = revision
                     pending = null
                     pendingReady = false
-                    when (val result = attempt { api.settings.saveAppearance(value) }) {
+                    when (val result = attempt { api.edits.appearance(base, value) }) {
                         is ApiResult.Success -> {
                             ++loadRevision // A read started before this commit cannot replace it.
                             loadJob?.cancel()
                             mutableState.value = LoadState(result.value, loaded = true)
                             mutableMutation.value = mutation.value.copy(completed = mutation.value.completed + 1, error = null)
+                            setBaseline(result.value)
+                            if (ticket != revision) pending?.let { next ->
+                                val rebased = AppearanceSettings(
+                                    if (next.selection == value.selection) result.value.selection else next.selection,
+                                    if (next.presetId == value.presetId) result.value.presetId else next.presetId,
+                                    if (next.customSeedRgb == value.customSeedRgb) result.value.customSeedRgb else next.customSeedRgb,
+                                    if (next.colorMode == value.colorMode) result.value.colorMode else next.colorMode)
+                                pending = rebased
+                                mutableDraft.value = rebased
+                                savedState[PENDING_KEY] = SettingsDraftCodecs.appearance.encode(rebased)
+                            }
                             if (ticket == revision) {
                                 mutableDraft.value = result.value
                                 unpersisted = false

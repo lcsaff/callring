@@ -9,6 +9,7 @@ sealed class UiDestination(val route: String) {
     data object Callers : UiDestination("callers")
     data object RecordingArchives : UiDestination("recording-archives")
     data object Settings : UiDestination("settings")
+    data object Conversation : UiDestination("conversation")
     data object Lookup : UiDestination("lookup")
     data object Leaves : UiDestination("leaves")
     data object Positions : UiDestination("positions")
@@ -22,6 +23,7 @@ sealed class UiDestination(val route: String) {
             "callers" -> Callers
             "recording-archives" -> RecordingArchives
             "settings" -> Settings
+            "conversation" -> Conversation
             "report" -> number?.takeIf { it.isNotBlank() }?.let(::Report) ?: Lookup
             "edit" -> EditCaller(number?.takeIf { it.isNotBlank() })
             "lookup" -> Lookup

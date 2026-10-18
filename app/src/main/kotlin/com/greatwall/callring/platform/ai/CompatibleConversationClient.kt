@@ -49,7 +49,7 @@ class CompatibleConversationClient(private val openConnection: (URL) -> HttpURLC
             request.messages.forEach { message ->
                 val blocks = JSONArray()
                 if(message.role == "tool") message.receipts.forEach { receipt -> blocks.put(JSONObject().put("type", "tool_result").put("tool_use_id", receipt.toolCallId).put("content", redactor.text(receiptJson(receipt).encode())).put("is_error", receipt.status in setOf(ToolStatus.FAILED, ToolStatus.DENIED, ToolStatus.CANCELLED, ToolStatus.UNKNOWN, ToolStatus.SKIPPED))) }
-                else if(message.blocks.isNotEmpty()) message.blocks.forEach { block -> blocks.put(JSONObject(redactor.redact(block).encode())) }
+                else if(message.blocks.isNotEmpty()) message.blocks.forEach { block -> blocks.put(JSONObject(redactAssistantBlock(block, redactor).encode())) }
                 else {
                     if(message.text.isNotEmpty()) blocks.put(JSONObject().put("type", "text").put("text", redactor.text(message.text)))
                     message.toolCalls.forEach { call -> blocks.put(JSONObject().put("type", "tool_use").put("id", call.id).put("name", call.name).put("input", JSONObject(redactor.redact(call.arguments).encode()))) }

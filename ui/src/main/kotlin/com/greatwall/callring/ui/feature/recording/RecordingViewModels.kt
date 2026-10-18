@@ -5,9 +5,10 @@ import com.greatwall.callring.ui.state.*
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.*
 
-class RecordingArchivesViewModel(private val api: RecordingApi, testScope: CoroutineScope? = null) : UiViewModel(testScope) {
+class RecordingArchivesViewModel(private val api: RecordingApi, testScope: CoroutineScope? = null, changes: ChangeFeed? = null) : UiViewModel(testScope) {
     private val loader = RequestLoader<List<CallArchive>>(scope)
     val state = loader.state
+    init { if(changes != null) scope.launch { changes.observe().collect { refresh() } } }
     fun refresh() = loader.load {
         when (val result = api.listArchives()) {
             is ApiResult.Success -> ApiResult.Success(result.value.sortedWith(
@@ -48,13 +49,16 @@ class RecordingSettingsViewModel(private val api: RecordingApi, testScope: Corou
 
 class ArchiveViewModel(private val api: RecordingApi, private val callers: CallersApi, private val callId: Long,
     private val number: String, private val startedAt: Long, testScope: CoroutineScope? = null,
-    private val cleanupDispatcher: CoroutineDispatcher = Dispatchers.IO) : UiViewModel(testScope) {
+    private val cleanupDispatcher: CoroutineDispatcher = Dispatchers.IO,
+    private val adoptCommand: (suspend (Long, Long) -> ApiResult<CallerProfile>)? = null,
+    changes: ChangeFeed? = null) : UiViewModel(testScope) {
     private val loader = RequestLoader<CallArchive?>(scope)
     val state = loader.state
     private val fileLoader = RequestLoader<List<RecordingFile>>(scope)
     val files = fileLoader.state
     private val writer = MutationRunner(scope)
     val mutation = writer.state
+    init { if(changes != null) scope.launch { changes.observe().collect { refresh() } } }
     fun refresh() = loader.load { api.getArchive(callId) }
     fun listSystem() = fileLoader.load { api.systemRecordings() }
     fun import(document: DocumentRef, source: RecordingSource = RecordingSource.IMPORTED) = writer.run(
@@ -71,16 +75,8 @@ class ArchiveViewModel(private val api: RecordingApi, private val callers: Calle
     }
     /** Called only after the user confirms the self-reported fields. Never copies inferred identity or position. */
     fun adoptIdentity() {
-        val analysis = state.value.data?.analysis ?: return
-        writer.run({
-            when (val current = callers.getEditor(number)) {
-                is ApiResult.Failure -> current
-                is ApiResult.Success -> current.value.draft.let { draft ->
-                    callers.saveProfile(SaveCallerProfile(number, analysis.name.ifBlank { draft.name },
-                        analysis.organization.ifBlank { draft.department }, draft.positionId, draft.whitelisted))
-                }
-            }
-        }, "姓名和单位已采纳；请到档案核对")
+        val archive = state.value.data ?: return
+        writer.run({ adoptCommand?.invoke(callId,archive.generation) ?: ApiResult.Failure(ApiError(ErrorCode.SYSTEM_UNAVAILABLE,"recording.adoption_unavailable")) }, "姓名和单位已采纳；请到档案核对")
     }
 }
 

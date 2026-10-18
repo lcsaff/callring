@@ -19,7 +19,7 @@ class ConversationService(
 ) : ConversationApi, AutoCloseable {
     private val lock = Any()
     override val state = MutableStateFlow(ConversationState(UUID.randomUUID().toString()))
-    override val foreground = ForegroundActionService()
+    override val foreground = ForegroundActionService(checkCommand = { command -> command == null || coordinator.committed(command.operationId) != null || runCatching { coordinator.guard(command.copy(mayCommit = { true })) {} }.isSuccess })
     private val generation = AtomicLong()
     private val history = mutableListOf<ConversationMessage>()
     private var turnJob: Job? = null
@@ -74,7 +74,7 @@ class ConversationService(
             fingerprint = currentFingerprint
             val redactor = SecretRedactor(listOf(configuration.analysis.apiKey, configuration.transcription.apiKey))
             activeRedactor = redactor
-            synchronized(lock) { history += ConversationMessage("user", redactor.text(text)); state.value = state.value.copy(target = "${configuration.analysis.url} · ${configuration.analysis.model}") }
+            synchronized(lock) { history += ConversationMessage("user", redactor.text(text)); state.value = state.value.copy(target = redactor.text("${configuration.analysis.url} · ${configuration.analysis.model}")) }
             val connection = configuration.analysis
             val operationClient = clientFactory().also { client = it }
             var snapshot = capture()
@@ -102,7 +102,7 @@ class ConversationService(
                     val old = ledger[call.id]
                     require(old == null || old.first == argumentDigest(call)) { "ai.duplicate_call_mismatch" }
                 }
-                synchronized(lock) { history += ConversationMessage("assistant", redactor.text(reply.text), batch.map { it.copy(arguments = redactor.redact(it.arguments) as AiJson.Obj) }, blocks = reply.blocks.map { redactor.redact(it) }) }
+                synchronized(lock) { history += ConversationMessage("assistant", redactor.text(reply.text), batch.map { it.copy(arguments = redactor.redact(it.arguments) as AiJson.Obj) }, blocks = reply.blocks.map { redactAssistantBlock(it, redactor) }) }
                 paired = false
                 val results = mutableListOf<ToolReceipt>()
                 for((index, call) in batch.withIndex()) {
@@ -110,7 +110,7 @@ class ConversationService(
                     publish(ConversationPhase.EXECUTING)
                     if(executor.registry.validate(call).write) foregroundHost(session, token)
                     val cached = ledger[call.id]
-                    val command = CommandContext(UUID.randomUUID().toString(), snapshot.revision, token) { generation.get() == token && state.value.sessionId == session }
+                    val command = CommandContext(UUID.randomUUID().toString(), snapshot.revision, token, mayCommit = { foreground.hasHost }) { generation.get() == token && state.value.sessionId == session }
                     inFlight = call to command
                     var receipt = cached?.second ?: executor.execute(call, ToolExecutionContext(session, turnId, token, command))
                     receipt = receipt.copy(value = redactor.redact(receipt.value), error = receipt.error?.copy(fieldErrors = receipt.error.fieldErrors.mapValues { redactor.text(it.value) }))
@@ -120,7 +120,7 @@ class ConversationService(
                     ledger[call.id] = argumentDigest(call) to receipt
                     operationCount++
                     publish(ConversationPhase.EXECUTING, receipts = turnReceipts.toList())
-                    val failed = receipt.status in setOf(ToolStatus.FAILED, ToolStatus.UNKNOWN, ToolStatus.CANCELLED, ToolStatus.DENIED)
+                    val failed = receipt.error != null || receipt.status in setOf(ToolStatus.FAILED, ToolStatus.UNKNOWN, ToolStatus.CANCELLED, ToolStatus.DENIED)
                     if(failed) {
                         batch.drop(index+1).forEach { remaining -> results += ToolReceipt(UUID.randomUUID().toString(), remaining.id, ToolStatus.SKIPPED, error = ApiError(ErrorCode.SYSTEM_RESTRICTED, "ai.previous_tool_failed")) }
                         synchronized(lock) { history += ConversationMessage("tool", "", receipts = results) }
@@ -170,7 +170,10 @@ class ConversationService(
     private suspend fun foregroundHost(session: String, token: Long) {
         while(!foreground.hasHost) { ensureActive(session, token); publish(ConversationPhase.WAITING_FOREGROUND); delay(100) }
     }
-    private fun ensureActive(session: String, token: Long) { if(generation.get() != token || state.value.sessionId != session || connectionChanged) throw CancellationException("ai.cancelled") }
+    private fun ensureActive(session: String, token: Long) {
+        if (fingerprint.isNotEmpty() && connectionFingerprint(settings().analysis) != fingerprint) connectionChanged = true
+        if(generation.get() != token || state.value.sessionId != session || connectionChanged) throw CancellationException("ai.cancelled")
+    }
     override suspend fun stop(expectedSessionId: String): ApiResult<Unit> {
         val job = synchronized(lock) {
             if(state.value.sessionId != expectedSessionId) return failed(ErrorCode.CONFLICT, "ai.session_changed")

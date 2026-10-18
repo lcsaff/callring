@@ -5,6 +5,7 @@ import com.greatwall.callring.application.api.*
 import com.greatwall.callring.application.ports.BackendFailure
 import java.time.LocalDate
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.delay
 
 data class ToolExecutionContext(val sessionId: String, val turnId: String, val generation: Long, val command: CommandContext)
 class ToolExecutor(
@@ -25,13 +26,18 @@ class ToolExecutor(
             val bound = api().commandApi(scope.command)
             var status = if(definition.write) ToolStatus.COMMITTED else ToolStatus.READ
             suspend fun action(kind: ForegroundActionKind, parameters: AiJson.Obj = call.arguments): ForegroundHostResult {
-                val result = foreground.request(scope.sessionId, scope.turnId, call.id, scope.generation, kind, parameters, scope.command.active)
+                val result = foreground.request(scope.sessionId, scope.turnId, call.id, scope.generation, kind, parameters, scope.command, scope.command.active)
+                result.error?.let { throw BackendFailure(it) }
                 when (result.status) {
                     ForegroundResultStatus.CANCELLED -> throw BackendFailure(ApiError(ErrorCode.SYSTEM_RESTRICTED, "action.cancelled"))
                     ForegroundResultStatus.DENIED -> throw BackendFailure(ApiError(ErrorCode.PERMISSION_REQUIRED, "action.denied"))
                     ForegroundResultStatus.UNAVAILABLE -> throw BackendFailure(ApiError(ErrorCode.SYSTEM_UNAVAILABLE, "action.unavailable"))
+                    ForegroundResultStatus.STALE -> throw BackendFailure(ApiError(ErrorCode.CONFLICT, "action.stale"))
+                    ForegroundResultStatus.EXPIRED -> throw BackendFailure(ApiError(ErrorCode.SYSTEM_RESTRICTED, "action.expired"))
+                    ForegroundResultStatus.UNKNOWN -> throw BackendFailure(ApiError(ErrorCode.SYSTEM_UNAVAILABLE, "action.unknown"))
                     else -> Unit
                 }
+                while(!foreground.hasHost) { if(!scope.command.active()) throw CancellationException("ai.cancelled"); delay(100) }
                 return result
             }
             suspend fun document(kind: ForegroundActionKind): DocumentRef {
@@ -107,15 +113,15 @@ class ToolExecutor(
                 36 -> bound.settings.getAppearance().requiredValue()
                 37 -> {
                     val old = bound.settings.getAppearance().requiredValue()
-                    bound.settings.saveAppearance(AppearanceSettings(a.optS("selection")?.let(ThemeSelection::valueOf) ?: old.selection, a.optS("presetId") ?: old.presetId,
+                    bound.edits.appearance(old, AppearanceSettings(a.optS("selection")?.let(ThemeSelection::valueOf) ?: old.selection, a.optS("presetId") ?: old.presetId,
                         if(a.has("customSeedRgb")) a.optL("customSeedRgb")?.exactInt() else old.customSeedRgb, a.optS("colorMode")?.let(ColorMode::valueOf) ?: old.colorMode)).requiredValue()
                 }
                 38 -> bound.ringtone.getSettings().requiredValue()
                 39 -> bound.ringtone.setEnabled(a.b("enabled")).requiredValue()
                 40 -> bound.ringtone.importAudio(document(ForegroundActionKind.IMPORT_AUDIO)).requiredValue()
                 41 -> bound.ringtone.restoreBuiltIn().requiredValue()
-                42 -> bound.ringtone.startPreview().requiredValue()
-                43 -> bound.ringtone.stopPlayback().requiredValue()
+                42 -> { status = ToolStatus.LAUNCHED; bound.ringtone.startPreview().requiredValue() }
+                43 -> { status = ToolStatus.LAUNCHED; bound.ringtone.stopPlayback().requiredValue() }
                 44 -> bound.runtime.getStatus().requiredValue()
                 45 -> bound.runtime.getDiagnostics().requiredValue()
                 46 -> { status = ToolStatus.QUEUED; bound.runtime.requestCallLogSync().requiredValue() }
@@ -130,7 +136,7 @@ class ToolExecutor(
                 55 -> {
                     val identity = bound.recordings.getIdentity(a.l("callId")).requiredValue()
                     val source = if(a.has("handle")) RecordingSource.SYSTEM else RecordingSource.IMPORTED
-                    val target = if(a.has("handle")) resources.resolve(a.s("handle"), identity.callId) else document(ForegroundActionKind.IMPORT_RECORDING)
+                    val target = if(a.has("handle")) resources.resolve(a.s("handle"), identity.callId, bound.recordings.systemRecordings().requiredValue()) else document(ForegroundActionKind.IMPORT_RECORDING)
                     bound.recordings.importRecording(identity.callId, identity.number, identity.startedAtEpochMillis, target, source).requiredValue()
                 }
                 56 -> { status = ToolStatus.QUEUED; bound.recordings.retry(a.l("callId")).requiredValue() }
@@ -159,8 +165,10 @@ class ToolExecutor(
         catch(_: IllegalArgumentException) { return failure(call, scope, ApiError(ErrorCode.VALIDATION, "ai.invalid_tool_arguments")) }
         catch(_: Exception) { return failure(call, scope, ApiError(ErrorCode.INTERNAL, "ai.tool_failed")) }
     }
-    private fun failure(call: ConversationToolCall, scope: ToolExecutionContext, error: ApiError) = ToolReceipt(scope.command.operationId, call.id,
-        when(error.message) { "action.cancelled" -> ToolStatus.CANCELLED; "action.denied" -> ToolStatus.DENIED; else -> ToolStatus.FAILED }, error = error)
+    private fun failure(call: ConversationToolCall, scope: ToolExecutionContext, error: ApiError): ToolReceipt {
+        val committed = coordinator.committed(scope.command.operationId)
+        return ToolReceipt(scope.command.operationId,call.id, if(committed != null) ToolStatus.COMMITTED else when(error.message) { "action.cancelled" -> ToolStatus.CANCELLED; "action.denied" -> ToolStatus.DENIED; "action.unknown", "audio.launch_state_changed" -> ToolStatus.UNKNOWN; else -> ToolStatus.FAILED }, error = error, commitRevision = committed)
+    }
 }
 internal fun AiJson.Obj.has(key: String) = fields.containsKey(key)
 internal fun AiJson.Obj.s(key: String) = get(key).string()

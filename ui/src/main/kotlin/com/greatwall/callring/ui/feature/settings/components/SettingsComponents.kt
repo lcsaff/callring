@@ -57,7 +57,7 @@ internal fun FieldError(mutation: MutationState, vararg keys: String, includeDes
             path == key || (includeDescendants && (path.startsWith("$key.") || path.startsWith("$key[")))
         }
     }.values.distinct().forEach {
-        Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+        Text(if (it == "draft.field_changed") "此字段已被其他操作修改" else it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
     }
 }
 

@@ -19,9 +19,9 @@ interface ConversationApi {
     suspend fun newSession(expectedSessionId: String): ApiResult<Unit>
 }
 enum class ForegroundActionKind { CAPABILITY, APP_SETTINGS, PIN_WIDGET, TEST_OVERLAY, PREVIEW_CALL, IMPORT_AUDIO, IMPORT_RECORDING, IMPORT_CALENDAR, SELECT_FOLDER, EXPORT_CSV, CONFIRM, CREDENTIAL, COPY_CONNECTION, TEST_CONNECTION }
-enum class ForegroundResultStatus { VERIFIED, LAUNCHED, CANCELLED, DENIED, UNAVAILABLE }
-data class ForegroundTicket(val requestId: String, val sessionId: String, val turnId: String, val toolCallId: String, val generation: Long, val kind: ForegroundActionKind, val parameters: AiJson.Obj, val createdAt: Long, val expiresAt: Long, val launched: Boolean = false)
-data class ForegroundHostResult(val status: ForegroundResultStatus, val document: DocumentRef? = null)
+enum class ForegroundResultStatus { VERIFIED, LAUNCHED, CANCELLED, DENIED, UNAVAILABLE, STALE, EXPIRED, UNKNOWN }
+data class ForegroundTicket(val requestId: String, val sessionId: String, val turnId: String, val toolCallId: String, val generation: Long, val kind: ForegroundActionKind, val parameters: AiJson.Obj, val createdAt: Long, val expiresAt: Long, val launched: Boolean = false, val commandContext: CommandContext? = null)
+data class ForegroundHostResult(val status: ForegroundResultStatus, val document: DocumentRef? = null, val error: ApiError? = null)
 interface ForegroundActionApi {
     val pending: StateFlow<ForegroundTicket?>
     fun attachHost(): String

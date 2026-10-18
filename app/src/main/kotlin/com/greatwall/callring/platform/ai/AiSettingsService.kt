@@ -64,13 +64,20 @@ class AiSettingsService(
         }.aiView()
     }
     override suspend fun testSlot(slot: AiSlot) = result { val current = coordinator.guard(command) { store.settings() }; testConnection(if (slot == AiSlot.ANALYSIS) current.analysis else current.transcription, slot == AiSlot.TRANSCRIPTION) }
-    override suspend fun patchCombined(recordingBase: RecordingSettingsView, recording: RecordingSettingsPatch, aiBase: AiSettingsView, ai: AiSettingsPatch): ApiResult<Unit> = result {
+    override suspend fun testDraft(base: AiSettingsView, patch: AiSettingsPatch, slot: AiSlot) = result {
+        val value = coordinator.guard(command) { val current = store.settings();
+            if(slot == AiSlot.ANALYSIS) connection(base.analysis,current.analysis,patch.analysis,LocalSecretChange.Keep,base.revision)
+            else connection(base.transcription,current.transcription,patch.transcription,LocalSecretChange.Keep,base.revision)
+        }
+        testConnection(value,slot == AiSlot.TRANSCRIPTION)
+    }
+    override suspend fun patchCombined(recordingBase: RecordingSettingsView, recording: RecordingSettingsPatch, aiBase: AiSettingsView, ai: AiSettingsPatch, analysisSecret: LocalSecretChange, transcriptionSecret: LocalSecretChange): ApiResult<Unit> = result {
         val saved = store.updateSettings(command) { old ->
             val mode = field(recordingBase.captureMode, old.captureMode, recording.captureMode)
             if(mode == CaptureMode.MICROPHONE_EXPERIMENTAL && !microphoneGranted()) throw BackendFailure(ApiError(ErrorCode.PERMISSION_REQUIRED, "capability.required", requiredCapabilities = setOf(Capability.MICROPHONE)))
             old.copy(recordingEnabled = field(recordingBase.recordingEnabled, old.recordingEnabled, recording.recordingEnabled), automaticAnalysis = field(recordingBase.automaticAnalysis, old.automaticAnalysis, recording.automaticAnalysis), captureMode = mode,
-                analysis = connection(aiBase.analysis, old.analysis, ai.analysis, LocalSecretChange.Keep, aiBase.revision),
-                transcription = connection(aiBase.transcription, old.transcription, ai.transcription, LocalSecretChange.Keep, aiBase.revision),
+                analysis = connection(aiBase.analysis, old.analysis, ai.analysis, analysisSecret, aiBase.revision),
+                transcription = connection(aiBase.transcription, old.transcription, ai.transcription, transcriptionSecret, aiBase.revision),
                 conversationBudget = field(aiBase.budget, old.conversationBudget, ai.budget))
         }
         runCatching { afterSave(saved) }

@@ -21,8 +21,8 @@ class AppearanceViewModelTest {
             val requests = mutableListOf<AppearanceSettings>()
             val fake = UiFakeApi()
             val api = object : CallringUiApi by fake {
-                override val settings = object : SettingsApi by fake {
-                    override suspend fun saveAppearance(settings: AppearanceSettings): ApiResult<AppearanceSettings> {
+                override val edits = object : UiEditsApi by fake.edits {
+                    override suspend fun appearance(base: AppearanceSettings, settings: AppearanceSettings): ApiResult<AppearanceSettings> {
                         requests += settings
                         if (requests.size == 1) firstWrite.await()
                         return fake.saveAppearance(settings)
@@ -56,8 +56,8 @@ class AppearanceViewModelTest {
             var fail = true
             val fake = UiFakeApi()
             val api = object : CallringUiApi by fake {
-                override val settings = object : SettingsApi by fake {
-                    override suspend fun saveAppearance(settings: AppearanceSettings): ApiResult<AppearanceSettings> =
+                override val edits = object : UiEditsApi by fake.edits {
+                    override suspend fun appearance(base: AppearanceSettings, settings: AppearanceSettings): ApiResult<AppearanceSettings> =
                         if (fail) ApiResult.Failure(ApiError(ErrorCode.STORAGE_FAILURE, "disk unavailable"))
                         else fake.saveAppearance(settings)
                 }
@@ -104,8 +104,8 @@ class AppearanceViewModelTest {
         val requests = mutableListOf<AppearanceSettings>()
         val fake = UiFakeApi()
         val api = object : CallringUiApi by fake {
-            override val settings = object : SettingsApi by fake {
-                override suspend fun saveAppearance(settings: AppearanceSettings): ApiResult<AppearanceSettings> {
+            override val edits = object : UiEditsApi by fake.edits {
+                override suspend fun appearance(base: AppearanceSettings, settings: AppearanceSettings): ApiResult<AppearanceSettings> {
                     requests += settings
                     return fake.saveAppearance(settings)
                 }
@@ -129,8 +129,8 @@ class AppearanceViewModelTest {
         val requests = mutableListOf<AppearanceSettings>()
         val fake = UiFakeApi()
         val api = object : CallringUiApi by fake {
-            override val settings = object : SettingsApi by fake {
-                override suspend fun saveAppearance(settings: AppearanceSettings): ApiResult<AppearanceSettings> {
+            override val edits = object : UiEditsApi by fake.edits {
+                override suspend fun appearance(base: AppearanceSettings, settings: AppearanceSettings): ApiResult<AppearanceSettings> {
                     requests += settings
                     return if (requests.size == 1) {
                         firstWrite.await()

@@ -13,6 +13,22 @@ import org.robolectric.annotation.Config
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [33], manifest = Config.NONE)
 class AiSettingsServiceTest {
+    @Test fun draftConnectionTestUsesUnsavedFieldsAndOldFixturesReceiveNewDefaultWithoutOverwritingExplicitBudget() = runBlocking {
+        val coordinator = BusinessRevisionCoordinator()
+        val store = AndroidRecordingStore(RuntimeEnvironment.getApplication(), "draft_connection", cipher, coordinator)
+        val saved = AiConnection(url = "https://example.com", apiKey = "secret", model = "saved")
+        store.saveSettings(RecordingSettings(analysis = saved))
+        var tested: AiConnection? = null
+        val api = AiSettingsService(store,coordinator,{ true },{ connection, _ -> tested = connection })
+        val base = api.getAiView().ok()
+        api.testDraft(base,AiSettingsPatch(analysis = ConnectionPatch(model = PatchField.Set("unsaved"))),AiSlot.ANALYSIS).ok()
+        assertEquals("unsaved",tested!!.model)
+        assertEquals("secret",tested!!.apiKey)
+        assertEquals("saved",store.settings().analysis.model)
+        val legacy = RecordingJson.settings(RecordingJson.settings(store.settings()).apply { remove("conversation") })
+        assertEquals(49152L,legacy.conversationBudget.context)
+        assertEquals(32768L,RecordingJson.settings(RecordingJson.settings(store.settings().copy(conversationBudget = ConversationBudget(32768,4096)))).conversationBudget.context)
+    }
     private val cipher = object : RecordingCipher {
         override fun encrypt(value: String) = java.util.Base64.getEncoder().encodeToString(value.toByteArray())
         override fun decrypt(value: String) = String(java.util.Base64.getDecoder().decode(value))

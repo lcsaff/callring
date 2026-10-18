@@ -14,7 +14,7 @@ class SettingsSummaryViewModel(private val api: CallringUiApi) : SnapshotViewMod
 
 class QuietViewModel(api: CallringUiApi, state: SavedStateHandle) : DraftEditor<QuietSettings>(
     api.changes, setOf(DataDomain.QUIET_HOURS), state, SettingsDraftCodecs.quiet,
-    api.settings::getQuietHours, api.settings::saveQuietHours
+    api.settings::getQuietHours, api.settings::saveQuietHours, saveWithBase = api.edits::quiet
 )
 
 class WorkScheduleViewModel(private val api: CallringUiApi, state: SavedStateHandle) : DraftEditor<WorkScheduleSettings>(
@@ -22,14 +22,14 @@ class WorkScheduleViewModel(private val api: CallringUiApi, state: SavedStateHan
     api.settings::getWorkSchedule, { value ->
         val shared = normalizeWorkSchedule(value)
         api.settings.saveWorkSchedule(SaveWorkSchedule(shared.zoneId, shared.weekly, shared.makeup))
-    }
+    }, saveWithBase = { base, value -> api.edits.work(base, normalizeWorkSchedule(value)) }
 ) {
     fun reset() = execute({ api.settings.resetWorkSchedule() }) { replaceDraft(it); refresh() }
 }
 
 class ScoreSettingsViewModel(private val api: CallringUiApi, state: SavedStateHandle) : DraftEditor<ScoreSettings>(
     api.changes, setOf(DataDomain.SCORE_SETTINGS), state, SettingsDraftCodecs.score,
-    api.settings::getScoreSettings, api.settings::saveScoreSettings
+    api.settings::getScoreSettings, api.settings::saveScoreSettings, saveWithBase = api.edits::score
 ) {
     fun reset() = execute({ api.settings.resetScoreSettings() }) { replaceDraft(it); refresh() }
 }
@@ -38,6 +38,7 @@ class PositionsViewModel(private val api: CallringUiApi) : SnapshotViewModel<Pos
     api.changes, setOf(DataDomain.POSITIONS, DataDomain.CALLERS), api.settings::getPositions
 ) {
     fun save(command: SavePosition) = write({ api.settings.savePosition(command) }, "职位已保存")
+    fun saveDraft(command: SavePosition, base: SavePosition?) = write({ api.edits.position(base, command) }, "职位已保存")
     fun delete(id: Long) = write({ api.settings.deletePosition(id) }, "职位已删除")
     fun mine(id: Long?) = write({ api.settings.setMyPosition(id) }, "我的职位已更新")
 }
@@ -58,5 +59,6 @@ class LeavesViewModel(private val api: CallringUiApi) : SnapshotViewModel<List<L
     api.changes, setOf(DataDomain.WORK_CALENDAR), api.settings::getLeaves
 ) {
     fun save(command: SaveLeave) = write({ api.settings.saveLeave(command) }, "请假记录已保存")
+    fun saveDraft(command: SaveLeave, base: SaveLeave?) = write({ api.edits.leave(base, command) }, "请假记录已保存")
     fun delete(id: Long) = write({ api.settings.deleteLeave(id) }, "请假记录已删除")
 }

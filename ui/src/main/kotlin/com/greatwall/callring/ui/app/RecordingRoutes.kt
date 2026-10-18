@@ -8,17 +8,18 @@ import androidx.compose.runtime.*
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.greatwall.callring.application.api.*
 import com.greatwall.callring.ui.feature.recording.*
+import com.greatwall.callring.ui.feature.ai.ScopedRecordingSettingsViewModel
 
-@Composable internal fun RecordingArchivesRoute(api: RecordingApi, signal: Long, onBack: () -> Unit,
+@Composable internal fun RecordingArchivesRoute(api: CallringUiApi, signal: Long, onBack: () -> Unit,
     onArchive: (CallArchive) -> Unit) {
-    val model: RecordingArchivesViewModel = uiViewModel { RecordingArchivesViewModel(api) }
+    val model: RecordingArchivesViewModel = uiViewModel { RecordingArchivesViewModel(api.recordings, changes = api.changes) }
     val state by model.state.collectAsStateWithLifecycle()
     ActiveRefresh(signal, intervalMillis = 3_000, refresh = model::refresh)
     RecordingArchivesScreen(state, onBack, model::refresh, onArchive)
 }
 
-@Composable internal fun RecordingSettingsRoute(api: RecordingApi, onBack: () -> Unit) {
-    val model: RecordingSettingsViewModel = uiViewModel { RecordingSettingsViewModel(api) }
+@Composable internal fun RecordingSettingsRoute(api: CallringUiApi, onBack: () -> Unit) {
+    val model: ScopedRecordingSettingsViewModel = uiViewModel { ScopedRecordingSettingsViewModel(api) }
     val state by model.state.collectAsStateWithLifecycle()
     val draft by model.draft.collectAsStateWithLifecycle()
     val dirty by model.dirty.collectAsStateWithLifecycle()
@@ -34,7 +35,7 @@ import com.greatwall.callring.ui.feature.recording.*
     LaunchedEffect(Unit) { model.refresh() }
     RecordingSettingsScreen(state, draft, dirty, mutation, onBack, model::refresh, model::edit, model::save,
         { try { folder.launch(null) } catch (_: ActivityNotFoundException) { permissionError = "系统没有可用的目录选择器" } },
-        { microphone.launch(Manifest.permission.RECORD_AUDIO) }, model::test, model::copyAnalysisToTranscription, model::copyTranscriptionToAnalysis)
+        { microphone.launch(Manifest.permission.RECORD_AUDIO) }, {}, {}, {})
     permissionError?.let { message -> androidx.compose.material3.AlertDialog(onDismissRequest = { permissionError = null },
         title = { androidx.compose.material3.Text("权限提示") }, text = { androidx.compose.material3.Text(message) },
         confirmButton = { androidx.compose.material3.TextButton(onClick = { permissionError = null }) { androidx.compose.material3.Text("知道了") } }) }
@@ -42,7 +43,7 @@ import com.greatwall.callring.ui.feature.recording.*
 
 @Composable internal fun ArchiveRoute(api: CallringUiApi, callId: Long, number: String, startedAt: Long, signal: Long,
     onBack: () -> Unit, onEdit: () -> Unit) {
-    val model: ArchiveViewModel = uiViewModel { ArchiveViewModel(api.recordings, api.callers, callId, number, startedAt) }
+    val model: ArchiveViewModel = uiViewModel { ArchiveViewModel(api.recordings, api.callers, callId, number, startedAt, adoptCommand = api::adoptIdentity, changes = api.changes) }
     val state by model.state.collectAsStateWithLifecycle()
     val files by model.files.collectAsStateWithLifecycle()
     val mutation by model.mutation.collectAsStateWithLifecycle()

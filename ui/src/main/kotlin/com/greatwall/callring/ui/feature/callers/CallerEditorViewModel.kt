@@ -11,7 +11,8 @@ class CallerEditorViewModel(
     private val api: CallersApi,
     changes: ChangeFeed,
     private val savedState: SavedStateHandle,
-    testScope: CoroutineScope? = null
+    testScope: CoroutineScope? = null,
+    private val saveWithBase: (suspend (CallerDraft, CallerDraft) -> ApiResult<CallerProfile>)? = null,
 ) : UiViewModel(testScope) {
     private val loader = RequestLoader<CallerEditorData>(scope)
     val state = loader.state
@@ -19,6 +20,7 @@ class CallerEditorViewModel(
     val mutation = writer.state
     private val mutableDraft = MutableStateFlow<CallerDraft?>(null)
     val draft = mutableDraft.asStateFlow()
+    private var baseline: CallerDraft? = if (savedState.get<String>("baseNumber") != null) restoreBase() else null
 
     init {
         observeChanges(changes, setOf(DataDomain.CALLERS, DataDomain.POSITIONS), number, ::refresh)
@@ -27,6 +29,10 @@ class CallerEditorViewModel(
     fun refresh() = loader.load(onSuccess = { snapshot ->
         if (mutableDraft.value == null) {
             mutableDraft.value = if (savedState.get<Boolean>("hasDraft") == true) restore(snapshot.draft) else snapshot.draft
+        }
+        if (baseline == null || mutableDraft.value == baseline) {
+            if (baseline != null) { mutableDraft.value = snapshot.draft; persist(snapshot.draft) }
+            setBaseline(snapshot.draft)
         }
     }) { api.getEditor(number) }
 
@@ -41,15 +47,28 @@ class CallerEditorViewModel(
 
     fun save() {
         val draft = mutableDraft.value ?: return
+        val base = baseline ?: return
         val command = SaveCallerProfile(draft.number, draft.name, draft.department, draft.positionId,
             if (savedState.get<Boolean>("whitelistTouched") == true) draft.whitelisted else null)
-        writer.run({ api.saveProfile(command) }, "档案已保存") { profile ->
+        writer.run({ saveWithBase?.invoke(base, draft) ?: api.saveProfile(command) }, "档案已保存") { profile ->
             savedState["whitelistTouched"] = false
-            mutableDraft.value = draft.copy(number = profile.number, whitelisted = profile.whitelisted)
+            mutableDraft.value = CallerDraft(profile.number, profile.name, profile.department, profile.position?.id, profile.whitelisted)
+            setBaseline(mutableDraft.value!!)
             persist(mutableDraft.value!!)
             refresh()
         }
     }
+
+    private fun setBaseline(value: CallerDraft) {
+        baseline = value
+        savedState["baseNumber"] = value.number
+        savedState["baseName"] = value.name
+        savedState["baseDepartment"] = value.department
+        savedState["basePosition"] = value.positionId
+        savedState["baseWhitelist"] = value.whitelisted
+    }
+    private fun restoreBase() = CallerDraft(savedState["baseNumber"] ?: "", savedState["baseName"] ?: "",
+        savedState["baseDepartment"] ?: "", savedState["basePosition"], savedState["baseWhitelist"] ?: false)
 
     private fun persist(draft: CallerDraft) {
         savedState["hasDraft"] = true

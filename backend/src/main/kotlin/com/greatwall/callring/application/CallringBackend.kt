@@ -39,6 +39,7 @@ class CallringBackend(
     override val callers: CallersApi = createCallersApi(context)
     override val reports: ReportsApi = createReportsApi(context)
     override val settings: SettingsApi = createSettingsApi(context)
+    override val edits: UiEditsApi = createUiEditsApi(context)
     override val ringtone: RingtoneApi = createRingtoneApi(context)
     override val runtime: RuntimeApi = createRuntimeApi(context)
     override val widgets: WidgetBindingsApi = createWidgetBindingsApi(context)
@@ -54,8 +55,10 @@ class CallringBackend(
         return object : CallringUiApi by this {
             override val callers = createCallersApi(bound)
             override val settings = createSettingsApi(bound)
+            override val edits = createUiEditsApi(bound)
             override val widgets = createWidgetBindingsApi(bound)
             override val ringtone = createRingtoneApi(bound)
+            override val runtime = createRuntimeApi(bound)
         }
     }
 

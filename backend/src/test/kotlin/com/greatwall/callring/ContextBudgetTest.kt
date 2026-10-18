@@ -9,7 +9,8 @@ class ContextBudgetTest {
     @Test fun countsCompleteUtf8HistorySchemasAndOutputReserve() {
         val empty = ContextBudget.estimate("{}".toByteArray(), ConversationBudget())
         assertEquals(2L + 1024 + 4096 + 1024, empty)
-        assertTrue(runCatching { ContextBudget.check(ByteArray(30000), ConversationBudget()) }.isFailure)
+        assertTrue(runCatching { ContextBudget.check(ByteArray(30000), ConversationBudget(32768, 4096)) }.isFailure)
+        assertTrue(ContextBudget.check(ByteArray(30000), ConversationBudget()) <= 49152)
         assertTrue(runCatching { ContextBudget.check(ByteArray(8 * 1024 * 1024 + 1), ConversationBudget(1048576, 4096)) }.isFailure)
     }
     @Test fun replacesSecretsInDataLeavesAndPreservesStructureAndTail() {

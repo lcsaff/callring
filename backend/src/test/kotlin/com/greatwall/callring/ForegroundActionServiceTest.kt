@@ -8,6 +8,28 @@ import org.junit.Test
 import java.time.*
 
 class ForegroundActionServiceTest {
+    @Test fun noHostCannotLaunchAndExpiredOrInvalidatedCommandsCannotConsume() = runBlocking {
+        var now = 0L
+        val clock = object : Clock() { override fun getZone() = ZoneOffset.UTC; override fun withZone(zone: ZoneId) = this; override fun instant() = Instant.ofEpochMilli(now) }
+        var active = true
+        val service = ForegroundActionService(clock)
+        val result = async { service.request("s", "t", "call", 1, ForegroundActionKind.APP_SETTINGS, aiObject()) { active } }
+        yield()
+        val ticket = service.pending.value!!
+        assertFalse(service.beginLaunch(ticket.requestId, "fabricated-host"))
+        val host = service.attachHost()
+        now = ticket.expiresAt
+        assertFalse(service.beginLaunch(ticket.requestId, host))
+        assertEquals(ForegroundResultStatus.EXPIRED, result.await().status)
+        now = 0
+        val next = async { service.request("s", "t2", "call2", 2, ForegroundActionKind.APP_SETTINGS, aiObject()) { active } }
+        yield()
+        val current = service.pending.value!!
+        assertTrue(service.beginLaunch(current.requestId, host))
+        active = false
+        assertFalse(service.deliver(current.requestId, ForegroundHostResult(ForegroundResultStatus.VERIFIED)))
+        assertEquals(ForegroundResultStatus.STALE, next.await().status)
+    }
     @Test fun hostClaimsOnceAndLateResultCannotCompleteNewTicket() = runBlocking {
         val service = ForegroundActionService(Clock.systemUTC())
         val result = async { service.request("s", "t", "call", 1, ForegroundActionKind.APP_SETTINGS, aiObject()) { true } }

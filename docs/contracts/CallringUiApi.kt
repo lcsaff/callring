@@ -5,6 +5,7 @@ import java.time.LocalDate
 import kotlinx.coroutines.flow.Flow
 
 interface CallringUiApi {
+    val edits: UiEditsApi get() = UnavailableUiEditsApi
     val conversation: ConversationApi get() = UnavailableConversationApi
     val aiSettings: AiSettingsApi get() = UnavailableAiSettingsApi
     val snapshots: AiSnapshotApi get() = UnavailableAiSnapshotApi
@@ -29,6 +30,7 @@ interface HomeApi {
 }
 
 interface CallersApi {
+    suspend fun getCallDetail(callId: Long): ApiResult<CallDetail> = aiUnavailable()
     suspend fun search(query: CallerSearch): ApiResult<Page<CallerProfile>>
     suspend fun getEditor(number: String?): ApiResult<CallerEditorData>
     suspend fun getOverview(query: OverviewQuery): ApiResult<CallerOverview>

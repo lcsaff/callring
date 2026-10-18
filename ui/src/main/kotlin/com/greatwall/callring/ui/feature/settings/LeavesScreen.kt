@@ -30,6 +30,7 @@ import com.greatwall.callring.ui.designsystem.components.formKeyboardActions
 fun LeavesScreen(
     state: LoadState<List<LeaveEntry>>, mutation: MutationState, zoneId: String,
     onBack: () -> Unit, onRetry: () -> Unit, onSave: (SaveLeave) -> Unit, onDelete: (Long) -> Unit,
+    onSaveDraft: ((SaveLeave, SaveLeave?) -> Unit)? = null,
 ) {
     val zone = runCatching { ZoneId.of(zoneId) }.getOrNull()
     var deleteId by rememberSaveable { mutableStateOf<Long?>(null) }
@@ -45,6 +46,7 @@ fun LeavesScreen(
     var originalStart by rememberSaveable { mutableStateOf<Long?>(null) }
     var originalEnd by rememberSaveable { mutableStateOf<Long?>(null) }
     var note by rememberSaveable { mutableStateOf("") }
+    var initialNote by rememberSaveable { mutableStateOf("") }
     var initialFields by rememberSaveable { mutableStateOf("") }
     var openedAt by rememberSaveable { mutableStateOf(mutation.completed) }
     fun edit(entry: LeaveEntry?) {
@@ -58,6 +60,7 @@ fun LeavesScreen(
         val today = LocalDate.now(displayZone).toString()
         startTime = originalStartText.ifBlank { "$today 09:00" }; endTime = originalEndText.ifBlank { "$today 18:00" }
         startDate = today; endDate = today; note = entry?.note.orEmpty()
+        initialNote = note
         initialFields = listOf(allDay.toString(), startDate, endDate, startTime, endTime, note).joinToString("\u0000")
         openedAt = mutation.completed; open = true
     }
@@ -98,7 +101,9 @@ fun LeavesScreen(
             onDismiss = { open = false }, onSave = {
                 val period = if (allDay) LeavePeriod.AllDay(firstDate!!, lastDate!!, zoneId)
                     else LeavePeriod.Timed(firstInstant!!, lastInstant!!)
-                onSave(SaveLeave(editingId, period, note))
+                val command = SaveLeave(editingId, period, note)
+                val base = editingId?.let { SaveLeave(it, LeavePeriod.Timed(originalStart!!, originalEnd!!), initialNote) }
+                if (onSaveDraft != null) onSaveDraft(command, base) else onSave(command)
             }) {
                 Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     MutationFeedback(mutation, showSuccess = false)

@@ -19,24 +19,27 @@ internal fun createRingtoneApi(context: BackendContext): RingtoneApi =
                     capability(Capability.CALL_SCREENING_ROLE, true)
                     capability(Capability.PHONE_STATE)
                 }
-                val result = audio.setEnabled(enabled)
-                notifyChanged()
+                val before = coordinator.capture()
+                val result = audio.setEnabled(enabled,commandContext)
+                if(coordinator.capture() == before) coordinator.guard(commandContext) { notifyChanged(); coordinator.record(commandContext) }
                 result
             }
 
             override suspend fun importAudio(source: DocumentRef): ApiResult<RingtoneSettings> {
                 val callerContext = currentCoroutineContext()
                 return io {
-                    val result = audio.importAudio(source) { callerContext.ensureActive() }
+                    val before = coordinator.capture()
+                    val result = audio.importAudio(source, { callerContext.ensureActive() }, commandContext)
                     // No suspension or cancellation check between publication and notification.
-                    notifyChanged()
+                    if(coordinator.capture() == before) coordinator.guard(commandContext) { notifyChanged(); coordinator.record(commandContext) }
                     result
                 }
             }
 
             override suspend fun restoreBuiltIn(): ApiResult<RingtoneSettings> = write {
-                val result = audio.restoreBuiltIn()
-                notifyChanged()
+                val before = coordinator.capture()
+                val result = audio.restoreBuiltIn(commandContext)
+                if(coordinator.capture() == before) coordinator.guard(commandContext) { notifyChanged(); coordinator.record(commandContext) }
                 result
             }
 
@@ -47,13 +50,17 @@ internal fun createRingtoneApi(context: BackendContext): RingtoneApi =
                     fail(ErrorCode.SYSTEM_RESTRICTED, "audio.phone_active")
                 if (status.audibility != Audibility.AUDIBLE)
                     fail(ErrorCode.SYSTEM_RESTRICTED, "audio.system_inaudible")
+                coordinator.guard(commandContext) {}
                 audio.startPreview()
-                notifyChanged()
+                try { coordinator.guard(commandContext) { coordinator.runtimeChanged(); coordinator.record(commandContext) } }
+                catch(_: BackendFailure) { throw BackendFailure(ApiError(ErrorCode.SYSTEM_RESTRICTED,"audio.launch_state_changed")) }
             }
 
             override suspend fun stopPlayback(): ApiResult<Unit> = io {
+                coordinator.guard(commandContext) {}
                 audio.stopPlayback()
-                notifyChanged()
+                try { coordinator.guard(commandContext) { coordinator.runtimeChanged(); coordinator.record(commandContext) } }
+                catch(_: BackendFailure) { throw BackendFailure(ApiError(ErrorCode.SYSTEM_RESTRICTED,"audio.launch_state_changed")) }
             }
         }
     }

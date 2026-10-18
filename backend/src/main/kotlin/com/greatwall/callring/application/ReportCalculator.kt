@@ -34,13 +34,14 @@ internal fun BackendContext.score(
     s: BackendState,
     calls: List<CallDetail>,
     range: TimeRange,
+    includeSaturatedMax: Boolean = false,
 ): ScoreSummary {
     val counted =
         calls
             .filter {
                 it.counted &&
                     it.startedAtEpochMillis >= range.startInclusiveEpochMillis &&
-                    it.startedAtEpochMillis < range.endExclusiveEpochMillis
+                    (it.startedAtEpochMillis < range.endExclusiveEpochMillis || (includeSaturatedMax && it.startedAtEpochMillis == Long.MAX_VALUE && range.endExclusiveEpochMillis == Long.MAX_VALUE))
             }
             .sortedBy { it.startedAtEpochMillis }
     val off = counted.count { !it.classification.working }.toLong()
@@ -95,21 +96,7 @@ internal fun BackendContext.report(
     val counted = rows.filter { it.counted }
     val summary = score(s, rows, range)
     val snapshot = meta()
-    val totals =
-        ReportTotals(
-            counted.size.toLong(),
-            counted.count { it.classification.working }.toLong(),
-            summary.offHoursCalls,
-            counted.mapNotNull { it.durationSeconds }.fold(0L) { a, b -> saturatedAdd(a, b) },
-            counted.count { it.durationSeconds == null }.toLong(),
-            counted.count { it.result == CallResult.MISSED }.toLong(),
-            counted
-                .count { it.result == CallResult.REJECTED || it.result == CallResult.BLOCKED }
-                .toLong(),
-            rows
-                .count { it.result == CallResult.PENDING || it.result == CallResult.UNRESOLVED }
-                .toLong(),
-        )
+    val totals = reportTotals(rows,summary)
     val filtered =
         rows.filter {
             when (filter) {
@@ -127,4 +114,22 @@ internal fun BackendContext.report(
         quality(s, rows, status),
         snapshot,
     )
+}
+
+internal fun BackendContext.reportTotals(rows: List<CallDetail>, summary: ScoreSummary): ReportTotals {
+    val counted = rows.filter { it.counted }
+    return ReportTotals(
+            counted.size.toLong(),
+            counted.count { it.classification.working }.toLong(),
+            summary.offHoursCalls,
+            counted.mapNotNull { it.durationSeconds }.fold(0L) { a, b -> saturatedAdd(a, b) },
+            counted.count { it.durationSeconds == null }.toLong(),
+            counted.count { it.result == CallResult.MISSED }.toLong(),
+            counted
+                .count { it.result == CallResult.REJECTED || it.result == CallResult.BLOCKED }
+                .toLong(),
+            rows
+                .count { it.result == CallResult.PENDING || it.result == CallResult.UNRESOLVED }
+                .toLong(),
+        )
 }

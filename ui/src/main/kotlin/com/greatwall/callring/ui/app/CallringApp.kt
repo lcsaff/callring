@@ -22,6 +22,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Email
 import com.greatwall.callring.ui.designsystem.components.LocalFeedbackHost
 import com.greatwall.callring.ui.designsystem.components.LocalFeedbackScope
 import com.greatwall.callring.ui.designsystem.components.FeedbackSnackbar
@@ -48,7 +49,7 @@ import java.time.LocalDate
         val navigation = rememberNavController()
         val entry by navigation.currentBackStackEntryAsState()
         val route = entry?.destination?.route
-        val tabs = listOf(UiDestination.Home to "首页", UiDestination.Callers to "档案", UiDestination.Settings to "设置")
+        val tabs = listOf(UiDestination.Home to "首页", UiDestination.Callers to "档案", UiDestination.Conversation to "沟通", UiDestination.Settings to "设置")
         LaunchedEffect(requestSequence) {
             navigation.currentBackStackEntryFlow.first()
             if (navigationState.consume(requestSequence) && (requestedDestination != UiDestination.Home || requestSequence != 0L)) {
@@ -111,7 +112,7 @@ import java.time.LocalDate
                         { open(UiDestination.Positions) }, { open(UiDestination.RecordingArchives) })
                 }
                 composable("recording-archives") {
-                    RecordingArchivesRoute(api.recordings, refreshSignal, back) {
+                    RecordingArchivesRoute(api, refreshSignal, back) {
                         open(UiDestination.Archive(it.callId, it.number, it.startedAtEpochMillis))
                     }
                 }
@@ -124,7 +125,7 @@ import java.time.LocalDate
                 }
                 composable("edit?number={number}", listOf(navArgument("number") { type = NavType.StringType; nullable = true; defaultValue = null })) { record ->
                     val number = record.arguments?.getString("number")?.takeIf { it.isNotEmpty() }
-                    val model: CallerEditorViewModel = uiViewModel { CallerEditorViewModel(number, api.callers, api.changes, it) }
+                    val model: CallerEditorViewModel = uiViewModel { CallerEditorViewModel(number, api.callers, api.changes, it, saveWithBase = api.edits::profile) }
                     val state by model.state.collectAsStateWithLifecycle()
                     val draft by model.draft.collectAsStateWithLifecycle()
                     val mutation by model.mutation.collectAsStateWithLifecycle()
@@ -157,6 +158,7 @@ import java.time.LocalDate
                     SettingsOverviewScreen(summary, mutation, null, settings::refresh, settings::statistics, settings::overlay,
                         { open(UiDestination.Setting(it)) })
                 }
+                composable("conversation") { ConversationRoute(api) }
                 composable("leaves") {
                     SettingsRoute(SettingsPage.LEAVES, api, settings, appearanceModel, refreshSignal, back, onCapability, onAppSettings)
                 }
@@ -175,7 +177,7 @@ import java.time.LocalDate
 }
 
 @Composable private fun NavigationGlyph(index: Int) {
-    Icon(when (index) { 0 -> Icons.Filled.Home; 1 -> Icons.Filled.Person; else -> Icons.Filled.Settings }, contentDescription = null)
+    Icon(when (index) { 0 -> Icons.Filled.Home; 1 -> Icons.Filled.Person; 2 -> Icons.Filled.Email; else -> Icons.Filled.Settings }, contentDescription = null)
 }
 
 data class UiNotice(val id: Long, val text: String)

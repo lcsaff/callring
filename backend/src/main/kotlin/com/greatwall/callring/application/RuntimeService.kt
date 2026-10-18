@@ -17,6 +17,7 @@ internal fun createRuntimeApi(context: BackendContext): RuntimeApi =
             }
 
             override suspend fun requestCallLogSync(): ApiResult<SyncRequestReceipt> = io {
+                coordinator.guard(commandContext) {}
                 capability(Capability.CALL_LOG)
                 syncScheduler.requestSync(clock.millis())
             }

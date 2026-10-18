@@ -17,8 +17,8 @@ class DirectoryEnumerator(private val query: (String) -> List<DirectoryNode>) {
         val seen = hashSetOf(root)
         val nodes = mutableListOf<DirectoryNode>()
         fun walk(id: String, depth: Int) {
+            if (depth > 4) fail("recording.enumeration_limit")
             val children = query(id)
-            if (depth > 4 && children.isNotEmpty()) fail("recording.enumeration_limit")
             for (child in children) {
                 if (nodes.size >= 500) fail("recording.enumeration_limit")
                 if (!seen.add(child.id)) fail("recording.enumeration_cycle")

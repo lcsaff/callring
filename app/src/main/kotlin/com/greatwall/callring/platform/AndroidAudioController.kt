@@ -47,10 +47,11 @@ class AndroidAudioController(
             .also { settingsSnapshot = it }
     }
 
-    override fun setEnabled(enabled: Boolean): RingtoneSettings {
+    override fun setEnabled(enabled: Boolean): RingtoneSettings = setEnabled(enabled,null)
+    override fun setEnabled(enabled: Boolean, command: CommandContext?): RingtoneSettings {
         checkOpen()
         val settings =
-            coordinator.commit("ringtone") { synchronized(preferences) {
+            coordinator.commit("ringtone",command) { synchronized(preferences) {
                 updatePreferences(preferences, mapOf("enabled" to enabled))
                 readAndPublishSettings()
             } }
@@ -68,6 +69,9 @@ class AndroidAudioController(
     override fun importAudio(source: DocumentRef): RingtoneSettings = importAudio(source) {}
 
     override fun importAudio(source: DocumentRef, checkCancellation: () -> Unit): RingtoneSettings {
+        return importAudio(source,checkCancellation,null)
+    }
+    override fun importAudio(source: DocumentRef, checkCancellation: () -> Unit, command: CommandContext?): RingtoneSettings {
         checkOpen()
         checkCancellation()
         val ticket = generation.begin()
@@ -103,7 +107,7 @@ class AndroidAudioController(
             val name = displayName(source)
             lateinit var settings: RingtoneSettings
             val published =
-                coordinator.commit("ringtone") { generation.publish(ticket, checkCancellation) {
+                coordinator.guard(command) { val success = generation.publish(ticket, checkCancellation) {
                     checkOpen()
                     stopPlayback()
                     synchronized(preferences) {
@@ -120,7 +124,7 @@ class AndroidAudioController(
                         }
                         settings = readAndPublishSettings()
                     }
-                } }
+                }; if(success) { coordinator.changed("ringtone"); coordinator.record(command) }; success }
             if (!published)
                 throw BackendFailure(
                     ApiError(ErrorCode.SYSTEM_RESTRICTED, "audio.import_superseded")
@@ -131,11 +135,11 @@ class AndroidAudioController(
         }
     }
 
-    override fun restoreBuiltIn(): RingtoneSettings {
+    override fun restoreBuiltIn(): RingtoneSettings = restoreBuiltIn(null)
+    override fun restoreBuiltIn(command: CommandContext?): RingtoneSettings {
         checkOpen()
         lateinit var settings: RingtoneSettings
-        coordinator.commit("ringtone") { generation.invalidate {
-            stopPlayback()
+        coordinator.commit("ringtone",command) { generation.invalidate {
             synchronized(preferences) {
                 updatePreferences(
                     preferences,
@@ -144,6 +148,7 @@ class AndroidAudioController(
                 settings = readAndPublishSettings()
             }
         } }
+        runCatching { stopPlayback() }
         return settings
     }
 

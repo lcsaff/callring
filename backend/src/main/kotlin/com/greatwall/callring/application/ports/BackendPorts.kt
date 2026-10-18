@@ -66,6 +66,10 @@ interface AudioController {
      * restrictions must not turn an already committed disable into a failure.
      */
     fun setEnabled(enabled: Boolean): RingtoneSettings
+    fun setEnabled(enabled: Boolean, command: CommandContext?): RingtoneSettings {
+        if(command != null) throw BackendFailure(ApiError(ErrorCode.SYSTEM_UNAVAILABLE,"audio.guarded_commands_unavailable"))
+        return setEnabled(enabled)
+    }
 
     fun importAudio(source: DocumentRef): RingtoneSettings = importAudio(source) {}
 
@@ -74,8 +78,16 @@ interface AudioController {
      * controller returns without checking cancellation so the caller can notify the commit.
      */
     fun importAudio(source: DocumentRef, checkCancellation: () -> Unit): RingtoneSettings
+    fun importAudio(source: DocumentRef, checkCancellation: () -> Unit, command: CommandContext?): RingtoneSettings {
+        if(command != null) throw BackendFailure(ApiError(ErrorCode.SYSTEM_UNAVAILABLE,"audio.guarded_commands_unavailable"))
+        return importAudio(source,checkCancellation)
+    }
 
     fun restoreBuiltIn(): RingtoneSettings
+    fun restoreBuiltIn(command: CommandContext?): RingtoneSettings {
+        if(command != null) throw BackendFailure(ApiError(ErrorCode.SYSTEM_UNAVAILABLE,"audio.guarded_commands_unavailable"))
+        return restoreBuiltIn()
+    }
 
     fun startPreview()
 

@@ -11,6 +11,15 @@ open class UiFakeApi(private val overlayEnabled: Boolean = false) : CallringUiAp
     override val callers: CallersApi = this
     override val reports: ReportsApi = this
     override val settings: SettingsApi = this
+    override val edits: UiEditsApi = object : UiEditsApi {
+        override suspend fun profile(base: CallerDraft, value: CallerDraft) = saveProfile(SaveCallerProfile(value.number, value.name, value.department, value.positionId, value.whitelisted))
+        override suspend fun quiet(base: QuietSettings, value: QuietSettings) = saveQuietHours(value)
+        override suspend fun work(base: WorkScheduleSettings, value: WorkScheduleSettings) = saveWorkSchedule(SaveWorkSchedule(value.zoneId, value.weekly, value.makeup))
+        override suspend fun score(base: ScoreSettings, value: ScoreSettings) = saveScoreSettings(value)
+        override suspend fun appearance(base: AppearanceSettings, value: AppearanceSettings) = saveAppearance(value)
+        override suspend fun position(base: SavePosition?, value: SavePosition) = savePosition(value)
+        override suspend fun leave(base: SaveLeave?, value: SaveLeave) = saveLeave(value)
+    }
     override val ringtone: RingtoneApi = this
     override val runtime: RuntimeApi = this
     override val widgets: WidgetBindingsApi = this

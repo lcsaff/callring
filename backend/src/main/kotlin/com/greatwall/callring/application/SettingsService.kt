@@ -329,32 +329,23 @@ internal fun createSettingsApi(context: BackendContext): SettingsApi =
 
             override suspend fun saveAppearance(
                 settings: AppearanceSettings
-            ): ApiResult<AppearanceSettings> = write {
-                requireField(settings.presetId.isNotBlank(), "presetId", "preset.required")
-                requireField(
-                    settings.customSeedRgb == null || settings.customSeedRgb in 0..0xffffff,
-                    "customSeedRgb",
-                    "rgb.invalid",
-                )
-                requireField(
-                    settings.selection != ThemeSelection.CUSTOM || settings.customSeedRgb != null,
-                    "customSeedRgb",
-                    "rgb.required",
-                )
-                synchronized(lock) {
-                    coordinator.check(commandContext)
-                    val previous = preferences.getAppearance()
-                    val saved =
-                        if (settings.customSeedRgb == null)
-                            settings.copy(customSeedRgb = previous.customSeedRgb)
-                        else settings
-                    preferences.saveAppearance(saved)
-                    notifyChanged()
-                    saved
-                }
-            }
+            ): ApiResult<AppearanceSettings> = write { saveAppearanceExact(settings, preserveNull = true) }
         }
     }
+
+internal fun BackendContext.saveAppearanceExact(settings: AppearanceSettings, preserveNull: Boolean): AppearanceSettings {
+    requireField(settings.presetId.isNotBlank(), "presetId", "preset.required")
+    requireField(settings.customSeedRgb == null || settings.customSeedRgb in 0..0xffffff, "customSeedRgb", "rgb.invalid")
+    requireField(settings.selection != ThemeSelection.CUSTOM || settings.customSeedRgb != null, "customSeedRgb", "rgb.required")
+    return synchronized(lock) {
+        coordinator.check(commandContext)
+        val saved = if (preserveNull && settings.customSeedRgb == null) settings.copy(customSeedRgb = preferences.getAppearance().customSeedRgb) else settings
+        preferences.saveAppearance(saved)
+        notifyChanged()
+        coordinator.record(commandContext)
+        saved
+    }
+}
 
 private fun BackendContext.replaceCalendar(imported: CalendarImport): CalendarInfo {
     val m = imported.metadata

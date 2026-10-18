@@ -64,7 +64,7 @@ private fun archiveStatusLabel(status: ArchiveStatus): String = when (status) {
     }
     val back = { if (dirty) discard = true else onBack() }
     BackHandler(onBack = back)
-    ScreenFrame("录音与 AI", back) {
+    ScreenFrame("录音设置", back) {
         Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             RecordingFeedback(state.error, mutation)
             if (state.loading) LinearProgressIndicator(Modifier.fillMaxWidth())
@@ -81,13 +81,7 @@ private fun archiveStatusLabel(status: ArchiveStatus): String = when (status) {
                 Text("麦克风权限不代表设备能录制对方声音；受系统限制，可能无声或中断。")
                 OutlinedButton(onClick = onFolder, enabled = !mutation.busy) { Text("授权系统录音目录") }
                 Text(if (value.systemFolder == null) "尚未授权目录" else "已授权系统录音目录")
-                ConnectionForm("录音转写 · OpenAI 兼容", value.transcription, false, { onEdit(value.copy(transcription = it)) })
-                TextButton(onClick = onCopyToTranscription, enabled = !mutation.busy) { Text("从分析配置复制（转写保持 OpenAI 协议）") }
-                OutlinedButton(onClick = { test = true }, enabled = !mutation.busy) { Text("测试转写连接") }
-                ConnectionForm("内容分析", value.analysis, true, { onEdit(value.copy(analysis = it)) })
-                TextButton(onClick = onCopyToAnalysis, enabled = !mutation.busy) { Text("从转写配置复制") }
-                OutlinedButton(onClick = { test = false }, enabled = !mutation.busy) { Text("测试分析连接") }
-                Text("地址填写完整 API 基础地址（例如 https://服务地址/自定义前缀/v1）。按填写的前缀发送请求，不会自动补 /v1。密钥仅在当前编辑会话内保留，保存后由设备安全存储。")
+                Text("分析与转写连接请前往 AI 设置。")
                 Button(onClick = onSave, enabled = dirty && !mutation.busy, modifier = Modifier.fillMaxWidth()) { Text("保存设置") }
             }
         }
@@ -122,7 +116,7 @@ private fun archiveStatusLabel(status: ArchiveStatus): String = when (status) {
             OutlinedButton(onClick = onList, enabled = !mutation.busy) { Text("选择系统录音") }
             if (files.loading) Text("正在读取目录…")
             files.data?.let { entries ->
-                if (entries.isEmpty()) Text("目录中没有可选择的录音；请先在录音与 AI 设置中授权目录。")
+                if (entries.isEmpty()) Text("目录中没有可选择的录音；请先在录音设置中授权目录。")
                 entries.forEach { file -> TextButton(onClick = { onSelect(file) }, enabled = !mutation.busy) { Text(file.name) } }
             }
             val archive = state.data

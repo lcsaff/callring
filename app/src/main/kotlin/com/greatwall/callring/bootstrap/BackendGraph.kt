@@ -17,6 +17,9 @@ import com.greatwall.callring.application.RecordingCallLink
 import com.greatwall.callring.application.IncomingRecordingSession
 import com.greatwall.callring.application.resolveRecordingCall
 import com.greatwall.callring.RecordingJobService
+import com.greatwall.callring.application.SharedBusinessCommands
+import com.greatwall.callring.application.conversation.*
+import com.greatwall.callring.platform.ai.CompatibleConversationClient
 
 /**
  * Composition only. No database, media decoder or document is opened by constructing this graph.
@@ -105,7 +108,9 @@ class BackendGraph(
                 coordinator,
             ),
             documents,
-            AndroidRuntimeProbe(application, playbackState, diagnostics, configuration.clock),
+            AndroidRuntimeProbe(application, playbackState, diagnostics, configuration.clock) {
+                WidgetInstallState(android.appwidget.AppWidgetManager.getInstance(application).getAppWidgetIds(android.content.ComponentName(application, com.greatwall.callring.ui.widget.CallringWidgetReceiver::class.java)).toList(), AccessState.GRANTED)
+            },
             audio,
             syncScheduler,
             configuration.clock,
@@ -123,6 +128,7 @@ class BackendGraph(
 
     val recordingSession = IncomingRecordingSession()
     private val recordingDelegate = lazy {
+        ensureOpen()
         AndroidRecordingRuntime(application, configuration.databaseName,
             findCall = { id -> store.read { state -> resolveRecordingCall(state.calls.values.map {
                 RecordingCallLink(it.id, it.number, it.time, it.duration, it.hidden, it.linkedScreenId)
@@ -131,11 +137,25 @@ class BackendGraph(
             schedule = { delay -> RecordingJobService.schedule(application, delay) }, coordinator = coordinator)
     }
     val recordings get() = recordingDelegate.value
+    private val resources = ForegroundResourceRegistry(configuration.clock)
+    private val snapshotsDelegate = lazy { ensureOpen(); completeSnapshotApi(backend, recordings, diagnostics, coordinator, resources, configuration.clock) }
+    private val conversationDelegate = lazy { ensureOpen(); ConversationService({ api }, snapshotsDelegate.value, { recordings.store.settings() }, coordinator, { CompatibleConversationClient() }, resources = resources) }
     private val apiDelegate by lazy {
         object : CallringUiApi by backend {
             override val recordings: RecordingApi get() = this@BackendGraph.recordings
             override val aiSettings: AiSettingsApi get() = this@BackendGraph.recordings.aiSettings
+            override val snapshots: AiSnapshotApi get() = snapshotsDelegate.value
+            override val conversation: ConversationApi get() = conversationDelegate.value
+            override fun commandApi(context: CommandContext): CallringUiApi = boundApi(context)
+            override suspend fun adoptIdentity(callId: Long, expectedGeneration: Long): ApiResult<CallerProfile> = boundApi(CommandContext(java.util.UUID.randomUUID().toString(), coordinator.capture(), 0) { !closed }).adoptIdentity(callId, expectedGeneration)
         }
+    }
+    private fun boundApi(command: CommandContext): CallringUiApi = object : CallringUiApi by backend.commandApi(command) {
+        override val recordings: RecordingApi get() = this@BackendGraph.recordings.bound(command)
+        override val aiSettings: AiSettingsApi get() = this@BackendGraph.recordings.aiSettings.bound(command)
+        override val snapshots: AiSnapshotApi get() = snapshotsDelegate.value
+        override val conversation: ConversationApi get() = conversationDelegate.value
+        override suspend fun adoptIdentity(callId: Long, expectedGeneration: Long) = SharedBusinessCommands(this).adoptIdentity(callId, expectedGeneration)
     }
     val api: CallringUiApi get() = apiDelegate
 
@@ -197,6 +217,7 @@ class BackendGraph(
             }
         // The coordinator drains persistence work. Its callbacks may need graph-owned diagnostics;
         // never wait for its executors while holding the graph's lifetime lock.
+        if(conversationDelegate.isInitialized()) conversationDelegate.value.close()
         try {
             resources.first?.close()
         } finally {

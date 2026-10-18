@@ -5,7 +5,17 @@ import com.greatwall.callring.domain.*
 
 internal fun BackendContext.captureCore(at: Long): Map<String, AiJson> {
     val status = runtimeStatus()
-    return store.captureFull { s, audits ->
+    val (s, audits) = store.captureFull { stored, rows ->
+        BackendState().apply {
+            profiles.putAll(stored.profiles); positions.putAll(stored.positions); calls.putAll(stored.calls)
+            schedules.addAll(stored.schedules.map(::scheduleCopy))
+            calendarYears.putAll(stored.calendarYears); holidays.putAll(stored.holidays); makeupDates.addAll(stored.makeupDates)
+            overrides.putAll(stored.overrides.mapValues { it.value.copy(windows = it.value.windows.toList()) })
+            leaves.putAll(stored.leaves); statisticsIntervals.addAll(stored.statisticsIntervals)
+            myPositionId = stored.myPositionId; quiet = quietCopy(stored.quiet); lastQuietMode = stored.lastQuietMode
+            score = stored.score; overlayEnabled = stored.overlayEnabled; leaveVersion = stored.leaveVersion
+        } to rows.toList()
+    }
         val numbers = (s.profiles.keys + s.calls.values.map { it.number }).toSortedSet()
         val zone = currentSchedule(s).zoneId
         val statistics = numbers.map { number ->
@@ -13,12 +23,12 @@ internal fun BackendContext.captureCore(at: Long): Map<String, AiJson> {
             val min = calls.minOfOrNull { it.startedAtEpochMillis } ?: at
             val max = calls.maxOfOrNull { it.startedAtEpochMillis } ?: at
             val range = TimeRange(min, saturatedAdd(max, 1), zone)
-            val report = report(s, number, range, CallFilter.ALL, PageRequest(0, 1), status)
+            val summary = score(s,calls,range,includeSaturatedMax = max == Long.MAX_VALUE)
             val end = saturatedAdd(at, 1)
-            linkedMapOf("number" to number, "totals" to report.totals, "score" to report.score, "quality" to report.quality,
+            linkedMapOf("number" to number, "totals" to reportTotals(calls,summary), "score" to summary, "quality" to quality(s,calls,status), "rangeUpperBoundSaturated" to (max == Long.MAX_VALUE),
                 "rolling" to score(s, calls, TimeRange(saturatedSubtract(end, s.score.observationDays * 86400000L), end, zone)))
         }
-        mapOf(
+        return mapOf(
             "D01" to safeValue(numbers.map { profile(s, it) }),
             "D02" to safeValue(PositionSettings(options(s), s.myPositionId)),
             "D03" to safeValue(s.calls.values.toList()),
@@ -34,5 +44,4 @@ internal fun BackendContext.captureCore(at: Long): Map<String, AiJson> {
             "D12" to safeValue(mapOf("settings" to audio.getSettings(), "playback" to status.playback)),
             "D21" to safeValue(audits),
         )
-    }
 }

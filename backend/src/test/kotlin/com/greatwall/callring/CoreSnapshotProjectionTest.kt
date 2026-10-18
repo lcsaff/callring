@@ -1,0 +1,22 @@
+package com.greatwall.callring
+
+import com.greatwall.callring.application.*
+import com.greatwall.callring.application.api.*
+import com.greatwall.callring.domain.*
+import kotlinx.coroutines.runBlocking
+import org.junit.Assert.*
+import org.junit.Test
+
+class CoreSnapshotProjectionTest {
+    @Test fun saturatedAllTimeStatisticsStillCountBothExtremeTimestamps() = runBlocking {
+        val fixture = ConversationFixtures()
+        val fact = ClassificationFact(true,WorkReason.WORKING,null,false,"UTC",1,null,0)
+        fixture.state.calls[1] = RawCallRecord(1,"999",Long.MIN_VALUE,1,CallResult.ANSWERED,CallDecision.NORMAL_RINGING,CallSource.SCREENING,null,null,true,fact,fact)
+        fixture.state.calls[2] = RawCallRecord(2,"999",Long.MAX_VALUE,2,CallResult.ANSWERED,CallDecision.NORMAL_RINGING,CallSource.SCREENING,null,null,true,fact,fact)
+        val snapshot = fixture.backend.captureCore(fixture.now).requiredValue()
+        val statistics = snapshot.getValue("D05") as AiJson.Obj
+        val number = (statistics["numbers"] as AiJson.Arr).values.single() as AiJson.Obj
+        assertEquals(2L,((number["totals"] as AiJson.Obj)["totalCalls"]).long())
+        assertEquals(2L,((number["score"] as AiJson.Obj)["totalCalls"]).long())
+    }
+}

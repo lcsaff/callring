@@ -17,6 +17,7 @@ class BusinessRevisionCoordinator {
     fun check(context: CommandContext?) {
         if (context == null) return
         if (!context.active()) throw BackendFailure(ApiError(ErrorCode.CONFLICT, "ai.cancelled"))
+        if (!context.mayCommit()) throw BackendFailure(ApiError(ErrorCode.CONFLICT, "action.foreground_required"))
         if (context.expectedVersions != capture()) throw BackendFailure(ApiError(ErrorCode.CONFLICT, "business.changed", retryable = true))
     }
     fun <T> guard(context: CommandContext? = null, block: () -> T): T = synchronized(fence) { check(context); block() }
@@ -27,5 +28,6 @@ class BusinessRevisionCoordinator {
     }
     fun record(context: CommandContext?) { if(context != null) synchronized(fence) { commandCommits[context.operationId] = capture() } }
     fun committed(operationId: String): RevisionVector? = synchronized(fence) { commandCommits[operationId] }
+    fun runtimeChanged() = synchronized(fence) { revision = Math.addExact(revision,1); changes.value = DataChange(revision,DataDomain.values().toSet(),null,null) }
     fun <T> commit(domain: String, context: CommandContext? = null, block: () -> T): T = guard(context) { block().also { changed(domain); record(context) } }
 }

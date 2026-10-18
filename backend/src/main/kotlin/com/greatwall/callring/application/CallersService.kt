@@ -10,6 +10,7 @@ import kotlinx.coroutines.flow.*
 internal fun createCallersApi(context: BackendContext): CallersApi =
     with(context) {
         object : CallersApi {
+            override suspend fun getCallDetail(callId: Long): ApiResult<CallDetail> = io { read { s -> detail(s, s.calls[callId] ?: throw BackendFailure(ApiError(ErrorCode.NOT_FOUND, "call.not_found"))) } }
             override suspend fun search(query: CallerSearch): ApiResult<Page<CallerProfile>> = io {
                 page(query.page)
                 read { s ->

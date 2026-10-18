@@ -13,7 +13,8 @@ import com.greatwall.callring.ui.feature.shared.LoadFeedback
     onTestOverlay: () -> Unit = {}
 ) {
     when (page) {
-        SettingsPage.RECORDING -> RecordingSettingsRoute(api.recordings, onBack)
+        SettingsPage.RECORDING -> RecordingSettingsRoute(api, onBack)
+        SettingsPage.AI -> AiSettingsRoute(api, signal, onBack)
         SettingsPage.QUIET -> {
             val model: QuietViewModel = uiViewModel { QuietViewModel(api, it) }
             val state by model.state.collectAsStateWithLifecycle()
@@ -52,7 +53,7 @@ import com.greatwall.callring.ui.feature.shared.LoadFeedback
             val state by model.state.collectAsStateWithLifecycle()
             val mutation by model.mutation.collectAsStateWithLifecycle()
             ActiveRefresh(signal, refresh = model::refresh)
-            PositionsScreen(state, mutation, onBack, model::refresh, model::save, model::delete, model::mine)
+            PositionsScreen(state, mutation, onBack, model::refresh, model::save, model::delete, model::mine, onSaveDraft = model::saveDraft)
         }
         SettingsPage.MY_POSITION -> {
             val model: PositionsViewModel = uiViewModel { PositionsViewModel(api) }
@@ -79,7 +80,7 @@ import com.greatwall.callring.ui.feature.shared.LoadFeedback
             ActiveRefresh(signal, intervalMillis = 60_000, refresh = model::refresh)
             val zone = summary.data?.workZoneId
             if (zone == null) ScreenFrame("请假管理", onBack) { LoadFeedback(summary, summaryModel::refresh) }
-            else LeavesScreen(state, mutation, zone, onBack, model::refresh, model::save, model::delete)
+            else LeavesScreen(state, mutation, zone, onBack, model::refresh, model::save, model::delete, onSaveDraft = model::saveDraft)
         }
         SettingsPage.RINGTONE -> {
             val model: RingtoneViewModel = uiViewModel { RingtoneViewModel(api) }

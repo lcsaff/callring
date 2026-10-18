@@ -36,25 +36,25 @@ class RecordingViewModelsTest {
         assertEquals(connection.copy(protocol = AiProtocol.OPENAI), tested)
         assertTrue(model.dirty.value)
     }
-    @Test fun identityAdoptionIsExplicitAndPreservesPositionAndWhitelist() = runTest {
+    @Test fun identityAdoptionIsExplicitAndDelegatesArchiveGenerationToSharedCommand() = runTest {
         val fake = com.greatwall.callring.ui.testing.UiFakeApi()
-        var command: SaveCallerProfile? = null
+        var command: Pair<Long,Long>? = null
         val callers = object : CallersApi by fake {
             override suspend fun getEditor(number: String?) = ApiResult.Success(CallerEditorData(
                 CallerDraft("100", "old", "old unit", 42, true), emptyList(), null))
             override suspend fun saveProfile(value: SaveCallerProfile): ApiResult<CallerProfile> {
-                command = value; return fake.saveProfile(value)
+                error("UI must delegate to shared adoption, not save the profile itself")
             }
         }
         val recordings = object : RecordingApi by UnavailableRecordingApi {
             override suspend fun getArchive(callId: Long): ApiResult<CallArchive?> = ApiResult.Success(CallArchive(
                 callId, "100", 0, analysis = CallAnalysis(name = "self reported", organization = "new unit", position = "CEO", inferredIdentity = "inferred")))
         }
-        val model = ArchiveViewModel(recordings, callers, 1, "100", 0, this)
+        val model = ArchiveViewModel(recordings, callers, 1, "100", 0, this, adoptCommand = { id, generation -> command = id to generation; fake.saveProfile(SaveCallerProfile("100","self reported","new unit",42,true)) })
         model.refresh(); runCurrent()
         assertNull(command)
         model.adoptIdentity(); runCurrent()
-        assertEquals(SaveCallerProfile("100", "self reported", "new unit", 42, true), command)
+        assertEquals(1L to 0L, command)
     }
     @Test fun exitStopsEvenWhilePlayIsPendingAndViewModelScopeIsCancelled() = runTest {
         val dispatcher = StandardTestDispatcher(testScheduler)

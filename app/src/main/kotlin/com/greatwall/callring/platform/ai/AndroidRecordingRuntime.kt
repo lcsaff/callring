@@ -23,6 +23,7 @@ class AndroidRecordingRuntime(
     private val storeFactory: (() -> AndroidRecordingStore)? = null,
     private val metadataReader: ((File) -> Pair<Long, String>)? = null,
     val coordinator: BusinessRevisionCoordinator = BusinessRevisionCoordinator(),
+    private val clientFactory: (() -> AiClient)? = null,
 ) : RecordingApi, AutoCloseable {
     val store by lazy { storeFactory?.invoke() ?: AndroidRecordingStore(context, namespace, coordinator = coordinator) }
     val aiSettings by lazy { AiSettingsService(store, coordinator,
@@ -31,8 +32,8 @@ class AndroidRecordingRuntime(
     private fun stopCapture() { context.stopService(android.content.Intent(context, com.greatwall.callring.CallCaptureService::class.java)) }
     val directory = File(context.filesDir, namespace + "_recordings")
     private val sources = SystemRecordingSource(context.contentResolver)
-    private val client by lazy {
-        CompatibleAiClient(testAudio = {
+    private val client: AiClient by lazy {
+        clientFactory?.invoke() ?: CompatibleAiClient(testAudio = {
             val file = File(context.cacheDir, "ai-connection-test.wav")
             if (!file.isFile) context.assets.open("ai-test.wav").use { input -> file.outputStream().use { input.copyTo(it) } }
             file
@@ -67,10 +68,9 @@ class AndroidRecordingRuntime(
         settings
     }
     override suspend fun testConnection(connection: AiConnection, transcription: Boolean) = result { client.test(connection, transcription) }
-    fun observeIncoming(sessionId: String, number: String, at: Long, account: String?): RecordingCall? = synchronized(filesLock) {
-        if (!store.settings().recordingEnabled || number.isBlank()) return@synchronized null
-        store.registerIncoming(sessionId, number, at, account)
-    }
+    fun observeIncoming(sessionId: String, number: String, at: Long, account: String?): RecordingCall? = coordinator.guard { synchronized(filesLock) {
+        if (!store.settings().recordingEnabled || number.isBlank()) null else store.registerIncoming(sessionId, number, at, account)
+    } }
     fun linkStatistics(sessionId: String, statisticsId: Long) {
         if (store.hasSession(sessionId)) store.linkStatistics(statisticsId, sessionId)
     }
@@ -89,7 +89,7 @@ class AndroidRecordingRuntime(
         importFile(callId, number, startedAt, document, source)
     }
     private fun importFile(callId: Long, number: String, startedAt: Long, document: DocumentRef,
-        source: RecordingSource, automatic: Boolean = false): CallArchive {
+        source: RecordingSource, automatic: Boolean = false, command: CommandContext? = null): CallArchive {
         val saved = store.get(callId)?.takeIf { it.number == number && it.startedAtEpochMillis == startedAt }
         val request = requireNotNull(if (callId < 0) store.findRecording(callId) else saved?.let {
             RecordingCall(it.callId, it.number, it.startedAtEpochMillis, it.durationMillis?.div(1000))
@@ -98,16 +98,17 @@ class AndroidRecordingRuntime(
         val call = requireNotNull(recordingCall(callId))
         val uri = Uri.parse(document.uri)
         require(uri.scheme == "content")
-        return synchronized(filesLock) {
-            check(!automatic || !store.isDeleted(call.id)) { "recording.deleted" }
-            check(directory.isDirectory || directory.mkdirs())
-            val scratch = File(directory, UUID.randomUUID().toString() + ".tmp")
-            try {
+        val initialGeneration = store.get(call.id)?.generation
+        coordinator.guard(command) { check(!automatic || !store.isDeleted(call.id)) { "recording.deleted" } }
+        check(directory.isDirectory || directory.mkdirs())
+        val scratch = File(directory, UUID.randomUUID().toString() + ".tmp")
+        try {
                 context.contentResolver.openInputStream(uri).use { input ->
                     requireNotNull(input)
                     scratch.outputStream().use { out ->
                         val buffer = ByteArray(16384); var total = 0L
                         while (true) {
+                            if(command != null && !command.active()) throw CancellationException("recording.cancelled")
                             val n = input.read(buffer); if (n < 0) break
                             total += n; require(total <= 256L * 1024 * 1024)
                             out.write(buffer, 0, n)
@@ -117,10 +118,14 @@ class AndroidRecordingRuntime(
                 }
                 val metadata = metadata(scratch)
                 val audio = File(directory, UUID.randomUUID().toString() + "." + metadata.second)
-                check(scratch.renameTo(audio))
-                attach(call, audio, source, metadata.first)
-            } finally { scratch.delete() }
-        }
+                val archive = coordinator.guard(command) { synchronized(filesLock) {
+                    check(store.get(call.id)?.generation == initialGeneration && (!automatic || !store.isDeleted(call.id))) { "recording.changed" }
+                    check(scratch.renameTo(audio))
+                    attach(call, audio, source, metadata.first).also { coordinator.record(command) }
+                } }
+                if(archive.status == ArchiveStatus.QUEUED) runCatching { schedule(0) }
+                return archive
+        } finally { scratch.delete() }
     }
     private fun metadata(file: File): Pair<Long, String> {
         metadataReader?.let { return it(file) }
@@ -142,10 +147,15 @@ class AndroidRecordingRuntime(
             return duration to extension
         } finally { reader.release() }
     }
-    fun attachCapture(call: RecordingCall, file: File): CallArchive = synchronized(filesLock) {
+    fun attachCapture(call: RecordingCall, file: File): CallArchive {
         require(file.canonicalFile.parentFile == directory.canonicalFile)
-        check(!store.isDeleted(call.id)) { "recording.deleted" }
-        attach(call, file, RecordingSource.MICROPHONE, metadata(file).first)
+        val duration = metadata(file).first
+        val archive = coordinator.guard { synchronized(filesLock) {
+            check(!store.isDeleted(call.id)) { "recording.deleted" }
+            attach(call, file, RecordingSource.MICROPHONE, duration)
+        } }
+        if(archive.status == ArchiveStatus.QUEUED) runCatching { schedule(0) }
+        return archive
     }
     private fun attach(call: RecordingCall, file: File, source: RecordingSource, duration: Long): CallArchive {
         playbackGeneration.incrementAndGet()
@@ -154,53 +164,74 @@ class AndroidRecordingRuntime(
         val archive = try { workflow.attach(call.id, call.number, call.startedAt, file.absolutePath, source, duration) }
         catch (failure: Exception) { file.delete(); throw failure }
         old?.audioPath?.let { ownedFile(it)?.delete() }
-        if (archive.status == ArchiveStatus.QUEUED) schedule(0)
         return archive
     }
-    fun noteMissing(call: RecordingCall, reason: String? = null): Unit = synchronized(filesLock) {
-        if (store.isDeleted(call.id)) return
-        if (store.get(call.id) != null) return
-        store.compareAndSet(call.id, null, CallArchive(call.id, call.number, call.startedAt,
+    fun noteMissing(call: RecordingCall, reason: String? = null): Unit = coordinator.guard { synchronized(filesLock) {
+        if (!store.isDeleted(call.id) && store.get(call.id) == null) store.compareAndSet(call.id, null, CallArchive(call.id, call.number, call.startedAt,
             generation = System.currentTimeMillis() * 1000, error = reason))
-    }
+        Unit
+    } }
     fun captureCandidate(): RecordingCall? = activeCallId()?.let(::recordingCall)
-    fun captureFailure(call: RecordingCall, reason: String): Unit = synchronized(filesLock) {
+    fun captureFailure(call: RecordingCall, reason: String): Unit = coordinator.guard { synchronized(filesLock) {
         noteMissing(call, reason)
-        val value = store.get(call.id) ?: return
-        if (value.audioPath == null) store.compareAndSet(call.id, value.generation,
+        val value = store.get(call.id)
+        if (value != null && value.audioPath == null) store.compareAndSet(call.id, value.generation,
             value.copy(generation = value.generation + 1, error = reason))
+        Unit
+    } }
+    override suspend fun retry(callId: Long) = retryWith(callId, null)
+    private suspend fun retryWith(callId: Long, command: CommandContext?) = result {
+        coordinator.guard(command) { workflow.retry(archiveId(callId)); coordinator.record(command) }
+        runCatching { schedule(0) }; Unit
     }
-    override suspend fun retry(callId: Long) = result { workflow.retry(archiveId(callId)); schedule(0) }
-    override suspend fun delete(callId: Long) = result {
+    override suspend fun delete(callId: Long) = deleteWith(callId, null)
+    private suspend fun deleteWith(callId: Long, command: CommandContext?) = result { coordinator.guard(command) {
         playbackGeneration.incrementAndGet()
-        synchronized(filesLock) { stopPlayer(); workflow.delete(archiveId(callId))?.audioPath?.let { ownedFile(it)?.delete() }; Unit }
-    }
+        synchronized(filesLock) { stopPlayer(); workflow.delete(archiveId(callId))?.audioPath?.let { ownedFile(it)?.delete() } }
+        coordinator.record(command); Unit
+    } }
     private fun ownedFile(path: String): File? = File(path).canonicalFile.takeIf { it.parentFile == directory.canonicalFile }
-    override suspend fun play(callId: Long): ApiResult<Unit> {
+    override suspend fun play(callId: Long): ApiResult<Unit> = playWith(callId, null)
+    private suspend fun playWith(callId: Long, command: CommandContext?): ApiResult<Unit> {
         val ticket = playbackGeneration.incrementAndGet()
-        return result { synchronized(filesLock) {
-            if (ticket != playbackGeneration.get()) return@synchronized
-            stopPlayer()
-            val file = ownedFile(requireNotNull(store.get(archiveId(callId))?.audioPath)) ?: throw IOException()
+        return result {
+            val archive = requireNotNull(store.get(archiveId(callId)))
+            val file = ownedFile(requireNotNull(archive.audioPath)) ?: throw IOException()
             val next = MediaPlayer()
             try {
                 next.setDataSource(file.absolutePath); next.prepare()
-                if (ticket != playbackGeneration.get()) { next.release(); return@synchronized }
-                next.setOnCompletionListener { synchronized(filesLock) { if (player === it) stopPlayer() } }
-                next.setOnErrorListener { mp, _, _ -> synchronized(filesLock) { if (player === mp) stopPlayer() }; true }
-                next.start(); player = next
+                coordinator.guard(command) { synchronized(filesLock) {
+                    check(ticket == playbackGeneration.get() && store.get(archive.callId)?.generation == archive.generation) { "recording.changed" }
+                    stopPlayer()
+                    next.setOnCompletionListener { finishPlayback(it) }
+                    next.setOnErrorListener { mp, _, _ -> finishPlayback(mp); true }
+                    next.start(); player = next
+                    coordinator.changed("recording"); coordinator.record(command)
+                } }
             } catch (failure: Exception) { next.release(); throw failure }
-        } }
+        }
     }
+    private fun finishPlayback(value: MediaPlayer) { val changed = synchronized(filesLock) { if(player === value) { stopPlayer(); true } else false }; if(changed) coordinator.changed("recording") }
     private fun stopPlayer() { player?.release(); player = null }
-    override suspend fun stop(): ApiResult<Unit> {
-        // Invalidate a pending prepare before waiting for its IO/monitor to finish.
+    override suspend fun stop(): ApiResult<Unit> = stopWith(null)
+    private suspend fun stopWith(command: CommandContext?) = result { coordinator.guard(command) {
         playbackGeneration.incrementAndGet()
-        return result { synchronized(filesLock) { stopPlayer() } }
-    }
-    override suspend fun setSystemFolder(document: DocumentRef) = result {
+        synchronized(filesLock) { stopPlayer() }
+        coordinator.changed("recording"); coordinator.record(command)
+    } }
+    override suspend fun setSystemFolder(document: DocumentRef) = folderWith(document, null)
+    private suspend fun folderWith(document: DocumentRef, command: CommandContext?) = result {
         sources.authorize(document.uri)
-        store.settings().copy(systemFolder = document.uri).also { store.saveSettings(it) }
+        store.updateSettings(command) { it.copy(systemFolder = document.uri) }
+    }
+    fun bound(command: CommandContext): RecordingApi = object : RecordingApi by this {
+        override suspend fun importRecording(callId: Long, number: String, startedAt: Long, document: DocumentRef, source: RecordingSource) = result { importFile(callId, number, startedAt, document, source, command = command) }
+        override suspend fun retry(callId: Long) = retryWith(callId, command)
+        override suspend fun delete(callId: Long) = deleteWith(callId, command)
+        override suspend fun play(callId: Long) = playWith(callId, command)
+        override suspend fun stop() = stopWith(command)
+        override suspend fun setSystemFolder(document: DocumentRef) = folderWith(document, command)
+        override suspend fun saveSettings(settings: RecordingSettings) = result { store.updateSettings(command) { settings } }
     }
     override suspend fun systemRecordings() = result { store.settings().systemFolder?.let(sources::list).orEmpty() }
 

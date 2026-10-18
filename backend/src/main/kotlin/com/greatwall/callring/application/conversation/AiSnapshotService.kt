@@ -18,15 +18,18 @@ class AiSnapshotService(
 ) : AiSnapshotApi {
     override suspend fun captureComplete(): ApiResult<AiBusinessSnapshot> {
         repeat(3) {
-            val credentialSample = coordinator.guard { coordinator.capture() to keys() }
+            try {
+            val credentialSample = try { coordinator.guard { coordinator.capture() to keys() } }
+                catch(e: CancellationException) { throw e }
+                catch(_: Exception) { throw BackendFailure(ApiError(ErrorCode.IO_FAILURE, "ai.snapshot_domain_failed", fieldErrors = mapOf("domains" to "D13,D14"), retryable = true)) }
             val before = credentialSample.first
             val at = clock.millis()
-            try {
                 val parts = linkedMapOf<String, SnapshotPart>()
                 var bytes = 0L
                 var rows = 0L
                 for (source in sources) for ((id, part) in source(at)) {
                     require(!parts.containsKey(id)) { "snapshot.duplicate_domain" }
+                    require(part.count >= 0) { "snapshot.invalid_count" }
                     parts[id] = part
                     bytes = Math.addExact(bytes, part.data.encode().toByteArray(Charsets.UTF_8).size.toLong())
                     rows = Math.addExact(rows, part.count)
