@@ -80,4 +80,5 @@ class CallringBackend(
     fun statisticsStart(): Long = context.statisticsStart()
 
     fun hasRecentPending(nowEpochMillis: Long): Boolean = context.hasRecentPending(nowEpochMillis)
+    suspend fun captureCore(at: Long): ApiResult<Map<String, AiJson>> = context.io { context.captureCore(at) }
 }

@@ -5,33 +5,35 @@ import android.content.Intent
 import android.net.Uri
 import android.provider.DocumentsContract
 import com.greatwall.callring.application.api.RecordingFile
+import com.greatwall.callring.application.conversation.DirectoryEnumerator
+import com.greatwall.callring.application.conversation.DirectoryNode
 
 class SystemRecordingSource(private val resolver: ContentResolver) {
     fun authorize(raw: String) {
         val uri = Uri.parse(raw)
         require(uri.scheme == "content" && DocumentsContract.isTreeUri(uri))
         resolver.takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        check(resolver.persistedUriPermissions.any { it.uri == uri && it.isReadPermission }) { "recording.permission_required" }
     }
     fun list(folder: String): List<RecordingFile> {
         val root = Uri.parse(folder)
         require(root.scheme == "content" && DocumentsContract.isTreeUri(root))
-        val result = mutableListOf<RecordingFile>()
-        var visited = 0
-        fun walk(id: String, depth: Int) {
-            if (depth > 4 || visited >= 500) return
+        val enumerator = DirectoryEnumerator { id ->
             val children = DocumentsContract.buildChildDocumentsUriUsingTree(root, id)
-            resolver.query(children, arrayOf(DocumentsContract.Document.COLUMN_DOCUMENT_ID, DocumentsContract.Document.COLUMN_DISPLAY_NAME,
-                DocumentsContract.Document.COLUMN_MIME_TYPE, DocumentsContract.Document.COLUMN_LAST_MODIFIED), null, null, null)?.use { c ->
-                while (c.moveToNext() && visited++ < 500) {
-                    val child = c.getString(0); val name = c.getString(1).orEmpty(); val mime = c.getString(2).orEmpty()
-                    if (mime == DocumentsContract.Document.MIME_TYPE_DIR) walk(child, depth + 1)
-                    else if (mime.startsWith("audio/") || name.substringAfterLast('.', "").lowercase() in setOf("m4a", "mp3", "wav", "amr", "ogg", "aac", "flac")) {
-                        result += RecordingFile(DocumentsContract.buildDocumentUriUsingTree(root, child).toString(), name, c.getLong(3))
-                    }
+            val cursor = resolver.query(children, arrayOf(DocumentsContract.Document.COLUMN_DOCUMENT_ID,
+                DocumentsContract.Document.COLUMN_DISPLAY_NAME, DocumentsContract.Document.COLUMN_MIME_TYPE,
+                DocumentsContract.Document.COLUMN_LAST_MODIFIED, DocumentsContract.Document.COLUMN_SIZE), null, null, null)
+                ?: throw java.io.IOException("recording.directory_unavailable")
+            cursor.use { c -> buildList {
+                while (c.moveToNext()) {
+                    val child = requireNotNull(c.getString(0)); val name = requireNotNull(c.getString(1)); val mime = requireNotNull(c.getString(2))
+                    add(DirectoryNode(child, name, mime, if (c.isNull(3)) null else c.getLong(3), if (c.isNull(4)) null else c.getLong(4), mime == DocumentsContract.Document.MIME_TYPE_DIR))
+                    if (size > 500) throw java.io.IOException("recording.enumeration_limit")
                 }
-            }
+            } }
         }
-        walk(DocumentsContract.getTreeDocumentId(root), 0)
-        return result.sortedByDescending { it.modifiedAt }
+        return enumerator.capture(DocumentsContract.getTreeDocumentId(root)).map {
+            RecordingFile(DocumentsContract.buildDocumentUriUsingTree(root, it.id).toString(), it.name, it.modified ?: 0, it.size, it.modified != null)
+        }.sortedByDescending { it.modifiedAt }
     }
 }

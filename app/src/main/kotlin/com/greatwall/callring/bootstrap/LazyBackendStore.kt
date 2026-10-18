@@ -20,6 +20,7 @@ internal class LazyBackendStore(private val factory: () -> BackendStore) : Backe
     }
 
     @Synchronized override fun <T> read(block: (BackendState) -> T): T = get().read(block)
+    @Synchronized override fun <T> captureFull(block: (BackendState, List<com.greatwall.callring.domain.AuditRecord>) -> T): T = get().captureFull(block)
 
     @Synchronized
     override fun <T> transaction(block: (BackendState) -> T): T = get().transaction(block)

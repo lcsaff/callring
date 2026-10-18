@@ -20,10 +20,15 @@ class AndroidRecordingRuntime(
     private val findCall: (Long) -> RecordingCall?,
     private val activeCallId: () -> Long?,
     private val schedule: (Long) -> Unit,
-    private val storeFactory: () -> AndroidRecordingStore = { AndroidRecordingStore(context, namespace) },
+    private val storeFactory: (() -> AndroidRecordingStore)? = null,
     private val metadataReader: ((File) -> Pair<Long, String>)? = null,
+    val coordinator: BusinessRevisionCoordinator = BusinessRevisionCoordinator(),
 ) : RecordingApi, AutoCloseable {
-    val store by lazy { storeFactory() }
+    val store by lazy { storeFactory?.invoke() ?: AndroidRecordingStore(context, namespace, coordinator = coordinator) }
+    val aiSettings by lazy { AiSettingsService(store, coordinator,
+        { context.checkSelfPermission(android.Manifest.permission.RECORD_AUDIO) == android.content.pm.PackageManager.PERMISSION_GRANTED },
+        { connection, transcription -> client.test(connection, transcription) }, afterSave = { if (!it.recordingEnabled) stopCapture() }) }
+    private fun stopCapture() { context.stopService(android.content.Intent(context, com.greatwall.callring.CallCaptureService::class.java)) }
     val directory = File(context.filesDir, namespace + "_recordings")
     private val sources = SystemRecordingSource(context.contentResolver)
     private val client by lazy {
@@ -41,6 +46,7 @@ class AndroidRecordingRuntime(
     private suspend fun <T> result(block: () -> T): ApiResult<T> = withContext(Dispatchers.IO) {
         try { ApiResult.Success(block()) }
         catch (cancelled: CancellationException) { throw cancelled }
+        catch (failure: com.greatwall.callring.application.ports.BackendFailure) { ApiResult.Failure(failure.error) }
         catch (failure: AiFailure) { ApiResult.Failure(ApiError(ErrorCode.IO_FAILURE, failure.reason, retryable = failure.retryable)) }
         catch (_: SecurityException) { ApiResult.Failure(ApiError(ErrorCode.PERMISSION_REQUIRED, "recording.permission_required")) }
         catch (_: IllegalArgumentException) { ApiResult.Failure(ApiError(ErrorCode.VALIDATION, "recording.invalid_configuration_or_audio")) }
@@ -49,6 +55,8 @@ class AndroidRecordingRuntime(
     }
     override suspend fun getSettings() = result { store.settings() }
     override suspend fun saveSettings(settings: RecordingSettings) = result {
+        if (settings.captureMode == CaptureMode.MICROPHONE_EXPERIMENTAL && context.checkSelfPermission(android.Manifest.permission.RECORD_AUDIO) != android.content.pm.PackageManager.PERMISSION_GRANTED)
+            throw com.greatwall.callring.application.ports.BackendFailure(ApiError(ErrorCode.PERMISSION_REQUIRED, "capability.required", requiredCapabilities = setOf(Capability.MICROPHONE)))
         settings.validate(); store.saveSettings(settings)
         if (!settings.recordingEnabled) context.stopService(android.content.Intent(context, com.greatwall.callring.CallCaptureService::class.java))
         settings
@@ -69,6 +77,7 @@ class AndroidRecordingRuntime(
         return store.linkedRecording(legacy.id) ?: legacy
     }
     private fun archiveId(callId: Long): Long = recordingCall(callId)?.id ?: callId
+    override suspend fun getIdentity(callId: Long) = result { val call = requireNotNull(recordingCall(callId)); RecordingIdentity(call.id, call.number, call.startedAt) }
     override suspend fun listArchives() = result { store.all().sortedByDescending { it.startedAtEpochMillis } }
     override suspend fun getArchive(callId: Long) = result { store.get(archiveId(callId)) }
     override suspend fun importRecording(callId: Long, number: String, startedAt: Long, document: DocumentRef, source: RecordingSource) = result {

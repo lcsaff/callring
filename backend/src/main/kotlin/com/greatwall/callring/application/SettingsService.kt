@@ -342,6 +342,7 @@ internal fun createSettingsApi(context: BackendContext): SettingsApi =
                     "rgb.required",
                 )
                 synchronized(lock) {
+                    coordinator.check(commandContext)
                     val previous = preferences.getAppearance()
                     val saved =
                         if (settings.customSeedRgb == null)

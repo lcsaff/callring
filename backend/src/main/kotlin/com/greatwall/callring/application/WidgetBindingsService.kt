@@ -10,6 +10,7 @@ import kotlinx.coroutines.flow.*
 internal fun createWidgetBindingsApi(context: BackendContext): WidgetBindingsApi =
     with(context) {
         object : WidgetBindingsApi {
+            override suspend fun listBindings(): ApiResult<WidgetBindingsListing> = io { WidgetBindingsListing(preferences.listBindings(), runtimeProbe.getInstalledWidgets()) }
             override suspend fun getBinding(widgetId: Int): ApiResult<WidgetBinding?> = io {
                 widgetId(widgetId)
                 preferences.getBinding(widgetId)
@@ -21,14 +22,14 @@ internal fun createWidgetBindingsApi(context: BackendContext): WidgetBindingsApi
             ): ApiResult<WidgetBinding> = write {
                 widgetId(widgetId)
                 val binding = WidgetBinding(widgetId, number(number))
-                preferences.saveBinding(binding)
+                coordinator.guard(commandContext) { preferences.saveBinding(binding) }
                 notifyChanged()
                 binding
             }
 
             override suspend fun removeBinding(widgetId: Int): ApiResult<Unit> = write {
                 widgetId(widgetId)
-                preferences.removeBinding(widgetId)
+                coordinator.guard(commandContext) { preferences.removeBinding(widgetId) }
                 notifyChanged()
             }
         }

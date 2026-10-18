@@ -30,6 +30,18 @@ constructor(context: Context, databaseName: String = "callring.db") : BackendSto
         }
     }
 
+    @Synchronized override fun <T> captureFull(block: (BackendState, List<com.greatwall.callring.domain.AuditRecord>) -> T): T {
+        db.beginTransactionNonExclusive()
+        try {
+            checkSnapshotSize(db)
+            val state = StorageSession(db).load()
+            val audits = db.rawQuery("SELECT kind,target,raw,created FROM calendar_audit ORDER BY id", null).use { c ->
+                buildList { while (c.moveToNext()) add(com.greatwall.callring.domain.AuditRecord(c.getString(0), c.getString(1), c.getString(2), c.getLong(3))) }
+            }
+            return block(state, audits).also { db.setTransactionSuccessful() }
+        } finally { db.endTransaction() }
+    }
+
     @Synchronized
     override fun <T> transaction(block: (BackendState) -> T): T {
         // Capture after acquiring SQLite's transaction lock, including across separate adapters.

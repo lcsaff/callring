@@ -27,6 +27,7 @@ class BackendGraph(
     val notifications: UiNotificationEntryPoints,
     val incomingCallUi: IncomingCallUiSink,
 ) : Closeable {
+    val coordinator = com.greatwall.callring.application.BusinessRevisionCoordinator()
     private val application = context.applicationContext
     private val lifetime = Any()
     // Scheduler binder calls never hold the lock used by Telecom's graph getters.
@@ -53,6 +54,7 @@ class BackendGraph(
                 Context.MODE_PRIVATE,
             ),
             configuration.clock,
+            coordinator,
         )
     }
     val diagnostics
@@ -68,6 +70,7 @@ class BackendGraph(
             ),
             { configuration.audioDirectory ?: application.filesDir },
             documents,
+            coordinator,
         )
     }
     val audio
@@ -99,6 +102,7 @@ class BackendGraph(
                     Context.MODE_PRIVATE,
                 ),
                 configuration.defaultAppearance,
+                coordinator,
             ),
             documents,
             AndroidRuntimeProbe(application, playbackState, diagnostics, configuration.clock),
@@ -107,6 +111,7 @@ class BackendGraph(
             configuration.clock,
             configuration.dispatcher,
             HolidayCalendarSource(configuration.clock),
+            coordinator,
         )
     }
     val backend: CallringBackend
@@ -123,12 +128,13 @@ class BackendGraph(
                 RecordingCallLink(it.id, it.number, it.time, it.duration, it.hidden, it.linkedScreenId)
             }, id) } },
             activeCallId = { recordingSession.activeCandidate(configuration.clock.millis()) },
-            schedule = { delay -> RecordingJobService.schedule(application, delay) })
+            schedule = { delay -> RecordingJobService.schedule(application, delay) }, coordinator = coordinator)
     }
     val recordings get() = recordingDelegate.value
     private val apiDelegate by lazy {
         object : CallringUiApi by backend {
             override val recordings: RecordingApi get() = this@BackendGraph.recordings
+            override val aiSettings: AiSettingsApi get() = this@BackendGraph.recordings.aiSettings
         }
     }
     val api: CallringUiApi get() = apiDelegate

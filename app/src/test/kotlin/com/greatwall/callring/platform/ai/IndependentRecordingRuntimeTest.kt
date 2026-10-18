@@ -33,7 +33,7 @@ class IndependentRecordingRuntimeTest {
             override fun onCreate() = true
             override fun getType(uri: Uri) = "audio/wav"
             override fun query(uri: Uri, projection: Array<out String>?, selection: String?, args: Array<out String>?, sort: String?): Cursor =
-                MatrixCursor(projection).apply { addRow(arrayOf<Any>("audio", displayName, "audio/wav", now)) }
+                MatrixCursor(projection).apply { addRow(arrayOf<Any>("audio", displayName, "audio/wav", now, original.length())) }
             override fun openFile(uri: Uri, mode: String): ParcelFileDescriptor = ParcelFileDescriptor.open(original, ParcelFileDescriptor.MODE_READ_ONLY)
             override fun insert(uri: Uri, values: ContentValues?): Uri? = null
             override fun update(uri: Uri, values: ContentValues?, selection: String?, args: Array<out String>?) = 0

@@ -9,6 +9,7 @@ interface CallringUiApi {
     val aiSettings: AiSettingsApi get() = UnavailableAiSettingsApi
     val snapshots: AiSnapshotApi get() = UnavailableAiSnapshotApi
     fun commandApi(context: CommandContext): CallringUiApi = this
+    suspend fun adoptIdentity(callId: Long, expectedGeneration: Long): ApiResult<CallerProfile> = aiUnavailable()
     val recordings: RecordingApi get() = UnavailableRecordingApi
     val home: HomeApi
     val callers: CallersApi
@@ -99,6 +100,7 @@ interface RuntimeApi {
 }
 
 interface WidgetBindingsApi {
+    suspend fun listBindings(): ApiResult<WidgetBindingsListing> = aiUnavailable()
     suspend fun getBinding(widgetId: Int): ApiResult<WidgetBinding?>
     suspend fun saveBinding(widgetId: Int, number: String): ApiResult<WidgetBinding>
     suspend fun removeBinding(widgetId: Int): ApiResult<Unit>
@@ -516,6 +518,8 @@ data class SyncRequestReceipt(
 )
 
 data class WidgetBinding(val widgetId: Int, val number: String)
+data class WidgetInstallState(val ids: List<Int>, val access: AccessState)
+data class WidgetBindingsListing(val stored: List<WidgetBinding>, val installed: WidgetInstallState)
 
 enum class DataDomain {
     CALLERS, POSITIONS, CALLS, REPORTS, WORK_CALENDAR,

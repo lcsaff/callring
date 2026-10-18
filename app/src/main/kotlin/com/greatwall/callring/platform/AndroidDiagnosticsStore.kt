@@ -27,6 +27,7 @@ enum class DiagnosticEvent(val code: String) {
 class AndroidDiagnosticsStore(
     private val preferences: SharedPreferences,
     private val clock: Clock,
+    private val coordinator: com.greatwall.callring.application.BusinessRevisionCoordinator = com.greatwall.callring.application.BusinessRevisionCoordinator(),
 ) : Closeable {
     private val lifetime = Any()
     private var closed = false
@@ -53,8 +54,8 @@ class AndroidDiagnosticsStore(
 
     fun add(event: DiagnosticEvent) = addAt(event, clock.millis())
 
-    @Synchronized
-    private fun addAt(event: DiagnosticEvent, occurredAt: Long) {
+    private fun addAt(event: DiagnosticEvent, occurredAt: Long) = coordinator.commit("diagnostics") { addAtInternal(event, occurredAt) }
+    @Synchronized private fun addAtInternal(event: DiagnosticEvent, occurredAt: Long) {
         Log.i("Callring", event.code)
         val old =
             preferences
@@ -96,6 +97,19 @@ class AndroidDiagnosticsStore(
                 .mapNotNull(::legacyDiagnostic)
                 .toList()
         return (recent + legacy).take(18)
+    }
+
+    @Synchronized fun captureStoredText(): List<DiagnosticEntry> {
+        val recent = preferences.getString("diagnostics_v2", "").orEmpty().lineSequence().filter { it.isNotEmpty() }.map { line ->
+            val fields = line.split('\t', limit = 2)
+            require(fields.size == 2 && fields[0].toLongOrNull() != null && DiagnosticEvent.values().any { it.code == fields[1] }) { "snapshot.diagnostics_invalid" }
+            DiagnosticEntry(fields[0].toLong(), null, fields[1])
+        }.toList()
+        val legacy = preferences.getString("events", "").orEmpty().lineSequence().filter { it.isNotEmpty() }.map { line ->
+            val parsed = requireNotNull(legacyDiagnostic(line)) { "snapshot.diagnostics_invalid" }
+            parsed.copy(message = line.substring(10))
+        }.toList()
+        return recent + legacy
     }
 
     override fun close() {

@@ -2,6 +2,7 @@ package com.greatwall.callring.application.ports
 
 import com.greatwall.callring.application.api.*
 import com.greatwall.callring.domain.BackendState
+import com.greatwall.callring.domain.AuditRecord
 import com.greatwall.callring.domain.CalendarImport
 import java.io.InputStream
 import java.io.OutputStream
@@ -11,6 +12,8 @@ import java.io.OutputStream
  * State belongs to the callback only; it must never escape or be reused by the adapter.
  */
 interface BackendStore {
+    fun <T> captureFull(block: (BackendState, List<AuditRecord>) -> T): T =
+        throw BackendFailure(ApiError(ErrorCode.SYSTEM_UNAVAILABLE, "snapshot.core_unavailable"))
     fun <T> read(block: (BackendState) -> T): T
 
     fun <T> transaction(block: (BackendState) -> T): T
@@ -22,6 +25,7 @@ fun interface CalendarSource {
 }
 
 interface PreferenceStore {
+    fun listBindings(): List<WidgetBinding> = throw BackendFailure(ApiError(ErrorCode.SYSTEM_UNAVAILABLE, "snapshot.bindings_unavailable"))
     fun getAppearance(): AppearanceSettings
 
     fun saveAppearance(settings: AppearanceSettings)
@@ -43,6 +47,7 @@ interface DocumentStore {
 }
 
 interface RuntimeProbe {
+    fun getInstalledWidgets(): WidgetInstallState = WidgetInstallState(emptyList(), AccessState.UNKNOWN)
     fun getStatus(): RuntimeStatus
 
     fun getDiagnostics(): List<DiagnosticEntry>

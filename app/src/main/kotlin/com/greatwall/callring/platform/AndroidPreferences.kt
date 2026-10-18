@@ -47,6 +47,7 @@ class AndroidPreferences(
     private val appearance: SharedPreferences,
     private val widgets: SharedPreferences,
     private val defaultAppearance: AppearanceSettings,
+    private val coordinator: com.greatwall.callring.application.BusinessRevisionCoordinator = com.greatwall.callring.application.BusinessRevisionCoordinator(),
 ) : PreferenceStore {
     @Synchronized
     override fun getAppearance(): AppearanceSettings {
@@ -69,8 +70,8 @@ class AndroidPreferences(
         )
     }
 
-    @Synchronized
-    override fun saveAppearance(settings: AppearanceSettings) {
+    override fun saveAppearance(settings: AppearanceSettings) = coordinator.commit("preferences") { saveAppearanceInternal(settings) }
+    @Synchronized private fun saveAppearanceInternal(settings: AppearanceSettings) {
         updatePreferences(
             appearance,
             mapOf(
@@ -86,13 +87,18 @@ class AndroidPreferences(
     override fun getBinding(widgetId: Int): WidgetBinding? =
         widgets.getString("number_$widgetId", null)?.let { WidgetBinding(widgetId, it) }
 
-    @Synchronized
-    override fun saveBinding(binding: WidgetBinding) {
+    override fun saveBinding(binding: WidgetBinding) = coordinator.commit("preferences") { saveBindingInternal(binding) }
+    @Synchronized private fun saveBindingInternal(binding: WidgetBinding) {
         updatePreferences(widgets, mapOf("number_${binding.widgetId}" to binding.number))
     }
 
-    @Synchronized
-    override fun removeBinding(widgetId: Int) {
+    override fun removeBinding(widgetId: Int) = coordinator.commit("preferences") { removeBindingInternal(widgetId) }
+    @Synchronized private fun removeBindingInternal(widgetId: Int) {
         updatePreferences(widgets, mapOf("number_$widgetId" to null))
     }
+
+    @Synchronized override fun listBindings(): List<WidgetBinding> = widgets.all.entries.filter { it.key.startsWith("number_") }.map {
+        val id = it.key.removePrefix("number_").toIntOrNull() ?: throw IllegalStateException("snapshot.binding_invalid")
+        WidgetBinding(id, it.value as? String ?: throw IllegalStateException("snapshot.binding_invalid"))
+    }.sortedBy { it.widgetId }
 }

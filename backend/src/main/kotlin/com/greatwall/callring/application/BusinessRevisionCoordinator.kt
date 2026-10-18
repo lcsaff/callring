@@ -11,6 +11,7 @@ class BusinessRevisionCoordinator {
     private val incarnation = UUID.randomUUID().toString()
     private val versions = linkedMapOf("core" to 0L, "recording" to 0L, "recordingConfig" to 0L, "aiConfig" to 0L, "preferences" to 0L, "ringtone" to 0L, "diagnostics" to 0L)
     private var revision = 0L
+    private val commandCommits = linkedMapOf<String, RevisionVector>()
     val changes = MutableStateFlow(DataChange(0, DataDomain.values().toSet(), null, null))
     fun capture(): RevisionVector = synchronized(fence) { RevisionVector(incarnation, versions.toMap()) }
     fun check(context: CommandContext?) {
@@ -24,5 +25,7 @@ class BusinessRevisionCoordinator {
         revision = Math.addExact(revision, 1)
         changes.value = DataChange(revision, DataDomain.values().toSet(), null, null)
     }
-    fun <T> commit(domain: String, context: CommandContext? = null, block: () -> T): T = guard(context) { block().also { changed(domain) } }
+    fun record(context: CommandContext?) { if(context != null) synchronized(fence) { commandCommits[context.operationId] = capture() } }
+    fun committed(operationId: String): RevisionVector? = synchronized(fence) { commandCommits[operationId] }
+    fun <T> commit(domain: String, context: CommandContext? = null, block: () -> T): T = guard(context) { block().also { changed(domain); record(context) } }
 }

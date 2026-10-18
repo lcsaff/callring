@@ -20,6 +20,7 @@ data class ConnectionPatch(val protocol: PatchField<AiProtocol> = PatchField.Kee
 data class AiSettingsPatch(val analysis: ConnectionPatch = ConnectionPatch(), val transcription: ConnectionPatch = ConnectionPatch(), val budget: PatchField<ConversationBudget> = PatchField.Keep)
 data class RecordingSettingsPatch(val recordingEnabled: PatchField<Boolean> = PatchField.Keep, val automaticAnalysis: PatchField<Boolean> = PatchField.Keep, val captureMode: PatchField<CaptureMode> = PatchField.Keep)
 interface AiSettingsApi {
+    suspend fun patchCombined(recordingBase: RecordingSettingsView, recording: RecordingSettingsPatch, aiBase: AiSettingsView, ai: AiSettingsPatch): ApiResult<Unit> = aiUnavailable()
     suspend fun getRecordingView(): ApiResult<RecordingSettingsView>
     suspend fun patchRecording(base: RecordingSettingsView, patch: RecordingSettingsPatch): ApiResult<RecordingSettingsView>
     suspend fun getAiView(): ApiResult<AiSettingsView>

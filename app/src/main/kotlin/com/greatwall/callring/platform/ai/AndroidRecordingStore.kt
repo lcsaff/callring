@@ -9,6 +9,8 @@ import android.security.keystore.KeyGenParameterSpec
 import android.security.keystore.KeyProperties
 import android.util.Base64
 import com.greatwall.callring.application.RecordingStore
+import com.greatwall.callring.application.BusinessRevisionCoordinator
+import com.greatwall.callring.platform.updatePreferences
 import com.greatwall.callring.application.RecordingCall
 import com.greatwall.callring.application.api.*
 import org.json.JSONArray
@@ -50,6 +52,7 @@ class KeystoreRecordingCipher(private val alias: String) : RecordingCipher {
 /** Separate database keeps large transcripts away from the Telecom snapshot transactions. */
 class AndroidRecordingStore(context: Context, namespace: String,
     private val cipher: RecordingCipher = KeystoreRecordingCipher("callring.recording.$namespace"),
+    val coordinator: BusinessRevisionCoordinator = BusinessRevisionCoordinator(),
 ) : RecordingStore, AutoCloseable {
     private val preferences = context.getSharedPreferences(namespace + "_recording", Context.MODE_PRIVATE)
     private val helper = object : SQLiteOpenHelper(context, namespace + "_recording.db", null, 2) {
@@ -65,7 +68,11 @@ class AndroidRecordingStore(context: Context, namespace: String,
         }
     }
     /** Event identities are owned here, including when the statistics database contains no call. */
-    @Synchronized fun registerIncoming(sessionId: String, number: String, at: Long, account: String?): RecordingCall {
+    fun registerIncoming(sessionId: String, number: String, at: Long, account: String?): RecordingCall = coordinator.guard {
+        val existed = hasSession(sessionId)
+        registerIncomingInternal(sessionId, number, at, account).also { if (!existed) coordinator.changed("recording") }
+    }
+    @Synchronized private fun registerIncomingInternal(sessionId: String, number: String, at: Long, account: String?): RecordingCall {
         require(sessionId.isNotBlank() && number.isNotBlank())
         val db = helper.writableDatabase
         db.beginTransaction()
@@ -91,10 +98,13 @@ class AndroidRecordingStore(context: Context, namespace: String,
             if (it.moveToFirst()) RecordingCall(-it.getLong(0), it.getString(1), it.getLong(2), null) else null
         }
     }
-    @Synchronized fun linkStatistics(statisticsId: Long, sessionId: String) {
+    fun linkStatistics(statisticsId: Long, sessionId: String) = coordinator.guard {
+        if (linkStatisticsInternal(statisticsId, sessionId)) coordinator.changed("recording")
+    }
+    @Synchronized private fun linkStatisticsInternal(statisticsId: Long, sessionId: String): Boolean {
         require(statisticsId > 0 && sessionId.isNotBlank())
         val row = ContentValues().apply { put("statistics_id", statisticsId); put("session_id", sessionId) }
-        helper.writableDatabase.insertWithOnConflict("recording_statistics_links", null, row, SQLiteDatabase.CONFLICT_IGNORE)
+        return helper.writableDatabase.insertWithOnConflict("recording_statistics_links", null, row, SQLiteDatabase.CONFLICT_IGNORE) != -1L
     }
     @Synchronized fun hasSession(sessionId: String): Boolean = helper.readableDatabase.rawQuery(
         "SELECT 1 FROM recording_events WHERE session_id=?", arrayOf(sessionId)).use { it.moveToFirst() }
@@ -103,18 +113,52 @@ class AndroidRecordingStore(context: Context, namespace: String,
         arrayOf(statisticsId.toString())).use { if (it.moveToFirst()) RecordingCall(-it.getLong(0), it.getString(1), it.getLong(2), null) else null }
     @Synchronized override fun isDeleted(callId: Long): Boolean = helper.readableDatabase.rawQuery(
         "SELECT 1 FROM deleted_archives WHERE call_id=?", arrayOf(callId.toString())).use { it.moveToFirst() }
-    @Synchronized override fun settings(): RecordingSettings = preferences.getString("config", null)?.let {
+    override fun settings(): RecordingSettings = synchronized(preferences) { preferences.getString("config", null)?.let {
         RecordingJson.settings(JSONObject(cipher.decrypt(it)))
-    } ?: RecordingSettings()
-    @Synchronized override fun saveSettings(value: RecordingSettings) {
-        value.validate()
-        check(preferences.edit().putString("config", cipher.encrypt(RecordingJson.settings(value).toString())).commit())
+    } ?: RecordingSettings() }
+    override fun saveSettings(value: RecordingSettings) { updateSettings { value } }
+    fun updateSettings(command: CommandContext? = null, transform: (RecordingSettings) -> RecordingSettings): RecordingSettings = coordinator.guard(command) {
+        synchronized(preferences) {
+            val old = settings()
+            val next = transform(old).also { it.validate() }
+            if (next != old) {
+                updatePreferences(preferences, mapOf("config" to cipher.encrypt(RecordingJson.settings(next).toString())))
+                if (old.recordingEnabled != next.recordingEnabled || old.automaticAnalysis != next.automaticAnalysis || old.captureMode != next.captureMode || old.systemFolder != next.systemFolder) coordinator.changed("recordingConfig")
+                if (old.analysis != next.analysis || old.transcription != next.transcription || old.conversationBudget != next.conversationBudget) coordinator.changed("aiConfig")
+                coordinator.record(command)
+            }
+            next
+        }
     }
     @Synchronized override fun get(callId: Long): CallArchive? = helper.readableDatabase.query("archives", arrayOf("payload"),
         "call_id=?", arrayOf(callId.toString()), null, null, null).use { if (it.moveToFirst()) RecordingJson.archive(JSONObject(it.getString(0))) else null }
     @Synchronized override fun all(): List<CallArchive> = helper.readableDatabase.query("archives", arrayOf("payload"),
         null, null, null, null, "call_id").use { cursor -> buildList { while (cursor.moveToNext()) add(RecordingJson.archive(JSONObject(cursor.getString(0)))) } }
-    @Synchronized override fun compareAndSet(callId: Long, expectedGeneration: Long?, value: CallArchive): Boolean {
+    @Synchronized fun captureRecordingText(): Map<String, AiJson> {
+        val db = helper.readableDatabase
+        db.beginTransactionNonExclusive()
+        try {
+            com.greatwall.callring.data.checkSnapshotSize(db)
+            fun rows(sql: String): AiJson = db.rawQuery(sql, null).use { c -> AiJson.Arr(buildList {
+                while (c.moveToNext()) add(AiJson.Obj((0 until c.columnCount).associate { i -> c.getColumnName(i) to when (c.getType(i)) {
+                    android.database.Cursor.FIELD_TYPE_NULL -> AiJson.Null
+                    android.database.Cursor.FIELD_TYPE_INTEGER -> aiNumber(c.getLong(i))
+                    android.database.Cursor.FIELD_TYPE_STRING -> aiString(c.getString(i))
+                    else -> throw IllegalArgumentException("snapshot.recording_invalid")
+                } }))
+            }) }
+            val events = aiObject("events" to rows("SELECT * FROM recording_events ORDER BY id"), "links" to rows("SELECT * FROM recording_statistics_links ORDER BY statistics_id"), "deleted" to rows("SELECT * FROM deleted_archives ORDER BY call_id"))
+            val archives = db.rawQuery("SELECT payload FROM archives ORDER BY call_id", null).use { c -> AiJson.Arr(buildList {
+                while (c.moveToNext()) { val text = c.getString(0); com.greatwall.callring.platform.StrictJson.validate(text); add(com.greatwall.callring.application.safeValue(RecordingJson.archive(JSONObject(text)))) }
+            }) }
+            db.setTransactionSuccessful()
+            return mapOf("D15" to events, "D16" to archives)
+        } finally { db.endTransaction() }
+    }
+    override fun compareAndSet(callId: Long, expectedGeneration: Long?, value: CallArchive): Boolean = coordinator.guard {
+        compareAndSetInternal(callId, expectedGeneration, value).also { if (it) coordinator.changed("recording") }
+    }
+    @Synchronized private fun compareAndSetInternal(callId: Long, expectedGeneration: Long?, value: CallArchive): Boolean {
         require(callId == value.callId)
         val row = ContentValues().apply { put("call_id", callId); put("generation", value.generation); put("payload", RecordingJson.archive(value).toString()) }
         val db = helper.writableDatabase
@@ -131,7 +175,11 @@ class AndroidRecordingStore(context: Context, namespace: String,
             return success
         } finally { db.endTransaction() }
     }
-    @Synchronized override fun delete(callId: Long): CallArchive? {
+    override fun delete(callId: Long): CallArchive? = coordinator.guard {
+        val existed = isDeleted(callId)
+        deleteInternal(callId).also { if (!existed || it != null) coordinator.changed("recording") }
+    }
+    @Synchronized private fun deleteInternal(callId: Long): CallArchive? {
         val db = helper.writableDatabase
         db.beginTransaction()
         try {
@@ -150,8 +198,10 @@ internal object RecordingJson {
     private fun connection(v: JSONObject) = AiConnection(AiProtocol.valueOf(v.getString("protocol")), v.getString("url"), v.getString("key"), v.getString("model"))
     fun settings(v: RecordingSettings): JSONObject = JSONObject().put("recording", v.recordingEnabled).put("automatic", v.automaticAnalysis)
         .put("analysis", connection(v.analysis)).put("transcription", connection(v.transcription)).put("mode", v.captureMode.name).put("folder", v.systemFolder)
+        .put("conversation", JSONObject().put("version", 1).put("context", v.conversationBudget.context).put("output", v.conversationBudget.output))
     fun settings(v: JSONObject) = RecordingSettings(v.getBoolean("recording"), v.getBoolean("automatic"), connection(v.getJSONObject("analysis")),
-        connection(v.getJSONObject("transcription")), CaptureMode.valueOf(v.getString("mode")), v.nullableString("folder"))
+        connection(v.getJSONObject("transcription")), CaptureMode.valueOf(v.getString("mode")), v.nullableString("folder"),
+        v.optJSONObject("conversation")?.let { require(it.getInt("version") == 1); ConversationBudget(it.getLong("context"), it.getLong("output")).also { b -> b.validate() } } ?: ConversationBudget())
     private fun analysis(v: CallAnalysis) = JSONObject().put("name", v.name).put("organization", v.organization).put("position", v.position)
         .put("purpose", v.purpose).put("evidence", v.evidence).put("identity", v.inferredIdentity).put("summary", v.summary).put("actions", JSONArray(v.actionItems))
     private fun analysis(v: JSONObject) = CallAnalysis(v.getString("name"), v.getString("organization"), v.getString("position"), v.getString("purpose"),

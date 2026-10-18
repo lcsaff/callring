@@ -22,6 +22,7 @@ class AndroidAudioController(
     private val preferences: SharedPreferences,
     directoryProvider: () -> File,
     private val documents: DocumentStore,
+    private val coordinator: com.greatwall.callring.application.BusinessRevisionCoordinator = com.greatwall.callring.application.BusinessRevisionCoordinator(),
 ) : AudioController, Closeable {
     private val generation = AudioGeneration()
     private val files = AudioFiles(directoryProvider)
@@ -49,10 +50,10 @@ class AndroidAudioController(
     override fun setEnabled(enabled: Boolean): RingtoneSettings {
         checkOpen()
         val settings =
-            synchronized(preferences) {
+            coordinator.commit("ringtone") { synchronized(preferences) {
                 updatePreferences(preferences, mapOf("enabled" to enabled))
                 readAndPublishSettings()
-            }
+            } }
         if (!enabled)
             try {
                 stopPlayback()
@@ -102,7 +103,7 @@ class AndroidAudioController(
             val name = displayName(source)
             lateinit var settings: RingtoneSettings
             val published =
-                generation.publish(ticket, checkCancellation) {
+                coordinator.commit("ringtone") { generation.publish(ticket, checkCancellation) {
                     checkOpen()
                     stopPlayback()
                     synchronized(preferences) {
@@ -119,7 +120,7 @@ class AndroidAudioController(
                         }
                         settings = readAndPublishSettings()
                     }
-                }
+                } }
             if (!published)
                 throw BackendFailure(
                     ApiError(ErrorCode.SYSTEM_RESTRICTED, "audio.import_superseded")
@@ -133,7 +134,7 @@ class AndroidAudioController(
     override fun restoreBuiltIn(): RingtoneSettings {
         checkOpen()
         lateinit var settings: RingtoneSettings
-        generation.invalidate {
+        coordinator.commit("ringtone") { generation.invalidate {
             stopPlayback()
             synchronized(preferences) {
                 updatePreferences(
@@ -142,7 +143,7 @@ class AndroidAudioController(
                 )
                 settings = readAndPublishSettings()
             }
-        }
+        } }
         return settings
     }
 

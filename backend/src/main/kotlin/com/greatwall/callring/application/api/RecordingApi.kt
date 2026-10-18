@@ -29,8 +29,10 @@ data class RecordingSettings(
     val transcription: AiConnection = AiConnection(),
     val captureMode: CaptureMode = CaptureMode.SYSTEM_ONLY,
     val systemFolder: String? = null,
+    val conversationBudget: ConversationBudget = ConversationBudget(),
 ) {
     fun validate() {
+        conversationBudget.validate()
         require(transcription.protocol == AiProtocol.OPENAI) { "ai.transcription_requires_openai" }
         if (analysis.url.isNotBlank() || analysis.apiKey.isNotBlank() || analysis.model.isNotBlank()) analysis.validate()
         if (transcription.url.isNotBlank() || transcription.apiKey.isNotBlank() || transcription.model.isNotBlank()) transcription.validate()
@@ -56,9 +58,13 @@ data class CallArchive(
     val analysisProtocol: AiProtocol? = null,
     val manualAnalysis: Boolean = false,
 )
-data class RecordingFile(val uri: String, val name: String, val modifiedAt: Long)
+data class RecordingFile(val uri: String, val name: String, val modifiedAt: Long, val size: Long? = null, val modifiedKnown: Boolean = true)
 
 interface RecordingApi {
+    suspend fun getIdentity(callId: Long): ApiResult<RecordingIdentity> = when(val result = getArchive(callId)) {
+        is ApiResult.Failure -> result
+        is ApiResult.Success -> result.value?.let { ApiResult.Success(RecordingIdentity(it.callId, it.number, it.startedAtEpochMillis)) } ?: ApiResult.Failure(ApiError(ErrorCode.NOT_FOUND, "recording.not_found"))
+    }
     suspend fun listArchives(): ApiResult<List<CallArchive>> =
         ApiResult.Failure(ApiError(ErrorCode.SYSTEM_UNAVAILABLE, "recording.unavailable"))
     suspend fun getSettings(): ApiResult<RecordingSettings>
@@ -73,6 +79,8 @@ interface RecordingApi {
     suspend fun setSystemFolder(document: DocumentRef): ApiResult<RecordingSettings>
     suspend fun systemRecordings(): ApiResult<List<RecordingFile>>
 }
+
+data class RecordingIdentity(val callId: Long, val number: String, val startedAtEpochMillis: Long)
 
 object UnavailableRecordingApi : RecordingApi {
     private fun unavailable() = ApiResult.Failure(ApiError(ErrorCode.SYSTEM_UNAVAILABLE, "recording.unavailable"))
