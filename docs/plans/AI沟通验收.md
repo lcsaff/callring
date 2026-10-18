@@ -1,5 +1,72 @@
 # AI 沟通实现与验收证据
 
+## epoch9 审查修正（当前待独立复验）
+
+本轮仅修复已采纳 AIR-001–005，代码目标提交 c018724f5c9aa3eea0ee9300f95a2fd5ddecb264，起点为 c3a1ef9c4d4968b186fe3f9549dae0ee8c375624。对应 revision-118e66ec11a01f37a1d80c06e21d309dc5b4da59c566e3ced0b080b948ea2ea4。没有带入审查分支提交，也没有改写历史获批设计/计划。以下为修正者验证，不声明整体验收；AIR-001/002/004 仍交独立会话复验，AIR-003/005 提供针对性回归供核对。
+
+<a id="air-001-fix"></a>
+### AIR-001：首次连接原子保存
+
+CredentialDialog 接收页面所选 slot 的安全基准和非敏感连接草稿，与本地 Keep/Replace/Clear 在 patchCombined 一次校验、一次提交。密钥只保存在弹窗 remember；不加入 CredentialDraft、聊天或 SavedState。取消不调用保存；失败不关闭弹窗，草稿和本地输入可重试；成功只重设已保存 slot 的基准，其他未保存字段保留。
+
+复现：新增 FirstConnectionUiTest 在修正前实际失败，捕获到 URL/model 补丁为 Keep。修正后该类的分析、转写两个 Compose 用例均通过，覆盖空页面填地址/模型、取消零请求、保存失败保输入、重试组合请求、成功后已配置及不再脏。AiSettingsServiceTest.coldStartPageDraftCreatesEitherSlotAtomicallyAndPreservesOtherPage 通过实际 AiSettingsViewModel、正式 AiSettingsService/AndroidRecordingStore 分别创建两个 slot，核对真实密钥、另一页并发写不回退、未保存预算草稿保留、旧基准凭据写拒绝。跨模块 VM 通过反射调用，以免改变模块依赖；真实存储断言不靠成功文案。既有 Keep/非法 Clear/两页冲突和 CredentialDialogTest 重建不恢复明文继续通过。
+
+<a id="air-002-fix"></a>
+### AIR-002：告知与发送使用同一已显示连接
+
+页面空闲/停止/失败时显示最新准备发送的 protocol、URL、model，本轮已发送目标只在 busy 时单列。目标尚未知时禁发。ConversationRoute 将本次 composition 的安全连接复制为普通不可变局部值，点击携带此值调用 sendTo；没有在点击时读取可变 VM 最新值，也不直接捕获委托 State 的 getter。sendTo 在入队前及 runTurn 开始再次比对目标，旧告知不得向新服务发全集；原同轮连接变化取消仍保留。
+
+ConversationReviewUiTest 覆盖 STOPPED/IDLE/COMPLETED/FAILED 的新标签与未知目标禁发；修正前两个界面回归均为红项。RenderedDestinationTest 暂停 Compose 帧，令 VM 已收到新配置但屏幕仍旧，派发从旧界面取得的真实按钮语义回调，验证其仍携带旧连接；服务拒绝后输入保留，新目标显示后才携带新连接。测试曾揭示直接在 lambda 读取委托 State 仍会读到新值，最终以冻结局部值修复。ConversationServiceTest.sendRejectsUndisclosedUrlModelOrProtocolBeforeAnyRequest 验证三个字段分别变化时请求数0、告知匹配后请求数1。既有请求中连接变化/停止/新会话及历史清理回归通过。
+
+<a id="air-003-fix"></a>
+### AIR-003：工具文字不作为执行事实
+
+所有含 toolCalls 的模型文字统一显示“AI 操作建议（未经验证，以操作回执为准）”，不按文字猜测成功，也不改变供两协议使用的完整历史。执行事实仍由 READ/COMMITTED/QUEUED/LAUNCHED/CANCELLED/DENIED/FAILED/UNKNOWN/SKIPPED 收据表示。
+
+ConversationReviewUiTest.toolBatchTextRemainsExplicitlyUnverifiedAcrossEveryOutcome 验证等待、拒绝、取消、失败、提交完成和跳过时，模型的“录音已删除”均保留未验证标识，不冒充普通最终 AI 结果。ConversationStateUiTest 全阶段/全部收据与 ConversationServiceTest 工具后容量超限保提交、余项跳过继续通过。
+
+<a id="air-004-fix"></a>
+### AIR-004：权威具体目标与版本绑定
+
+O20/O32/O53/O57/O63 在本地读取目标后，经原 CommandContext 核验生成带 ConfirmationTarget 的一次性票据；UI 不读取模型提供的名称作为确认依据。职位显示 ID/名称/级别；请假显示 ID/区间/备注；录音显示归档 ID/号码/时间；身份采纳显示旧姓名/单位与将替换的非空自述值；测试显示 slot/协议/实际URL/model/密钥配置状态。没有权威目标的确认按钮禁用。读取与展示、确认与执行之间任何版本变化都使旧确认失效，错误ID不发确认。
+
+ConfirmationTargetTest 覆盖五项权威目标、错误ID、取消及版本变化零依赖执行。ConfirmationSummaryTest 用真实 ForegroundActionDialogs 逐项核对显示，模型伪标签不出现，取消回交 CANCELLED，缺证据时不能确认。ToolBusinessIntegrationTest.realConfirmationTargetsCannotReuseCancelledOrChangedApproval 使用正式SQLite/录音存储/AI设置：确认期间分别改真实职位名、请假备注、连接模型、录音 generation/分析，旧确认均失败，删除/采纳/付费测试未执行。原 all72ToolsInvokeProductionBusinessApisAndInvalidSchemaNeverMutates 的72项有效路径仍实际成功，保留原业务验证和保存流程。
+
+<a id="air-005-fix"></a>
+### AIR-005：目录安全视图
+
+D13/RecordingSettingsView 增加 folderDisplayName 与 folderAccess。正式 AndroidRecordingRuntime 注入 SystemRecordingSource.describe，读取实际根 document 的显示名及持久READ授权状态；provider查询位于发布锁外。未配置为 NOT_REQUIRED，撤权为 DENIED，查询失败/缺失为 UNKNOWN，未知显示名为null；只接受叶子显示名，URI/完整路径不进入安全视图。D17的完整枚举及授权失败阻断保持。
+
+RecordingFolderViewTest 使用真实 provider 查询、正式设置存储/服务及可控权限边界，覆盖未配置、正常授权空目录、切换另一空目录、撤权、null cursor、私有路径式显示名；两个空目录的显示视图不同。验证完整21域请求编码和工具安全投影没有 content:// 或私有路径。生产默认探测真实 persistedUriPermissions，测试中的注入授权不是实机授权证据。
+
+<a id="epoch9-verification"></a>
+### epoch9 完整验证结果
+
+2026-10-18，最后产品修改后运行既定完整命令，退出码均0：
+
+```powershell
+python tools/check_backend_boundaries.py
+.\gradlew.bat :backend:test :ui:testDebugUnitTest :app:testDebugUnitTest :app:assembleDebug :app:lintDebug --quiet
+git diff --check
+```
+
+|模块|测试|失败/错误/跳过|
+|---|---:|---|
+|backend|123|0/0/0|
+|ui|202|0/0/0|
+|app|135|0/0/0|
+|合计|460|0/0/0|
+
+正常XML位置仍为 backend/build/test-results/test、ui/build/test-results/testDebugUnitTest、app/build/test-results/testDebugUnitTest。保留72条唯一TOOL_PROOF；新增的循环用例没有虚增为额外JUnit条数。debug APK 为47577390字节。Lint 0错误、10警告（类别与epoch8相同）。边界脚本 PASS 48 JVM sources，API合同相同。
+
+真实小数据首轮：REAL_DEFAULT_PROOF bytes=29219 estimate=37261 tools=72 domains=21 callers=1 archives=1 http=1。D13新增字段后仍在49152默认下实际打开假HTTP一次，未裁剪全文或schema。未改变显式旧32768的保留规则、源/请求限额和服务端拒绝处理。
+
+设备与付费服务边界没有变化：本任务已确认设备offline，不重复尝试或安装生产包；系统权限/SAF/tree/CSV/pin/overlay、真实付费模型和SIM/ROM录音仍未实测。最终验收与必需独立复验由主负责人安排。
+
+---
+
+## epoch8 实现与验证（历史保留）
+
 2026-10-18，execution epoch8；代码目标提交 6578ff36da04c49170cc68218d896e96206fd5e9。实现已交付，最终验收由主负责人独立复验；自动测试结果不代替实机或真实服务验收。
 
 ## 交付与批准边界
