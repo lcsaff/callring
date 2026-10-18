@@ -5,6 +5,10 @@ import java.time.LocalDate
 import kotlinx.coroutines.flow.Flow
 
 interface CallringUiApi {
+    val conversation: ConversationApi get() = UnavailableConversationApi
+    val aiSettings: AiSettingsApi get() = UnavailableAiSettingsApi
+    val snapshots: AiSnapshotApi get() = UnavailableAiSnapshotApi
+    fun commandApi(context: CommandContext): CallringUiApi = this
     val recordings: RecordingApi get() = UnavailableRecordingApi
     val home: HomeApi
     val callers: CallersApi
@@ -118,7 +122,7 @@ data class ApiError(
 )
 
 enum class ErrorCode {
-    VALIDATION, NOT_FOUND, IN_USE, PERMISSION_REQUIRED, ROLE_REQUIRED,
+    VALIDATION, NOT_FOUND, IN_USE, PERMISSION_REQUIRED, ROLE_REQUIRED, CONFLICT,
     SYSTEM_RESTRICTED, SYSTEM_UNAVAILABLE, IO_FAILURE, STORAGE_FAILURE, INTERNAL
 }
 
@@ -454,7 +458,7 @@ data class SettingsSummary(
 )
 
 enum class Capability {
-    PHONE_STATE, NOTIFICATIONS, CALL_LOG, CONTACTS,
+    PHONE_STATE, NOTIFICATIONS, CALL_LOG, CONTACTS, MICROPHONE,
     OVERLAY, CALL_SCREENING_ROLE, BATTERY_OPTIMIZATION_EXEMPTION
 }
 
@@ -516,7 +520,8 @@ data class WidgetBinding(val widgetId: Int, val number: String)
 enum class DataDomain {
     CALLERS, POSITIONS, CALLS, REPORTS, WORK_CALENDAR,
     QUIET_HOURS, SCORE_SETTINGS, STATISTICS, OVERLAY_SETTINGS,
-    RINGTONE, APPEARANCE, WIDGET_BINDINGS, RUNTIME
+    RINGTONE, APPEARANCE, WIDGET_BINDINGS, RUNTIME,
+    RECORDING_SETTINGS, AI_SETTINGS, RECORDING_ARCHIVES
 }
 
 data class DataChange(

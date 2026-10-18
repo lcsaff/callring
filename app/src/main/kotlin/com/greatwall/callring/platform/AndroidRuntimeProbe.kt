@@ -38,6 +38,7 @@ class AndroidRuntimeProbe(
             linkedMapOf(
                 Capability.PHONE_STATE to
                     probe { permission(Manifest.permission.READ_PHONE_STATE) },
+                Capability.MICROPHONE to probe { permission(Manifest.permission.RECORD_AUDIO) },
                 Capability.NOTIFICATIONS to
                     probe {
                         if (Build.VERSION.SDK_INT < 33) AccessState.NOT_REQUIRED

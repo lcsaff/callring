@@ -92,6 +92,7 @@ class CallringActivity : ComponentActivity() {
         try {
             when (capability) {
                 Capability.PHONE_STATE -> permission.launch(Manifest.permission.READ_PHONE_STATE)
+                Capability.MICROPHONE -> permission.launch(Manifest.permission.RECORD_AUDIO)
                 Capability.CALL_LOG -> permission.launch(Manifest.permission.READ_CALL_LOG)
                 Capability.CONTACTS -> permission.launch(Manifest.permission.READ_CONTACTS)
                 Capability.NOTIFICATIONS -> if (Build.VERSION.SDK_INT >= 33) permission.launch(Manifest.permission.POST_NOTIFICATIONS)

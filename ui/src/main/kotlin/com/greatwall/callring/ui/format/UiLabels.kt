@@ -10,6 +10,7 @@ object UiLabels {
     }
     fun capability(value: Capability) = when (value) {
         Capability.PHONE_STATE -> "电话状态"
+        Capability.MICROPHONE -> "麦克风"
         Capability.NOTIFICATIONS -> "通知权限"
         Capability.CALL_LOG -> "通话记录"
         Capability.CONTACTS -> "通讯录"

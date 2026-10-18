@@ -20,6 +20,7 @@ class CallringBackend(
     calendarSource: CalendarSource = CalendarSource {
         throw BackendFailure(ApiError(ErrorCode.SYSTEM_UNAVAILABLE, "calendar.sync_unavailable", retryable = true))
     },
+    val coordinator: BusinessRevisionCoordinator = BusinessRevisionCoordinator(),
 ) : CallringUiApi {
     private val context =
         BackendContext(
@@ -32,6 +33,7 @@ class CallringBackend(
             clock,
             dispatcher,
             calendarSource,
+            coordinator,
         )
     override val home: HomeApi = createHomeApi(context)
     override val callers: CallersApi = createCallersApi(context)
@@ -46,6 +48,16 @@ class CallringBackend(
         }
 
     override fun checkNumber(raw: String): NumberCheck = context.checkNumber(raw)
+
+    override fun commandApi(context: CommandContext): CallringUiApi {
+        val bound = this.context.bound(context)
+        return object : CallringUiApi by this {
+            override val callers = createCallersApi(bound)
+            override val settings = createSettingsApi(bound)
+            override val widgets = createWidgetBindingsApi(bound)
+            override val ringtone = createRingtoneApi(bound)
+        }
+    }
 
     fun refreshDecisionSnapshot(): DecisionSnapshot = context.refreshDecisionSnapshot()
 

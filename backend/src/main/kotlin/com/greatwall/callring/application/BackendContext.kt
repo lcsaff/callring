@@ -22,13 +22,17 @@ internal class BackendContext(
     internal val calendarSource: CalendarSource = CalendarSource {
         throw BackendFailure(ApiError(ErrorCode.SYSTEM_UNAVAILABLE, "calendar.sync_unavailable", retryable = true))
     },
+    internal val coordinator: BusinessRevisionCoordinator = BusinessRevisionCoordinator(),
+    internal val commandContext: CommandContext? = null,
+    internal val decisions: AtomicReference<DecisionSnapshot?> = AtomicReference(null),
 ) {
-    internal val lock = Any()
-    internal var revision = 0L
-    internal val decisions = AtomicReference<DecisionSnapshot?>()
+    internal val lock = coordinator.fence
+    internal val revision get() = coordinator.changes.value.dataRevision
     internal val allDomains = frozenSet(DataDomain.values().toSet())
     // Conflation retains a complete invalidation, so slow collectors never lose a changed domain.
-    internal val events = MutableStateFlow(DataChange(0, allDomains, null, null))
+    internal val events get() = coordinator.changes
+
+    fun bound(command: CommandContext) = BackendContext(store, preferences, documents, runtimeProbe, audio, syncScheduler, clock, dispatcher, calendarSource, coordinator, command, decisions)
 
     fun observe(): Flow<DataChange> =
         events.onStart { emit(synchronized(lock) { DataChange(revision, allDomains, null, null) }) }
@@ -89,18 +93,14 @@ internal class BackendContext(
     internal fun <T> read(block: (BackendState) -> T): T = synchronized(lock) { store.read(block) }
 
     internal fun notifyChanged() {
-        synchronized(lock) {
-            revision++
-            events.value = DataChange(revision, allDomains, null, null)
-        }
+        coordinator.changed("core")
     }
 
     internal fun <T> mutate(block: (BackendState) -> T): T =
-        synchronized(lock) {
+        coordinator.commit("core", commandContext) {
             val committed =
                 store.transaction { state -> Pair(block(state), DecisionSnapshot.capture(state)) }
             decisions.set(committed.second)
-            notifyChanged()
             committed.first
         }
 

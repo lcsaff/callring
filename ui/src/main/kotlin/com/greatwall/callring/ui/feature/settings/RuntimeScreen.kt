@@ -92,6 +92,7 @@ fun RuntimeScreen(
 
 private fun capabilityPurpose(capability: Capability): String = when (capability) {
     Capability.PHONE_STATE -> "在接听或挂断后停止铃声"
+    Capability.MICROPHONE -> "实验性录音采集"
     Capability.CALL_LOG -> "补全通话结果与时长"
     Capability.CONTACTS -> "识别已保存联系人的来电"
     Capability.NOTIFICATIONS -> "显示铃声服务运行通知"
