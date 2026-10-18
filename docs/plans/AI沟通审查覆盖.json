@@ -1,0 +1,2155 @@
+{
+  "taskId": "ai-final-review",
+  "sourceTaskId": "ai-implementation",
+  "sourceEpoch": 9,
+  "baseCommit": "b2c3af79570d03a2040d3c1e02405f56821bb160",
+  "targetCommit": "91ea4d8b574712904e44872babc33eac98261829",
+  "sourceArtifactDigest": "1706b4dd29bb6a8d2eae70b11fa19802bf8fa1af491d821eba081aed98a4f699",
+  "kind": "initial",
+  "counts": {
+    "baseline": {
+      "backend": 123,
+      "ui": 202,
+      "app": 135,
+      "total": 460
+    },
+    "independent": {
+      "backend": 3,
+      "ui": 10,
+      "app": 1,
+      "total": 14
+    },
+    "newTestExecutionsThisRound": 0
+  },
+  "sourceFiles": [
+    {
+      "path": "README.md",
+      "mode": "100644",
+      "type": "blob",
+      "blob": "5343041131474150b0a124bdc2e5d7ffe1c73556",
+      "group": "contracts-and-disclosure",
+      "addedSinceOriginalReview": false
+    },
+    {
+      "path": "app/src/main/kotlin/com/greatwall/callring/bootstrap/BackendGraph.kt",
+      "mode": "100644",
+      "type": "blob",
+      "blob": "bb1cf7c6995430d3beac21d99d43ed62d2078ad8",
+      "group": "composition-and-publication",
+      "addedSinceOriginalReview": false
+    },
+    {
+      "path": "app/src/main/kotlin/com/greatwall/callring/bootstrap/CompleteSnapshotAssembly.kt",
+      "mode": "100644",
+      "type": "blob",
+      "blob": "4fea82bb9fc1570368d70889450462bf2a2eb86e",
+      "group": "complete-data-and-privacy",
+      "addedSinceOriginalReview": false
+    },
+    {
+      "path": "app/src/main/kotlin/com/greatwall/callring/bootstrap/LazyBackendStore.kt",
+      "mode": "100644",
+      "type": "blob",
+      "blob": "f4fd78558860ad8f5bc511bd16fac5f834e1ab18",
+      "group": "composition-and-publication",
+      "addedSinceOriginalReview": false
+    },
+    {
+      "path": "app/src/main/kotlin/com/greatwall/callring/data/SnapshotPreflight.kt",
+      "mode": "100644",
+      "type": "blob",
+      "blob": "add1968beba558e719c80f0c13648afe77dd99e0",
+      "group": "complete-data-and-privacy",
+      "addedSinceOriginalReview": false
+    },
+    {
+      "path": "app/src/main/kotlin/com/greatwall/callring/data/SqliteBackendStore.kt",
+      "mode": "100644",
+      "type": "blob",
+      "blob": "813f20513b977c9a7062ffeaa2946ed85c47de04",
+      "group": "composition-and-publication",
+      "addedSinceOriginalReview": false
+    },
+    {
+      "path": "app/src/main/kotlin/com/greatwall/callring/platform/AndroidAudioController.kt",
+      "mode": "100644",
+      "type": "blob",
+      "blob": "cfd5cc30803fc7d599f0eca4c0e0364fe5c4ec27",
+      "group": "composition-and-publication",
+      "addedSinceOriginalReview": false
+    },
+    {
+      "path": "app/src/main/kotlin/com/greatwall/callring/platform/AndroidDiagnosticsStore.kt",
+      "mode": "100644",
+      "type": "blob",
+      "blob": "a95e39bd2bc5b8022da07ab10f1777f51f9a10c0",
+      "group": "composition-and-publication",
+      "addedSinceOriginalReview": false
+    },
+    {
+      "path": "app/src/main/kotlin/com/greatwall/callring/platform/AndroidPreferences.kt",
+      "mode": "100644",
+      "type": "blob",
+      "blob": "10155adb3cdfb5f197568eea008fd1ba25fa8503",
+      "group": "composition-and-publication",
+      "addedSinceOriginalReview": false
+    },
+    {
+      "path": "app/src/main/kotlin/com/greatwall/callring/platform/AndroidRuntimeProbe.kt",
+      "mode": "100644",
+      "type": "blob",
+      "blob": "7451aeba3ebb0c7140a99bbe83ebce2b7553c718",
+      "group": "composition-and-publication",
+      "addedSinceOriginalReview": false
+    },
+    {
+      "path": "app/src/main/kotlin/com/greatwall/callring/platform/ai/AiSettingsService.kt",
+      "mode": "100644",
+      "type": "blob",
+      "blob": "b87f2ffde7549f79d37b6bfc3f82ccc89c2e8115",
+      "group": "shared-settings-and-validation",
+      "addedSinceOriginalReview": false
+    },
+    {
+      "path": "app/src/main/kotlin/com/greatwall/callring/platform/ai/AndroidRecordingRuntime.kt",
+      "mode": "100644",
+      "type": "blob",
+      "blob": "b671b5da690783ecd947783d7d0241d38335d15c",
+      "group": "composition-and-publication",
+      "addedSinceOriginalReview": false
+    },
+    {
+      "path": "app/src/main/kotlin/com/greatwall/callring/platform/ai/AndroidRecordingStore.kt",
+      "mode": "100644",
+      "type": "blob",
+      "blob": "3ad7b99404b997b157216b2bf23c375c7208e23e",
+      "group": "composition-and-publication",
+      "addedSinceOriginalReview": false
+    },
+    {
+      "path": "app/src/main/kotlin/com/greatwall/callring/platform/ai/CompatibleConversationClient.kt",
+      "mode": "100644",
+      "type": "blob",
+      "blob": "94c051360560999e4a601298f9a9a2a6173b7c53",
+      "group": "conversation-and-tools",
+      "addedSinceOriginalReview": false
+    },
+    {
+      "path": "app/src/main/kotlin/com/greatwall/callring/platform/ai/ConversationJson.kt",
+      "mode": "100644",
+      "type": "blob",
+      "blob": "ad324e9c29e252212865fe2dccd25d6fa596032b",
+      "group": "conversation-and-tools",
+      "addedSinceOriginalReview": false
+    },
+    {
+      "path": "app/src/main/kotlin/com/greatwall/callring/platform/ai/SystemRecordingSource.kt",
+      "mode": "100644",
+      "type": "blob",
+      "blob": "650bb182b2f9852b7592b1a4be3e68c67b318fc9",
+      "group": "complete-data-and-privacy",
+      "addedSinceOriginalReview": false
+    },
+    {
+      "path": "app/src/test/kotlin/com/greatwall/callring/bootstrap/CompleteSnapshotAssemblyTest.kt",
+      "mode": "100644",
+      "type": "blob",
+      "blob": "12be74be6ad64d5d859814cea9196febdd58d635",
+      "group": "verification",
+      "addedSinceOriginalReview": false
+    },
+    {
+      "path": "app/src/test/kotlin/com/greatwall/callring/data/CoreSnapshotSourceTest.kt",
+      "mode": "100644",
+      "type": "blob",
+      "blob": "85735a044b202afa4872db7c641ee7567a1ebe9e",
+      "group": "verification",
+      "addedSinceOriginalReview": false
+    },
+    {
+      "path": "app/src/test/kotlin/com/greatwall/callring/platform/PublicationAdaptersTest.kt",
+      "mode": "100644",
+      "type": "blob",
+      "blob": "8352a088f531f3e72bbbbc970c20f85224d014f6",
+      "group": "verification",
+      "addedSinceOriginalReview": false
+    },
+    {
+      "path": "app/src/test/kotlin/com/greatwall/callring/platform/ai/AiSettingsServiceTest.kt",
+      "mode": "100644",
+      "type": "blob",
+      "blob": "6dc5f72080009bf65421eed294619e656b6596dd",
+      "group": "verification",
+      "addedSinceOriginalReview": false
+    },
+    {
+      "path": "app/src/test/kotlin/com/greatwall/callring/platform/ai/ConversationProtocolTest.kt",
+      "mode": "100644",
+      "type": "blob",
+      "blob": "d80e2ce68621025992bb29c60ecbbc9fd37225c9",
+      "group": "verification",
+      "addedSinceOriginalReview": false
+    },
+    {
+      "path": "app/src/test/kotlin/com/greatwall/callring/platform/ai/IndependentRecordingRuntimeTest.kt",
+      "mode": "100644",
+      "type": "blob",
+      "blob": "12ee01fb4d701f8429e91ff221c787df0f62c1d9",
+      "group": "verification",
+      "addedSinceOriginalReview": false
+    },
+    {
+      "path": "app/src/test/kotlin/com/greatwall/callring/platform/ai/RecordingCommandContextTest.kt",
+      "mode": "100644",
+      "type": "blob",
+      "blob": "64e05ffb4f9f706b3d39ec94a003a812834c2912",
+      "group": "verification",
+      "addedSinceOriginalReview": false
+    },
+    {
+      "path": "app/src/test/kotlin/com/greatwall/callring/platform/ai/RecordingFolderViewTest.kt",
+      "mode": "100644",
+      "type": "blob",
+      "blob": "de85fda44761bcd288b2e349216d5c3affc5e2fe",
+      "group": "verification",
+      "addedSinceOriginalReview": true
+    },
+    {
+      "path": "app/src/test/kotlin/com/greatwall/callring/platform/ai/RecordingPublicationTest.kt",
+      "mode": "100644",
+      "type": "blob",
+      "blob": "a5d9c2f797132f4f3b3a5873d1ba5ce5b29ab963",
+      "group": "verification",
+      "addedSinceOriginalReview": false
+    },
+    {
+      "path": "app/src/test/kotlin/com/greatwall/callring/platform/ai/RecordingSnapshotSourceTest.kt",
+      "mode": "100644",
+      "type": "blob",
+      "blob": "64ada2c68c1263235ca0b63ca9f7c6b25081c64e",
+      "group": "verification",
+      "addedSinceOriginalReview": false
+    },
+    {
+      "path": "app/src/test/kotlin/com/greatwall/callring/platform/ai/ToolBusinessIntegrationTest.kt",
+      "mode": "100644",
+      "type": "blob",
+      "blob": "9861a4368a59902c15e97fdb28a23a7d1f2102f1",
+      "group": "verification",
+      "addedSinceOriginalReview": false
+    },
+    {
+      "path": "backend/src/main/kotlin/com/greatwall/callring/application/BackendContext.kt",
+      "mode": "100644",
+      "type": "blob",
+      "blob": "20432d3e79af152528b186880b2dad5fe222fed6",
+      "group": "composition-and-publication",
+      "addedSinceOriginalReview": false
+    },
+    {
+      "path": "backend/src/main/kotlin/com/greatwall/callring/application/BusinessRevisionCoordinator.kt",
+      "mode": "100644",
+      "type": "blob",
+      "blob": "62bbad0a488cebae1a9ac6a84fcf0cad476375f0",
+      "group": "composition-and-publication",
+      "addedSinceOriginalReview": false
+    },
+    {
+      "path": "backend/src/main/kotlin/com/greatwall/callring/application/CallersService.kt",
+      "mode": "100644",
+      "type": "blob",
+      "blob": "4642e235e8cbd6dbe3539ca56f412883dd7d7815",
+      "group": "composition-and-publication",
+      "addedSinceOriginalReview": false
+    },
+    {
+      "path": "backend/src/main/kotlin/com/greatwall/callring/application/CallringBackend.kt",
+      "mode": "100644",
+      "type": "blob",
+      "blob": "c888de2f10eb8ccc7da33af87f03d8828a596f57",
+      "group": "composition-and-publication",
+      "addedSinceOriginalReview": false
+    },
+    {
+      "path": "backend/src/main/kotlin/com/greatwall/callring/application/CoreSnapshotProjection.kt",
+      "mode": "100644",
+      "type": "blob",
+      "blob": "e5118731a805133e2d242bba22fde9ae63dc5869",
+      "group": "complete-data-and-privacy",
+      "addedSinceOriginalReview": false
+    },
+    {
+      "path": "backend/src/main/kotlin/com/greatwall/callring/application/ReportCalculator.kt",
+      "mode": "100644",
+      "type": "blob",
+      "blob": "161388c8e14ee60d6c3d4107145b342ce566b54b",
+      "group": "composition-and-publication",
+      "addedSinceOriginalReview": false
+    },
+    {
+      "path": "backend/src/main/kotlin/com/greatwall/callring/application/RingtoneService.kt",
+      "mode": "100644",
+      "type": "blob",
+      "blob": "5ed25410155241ffb8b2aa6967b6f2a564ba3a08",
+      "group": "composition-and-publication",
+      "addedSinceOriginalReview": false
+    },
+    {
+      "path": "backend/src/main/kotlin/com/greatwall/callring/application/RuntimeService.kt",
+      "mode": "100644",
+      "type": "blob",
+      "blob": "638be192612018fb4ea1ed46669a22b618b2de3e",
+      "group": "composition-and-publication",
+      "addedSinceOriginalReview": false
+    },
+    {
+      "path": "backend/src/main/kotlin/com/greatwall/callring/application/SafeProjection.kt",
+      "mode": "100644",
+      "type": "blob",
+      "blob": "f90cee5106e12d03356353ddc346e7edd9db2eb0",
+      "group": "complete-data-and-privacy",
+      "addedSinceOriginalReview": false
+    },
+    {
+      "path": "backend/src/main/kotlin/com/greatwall/callring/application/SettingsService.kt",
+      "mode": "100644",
+      "type": "blob",
+      "blob": "f71b10dfede9cf4f7043b8fa3a264c9e62a0f13a",
+      "group": "shared-settings-and-validation",
+      "addedSinceOriginalReview": false
+    },
+    {
+      "path": "backend/src/main/kotlin/com/greatwall/callring/application/SharedBusinessCommands.kt",
+      "mode": "100644",
+      "type": "blob",
+      "blob": "94e21d577d8de1eb979a13fb4c0f3ccd1196236a",
+      "group": "shared-settings-and-validation",
+      "addedSinceOriginalReview": false
+    },
+    {
+      "path": "backend/src/main/kotlin/com/greatwall/callring/application/UiEditsService.kt",
+      "mode": "100644",
+      "type": "blob",
+      "blob": "e90a8721815403323eda66b5e6b7e63d34243f2b",
+      "group": "shared-settings-and-validation",
+      "addedSinceOriginalReview": false
+    },
+    {
+      "path": "backend/src/main/kotlin/com/greatwall/callring/application/WidgetBindingsService.kt",
+      "mode": "100644",
+      "type": "blob",
+      "blob": "bbd3c4eab82003137b75f93fe1c86fb661497949",
+      "group": "composition-and-publication",
+      "addedSinceOriginalReview": false
+    },
+    {
+      "path": "backend/src/main/kotlin/com/greatwall/callring/application/api/AiJson.kt",
+      "mode": "100644",
+      "type": "blob",
+      "blob": "830460c7216cbc815d0d058c8236b770b2c5b0dd",
+      "group": "conversation-and-tools",
+      "addedSinceOriginalReview": false
+    },
+    {
+      "path": "backend/src/main/kotlin/com/greatwall/callring/application/api/AiSettingsApi.kt",
+      "mode": "100644",
+      "type": "blob",
+      "blob": "bcfcc87bb7cc7f46b4110676265e46f4c142e97e",
+      "group": "shared-settings-and-validation",
+      "addedSinceOriginalReview": false
+    },
+    {
+      "path": "backend/src/main/kotlin/com/greatwall/callring/application/api/AiSnapshotApi.kt",
+      "mode": "100644",
+      "type": "blob",
+      "blob": "a7bea5d571d419a8a2953abe2ec3e895d7f26451",
+      "group": "complete-data-and-privacy",
+      "addedSinceOriginalReview": false
+    },
+    {
+      "path": "backend/src/main/kotlin/com/greatwall/callring/application/api/CallringUiApi.kt",
+      "mode": "100644",
+      "type": "blob",
+      "blob": "26897c2b1162ed587f1d975b16df94cc3cdadcbc",
+      "group": "composition-and-publication",
+      "addedSinceOriginalReview": false
+    },
+    {
+      "path": "backend/src/main/kotlin/com/greatwall/callring/application/api/ConversationApi.kt",
+      "mode": "100644",
+      "type": "blob",
+      "blob": "c40f237e336299134ac81ce08ca3a0d039cd907d",
+      "group": "conversation-and-tools",
+      "addedSinceOriginalReview": false
+    },
+    {
+      "path": "backend/src/main/kotlin/com/greatwall/callring/application/api/RecordingApi.kt",
+      "mode": "100644",
+      "type": "blob",
+      "blob": "3eb1e8ebe5d98d563d29118903f48775c40c0354",
+      "group": "composition-and-publication",
+      "addedSinceOriginalReview": false
+    },
+    {
+      "path": "backend/src/main/kotlin/com/greatwall/callring/application/api/UiEditsApi.kt",
+      "mode": "100644",
+      "type": "blob",
+      "blob": "66ea729b1e385c5fc251101c5b10ab3454db19f2",
+      "group": "shared-settings-and-validation",
+      "addedSinceOriginalReview": false
+    },
+    {
+      "path": "backend/src/main/kotlin/com/greatwall/callring/application/conversation/AiSnapshotService.kt",
+      "mode": "100644",
+      "type": "blob",
+      "blob": "32d91fc62162b20fdfd5e5019d1beeeb87972a3b",
+      "group": "complete-data-and-privacy",
+      "addedSinceOriginalReview": false
+    },
+    {
+      "path": "backend/src/main/kotlin/com/greatwall/callring/application/conversation/ConfirmationTargets.kt",
+      "mode": "100644",
+      "type": "blob",
+      "blob": "44a48e25a5d65719079648bfd2050589344566a7",
+      "group": "foreground-and-targets",
+      "addedSinceOriginalReview": true
+    },
+    {
+      "path": "backend/src/main/kotlin/com/greatwall/callring/application/conversation/ContextBudget.kt",
+      "mode": "100644",
+      "type": "blob",
+      "blob": "cfc539afd572ab152c7857be30911c7e24dc0b87",
+      "group": "conversation-and-tools",
+      "addedSinceOriginalReview": false
+    },
+    {
+      "path": "backend/src/main/kotlin/com/greatwall/callring/application/conversation/ConversationService.kt",
+      "mode": "100644",
+      "type": "blob",
+      "blob": "d7ab1ad72c2cc6f501631cb8351c1a1dccbf5703",
+      "group": "conversation-and-tools",
+      "addedSinceOriginalReview": false
+    },
+    {
+      "path": "backend/src/main/kotlin/com/greatwall/callring/application/conversation/DirectoryEnumerator.kt",
+      "mode": "100644",
+      "type": "blob",
+      "blob": "e46186af399470915d27980939677cb761b9b657",
+      "group": "complete-data-and-privacy",
+      "addedSinceOriginalReview": false
+    },
+    {
+      "path": "backend/src/main/kotlin/com/greatwall/callring/application/conversation/ForegroundActionService.kt",
+      "mode": "100644",
+      "type": "blob",
+      "blob": "7ec5e8a527068874f6707d12b1417b18ca2c96aa",
+      "group": "foreground-and-targets",
+      "addedSinceOriginalReview": false
+    },
+    {
+      "path": "backend/src/main/kotlin/com/greatwall/callring/application/conversation/ForegroundResourceRegistry.kt",
+      "mode": "100644",
+      "type": "blob",
+      "blob": "208d53ebe9fcc0d3a4f87dccbb5af197dc2c0eba",
+      "group": "foreground-and-targets",
+      "addedSinceOriginalReview": false
+    },
+    {
+      "path": "backend/src/main/kotlin/com/greatwall/callring/application/conversation/SecretRedactor.kt",
+      "mode": "100644",
+      "type": "blob",
+      "blob": "24d2f7bcb1531bcfa490ca051b382385debb1d57",
+      "group": "complete-data-and-privacy",
+      "addedSinceOriginalReview": false
+    },
+    {
+      "path": "backend/src/main/kotlin/com/greatwall/callring/application/conversation/ToolExecutor.kt",
+      "mode": "100644",
+      "type": "blob",
+      "blob": "1ec0d5f99f00e6a4f57e78a37abdd6103a580d9a",
+      "group": "conversation-and-tools",
+      "addedSinceOriginalReview": false
+    },
+    {
+      "path": "backend/src/main/kotlin/com/greatwall/callring/application/conversation/ToolRegistry.kt",
+      "mode": "100644",
+      "type": "blob",
+      "blob": "1971ae2403f5febf24539866a50c67bc25f32f8e",
+      "group": "conversation-and-tools",
+      "addedSinceOriginalReview": false
+    },
+    {
+      "path": "backend/src/main/kotlin/com/greatwall/callring/application/ports/BackendPorts.kt",
+      "mode": "100644",
+      "type": "blob",
+      "blob": "16bc98139e1702a0a9440759dda847550bd50ec1",
+      "group": "composition-and-publication",
+      "addedSinceOriginalReview": false
+    },
+    {
+      "path": "backend/src/main/kotlin/com/greatwall/callring/application/ports/ConversationPorts.kt",
+      "mode": "100644",
+      "type": "blob",
+      "blob": "88d1a97e138dd501c41a12a5accfe9cd9c135add",
+      "group": "conversation-and-tools",
+      "addedSinceOriginalReview": false
+    },
+    {
+      "path": "backend/src/test/kotlin/com/greatwall/callring/BusinessRevisionCoordinatorTest.kt",
+      "mode": "100644",
+      "type": "blob",
+      "blob": "4789d888d30a08221022f83ac0185f79693eec9a",
+      "group": "verification",
+      "addedSinceOriginalReview": false
+    },
+    {
+      "path": "backend/src/test/kotlin/com/greatwall/callring/ConfirmationTargetTest.kt",
+      "mode": "100644",
+      "type": "blob",
+      "blob": "f7a0934c9f40efaa8b9b84794b279383d489e62e",
+      "group": "verification",
+      "addedSinceOriginalReview": true
+    },
+    {
+      "path": "backend/src/test/kotlin/com/greatwall/callring/ContextBudgetTest.kt",
+      "mode": "100644",
+      "type": "blob",
+      "blob": "b5b8cfdfac3c975946fc23e92d6d0fcd1c17dbaf",
+      "group": "verification",
+      "addedSinceOriginalReview": false
+    },
+    {
+      "path": "backend/src/test/kotlin/com/greatwall/callring/ConversationApiContractTest.kt",
+      "mode": "100644",
+      "type": "blob",
+      "blob": "7fe350b03441b08c5216a2331b05d43d3cbee9bc",
+      "group": "verification",
+      "addedSinceOriginalReview": false
+    },
+    {
+      "path": "backend/src/test/kotlin/com/greatwall/callring/ConversationFixtures.kt",
+      "mode": "100644",
+      "type": "blob",
+      "blob": "ca8d5f88a4119f3388a9220e651efa6c8ae4b11a",
+      "group": "verification",
+      "addedSinceOriginalReview": false
+    },
+    {
+      "path": "backend/src/test/kotlin/com/greatwall/callring/ConversationServiceTest.kt",
+      "mode": "100644",
+      "type": "blob",
+      "blob": "e5c2d4b804dbe38efbbcce5ec1ecd68466e8b737",
+      "group": "verification",
+      "addedSinceOriginalReview": false
+    },
+    {
+      "path": "backend/src/test/kotlin/com/greatwall/callring/CoreSnapshotProjectionTest.kt",
+      "mode": "100644",
+      "type": "blob",
+      "blob": "6802969f1982790fb78ab8c647aba0bc45de9cb4",
+      "group": "verification",
+      "addedSinceOriginalReview": false
+    },
+    {
+      "path": "backend/src/test/kotlin/com/greatwall/callring/DirectoryEnumeratorTest.kt",
+      "mode": "100644",
+      "type": "blob",
+      "blob": "f3186d08e1fe1ed50d43771619202863f33346c8",
+      "group": "verification",
+      "addedSinceOriginalReview": false
+    },
+    {
+      "path": "backend/src/test/kotlin/com/greatwall/callring/DraftMergeTest.kt",
+      "mode": "100644",
+      "type": "blob",
+      "blob": "b78c7712a15c372ee68ea0ff634e54a822c466da",
+      "group": "verification",
+      "addedSinceOriginalReview": false
+    },
+    {
+      "path": "backend/src/test/kotlin/com/greatwall/callring/ForegroundActionServiceTest.kt",
+      "mode": "100644",
+      "type": "blob",
+      "blob": "42b8a958854618977fb15705b6625a910956c581",
+      "group": "verification",
+      "addedSinceOriginalReview": false
+    },
+    {
+      "path": "backend/src/test/kotlin/com/greatwall/callring/ForegroundLockOrderTest.kt",
+      "mode": "100644",
+      "type": "blob",
+      "blob": "15b7a17a65465964136206fa5537ee7cb77aac73",
+      "group": "verification",
+      "addedSinceOriginalReview": false
+    },
+    {
+      "path": "backend/src/test/kotlin/com/greatwall/callring/ForegroundResourceRegistryTest.kt",
+      "mode": "100644",
+      "type": "blob",
+      "blob": "6e149ad4022aa7283a91616015c5f10cf5c82948",
+      "group": "verification",
+      "addedSinceOriginalReview": false
+    },
+    {
+      "path": "backend/src/test/kotlin/com/greatwall/callring/SecretRedactorTest.kt",
+      "mode": "100644",
+      "type": "blob",
+      "blob": "712151acd439f6834e9093c7cfd6bac9dba1d02c",
+      "group": "verification",
+      "addedSinceOriginalReview": false
+    },
+    {
+      "path": "backend/src/test/kotlin/com/greatwall/callring/SharedBusinessCommandsTest.kt",
+      "mode": "100644",
+      "type": "blob",
+      "blob": "e954b0c6e5094ad7637aaef3f87cf36a4a075de2",
+      "group": "verification",
+      "addedSinceOriginalReview": false
+    },
+    {
+      "path": "backend/src/test/kotlin/com/greatwall/callring/ToolOperationCoverageTest.kt",
+      "mode": "100644",
+      "type": "blob",
+      "blob": "988561b9cc2074f68a3175fe8c61ea550b8836f1",
+      "group": "verification",
+      "addedSinceOriginalReview": false
+    },
+    {
+      "path": "backend/src/test/kotlin/com/greatwall/callring/ToolRegistryTest.kt",
+      "mode": "100644",
+      "type": "blob",
+      "blob": "b0b4ad3d643c232008f2fda90dbfa8e806151e0b",
+      "group": "verification",
+      "addedSinceOriginalReview": false
+    },
+    {
+      "path": "docs/contracts/CallringUiApi.kt",
+      "mode": "100644",
+      "type": "blob",
+      "blob": "26897c2b1162ed587f1d975b16df94cc3cdadcbc",
+      "group": "contracts-and-disclosure",
+      "addedSinceOriginalReview": false
+    },
+    {
+      "path": "docs/plans/AI沟通验收.md",
+      "mode": "100644",
+      "type": "blob",
+      "blob": "0712be00b3505b6d414cbbcc95d6ca3476a5f5cb",
+      "group": "contracts-and-disclosure",
+      "addedSinceOriginalReview": false
+    },
+    {
+      "path": "ui/src/main/kotlin/com/greatwall/callring/ui/app/AiRoutes.kt",
+      "mode": "100644",
+      "type": "blob",
+      "blob": "941accfa7abefa6e44151f7b3c1746fe87c4f52b",
+      "group": "navigation-and-drafts",
+      "addedSinceOriginalReview": false
+    },
+    {
+      "path": "ui/src/main/kotlin/com/greatwall/callring/ui/app/CallringActivity.kt",
+      "mode": "100644",
+      "type": "blob",
+      "blob": "f89b811d64ff64ca14443607fcf2c2f8a8e044e2",
+      "group": "navigation-and-drafts",
+      "addedSinceOriginalReview": false
+    },
+    {
+      "path": "ui/src/main/kotlin/com/greatwall/callring/ui/app/CallringApp.kt",
+      "mode": "100644",
+      "type": "blob",
+      "blob": "22015bc500ee4759ab17209721ea2e66832a803e",
+      "group": "navigation-and-drafts",
+      "addedSinceOriginalReview": false
+    },
+    {
+      "path": "ui/src/main/kotlin/com/greatwall/callring/ui/app/ForegroundActionHost.kt",
+      "mode": "100644",
+      "type": "blob",
+      "blob": "f614dd0f93e1f7c8feafc219ae9235da0b8f1261",
+      "group": "foreground-and-targets",
+      "addedSinceOriginalReview": false
+    },
+    {
+      "path": "ui/src/main/kotlin/com/greatwall/callring/ui/app/RecordingRoutes.kt",
+      "mode": "100644",
+      "type": "blob",
+      "blob": "df95afab758d18bcc407bc50c222ffc678d02803",
+      "group": "navigation-and-drafts",
+      "addedSinceOriginalReview": false
+    },
+    {
+      "path": "ui/src/main/kotlin/com/greatwall/callring/ui/app/SettingsRoute.kt",
+      "mode": "100644",
+      "type": "blob",
+      "blob": "9d93316e9986b9cb7dc8c9694d0c686f1cc1969e",
+      "group": "navigation-and-drafts",
+      "addedSinceOriginalReview": false
+    },
+    {
+      "path": "ui/src/main/kotlin/com/greatwall/callring/ui/app/UiDestination.kt",
+      "mode": "100644",
+      "type": "blob",
+      "blob": "9eb0c80f62e9f357c6eb91774a958525d16e806e",
+      "group": "navigation-and-drafts",
+      "addedSinceOriginalReview": false
+    },
+    {
+      "path": "ui/src/main/kotlin/com/greatwall/callring/ui/feature/ai/AiSettingsScreen.kt",
+      "mode": "100644",
+      "type": "blob",
+      "blob": "36f4adcf60a601db0744980c14118297c181aeca",
+      "group": "navigation-and-drafts",
+      "addedSinceOriginalReview": false
+    },
+    {
+      "path": "ui/src/main/kotlin/com/greatwall/callring/ui/feature/ai/AiSettingsViewModel.kt",
+      "mode": "100644",
+      "type": "blob",
+      "blob": "7e7e25a1ac11ba72686e38155b99aceeb3bb36d6",
+      "group": "navigation-and-drafts",
+      "addedSinceOriginalReview": false
+    },
+    {
+      "path": "ui/src/main/kotlin/com/greatwall/callring/ui/feature/ai/CredentialDialog.kt",
+      "mode": "100644",
+      "type": "blob",
+      "blob": "b7c6a75a52d60ad45592ec42e2b293fe53183ea5",
+      "group": "navigation-and-drafts",
+      "addedSinceOriginalReview": false
+    },
+    {
+      "path": "ui/src/main/kotlin/com/greatwall/callring/ui/feature/callers/CallerEditorViewModel.kt",
+      "mode": "100644",
+      "type": "blob",
+      "blob": "25d701c6fe8be3d3b3c128e132834beb6a1e2c5d",
+      "group": "navigation-and-drafts",
+      "addedSinceOriginalReview": false
+    },
+    {
+      "path": "ui/src/main/kotlin/com/greatwall/callring/ui/feature/conversation/ConversationScreen.kt",
+      "mode": "100644",
+      "type": "blob",
+      "blob": "77b121002da82ad047467fadd0343be100b185e2",
+      "group": "conversation-and-tools",
+      "addedSinceOriginalReview": false
+    },
+    {
+      "path": "ui/src/main/kotlin/com/greatwall/callring/ui/feature/recording/RecordingScreens.kt",
+      "mode": "100644",
+      "type": "blob",
+      "blob": "6ab9f363eab37deaf380c217b4ea16b186fae89a",
+      "group": "navigation-and-drafts",
+      "addedSinceOriginalReview": false
+    },
+    {
+      "path": "ui/src/main/kotlin/com/greatwall/callring/ui/feature/recording/RecordingViewModels.kt",
+      "mode": "100644",
+      "type": "blob",
+      "blob": "5242b48b6c0a00a386fdb03355b776507616b898",
+      "group": "navigation-and-drafts",
+      "addedSinceOriginalReview": false
+    },
+    {
+      "path": "ui/src/main/kotlin/com/greatwall/callring/ui/feature/settings/AppearanceViewModel.kt",
+      "mode": "100644",
+      "type": "blob",
+      "blob": "64cd35d6213311906c2158bb01464b8146a22d00",
+      "group": "navigation-and-drafts",
+      "addedSinceOriginalReview": false
+    },
+    {
+      "path": "ui/src/main/kotlin/com/greatwall/callring/ui/feature/settings/LeavesScreen.kt",
+      "mode": "100644",
+      "type": "blob",
+      "blob": "6eb807235bd486e2c90dd42d89df8f0abd6e124e",
+      "group": "navigation-and-drafts",
+      "addedSinceOriginalReview": false
+    },
+    {
+      "path": "ui/src/main/kotlin/com/greatwall/callring/ui/feature/settings/PositionsScreen.kt",
+      "mode": "100644",
+      "type": "blob",
+      "blob": "f1279777c411a1c385cca4c8abf606fad92933ed",
+      "group": "navigation-and-drafts",
+      "addedSinceOriginalReview": false
+    },
+    {
+      "path": "ui/src/main/kotlin/com/greatwall/callring/ui/feature/settings/RuntimeScreen.kt",
+      "mode": "100644",
+      "type": "blob",
+      "blob": "e09d6aa867426af554515db7d9d6848963552b5e",
+      "group": "navigation-and-drafts",
+      "addedSinceOriginalReview": false
+    },
+    {
+      "path": "ui/src/main/kotlin/com/greatwall/callring/ui/feature/settings/SettingsOverviewScreen.kt",
+      "mode": "100644",
+      "type": "blob",
+      "blob": "d83aab6421236a1c129206275b5abd55a11c204c",
+      "group": "navigation-and-drafts",
+      "addedSinceOriginalReview": false
+    },
+    {
+      "path": "ui/src/main/kotlin/com/greatwall/callring/ui/feature/settings/SettingsViewModels.kt",
+      "mode": "100644",
+      "type": "blob",
+      "blob": "511cce214049688e9245d986c6fa67b3129686ec",
+      "group": "navigation-and-drafts",
+      "addedSinceOriginalReview": false
+    },
+    {
+      "path": "ui/src/main/kotlin/com/greatwall/callring/ui/feature/settings/components/SettingsComponents.kt",
+      "mode": "100644",
+      "type": "blob",
+      "blob": "83092402c17337b1eccd2402f3fd7e6e3200a962",
+      "group": "navigation-and-drafts",
+      "addedSinceOriginalReview": false
+    },
+    {
+      "path": "ui/src/main/kotlin/com/greatwall/callring/ui/feature/shared/FeatureFeedback.kt",
+      "mode": "100644",
+      "type": "blob",
+      "blob": "6dcfd17afd29999b6b6f1144d9f25c04506387d5",
+      "group": "navigation-and-drafts",
+      "addedSinceOriginalReview": false
+    },
+    {
+      "path": "ui/src/main/kotlin/com/greatwall/callring/ui/format/UiLabels.kt",
+      "mode": "100644",
+      "type": "blob",
+      "blob": "9104bff07059936ffc392bcbd42bc7c380368110",
+      "group": "navigation-and-drafts",
+      "addedSinceOriginalReview": false
+    },
+    {
+      "path": "ui/src/main/kotlin/com/greatwall/callring/ui/state/DraftEditor.kt",
+      "mode": "100644",
+      "type": "blob",
+      "blob": "c1d6fdef7cd09c41382d5e0dd6a764a6981cc554",
+      "group": "navigation-and-drafts",
+      "addedSinceOriginalReview": false
+    },
+    {
+      "path": "ui/src/sharedTest/kotlin/com/greatwall/callring/ui/testing/UiFakeApi.kt",
+      "mode": "100644",
+      "type": "blob",
+      "blob": "34c0a1eb863c1890d8523faa16c3ad46b713a5bc",
+      "group": "verification",
+      "addedSinceOriginalReview": false
+    },
+    {
+      "path": "ui/src/test/kotlin/com/greatwall/callring/ui/app/ConfirmationSummaryTest.kt",
+      "mode": "100644",
+      "type": "blob",
+      "blob": "198b7e8d11984e904ae7f1c95fe7e782b33de59f",
+      "group": "verification",
+      "addedSinceOriginalReview": true
+    },
+    {
+      "path": "ui/src/test/kotlin/com/greatwall/callring/ui/app/ConversationNavigationTest.kt",
+      "mode": "100644",
+      "type": "blob",
+      "blob": "65509c4f854544bef24b5002fb7715b7cffa6838",
+      "group": "verification",
+      "addedSinceOriginalReview": false
+    },
+    {
+      "path": "ui/src/test/kotlin/com/greatwall/callring/ui/app/ConversationReviewUiTest.kt",
+      "mode": "100644",
+      "type": "blob",
+      "blob": "8126c3b824513178aaa0a285fcdae9ff54005356",
+      "group": "verification",
+      "addedSinceOriginalReview": true
+    },
+    {
+      "path": "ui/src/test/kotlin/com/greatwall/callring/ui/app/ConversationStateUiTest.kt",
+      "mode": "100644",
+      "type": "blob",
+      "blob": "95270f9e3018a5ee0588070e3179686d91736ba2",
+      "group": "verification",
+      "addedSinceOriginalReview": false
+    },
+    {
+      "path": "ui/src/test/kotlin/com/greatwall/callring/ui/app/CredentialDialogTest.kt",
+      "mode": "100644",
+      "type": "blob",
+      "blob": "2316e7b28e9030edc6472056deaecd9d59e9b101",
+      "group": "verification",
+      "addedSinceOriginalReview": false
+    },
+    {
+      "path": "ui/src/test/kotlin/com/greatwall/callring/ui/app/FirstConnectionUiTest.kt",
+      "mode": "100644",
+      "type": "blob",
+      "blob": "b5e8d0c1c604d729a0b6be7b95c45b6f7c763b5e",
+      "group": "verification",
+      "addedSinceOriginalReview": true
+    },
+    {
+      "path": "ui/src/test/kotlin/com/greatwall/callring/ui/app/ForegroundActionHostTest.kt",
+      "mode": "100644",
+      "type": "blob",
+      "blob": "0d21df0ad07c8e3826f68c7a99f2d0585a108f26",
+      "group": "verification",
+      "addedSinceOriginalReview": false
+    },
+    {
+      "path": "ui/src/test/kotlin/com/greatwall/callring/ui/app/RenderedDestinationTest.kt",
+      "mode": "100644",
+      "type": "blob",
+      "blob": "4987c365d2a4ad7f74c42af0f68bc17a92c4ea38",
+      "group": "verification",
+      "addedSinceOriginalReview": true
+    },
+    {
+      "path": "ui/src/test/kotlin/com/greatwall/callring/ui/feature/recording/RecordingViewModelsTest.kt",
+      "mode": "100644",
+      "type": "blob",
+      "blob": "a6989c86e2008f2eb359e9d02081af2db32e490e",
+      "group": "verification",
+      "addedSinceOriginalReview": false
+    },
+    {
+      "path": "ui/src/test/kotlin/com/greatwall/callring/ui/feature/settings/AppearanceViewModelTest.kt",
+      "mode": "100644",
+      "type": "blob",
+      "blob": "57c2ef9b18e0bf9601c825bc87431541681b97e8",
+      "group": "verification",
+      "addedSinceOriginalReview": false
+    }
+  ],
+  "domains": [
+    {
+      "id": "D01",
+      "name": "callers",
+      "acceptanceIds": [
+        "A3",
+        "A5"
+      ],
+      "sources": [
+        "backend/src/main/kotlin/com/greatwall/callring/application/CoreSnapshotProjection.kt"
+      ],
+      "evidence": "C:/Users/GreatWall/AppData/Local/Temp/callring-ai-recheck/baseline-app/TEST-com.greatwall.callring.data.CoreSnapshotSourceTest.xml"
+    },
+    {
+      "id": "D02",
+      "name": "positions",
+      "acceptanceIds": [
+        "A3",
+        "A5"
+      ],
+      "sources": [
+        "backend/src/main/kotlin/com/greatwall/callring/application/CoreSnapshotProjection.kt",
+        "app/src/main/kotlin/com/greatwall/callring/bootstrap/CompleteSnapshotAssembly.kt"
+      ],
+      "evidence": "C:/Users/GreatWall/AppData/Local/Temp/callring-ai-recheck/baseline-app/TEST-com.greatwall.callring.data.CoreSnapshotSourceTest.xml"
+    },
+    {
+      "id": "D03",
+      "name": "callFacts",
+      "acceptanceIds": [
+        "A3",
+        "A5"
+      ],
+      "sources": [
+        "backend/src/main/kotlin/com/greatwall/callring/application/CoreSnapshotProjection.kt"
+      ],
+      "evidence": "C:/Users/GreatWall/AppData/Local/Temp/callring-ai-recheck/baseline-app/TEST-com.greatwall.callring.data.CoreSnapshotSourceTest.xml"
+    },
+    {
+      "id": "D04",
+      "name": "callDetails",
+      "acceptanceIds": [
+        "A3",
+        "A5"
+      ],
+      "sources": [
+        "backend/src/main/kotlin/com/greatwall/callring/application/CoreSnapshotProjection.kt"
+      ],
+      "evidence": "C:/Users/GreatWall/AppData/Local/Temp/callring-ai-recheck/baseline-app/TEST-com.greatwall.callring.data.CoreSnapshotSourceTest.xml"
+    },
+    {
+      "id": "D05",
+      "name": "statistics",
+      "acceptanceIds": [
+        "A3",
+        "A5"
+      ],
+      "sources": [
+        "backend/src/main/kotlin/com/greatwall/callring/application/CoreSnapshotProjection.kt",
+        "app/src/main/kotlin/com/greatwall/callring/bootstrap/CompleteSnapshotAssembly.kt"
+      ],
+      "evidence": "C:/Users/GreatWall/AppData/Local/Temp/callring-ai-recheck/baseline-app/TEST-com.greatwall.callring.data.CoreSnapshotSourceTest.xml"
+    },
+    {
+      "id": "D06",
+      "name": "work",
+      "acceptanceIds": [
+        "A3",
+        "A5"
+      ],
+      "sources": [
+        "backend/src/main/kotlin/com/greatwall/callring/application/CoreSnapshotProjection.kt",
+        "app/src/main/kotlin/com/greatwall/callring/bootstrap/CompleteSnapshotAssembly.kt"
+      ],
+      "evidence": "C:/Users/GreatWall/AppData/Local/Temp/callring-ai-recheck/baseline-app/TEST-com.greatwall.callring.data.CoreSnapshotSourceTest.xml"
+    },
+    {
+      "id": "D07",
+      "name": "calendar",
+      "acceptanceIds": [
+        "A3",
+        "A5"
+      ],
+      "sources": [
+        "backend/src/main/kotlin/com/greatwall/callring/application/CoreSnapshotProjection.kt",
+        "app/src/main/kotlin/com/greatwall/callring/bootstrap/CompleteSnapshotAssembly.kt"
+      ],
+      "evidence": "C:/Users/GreatWall/AppData/Local/Temp/callring-ai-recheck/baseline-app/TEST-com.greatwall.callring.data.CoreSnapshotSourceTest.xml"
+    },
+    {
+      "id": "D08",
+      "name": "overrides",
+      "acceptanceIds": [
+        "A3",
+        "A5"
+      ],
+      "sources": [
+        "backend/src/main/kotlin/com/greatwall/callring/application/CoreSnapshotProjection.kt"
+      ],
+      "evidence": "C:/Users/GreatWall/AppData/Local/Temp/callring-ai-recheck/baseline-app/TEST-com.greatwall.callring.data.CoreSnapshotSourceTest.xml"
+    },
+    {
+      "id": "D09",
+      "name": "leaves",
+      "acceptanceIds": [
+        "A3",
+        "A5"
+      ],
+      "sources": [
+        "backend/src/main/kotlin/com/greatwall/callring/application/CoreSnapshotProjection.kt",
+        "app/src/main/kotlin/com/greatwall/callring/bootstrap/CompleteSnapshotAssembly.kt"
+      ],
+      "evidence": "C:/Users/GreatWall/AppData/Local/Temp/callring-ai-recheck/baseline-app/TEST-com.greatwall.callring.data.CoreSnapshotSourceTest.xml"
+    },
+    {
+      "id": "D10",
+      "name": "policy",
+      "acceptanceIds": [
+        "A3",
+        "A5"
+      ],
+      "sources": [
+        "backend/src/main/kotlin/com/greatwall/callring/application/CoreSnapshotProjection.kt"
+      ],
+      "evidence": "C:/Users/GreatWall/AppData/Local/Temp/callring-ai-recheck/baseline-app/TEST-com.greatwall.callring.data.CoreSnapshotSourceTest.xml"
+    },
+    {
+      "id": "D11",
+      "name": "appearance",
+      "acceptanceIds": [
+        "A3",
+        "A5"
+      ],
+      "sources": [
+        "backend/src/main/kotlin/com/greatwall/callring/application/CoreSnapshotProjection.kt"
+      ],
+      "evidence": "C:/Users/GreatWall/AppData/Local/Temp/callring-ai-recheck/baseline-app/TEST-com.greatwall.callring.data.CoreSnapshotSourceTest.xml"
+    },
+    {
+      "id": "D12",
+      "name": "ringtone",
+      "acceptanceIds": [
+        "A3",
+        "A5"
+      ],
+      "sources": [
+        "backend/src/main/kotlin/com/greatwall/callring/application/CoreSnapshotProjection.kt"
+      ],
+      "evidence": "C:/Users/GreatWall/AppData/Local/Temp/callring-ai-recheck/baseline-app/TEST-com.greatwall.callring.data.CoreSnapshotSourceTest.xml"
+    },
+    {
+      "id": "D13",
+      "name": "recordingSettings",
+      "acceptanceIds": [
+        "A3",
+        "A5"
+      ],
+      "sources": [
+        "app/src/main/kotlin/com/greatwall/callring/bootstrap/CompleteSnapshotAssembly.kt"
+      ],
+      "evidence": "C:/Users/GreatWall/AppData/Local/Temp/callring-ai-recheck/baseline-app/TEST-com.greatwall.callring.platform.ai.RecordingFolderViewTest.xml"
+    },
+    {
+      "id": "D14",
+      "name": "aiSettings",
+      "acceptanceIds": [
+        "A3",
+        "A5"
+      ],
+      "sources": [
+        "app/src/main/kotlin/com/greatwall/callring/bootstrap/CompleteSnapshotAssembly.kt"
+      ],
+      "evidence": "C:/Users/GreatWall/AppData/Local/Temp/callring-ai-recheck/baseline-app/TEST-com.greatwall.callring.platform.ai.AiSettingsServiceTest.xml"
+    },
+    {
+      "id": "D15",
+      "name": "recordingEvents",
+      "acceptanceIds": [
+        "A3",
+        "A5"
+      ],
+      "sources": [
+        "app/src/main/kotlin/com/greatwall/callring/bootstrap/CompleteSnapshotAssembly.kt",
+        "app/src/main/kotlin/com/greatwall/callring/platform/ai/AndroidRecordingStore.kt"
+      ],
+      "evidence": "C:/Users/GreatWall/AppData/Local/Temp/callring-ai-recheck/baseline-app/TEST-com.greatwall.callring.platform.ai.RecordingSnapshotSourceTest.xml"
+    },
+    {
+      "id": "D16",
+      "name": "archives",
+      "acceptanceIds": [
+        "A3",
+        "A5"
+      ],
+      "sources": [
+        "app/src/main/kotlin/com/greatwall/callring/platform/ai/AndroidRecordingStore.kt"
+      ],
+      "evidence": "C:/Users/GreatWall/AppData/Local/Temp/callring-ai-recheck/baseline-app/TEST-com.greatwall.callring.platform.ai.RecordingSnapshotSourceTest.xml"
+    },
+    {
+      "id": "D17",
+      "name": "systemFiles",
+      "acceptanceIds": [
+        "A3",
+        "A5"
+      ],
+      "sources": [
+        "app/src/main/kotlin/com/greatwall/callring/bootstrap/CompleteSnapshotAssembly.kt"
+      ],
+      "evidence": "C:/Users/GreatWall/AppData/Local/Temp/callring-ai-recheck/baseline-app/TEST-com.greatwall.callring.bootstrap.CompleteSnapshotAssemblyTest.xml"
+    },
+    {
+      "id": "D18",
+      "name": "widgets",
+      "acceptanceIds": [
+        "A3",
+        "A5"
+      ],
+      "sources": [
+        "app/src/main/kotlin/com/greatwall/callring/bootstrap/CompleteSnapshotAssembly.kt"
+      ],
+      "evidence": "C:/Users/GreatWall/AppData/Local/Temp/callring-ai-recheck/baseline-app/TEST-com.greatwall.callring.bootstrap.CompleteSnapshotAssemblyTest.xml"
+    },
+    {
+      "id": "D19",
+      "name": "runtime",
+      "acceptanceIds": [
+        "A3",
+        "A5"
+      ],
+      "sources": [
+        "app/src/main/kotlin/com/greatwall/callring/bootstrap/CompleteSnapshotAssembly.kt"
+      ],
+      "evidence": "C:/Users/GreatWall/AppData/Local/Temp/callring-ai-recheck/baseline-app/TEST-com.greatwall.callring.bootstrap.CompleteSnapshotAssemblyTest.xml"
+    },
+    {
+      "id": "D20",
+      "name": "diagnostics",
+      "acceptanceIds": [
+        "A3",
+        "A5"
+      ],
+      "sources": [
+        "app/src/main/kotlin/com/greatwall/callring/bootstrap/CompleteSnapshotAssembly.kt"
+      ],
+      "evidence": "C:/Users/GreatWall/AppData/Local/Temp/callring-ai-recheck/baseline-app/TEST-com.greatwall.callring.platform.ai.RecordingSnapshotSourceTest.xml"
+    },
+    {
+      "id": "D21",
+      "name": "audit",
+      "acceptanceIds": [
+        "A3",
+        "A5"
+      ],
+      "sources": [
+        "backend/src/main/kotlin/com/greatwall/callring/application/CoreSnapshotProjection.kt"
+      ],
+      "evidence": "C:/Users/GreatWall/AppData/Local/Temp/callring-ai-recheck/baseline-app/TEST-com.greatwall.callring.data.CoreSnapshotSourceTest.xml"
+    }
+  ],
+  "tools": [
+    {
+      "id": "O01",
+      "name": "root_checkNumber",
+      "status": "READ",
+      "api": "root.checkNumber",
+      "invalid": "FAILED",
+      "acceptanceIds": [
+        "A4"
+      ],
+      "registry": "backend/src/main/kotlin/com/greatwall/callring/application/conversation/ToolRegistry.kt",
+      "executor": "backend/src/main/kotlin/com/greatwall/callring/application/conversation/ToolExecutor.kt",
+      "evidence": "C:/Users/GreatWall/AppData/Local/Temp/callring-ai-recheck/baseline-app/TEST-com.greatwall.callring.platform.ai.ToolBusinessIntegrationTest.xml"
+    },
+    {
+      "id": "O02",
+      "name": "home_load",
+      "status": "READ",
+      "api": "home.load",
+      "invalid": "FAILED",
+      "acceptanceIds": [
+        "A4"
+      ],
+      "registry": "backend/src/main/kotlin/com/greatwall/callring/application/conversation/ToolRegistry.kt",
+      "executor": "backend/src/main/kotlin/com/greatwall/callring/application/conversation/ToolExecutor.kt",
+      "evidence": "C:/Users/GreatWall/AppData/Local/Temp/callring-ai-recheck/baseline-app/TEST-com.greatwall.callring.platform.ai.ToolBusinessIntegrationTest.xml"
+    },
+    {
+      "id": "O03",
+      "name": "callers_search",
+      "status": "READ",
+      "api": "callers.search",
+      "invalid": "FAILED",
+      "acceptanceIds": [
+        "A4"
+      ],
+      "registry": "backend/src/main/kotlin/com/greatwall/callring/application/conversation/ToolRegistry.kt",
+      "executor": "backend/src/main/kotlin/com/greatwall/callring/application/conversation/ToolExecutor.kt",
+      "evidence": "C:/Users/GreatWall/AppData/Local/Temp/callring-ai-recheck/baseline-app/TEST-com.greatwall.callring.platform.ai.ToolBusinessIntegrationTest.xml"
+    },
+    {
+      "id": "O04",
+      "name": "callers_getEditor",
+      "status": "READ",
+      "api": "callers.getEditor",
+      "invalid": "FAILED",
+      "acceptanceIds": [
+        "A4"
+      ],
+      "registry": "backend/src/main/kotlin/com/greatwall/callring/application/conversation/ToolRegistry.kt",
+      "executor": "backend/src/main/kotlin/com/greatwall/callring/application/conversation/ToolExecutor.kt",
+      "evidence": "C:/Users/GreatWall/AppData/Local/Temp/callring-ai-recheck/baseline-app/TEST-com.greatwall.callring.platform.ai.ToolBusinessIntegrationTest.xml"
+    },
+    {
+      "id": "O05",
+      "name": "callers_getOverview",
+      "status": "READ",
+      "api": "callers.getOverview",
+      "invalid": "FAILED",
+      "acceptanceIds": [
+        "A4"
+      ],
+      "registry": "backend/src/main/kotlin/com/greatwall/callring/application/conversation/ToolRegistry.kt",
+      "executor": "backend/src/main/kotlin/com/greatwall/callring/application/conversation/ToolExecutor.kt",
+      "evidence": "C:/Users/GreatWall/AppData/Local/Temp/callring-ai-recheck/baseline-app/TEST-com.greatwall.callring.platform.ai.ToolBusinessIntegrationTest.xml"
+    },
+    {
+      "id": "O06",
+      "name": "callers_getLatestCall",
+      "status": "READ",
+      "api": "callers.getLatestCall",
+      "invalid": "FAILED",
+      "acceptanceIds": [
+        "A4"
+      ],
+      "registry": "backend/src/main/kotlin/com/greatwall/callring/application/conversation/ToolRegistry.kt",
+      "executor": "backend/src/main/kotlin/com/greatwall/callring/application/conversation/ToolExecutor.kt",
+      "evidence": "C:/Users/GreatWall/AppData/Local/Temp/callring-ai-recheck/baseline-app/TEST-com.greatwall.callring.platform.ai.ToolBusinessIntegrationTest.xml"
+    },
+    {
+      "id": "O07",
+      "name": "callers_saveProfile",
+      "status": "COMMITTED",
+      "api": "callers.saveProfile",
+      "invalid": "FAILED",
+      "acceptanceIds": [
+        "A4"
+      ],
+      "registry": "backend/src/main/kotlin/com/greatwall/callring/application/conversation/ToolRegistry.kt",
+      "executor": "backend/src/main/kotlin/com/greatwall/callring/application/conversation/ToolExecutor.kt",
+      "evidence": "C:/Users/GreatWall/AppData/Local/Temp/callring-ai-recheck/baseline-app/TEST-com.greatwall.callring.platform.ai.ToolBusinessIntegrationTest.xml"
+    },
+    {
+      "id": "O08",
+      "name": "callers_setWhitelisted",
+      "status": "COMMITTED",
+      "api": "callers.setWhitelisted",
+      "invalid": "FAILED",
+      "acceptanceIds": [
+        "A4"
+      ],
+      "registry": "backend/src/main/kotlin/com/greatwall/callring/application/conversation/ToolRegistry.kt",
+      "executor": "backend/src/main/kotlin/com/greatwall/callring/application/conversation/ToolExecutor.kt",
+      "evidence": "C:/Users/GreatWall/AppData/Local/Temp/callring-ai-recheck/baseline-app/TEST-com.greatwall.callring.platform.ai.ToolBusinessIntegrationTest.xml"
+    },
+    {
+      "id": "O09",
+      "name": "reports_load",
+      "status": "READ",
+      "api": "reports.load",
+      "invalid": "FAILED",
+      "acceptanceIds": [
+        "A4"
+      ],
+      "registry": "backend/src/main/kotlin/com/greatwall/callring/application/conversation/ToolRegistry.kt",
+      "executor": "backend/src/main/kotlin/com/greatwall/callring/application/conversation/ToolExecutor.kt",
+      "evidence": "C:/Users/GreatWall/AppData/Local/Temp/callring-ai-recheck/baseline-app/TEST-com.greatwall.callring.platform.ai.ToolBusinessIntegrationTest.xml"
+    },
+    {
+      "id": "O10",
+      "name": "reports_exportCsv",
+      "status": "COMMITTED",
+      "api": "reports.exportCsv",
+      "invalid": "FAILED",
+      "acceptanceIds": [
+        "A4",
+        "A6"
+      ],
+      "registry": "backend/src/main/kotlin/com/greatwall/callring/application/conversation/ToolRegistry.kt",
+      "executor": "backend/src/main/kotlin/com/greatwall/callring/application/conversation/ToolExecutor.kt",
+      "evidence": "C:/Users/GreatWall/AppData/Local/Temp/callring-ai-recheck/baseline-app/TEST-com.greatwall.callring.platform.ai.ToolBusinessIntegrationTest.xml"
+    },
+    {
+      "id": "O11",
+      "name": "settings_getSummary",
+      "status": "READ",
+      "api": "settings.getSummary",
+      "invalid": "FAILED",
+      "acceptanceIds": [
+        "A4"
+      ],
+      "registry": "backend/src/main/kotlin/com/greatwall/callring/application/conversation/ToolRegistry.kt",
+      "executor": "backend/src/main/kotlin/com/greatwall/callring/application/conversation/ToolExecutor.kt",
+      "evidence": "C:/Users/GreatWall/AppData/Local/Temp/callring-ai-recheck/baseline-app/TEST-com.greatwall.callring.platform.ai.ToolBusinessIntegrationTest.xml"
+    },
+    {
+      "id": "O12",
+      "name": "settings_setStatisticsEnabled",
+      "status": "COMMITTED",
+      "api": "settings.setStatisticsEnabled",
+      "invalid": "FAILED",
+      "acceptanceIds": [
+        "A4"
+      ],
+      "registry": "backend/src/main/kotlin/com/greatwall/callring/application/conversation/ToolRegistry.kt",
+      "executor": "backend/src/main/kotlin/com/greatwall/callring/application/conversation/ToolExecutor.kt",
+      "evidence": "C:/Users/GreatWall/AppData/Local/Temp/callring-ai-recheck/baseline-app/TEST-com.greatwall.callring.platform.ai.ToolBusinessIntegrationTest.xml"
+    },
+    {
+      "id": "O13",
+      "name": "settings_setOverlayEnabled",
+      "status": "COMMITTED",
+      "api": "settings.setOverlayEnabled",
+      "invalid": "FAILED",
+      "acceptanceIds": [
+        "A4"
+      ],
+      "registry": "backend/src/main/kotlin/com/greatwall/callring/application/conversation/ToolRegistry.kt",
+      "executor": "backend/src/main/kotlin/com/greatwall/callring/application/conversation/ToolExecutor.kt",
+      "evidence": "C:/Users/GreatWall/AppData/Local/Temp/callring-ai-recheck/baseline-app/TEST-com.greatwall.callring.platform.ai.ToolBusinessIntegrationTest.xml"
+    },
+    {
+      "id": "O14",
+      "name": "settings_getQuietHours",
+      "status": "READ",
+      "api": "settings.getQuietHours",
+      "invalid": "FAILED",
+      "acceptanceIds": [
+        "A4"
+      ],
+      "registry": "backend/src/main/kotlin/com/greatwall/callring/application/conversation/ToolRegistry.kt",
+      "executor": "backend/src/main/kotlin/com/greatwall/callring/application/conversation/ToolExecutor.kt",
+      "evidence": "C:/Users/GreatWall/AppData/Local/Temp/callring-ai-recheck/baseline-app/TEST-com.greatwall.callring.platform.ai.ToolBusinessIntegrationTest.xml"
+    },
+    {
+      "id": "O15",
+      "name": "settings_saveQuietHours",
+      "status": "COMMITTED",
+      "api": "settings.saveQuietHours",
+      "invalid": "FAILED",
+      "acceptanceIds": [
+        "A4"
+      ],
+      "registry": "backend/src/main/kotlin/com/greatwall/callring/application/conversation/ToolRegistry.kt",
+      "executor": "backend/src/main/kotlin/com/greatwall/callring/application/conversation/ToolExecutor.kt",
+      "evidence": "C:/Users/GreatWall/AppData/Local/Temp/callring-ai-recheck/baseline-app/TEST-com.greatwall.callring.platform.ai.ToolBusinessIntegrationTest.xml"
+    },
+    {
+      "id": "O16",
+      "name": "settings_setQuietMode",
+      "status": "COMMITTED",
+      "api": "settings.setQuietMode",
+      "invalid": "FAILED",
+      "acceptanceIds": [
+        "A4"
+      ],
+      "registry": "backend/src/main/kotlin/com/greatwall/callring/application/conversation/ToolRegistry.kt",
+      "executor": "backend/src/main/kotlin/com/greatwall/callring/application/conversation/ToolExecutor.kt",
+      "evidence": "C:/Users/GreatWall/AppData/Local/Temp/callring-ai-recheck/baseline-app/TEST-com.greatwall.callring.platform.ai.ToolBusinessIntegrationTest.xml"
+    },
+    {
+      "id": "O17",
+      "name": "settings_setQuietEnabled",
+      "status": "COMMITTED",
+      "api": "settings.setQuietEnabled",
+      "invalid": "FAILED",
+      "acceptanceIds": [
+        "A4"
+      ],
+      "registry": "backend/src/main/kotlin/com/greatwall/callring/application/conversation/ToolRegistry.kt",
+      "executor": "backend/src/main/kotlin/com/greatwall/callring/application/conversation/ToolExecutor.kt",
+      "evidence": "C:/Users/GreatWall/AppData/Local/Temp/callring-ai-recheck/baseline-app/TEST-com.greatwall.callring.platform.ai.ToolBusinessIntegrationTest.xml"
+    },
+    {
+      "id": "O18",
+      "name": "settings_getPositions",
+      "status": "READ",
+      "api": "settings.getPositions",
+      "invalid": "FAILED",
+      "acceptanceIds": [
+        "A4"
+      ],
+      "registry": "backend/src/main/kotlin/com/greatwall/callring/application/conversation/ToolRegistry.kt",
+      "executor": "backend/src/main/kotlin/com/greatwall/callring/application/conversation/ToolExecutor.kt",
+      "evidence": "C:/Users/GreatWall/AppData/Local/Temp/callring-ai-recheck/baseline-app/TEST-com.greatwall.callring.platform.ai.ToolBusinessIntegrationTest.xml"
+    },
+    {
+      "id": "O19",
+      "name": "settings_savePosition",
+      "status": "COMMITTED",
+      "api": "settings.savePosition",
+      "invalid": "FAILED",
+      "acceptanceIds": [
+        "A4"
+      ],
+      "registry": "backend/src/main/kotlin/com/greatwall/callring/application/conversation/ToolRegistry.kt",
+      "executor": "backend/src/main/kotlin/com/greatwall/callring/application/conversation/ToolExecutor.kt",
+      "evidence": "C:/Users/GreatWall/AppData/Local/Temp/callring-ai-recheck/baseline-app/TEST-com.greatwall.callring.platform.ai.ToolBusinessIntegrationTest.xml"
+    },
+    {
+      "id": "O20",
+      "name": "settings_deletePosition",
+      "status": "COMMITTED",
+      "api": "settings.deletePosition",
+      "invalid": "FAILED",
+      "acceptanceIds": [
+        "A4",
+        "A6"
+      ],
+      "registry": "backend/src/main/kotlin/com/greatwall/callring/application/conversation/ToolRegistry.kt",
+      "executor": "backend/src/main/kotlin/com/greatwall/callring/application/conversation/ToolExecutor.kt",
+      "evidence": "C:/Users/GreatWall/AppData/Local/Temp/callring-ai-recheck/baseline-app/TEST-com.greatwall.callring.platform.ai.ToolBusinessIntegrationTest.xml"
+    },
+    {
+      "id": "O21",
+      "name": "settings_setMyPosition",
+      "status": "COMMITTED",
+      "api": "settings.setMyPosition",
+      "invalid": "FAILED",
+      "acceptanceIds": [
+        "A4"
+      ],
+      "registry": "backend/src/main/kotlin/com/greatwall/callring/application/conversation/ToolRegistry.kt",
+      "executor": "backend/src/main/kotlin/com/greatwall/callring/application/conversation/ToolExecutor.kt",
+      "evidence": "C:/Users/GreatWall/AppData/Local/Temp/callring-ai-recheck/baseline-app/TEST-com.greatwall.callring.platform.ai.ToolBusinessIntegrationTest.xml"
+    },
+    {
+      "id": "O22",
+      "name": "settings_getWorkSchedule",
+      "status": "READ",
+      "api": "settings.getWorkSchedule",
+      "invalid": "FAILED",
+      "acceptanceIds": [
+        "A4"
+      ],
+      "registry": "backend/src/main/kotlin/com/greatwall/callring/application/conversation/ToolRegistry.kt",
+      "executor": "backend/src/main/kotlin/com/greatwall/callring/application/conversation/ToolExecutor.kt",
+      "evidence": "C:/Users/GreatWall/AppData/Local/Temp/callring-ai-recheck/baseline-app/TEST-com.greatwall.callring.platform.ai.ToolBusinessIntegrationTest.xml"
+    },
+    {
+      "id": "O23",
+      "name": "settings_saveWorkSchedule",
+      "status": "COMMITTED",
+      "api": "settings.saveWorkSchedule",
+      "invalid": "FAILED",
+      "acceptanceIds": [
+        "A4"
+      ],
+      "registry": "backend/src/main/kotlin/com/greatwall/callring/application/conversation/ToolRegistry.kt",
+      "executor": "backend/src/main/kotlin/com/greatwall/callring/application/conversation/ToolExecutor.kt",
+      "evidence": "C:/Users/GreatWall/AppData/Local/Temp/callring-ai-recheck/baseline-app/TEST-com.greatwall.callring.platform.ai.ToolBusinessIntegrationTest.xml"
+    },
+    {
+      "id": "O24",
+      "name": "settings_resetWorkSchedule",
+      "status": "COMMITTED",
+      "api": "settings.resetWorkSchedule",
+      "invalid": "FAILED",
+      "acceptanceIds": [
+        "A4"
+      ],
+      "registry": "backend/src/main/kotlin/com/greatwall/callring/application/conversation/ToolRegistry.kt",
+      "executor": "backend/src/main/kotlin/com/greatwall/callring/application/conversation/ToolExecutor.kt",
+      "evidence": "C:/Users/GreatWall/AppData/Local/Temp/callring-ai-recheck/baseline-app/TEST-com.greatwall.callring.platform.ai.ToolBusinessIntegrationTest.xml"
+    },
+    {
+      "id": "O25",
+      "name": "settings_getCalendar",
+      "status": "READ",
+      "api": "settings.getCalendar",
+      "invalid": "FAILED",
+      "acceptanceIds": [
+        "A4"
+      ],
+      "registry": "backend/src/main/kotlin/com/greatwall/callring/application/conversation/ToolRegistry.kt",
+      "executor": "backend/src/main/kotlin/com/greatwall/callring/application/conversation/ToolExecutor.kt",
+      "evidence": "C:/Users/GreatWall/AppData/Local/Temp/callring-ai-recheck/baseline-app/TEST-com.greatwall.callring.platform.ai.ToolBusinessIntegrationTest.xml"
+    },
+    {
+      "id": "O26",
+      "name": "settings_synchronizeCalendar",
+      "status": "COMMITTED",
+      "api": "settings.synchronizeCalendar",
+      "invalid": "FAILED",
+      "acceptanceIds": [
+        "A4"
+      ],
+      "registry": "backend/src/main/kotlin/com/greatwall/callring/application/conversation/ToolRegistry.kt",
+      "executor": "backend/src/main/kotlin/com/greatwall/callring/application/conversation/ToolExecutor.kt",
+      "evidence": "C:/Users/GreatWall/AppData/Local/Temp/callring-ai-recheck/baseline-app/TEST-com.greatwall.callring.platform.ai.ToolBusinessIntegrationTest.xml"
+    },
+    {
+      "id": "O27",
+      "name": "settings_importCalendar",
+      "status": "COMMITTED",
+      "api": "settings.importCalendar",
+      "invalid": "FAILED",
+      "acceptanceIds": [
+        "A4",
+        "A6"
+      ],
+      "registry": "backend/src/main/kotlin/com/greatwall/callring/application/conversation/ToolRegistry.kt",
+      "executor": "backend/src/main/kotlin/com/greatwall/callring/application/conversation/ToolExecutor.kt",
+      "evidence": "C:/Users/GreatWall/AppData/Local/Temp/callring-ai-recheck/baseline-app/TEST-com.greatwall.callring.platform.ai.ToolBusinessIntegrationTest.xml"
+    },
+    {
+      "id": "O28",
+      "name": "settings_saveDateOverride",
+      "status": "COMMITTED",
+      "api": "settings.saveDateOverride",
+      "invalid": "FAILED",
+      "acceptanceIds": [
+        "A4"
+      ],
+      "registry": "backend/src/main/kotlin/com/greatwall/callring/application/conversation/ToolRegistry.kt",
+      "executor": "backend/src/main/kotlin/com/greatwall/callring/application/conversation/ToolExecutor.kt",
+      "evidence": "C:/Users/GreatWall/AppData/Local/Temp/callring-ai-recheck/baseline-app/TEST-com.greatwall.callring.platform.ai.ToolBusinessIntegrationTest.xml"
+    },
+    {
+      "id": "O29",
+      "name": "settings_deleteDateOverride",
+      "status": "COMMITTED",
+      "api": "settings.deleteDateOverride",
+      "invalid": "FAILED",
+      "acceptanceIds": [
+        "A4"
+      ],
+      "registry": "backend/src/main/kotlin/com/greatwall/callring/application/conversation/ToolRegistry.kt",
+      "executor": "backend/src/main/kotlin/com/greatwall/callring/application/conversation/ToolExecutor.kt",
+      "evidence": "C:/Users/GreatWall/AppData/Local/Temp/callring-ai-recheck/baseline-app/TEST-com.greatwall.callring.platform.ai.ToolBusinessIntegrationTest.xml"
+    },
+    {
+      "id": "O30",
+      "name": "settings_getLeaves",
+      "status": "READ",
+      "api": "settings.getLeaves",
+      "invalid": "FAILED",
+      "acceptanceIds": [
+        "A4"
+      ],
+      "registry": "backend/src/main/kotlin/com/greatwall/callring/application/conversation/ToolRegistry.kt",
+      "executor": "backend/src/main/kotlin/com/greatwall/callring/application/conversation/ToolExecutor.kt",
+      "evidence": "C:/Users/GreatWall/AppData/Local/Temp/callring-ai-recheck/baseline-app/TEST-com.greatwall.callring.platform.ai.ToolBusinessIntegrationTest.xml"
+    },
+    {
+      "id": "O31",
+      "name": "settings_saveLeave",
+      "status": "COMMITTED",
+      "api": "settings.saveLeave",
+      "invalid": "FAILED",
+      "acceptanceIds": [
+        "A4"
+      ],
+      "registry": "backend/src/main/kotlin/com/greatwall/callring/application/conversation/ToolRegistry.kt",
+      "executor": "backend/src/main/kotlin/com/greatwall/callring/application/conversation/ToolExecutor.kt",
+      "evidence": "C:/Users/GreatWall/AppData/Local/Temp/callring-ai-recheck/baseline-app/TEST-com.greatwall.callring.platform.ai.ToolBusinessIntegrationTest.xml"
+    },
+    {
+      "id": "O32",
+      "name": "settings_deleteLeave",
+      "status": "COMMITTED",
+      "api": "settings.deleteLeave",
+      "invalid": "FAILED",
+      "acceptanceIds": [
+        "A4",
+        "A6"
+      ],
+      "registry": "backend/src/main/kotlin/com/greatwall/callring/application/conversation/ToolRegistry.kt",
+      "executor": "backend/src/main/kotlin/com/greatwall/callring/application/conversation/ToolExecutor.kt",
+      "evidence": "C:/Users/GreatWall/AppData/Local/Temp/callring-ai-recheck/baseline-app/TEST-com.greatwall.callring.platform.ai.ToolBusinessIntegrationTest.xml"
+    },
+    {
+      "id": "O33",
+      "name": "settings_getScoreSettings",
+      "status": "READ",
+      "api": "settings.getScoreSettings",
+      "invalid": "FAILED",
+      "acceptanceIds": [
+        "A4"
+      ],
+      "registry": "backend/src/main/kotlin/com/greatwall/callring/application/conversation/ToolRegistry.kt",
+      "executor": "backend/src/main/kotlin/com/greatwall/callring/application/conversation/ToolExecutor.kt",
+      "evidence": "C:/Users/GreatWall/AppData/Local/Temp/callring-ai-recheck/baseline-app/TEST-com.greatwall.callring.platform.ai.ToolBusinessIntegrationTest.xml"
+    },
+    {
+      "id": "O34",
+      "name": "settings_saveScoreSettings",
+      "status": "COMMITTED",
+      "api": "settings.saveScoreSettings",
+      "invalid": "FAILED",
+      "acceptanceIds": [
+        "A4"
+      ],
+      "registry": "backend/src/main/kotlin/com/greatwall/callring/application/conversation/ToolRegistry.kt",
+      "executor": "backend/src/main/kotlin/com/greatwall/callring/application/conversation/ToolExecutor.kt",
+      "evidence": "C:/Users/GreatWall/AppData/Local/Temp/callring-ai-recheck/baseline-app/TEST-com.greatwall.callring.platform.ai.ToolBusinessIntegrationTest.xml"
+    },
+    {
+      "id": "O35",
+      "name": "settings_resetScoreSettings",
+      "status": "COMMITTED",
+      "api": "settings.resetScoreSettings",
+      "invalid": "FAILED",
+      "acceptanceIds": [
+        "A4"
+      ],
+      "registry": "backend/src/main/kotlin/com/greatwall/callring/application/conversation/ToolRegistry.kt",
+      "executor": "backend/src/main/kotlin/com/greatwall/callring/application/conversation/ToolExecutor.kt",
+      "evidence": "C:/Users/GreatWall/AppData/Local/Temp/callring-ai-recheck/baseline-app/TEST-com.greatwall.callring.platform.ai.ToolBusinessIntegrationTest.xml"
+    },
+    {
+      "id": "O36",
+      "name": "settings_getAppearance",
+      "status": "READ",
+      "api": "settings.getAppearance",
+      "invalid": "FAILED",
+      "acceptanceIds": [
+        "A4"
+      ],
+      "registry": "backend/src/main/kotlin/com/greatwall/callring/application/conversation/ToolRegistry.kt",
+      "executor": "backend/src/main/kotlin/com/greatwall/callring/application/conversation/ToolExecutor.kt",
+      "evidence": "C:/Users/GreatWall/AppData/Local/Temp/callring-ai-recheck/baseline-app/TEST-com.greatwall.callring.platform.ai.ToolBusinessIntegrationTest.xml"
+    },
+    {
+      "id": "O37",
+      "name": "settings_saveAppearance",
+      "status": "COMMITTED",
+      "api": "edits.appearance",
+      "invalid": "FAILED",
+      "acceptanceIds": [
+        "A4"
+      ],
+      "registry": "backend/src/main/kotlin/com/greatwall/callring/application/conversation/ToolRegistry.kt",
+      "executor": "backend/src/main/kotlin/com/greatwall/callring/application/conversation/ToolExecutor.kt",
+      "evidence": "C:/Users/GreatWall/AppData/Local/Temp/callring-ai-recheck/baseline-app/TEST-com.greatwall.callring.platform.ai.ToolBusinessIntegrationTest.xml"
+    },
+    {
+      "id": "O38",
+      "name": "ringtone_getSettings",
+      "status": "READ",
+      "api": "ringtone.getSettings",
+      "invalid": "FAILED",
+      "acceptanceIds": [
+        "A4"
+      ],
+      "registry": "backend/src/main/kotlin/com/greatwall/callring/application/conversation/ToolRegistry.kt",
+      "executor": "backend/src/main/kotlin/com/greatwall/callring/application/conversation/ToolExecutor.kt",
+      "evidence": "C:/Users/GreatWall/AppData/Local/Temp/callring-ai-recheck/baseline-app/TEST-com.greatwall.callring.platform.ai.ToolBusinessIntegrationTest.xml"
+    },
+    {
+      "id": "O39",
+      "name": "ringtone_setEnabled",
+      "status": "COMMITTED",
+      "api": "ringtone.setEnabled",
+      "invalid": "FAILED",
+      "acceptanceIds": [
+        "A4"
+      ],
+      "registry": "backend/src/main/kotlin/com/greatwall/callring/application/conversation/ToolRegistry.kt",
+      "executor": "backend/src/main/kotlin/com/greatwall/callring/application/conversation/ToolExecutor.kt",
+      "evidence": "C:/Users/GreatWall/AppData/Local/Temp/callring-ai-recheck/baseline-app/TEST-com.greatwall.callring.platform.ai.ToolBusinessIntegrationTest.xml"
+    },
+    {
+      "id": "O40",
+      "name": "ringtone_importAudio",
+      "status": "COMMITTED",
+      "api": "ringtone.importAudio",
+      "invalid": "FAILED",
+      "acceptanceIds": [
+        "A4",
+        "A6"
+      ],
+      "registry": "backend/src/main/kotlin/com/greatwall/callring/application/conversation/ToolRegistry.kt",
+      "executor": "backend/src/main/kotlin/com/greatwall/callring/application/conversation/ToolExecutor.kt",
+      "evidence": "C:/Users/GreatWall/AppData/Local/Temp/callring-ai-recheck/baseline-app/TEST-com.greatwall.callring.platform.ai.ToolBusinessIntegrationTest.xml"
+    },
+    {
+      "id": "O41",
+      "name": "ringtone_restoreBuiltIn",
+      "status": "COMMITTED",
+      "api": "ringtone.restoreBuiltIn",
+      "invalid": "FAILED",
+      "acceptanceIds": [
+        "A4"
+      ],
+      "registry": "backend/src/main/kotlin/com/greatwall/callring/application/conversation/ToolRegistry.kt",
+      "executor": "backend/src/main/kotlin/com/greatwall/callring/application/conversation/ToolExecutor.kt",
+      "evidence": "C:/Users/GreatWall/AppData/Local/Temp/callring-ai-recheck/baseline-app/TEST-com.greatwall.callring.platform.ai.ToolBusinessIntegrationTest.xml"
+    },
+    {
+      "id": "O42",
+      "name": "ringtone_startPreview",
+      "status": "LAUNCHED",
+      "api": "ringtone.startPreview",
+      "invalid": "FAILED",
+      "acceptanceIds": [
+        "A4"
+      ],
+      "registry": "backend/src/main/kotlin/com/greatwall/callring/application/conversation/ToolRegistry.kt",
+      "executor": "backend/src/main/kotlin/com/greatwall/callring/application/conversation/ToolExecutor.kt",
+      "evidence": "C:/Users/GreatWall/AppData/Local/Temp/callring-ai-recheck/baseline-app/TEST-com.greatwall.callring.platform.ai.ToolBusinessIntegrationTest.xml"
+    },
+    {
+      "id": "O43",
+      "name": "ringtone_stopPlayback",
+      "status": "LAUNCHED",
+      "api": "ringtone.stopPlayback",
+      "invalid": "FAILED",
+      "acceptanceIds": [
+        "A4"
+      ],
+      "registry": "backend/src/main/kotlin/com/greatwall/callring/application/conversation/ToolRegistry.kt",
+      "executor": "backend/src/main/kotlin/com/greatwall/callring/application/conversation/ToolExecutor.kt",
+      "evidence": "C:/Users/GreatWall/AppData/Local/Temp/callring-ai-recheck/baseline-app/TEST-com.greatwall.callring.platform.ai.ToolBusinessIntegrationTest.xml"
+    },
+    {
+      "id": "O44",
+      "name": "runtime_getStatus",
+      "status": "READ",
+      "api": "runtime.getStatus",
+      "invalid": "FAILED",
+      "acceptanceIds": [
+        "A4"
+      ],
+      "registry": "backend/src/main/kotlin/com/greatwall/callring/application/conversation/ToolRegistry.kt",
+      "executor": "backend/src/main/kotlin/com/greatwall/callring/application/conversation/ToolExecutor.kt",
+      "evidence": "C:/Users/GreatWall/AppData/Local/Temp/callring-ai-recheck/baseline-app/TEST-com.greatwall.callring.platform.ai.ToolBusinessIntegrationTest.xml"
+    },
+    {
+      "id": "O45",
+      "name": "runtime_getDiagnostics",
+      "status": "READ",
+      "api": "runtime.getDiagnostics",
+      "invalid": "FAILED",
+      "acceptanceIds": [
+        "A4"
+      ],
+      "registry": "backend/src/main/kotlin/com/greatwall/callring/application/conversation/ToolRegistry.kt",
+      "executor": "backend/src/main/kotlin/com/greatwall/callring/application/conversation/ToolExecutor.kt",
+      "evidence": "C:/Users/GreatWall/AppData/Local/Temp/callring-ai-recheck/baseline-app/TEST-com.greatwall.callring.platform.ai.ToolBusinessIntegrationTest.xml"
+    },
+    {
+      "id": "O46",
+      "name": "runtime_requestCallLogSync",
+      "status": "QUEUED",
+      "api": "runtime.requestCallLogSync",
+      "invalid": "FAILED",
+      "acceptanceIds": [
+        "A4"
+      ],
+      "registry": "backend/src/main/kotlin/com/greatwall/callring/application/conversation/ToolRegistry.kt",
+      "executor": "backend/src/main/kotlin/com/greatwall/callring/application/conversation/ToolExecutor.kt",
+      "evidence": "C:/Users/GreatWall/AppData/Local/Temp/callring-ai-recheck/baseline-app/TEST-com.greatwall.callring.platform.ai.ToolBusinessIntegrationTest.xml"
+    },
+    {
+      "id": "O47",
+      "name": "widgets_getBinding",
+      "status": "READ",
+      "api": "widgets.getBinding",
+      "invalid": "FAILED",
+      "acceptanceIds": [
+        "A4"
+      ],
+      "registry": "backend/src/main/kotlin/com/greatwall/callring/application/conversation/ToolRegistry.kt",
+      "executor": "backend/src/main/kotlin/com/greatwall/callring/application/conversation/ToolExecutor.kt",
+      "evidence": "C:/Users/GreatWall/AppData/Local/Temp/callring-ai-recheck/baseline-app/TEST-com.greatwall.callring.platform.ai.ToolBusinessIntegrationTest.xml"
+    },
+    {
+      "id": "O48",
+      "name": "widgets_saveBinding",
+      "status": "COMMITTED",
+      "api": "widgets.saveBinding",
+      "invalid": "FAILED",
+      "acceptanceIds": [
+        "A4"
+      ],
+      "registry": "backend/src/main/kotlin/com/greatwall/callring/application/conversation/ToolRegistry.kt",
+      "executor": "backend/src/main/kotlin/com/greatwall/callring/application/conversation/ToolExecutor.kt",
+      "evidence": "C:/Users/GreatWall/AppData/Local/Temp/callring-ai-recheck/baseline-app/TEST-com.greatwall.callring.platform.ai.ToolBusinessIntegrationTest.xml"
+    },
+    {
+      "id": "O49",
+      "name": "widgets_removeBinding",
+      "status": "COMMITTED",
+      "api": "widgets.removeBinding",
+      "invalid": "FAILED",
+      "acceptanceIds": [
+        "A4"
+      ],
+      "registry": "backend/src/main/kotlin/com/greatwall/callring/application/conversation/ToolRegistry.kt",
+      "executor": "backend/src/main/kotlin/com/greatwall/callring/application/conversation/ToolExecutor.kt",
+      "evidence": "C:/Users/GreatWall/AppData/Local/Temp/callring-ai-recheck/baseline-app/TEST-com.greatwall.callring.platform.ai.ToolBusinessIntegrationTest.xml"
+    },
+    {
+      "id": "O50",
+      "name": "recordings_listArchives",
+      "status": "READ",
+      "api": "recordings.listArchives",
+      "invalid": "FAILED",
+      "acceptanceIds": [
+        "A4"
+      ],
+      "registry": "backend/src/main/kotlin/com/greatwall/callring/application/conversation/ToolRegistry.kt",
+      "executor": "backend/src/main/kotlin/com/greatwall/callring/application/conversation/ToolExecutor.kt",
+      "evidence": "C:/Users/GreatWall/AppData/Local/Temp/callring-ai-recheck/baseline-app/TEST-com.greatwall.callring.platform.ai.ToolBusinessIntegrationTest.xml"
+    },
+    {
+      "id": "O51",
+      "name": "recordings_getSettings",
+      "status": "READ",
+      "api": "recordings.getSettings",
+      "invalid": "FAILED",
+      "acceptanceIds": [
+        "A4"
+      ],
+      "registry": "backend/src/main/kotlin/com/greatwall/callring/application/conversation/ToolRegistry.kt",
+      "executor": "backend/src/main/kotlin/com/greatwall/callring/application/conversation/ToolExecutor.kt",
+      "evidence": "C:/Users/GreatWall/AppData/Local/Temp/callring-ai-recheck/baseline-app/TEST-com.greatwall.callring.platform.ai.ToolBusinessIntegrationTest.xml"
+    },
+    {
+      "id": "O52",
+      "name": "recordings_saveSettings",
+      "status": "COMMITTED",
+      "api": "ai.patchCombined",
+      "invalid": "FAILED",
+      "acceptanceIds": [
+        "A4"
+      ],
+      "registry": "backend/src/main/kotlin/com/greatwall/callring/application/conversation/ToolRegistry.kt",
+      "executor": "backend/src/main/kotlin/com/greatwall/callring/application/conversation/ToolExecutor.kt",
+      "evidence": "C:/Users/GreatWall/AppData/Local/Temp/callring-ai-recheck/baseline-app/TEST-com.greatwall.callring.platform.ai.ToolBusinessIntegrationTest.xml"
+    },
+    {
+      "id": "O53",
+      "name": "recordings_testConnection",
+      "status": "READ",
+      "api": "ai.testSlot",
+      "invalid": "FAILED",
+      "acceptanceIds": [
+        "A4",
+        "A6"
+      ],
+      "registry": "backend/src/main/kotlin/com/greatwall/callring/application/conversation/ToolRegistry.kt",
+      "executor": "backend/src/main/kotlin/com/greatwall/callring/application/conversation/ToolExecutor.kt",
+      "evidence": "C:/Users/GreatWall/AppData/Local/Temp/callring-ai-recheck/baseline-app/TEST-com.greatwall.callring.platform.ai.ToolBusinessIntegrationTest.xml"
+    },
+    {
+      "id": "O54",
+      "name": "recordings_getArchive",
+      "status": "READ",
+      "api": "recordings.getArchive",
+      "invalid": "FAILED",
+      "acceptanceIds": [
+        "A4"
+      ],
+      "registry": "backend/src/main/kotlin/com/greatwall/callring/application/conversation/ToolRegistry.kt",
+      "executor": "backend/src/main/kotlin/com/greatwall/callring/application/conversation/ToolExecutor.kt",
+      "evidence": "C:/Users/GreatWall/AppData/Local/Temp/callring-ai-recheck/baseline-app/TEST-com.greatwall.callring.platform.ai.ToolBusinessIntegrationTest.xml"
+    },
+    {
+      "id": "O55",
+      "name": "recordings_importRecording",
+      "status": "COMMITTED",
+      "api": "recordings.importRecording",
+      "invalid": "FAILED",
+      "acceptanceIds": [
+        "A4",
+        "A6"
+      ],
+      "registry": "backend/src/main/kotlin/com/greatwall/callring/application/conversation/ToolRegistry.kt",
+      "executor": "backend/src/main/kotlin/com/greatwall/callring/application/conversation/ToolExecutor.kt",
+      "evidence": "C:/Users/GreatWall/AppData/Local/Temp/callring-ai-recheck/baseline-app/TEST-com.greatwall.callring.platform.ai.ToolBusinessIntegrationTest.xml"
+    },
+    {
+      "id": "O56",
+      "name": "recordings_retry",
+      "status": "QUEUED",
+      "api": "recordings.retry",
+      "invalid": "FAILED",
+      "acceptanceIds": [
+        "A4"
+      ],
+      "registry": "backend/src/main/kotlin/com/greatwall/callring/application/conversation/ToolRegistry.kt",
+      "executor": "backend/src/main/kotlin/com/greatwall/callring/application/conversation/ToolExecutor.kt",
+      "evidence": "C:/Users/GreatWall/AppData/Local/Temp/callring-ai-recheck/baseline-app/TEST-com.greatwall.callring.platform.ai.ToolBusinessIntegrationTest.xml"
+    },
+    {
+      "id": "O57",
+      "name": "recordings_delete",
+      "status": "COMMITTED",
+      "api": "recordings.delete",
+      "invalid": "FAILED",
+      "acceptanceIds": [
+        "A4",
+        "A6"
+      ],
+      "registry": "backend/src/main/kotlin/com/greatwall/callring/application/conversation/ToolRegistry.kt",
+      "executor": "backend/src/main/kotlin/com/greatwall/callring/application/conversation/ToolExecutor.kt",
+      "evidence": "C:/Users/GreatWall/AppData/Local/Temp/callring-ai-recheck/baseline-app/TEST-com.greatwall.callring.platform.ai.ToolBusinessIntegrationTest.xml"
+    },
+    {
+      "id": "O58",
+      "name": "recordings_play",
+      "status": "COMMITTED",
+      "api": "recordings.play",
+      "invalid": "FAILED",
+      "acceptanceIds": [
+        "A4"
+      ],
+      "registry": "backend/src/main/kotlin/com/greatwall/callring/application/conversation/ToolRegistry.kt",
+      "executor": "backend/src/main/kotlin/com/greatwall/callring/application/conversation/ToolExecutor.kt",
+      "evidence": "C:/Users/GreatWall/AppData/Local/Temp/callring-ai-recheck/baseline-app/TEST-com.greatwall.callring.platform.ai.ToolBusinessIntegrationTest.xml"
+    },
+    {
+      "id": "O59",
+      "name": "recordings_stop",
+      "status": "COMMITTED",
+      "api": "recordings.stop",
+      "invalid": "FAILED",
+      "acceptanceIds": [
+        "A4"
+      ],
+      "registry": "backend/src/main/kotlin/com/greatwall/callring/application/conversation/ToolRegistry.kt",
+      "executor": "backend/src/main/kotlin/com/greatwall/callring/application/conversation/ToolExecutor.kt",
+      "evidence": "C:/Users/GreatWall/AppData/Local/Temp/callring-ai-recheck/baseline-app/TEST-com.greatwall.callring.platform.ai.ToolBusinessIntegrationTest.xml"
+    },
+    {
+      "id": "O60",
+      "name": "recordings_setSystemFolder",
+      "status": "COMMITTED",
+      "api": "recordings.setSystemFolder",
+      "invalid": "FAILED",
+      "acceptanceIds": [
+        "A4",
+        "A6"
+      ],
+      "registry": "backend/src/main/kotlin/com/greatwall/callring/application/conversation/ToolRegistry.kt",
+      "executor": "backend/src/main/kotlin/com/greatwall/callring/application/conversation/ToolExecutor.kt",
+      "evidence": "C:/Users/GreatWall/AppData/Local/Temp/callring-ai-recheck/baseline-app/TEST-com.greatwall.callring.platform.ai.ToolBusinessIntegrationTest.xml"
+    },
+    {
+      "id": "O61",
+      "name": "recordings_systemRecordings",
+      "status": "READ",
+      "api": "recordings.systemRecordings",
+      "invalid": "FAILED",
+      "acceptanceIds": [
+        "A4"
+      ],
+      "registry": "backend/src/main/kotlin/com/greatwall/callring/application/conversation/ToolRegistry.kt",
+      "executor": "backend/src/main/kotlin/com/greatwall/callring/application/conversation/ToolExecutor.kt",
+      "evidence": "C:/Users/GreatWall/AppData/Local/Temp/callring-ai-recheck/baseline-app/TEST-com.greatwall.callring.platform.ai.ToolBusinessIntegrationTest.xml"
+    },
+    {
+      "id": "O62",
+      "name": "widgets_listBindings",
+      "status": "READ",
+      "api": "widgets.listBindings",
+      "invalid": "FAILED",
+      "acceptanceIds": [
+        "A4"
+      ],
+      "registry": "backend/src/main/kotlin/com/greatwall/callring/application/conversation/ToolRegistry.kt",
+      "executor": "backend/src/main/kotlin/com/greatwall/callring/application/conversation/ToolExecutor.kt",
+      "evidence": "C:/Users/GreatWall/AppData/Local/Temp/callring-ai-recheck/baseline-app/TEST-com.greatwall.callring.platform.ai.ToolBusinessIntegrationTest.xml"
+    },
+    {
+      "id": "O63",
+      "name": "recordings_adoptIdentity",
+      "status": "COMMITTED",
+      "api": "root.adoptIdentity",
+      "invalid": "FAILED",
+      "acceptanceIds": [
+        "A4",
+        "A6"
+      ],
+      "registry": "backend/src/main/kotlin/com/greatwall/callring/application/conversation/ToolRegistry.kt",
+      "executor": "backend/src/main/kotlin/com/greatwall/callring/application/conversation/ToolExecutor.kt",
+      "evidence": "C:/Users/GreatWall/AppData/Local/Temp/callring-ai-recheck/baseline-app/TEST-com.greatwall.callring.platform.ai.ToolBusinessIntegrationTest.xml"
+    },
+    {
+      "id": "O64",
+      "name": "ai_getSettings",
+      "status": "READ",
+      "api": "ai.getAiView",
+      "invalid": "FAILED",
+      "acceptanceIds": [
+        "A4"
+      ],
+      "registry": "backend/src/main/kotlin/com/greatwall/callring/application/conversation/ToolRegistry.kt",
+      "executor": "backend/src/main/kotlin/com/greatwall/callring/application/conversation/ToolExecutor.kt",
+      "evidence": "C:/Users/GreatWall/AppData/Local/Temp/callring-ai-recheck/baseline-app/TEST-com.greatwall.callring.platform.ai.ToolBusinessIntegrationTest.xml"
+    },
+    {
+      "id": "O65",
+      "name": "ai_patchSettings",
+      "status": "COMMITTED",
+      "api": "ai.patchAi",
+      "invalid": "FAILED",
+      "acceptanceIds": [
+        "A4"
+      ],
+      "registry": "backend/src/main/kotlin/com/greatwall/callring/application/conversation/ToolRegistry.kt",
+      "executor": "backend/src/main/kotlin/com/greatwall/callring/application/conversation/ToolExecutor.kt",
+      "evidence": "C:/Users/GreatWall/AppData/Local/Temp/callring-ai-recheck/baseline-app/TEST-com.greatwall.callring.platform.ai.ToolBusinessIntegrationTest.xml"
+    },
+    {
+      "id": "O66",
+      "name": "ai_editCredential",
+      "status": "COMMITTED",
+      "api": "ai.patchAi",
+      "invalid": "FAILED",
+      "acceptanceIds": [
+        "A4",
+        "A6"
+      ],
+      "registry": "backend/src/main/kotlin/com/greatwall/callring/application/conversation/ToolRegistry.kt",
+      "executor": "backend/src/main/kotlin/com/greatwall/callring/application/conversation/ToolExecutor.kt",
+      "evidence": "C:/Users/GreatWall/AppData/Local/Temp/callring-ai-recheck/baseline-app/TEST-com.greatwall.callring.platform.ai.ToolBusinessIntegrationTest.xml"
+    },
+    {
+      "id": "O67",
+      "name": "system_requestCapability",
+      "status": "COMMITTED",
+      "api": "runtime.getStatus",
+      "invalid": "FAILED",
+      "acceptanceIds": [
+        "A4",
+        "A6"
+      ],
+      "registry": "backend/src/main/kotlin/com/greatwall/callring/application/conversation/ToolRegistry.kt",
+      "executor": "backend/src/main/kotlin/com/greatwall/callring/application/conversation/ToolExecutor.kt",
+      "evidence": "C:/Users/GreatWall/AppData/Local/Temp/callring-ai-recheck/baseline-app/TEST-com.greatwall.callring.platform.ai.ToolBusinessIntegrationTest.xml"
+    },
+    {
+      "id": "O68",
+      "name": "system_openApplicationSettings",
+      "status": "LAUNCHED",
+      "api": "runtime.getStatus",
+      "invalid": "FAILED",
+      "acceptanceIds": [
+        "A4",
+        "A6"
+      ],
+      "registry": "backend/src/main/kotlin/com/greatwall/callring/application/conversation/ToolRegistry.kt",
+      "executor": "backend/src/main/kotlin/com/greatwall/callring/application/conversation/ToolExecutor.kt",
+      "evidence": "C:/Users/GreatWall/AppData/Local/Temp/callring-ai-recheck/baseline-app/TEST-com.greatwall.callring.platform.ai.ToolBusinessIntegrationTest.xml"
+    },
+    {
+      "id": "O69",
+      "name": "system_pinWidget",
+      "status": "LAUNCHED",
+      "api": "widgets.listBindings",
+      "invalid": "FAILED",
+      "acceptanceIds": [
+        "A4",
+        "A6"
+      ],
+      "registry": "backend/src/main/kotlin/com/greatwall/callring/application/conversation/ToolRegistry.kt",
+      "executor": "backend/src/main/kotlin/com/greatwall/callring/application/conversation/ToolExecutor.kt",
+      "evidence": "C:/Users/GreatWall/AppData/Local/Temp/callring-ai-recheck/baseline-app/TEST-com.greatwall.callring.platform.ai.ToolBusinessIntegrationTest.xml"
+    },
+    {
+      "id": "O70",
+      "name": "system_testOverlay",
+      "status": "LAUNCHED",
+      "api": "foreground.TEST_OVERLAY",
+      "invalid": "FAILED",
+      "acceptanceIds": [
+        "A4",
+        "A6"
+      ],
+      "registry": "backend/src/main/kotlin/com/greatwall/callring/application/conversation/ToolRegistry.kt",
+      "executor": "backend/src/main/kotlin/com/greatwall/callring/application/conversation/ToolExecutor.kt",
+      "evidence": "C:/Users/GreatWall/AppData/Local/Temp/callring-ai-recheck/baseline-app/TEST-com.greatwall.callring.platform.ai.ToolBusinessIntegrationTest.xml"
+    },
+    {
+      "id": "O71",
+      "name": "system_previewCall",
+      "status": "LAUNCHED",
+      "api": "callers.getCallDetail",
+      "invalid": "FAILED",
+      "acceptanceIds": [
+        "A4",
+        "A6"
+      ],
+      "registry": "backend/src/main/kotlin/com/greatwall/callring/application/conversation/ToolRegistry.kt",
+      "executor": "backend/src/main/kotlin/com/greatwall/callring/application/conversation/ToolExecutor.kt",
+      "evidence": "C:/Users/GreatWall/AppData/Local/Temp/callring-ai-recheck/baseline-app/TEST-com.greatwall.callring.platform.ai.ToolBusinessIntegrationTest.xml"
+    },
+    {
+      "id": "O72",
+      "name": "ai_copyConnection",
+      "status": "COMMITTED",
+      "api": "ai.copyConnection",
+      "invalid": "FAILED",
+      "acceptanceIds": [
+        "A4",
+        "A6"
+      ],
+      "registry": "backend/src/main/kotlin/com/greatwall/callring/application/conversation/ToolRegistry.kt",
+      "executor": "backend/src/main/kotlin/com/greatwall/callring/application/conversation/ToolExecutor.kt",
+      "evidence": "C:/Users/GreatWall/AppData/Local/Temp/callring-ai-recheck/baseline-app/TEST-com.greatwall.callring.platform.ai.ToolBusinessIntegrationTest.xml"
+    }
+  ],
+  "additions": [
+    "app/src/test/kotlin/com/greatwall/callring/platform/ai/RecordingFolderViewTest.kt",
+    "backend/src/main/kotlin/com/greatwall/callring/application/conversation/ConfirmationTargets.kt",
+    "backend/src/test/kotlin/com/greatwall/callring/ConfirmationTargetTest.kt",
+    "ui/src/test/kotlin/com/greatwall/callring/ui/app/ConfirmationSummaryTest.kt",
+    "ui/src/test/kotlin/com/greatwall/callring/ui/app/ConversationReviewUiTest.kt",
+    "ui/src/test/kotlin/com/greatwall/callring/ui/app/FirstConnectionUiTest.kt",
+    "ui/src/test/kotlin/com/greatwall/callring/ui/app/RenderedDestinationTest.kt"
+  ],
+  "reusedManifest": {
+    "path": "C:/Users/GreatWall/AppData/Local/Temp/callring-ai-recheck/evidence-manifest.json",
+    "sha256": "341693af518fbe11d5bbae0c0ddaa325820ef7106a49918685fc8fd116111dc3",
+    "validatedEntries": 123
+  },
+  "recheckReport": {
+    "path": "C:/Users/GreatWall/AppData/Local/Temp/callring-ai-recheck/AI沟通复验.md",
+    "sha256": "161078fc07aa09d0e1deccf549155d70b9b63b627bc9050ad5b7a20a9666d379"
+  }
+}
