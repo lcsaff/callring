@@ -26,6 +26,68 @@ import java.util.Locale
 abstract class SettingsScreenCases {
     @get:Rule val compose = createComposeRule()
 
+    @Test fun homeDoesNotExposeSettingsRecentCallsOrWidgetActions() {
+        val fact = ClassificationFact(false, WorkReason.REST_DAY, null, true, "Asia/Shanghai", 1, "v1", 1)
+        val runtime = RuntimeStatus(Capability.entries.associateWith { AccessState.DENIED }, Audibility.SILENT,
+            PhoneActivity.IDLE, PlaybackStatus(PlaybackMode.NONE, PlaybackState.IDLE), true, 0)
+        val home = HomeData(RingtoneSettings(false, AudioSource.BUILT_IN, "内置铃声", 8), runtime,
+            WorkStatus(0, fact, null), null, false, false, QuietMode.OFF, SnapshotMeta(0, 0))
+        compose.setContent { CallringTheme {
+            com.greatwall.callring.ui.feature.home.HomeScreen(LoadState(home, loaded = true), {}, {})
+        } }
+        listOf("设置", "来电统计", "来电悬浮窗", "规则铃声", "最近来电", "显示最近来电卡片", "添加桌面小组件", "权限与运行条件").forEach {
+            compose.onNodeWithText(it).assertDoesNotExist()
+        }
+        compose.onNodeWithText("请假管理").assertIsDisplayed()
+    }
+
+    @Test fun calendarHasNoManualDateEditingOrFileImport() {
+        compose.setContent { CallringTheme {
+            CalendarScreen(LoadState(CalendarInfo(emptyList(), emptyList()), loaded = true), MutationState(), {}, {}, {})
+        } }
+        compose.onNodeWithText("添加日期覆盖").assertDoesNotExist()
+        compose.onNodeWithText("导入日历文件").assertDoesNotExist()
+        compose.onNodeWithText("同步全年节假日").assertExists()
+    }
+
+    @Test fun homeRefreshDoesNotMoveContentOrShowTopProgress() {
+        val fact = ClassificationFact(false, WorkReason.REST_DAY, null, false, "Asia/Shanghai", 1, null, 1)
+        val runtime = RuntimeStatus(Capability.entries.associateWith { AccessState.DENIED }, Audibility.SILENT,
+            PhoneActivity.IDLE, PlaybackStatus(PlaybackMode.NONE, PlaybackState.IDLE), true, 0)
+        val home = HomeData(RingtoneSettings(false, AudioSource.BUILT_IN, "内置铃声", 8), runtime,
+            WorkStatus(0, fact, null), null, false, false, QuietMode.OFF, SnapshotMeta(0, 0))
+        val state = mutableStateOf(LoadState(home, loaded = true))
+        compose.setContent { CallringTheme {
+            com.greatwall.callring.ui.feature.home.HomeScreen(state.value, {}, {})
+        } }
+        val position = compose.onNodeWithTag("home-status").fetchSemanticsNode().positionInRoot
+        compose.runOnIdle { state.value = state.value.copy(loading = true) }
+        assertEquals(position, compose.onNodeWithTag("home-status").fetchSemanticsNode().positionInRoot)
+        compose.onAllNodes(SemanticsMatcher.keyIsDefined(SemanticsProperties.ProgressBarRangeInfo)).assertCountEquals(0)
+        compose.runOnIdle { state.value = state.value.copy(loading = false) }
+        assertEquals(position, compose.onNodeWithTag("home-status").fetchSemanticsNode().positionInRoot)
+    }
+
+    @Test fun appearanceSavingDoesNotMoveControls() {
+        val mutation = mutableStateOf(MutationState())
+        compose.setContent { CallringTheme {
+            AppearanceScreen(LoadState(DefaultAppearance, loaded = true), DefaultAppearance,
+                mutation.value, {}, {}, {}, {})
+        } }
+        val position = compose.onNodeWithTag("appearance-presets").fetchSemanticsNode().positionInRoot
+        compose.runOnIdle { mutation.value = MutationState(busy = true) }
+        assertEquals(position, compose.onNodeWithTag("appearance-presets").fetchSemanticsNode().positionInRoot)
+    }
+
+    @Test fun leaveTimezoneIsHiddenInPageAndDialog() {
+        compose.setContent { CallringTheme {
+            LeavesScreen(LoadState<List<LeaveEntry>>(emptyList(), loaded = true), MutationState(), "Asia/Shanghai", {}, {}, {}, {})
+        } }
+        compose.onNodeWithText("请假时区：Asia/Shanghai").assertDoesNotExist()
+        compose.onNodeWithText("添加请假").performClick()
+        compose.onNodeWithText("时区：Asia/Shanghai").assertDoesNotExist()
+    }
+
     @Test fun timeWindowPickerCancellationKeepsDraftAndOvernightIsExplicit() {
         val windows = mutableStateOf(listOf(TimeWindow(1320, 420)))
         compose.setContent {
@@ -43,22 +105,6 @@ abstract class SettingsScreenCases {
         compose.runOnIdle { assertEquals(listOf(TimeWindow(1320, 420)), windows.value) }
         compose.onNodeWithText("添加时段").performClick()
         compose.runOnIdle { assertEquals(listOf(TimeWindow(1320, 420), TimeWindow(540, 720)), windows.value) }
-    }
-
-    @Test fun calendarDeletionRequiresConfirmationAndCancelKeepsEntry() {
-        val date = LocalDate.of(2026, 10, 15)
-        val entry = DateOverride(date, DateOverrideKind.REST, emptyList())
-        val deleted = mutableListOf<LocalDate>()
-        compose.setContent {
-            CallringTheme {
-                CalendarScreen(LoadState(CalendarInfo(emptyList(), listOf(entry)), loaded = true),
-                    MutationState(), {}, {}, {}, {}, { deleted += it })
-            }
-        }
-        compose.onNodeWithText("删除").performScrollTo().performClick()
-        compose.runOnIdle { assertTrue(deleted.isEmpty()) }
-        compose.onNodeWithText("取消").performClick()
-        compose.runOnIdle { assertTrue(deleted.isEmpty()) }
     }
 
     @Test fun equalWindowEndpointsStayLocalAndDisableSaving() {
@@ -200,7 +246,7 @@ abstract class SettingsScreenCases {
         compose.onNodeWithTag("settings-save").performScrollTo().assertIsNotEnabled()
     }
 
-    @Test fun workResetReplacesInvalidZoneAndEditedWindowWhenDefaultsHaveNotChanged() {
+    @Test fun workResetReplacesSelectedZoneAndEditedWindowWhenDefaultsHaveNotChanged() {
         val saved = WorkScheduleSettings("Asia/Shanghai", mapOf(1 to listOf(TimeWindow(540, 720))),
             listOf(TimeWindow(540, 720)), 1, 0)
         val draft = mutableStateOf(saved)
@@ -214,17 +260,19 @@ abstract class SettingsScreenCases {
                     })
             }
         }
-        compose.onNode(hasSetTextAction() and hasText("时区")).performScrollTo().performTextReplacement("invalid-zone")
-        compose.onNodeWithTag("time-星期一-1-开始").performScrollTo().performClick()
+        compose.onNodeWithTag("work-zone").performScrollTo().performClick()
+        compose.onNodeWithText("UTC").performClick()
+        compose.runOnIdle { assertEquals("UTC", draft.value.zoneId) }
+        compose.onNodeWithTag("time-work-start").performScrollTo().performClick()
         compose.onNodeWithText("切换为键盘输入").performClick()
         compose.onAllNodes(hasSetTextAction() and hasAnyAncestor(hasTestTag("time-input")))[0].performTextReplacement("12")
         compose.onNodeWithText("确定").performClick()
-        compose.onNodeWithText("开始和结束时间不能相同").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("请按上班、午休开始、午休结束、下班的顺序设置同一天的时间").performScrollTo().assertIsDisplayed()
         compose.onNodeWithTag("settings-save").performScrollTo().assertIsNotEnabled()
         compose.onNodeWithText("恢复默认工作时间").performScrollTo().performClick()
         compose.onNodeWithText("确认").performClick()
-        compose.onNode(hasSetTextAction() and hasText("时区")).performScrollTo().assertTextContains("Asia/Shanghai")
-        compose.onNodeWithTag("time-星期一-1-开始").performScrollTo().assertTextContains("开始 09:00")
+        compose.onNodeWithTag("work-zone").performScrollTo().assertTextContains("Asia/Shanghai")
+        compose.onNodeWithTag("time-work-start").performScrollTo().assertTextContains("09:00")
         compose.onNodeWithTag("settings-save").performScrollTo().assertIsEnabled()
     }
 
@@ -257,7 +305,7 @@ abstract class SettingsScreenCases {
         compose.runOnIdle { assertEquals(0x123456, draft.value.customSeedRgb) }
     }
 
-    @Test fun presetCallbackPreservesCustomSeedAndColorMode() {
+    @Test fun presetUpdatesCustomSeedAndColorModeIsPreserved() {
         val initial = DefaultAppearance.copy(selection = ThemeSelection.CUSTOM, customSeedRgb = 0x123456, colorMode = ColorMode.DARK)
         val draft = mutableStateOf(initial)
         compose.setContent {
@@ -268,11 +316,35 @@ abstract class SettingsScreenCases {
         }
         compose.onNodeWithTag("preset-sky_blue").performScrollTo().performClick()
         compose.runOnIdle {
-            assertEquals(ThemeSelection.PRESET, draft.value.selection)
+            assertEquals(ThemeSelection.CUSTOM, draft.value.selection)
             assertEquals("sky_blue", draft.value.presetId)
-            assertEquals(0x123456, draft.value.customSeedRgb)
+            assertEquals(0x1976D2, draft.value.customSeedRgb)
             assertEquals(ColorMode.DARK, draft.value.colorMode)
         }
+        compose.onNodeWithTag("appearance-hex").performScrollTo().assertTextContains("#1976D2")
+        listOf("红色 R" to 25f, "绿色 G" to 118f, "蓝色 B" to 210f).forEach { (label, component) ->
+            compose.onNode(hasContentDescription(label) and SemanticsMatcher.keyIsDefined(SemanticsActions.SetProgress))
+                .performScrollTo().assert(SemanticsMatcher("RGB component matches preset") {
+                    it.config[SemanticsProperties.ProgressBarRangeInfo].current == component
+                })
+        }
+    }
+
+    @Test fun legacyPresetDisplaysItsEffectiveColorAndPresetShortcutClearsInvalidHex() {
+        val initial = DefaultAppearance.copy(presetId = "sky_blue", customSeedRgb = 0x123456)
+        val draft = mutableStateOf(initial)
+        compose.setContent { CallringTheme {
+            AppearanceScreen(LoadState(initial, loaded = true), draft.value, MutationState(), {}, {}, { draft.value = it }, {})
+        } }
+        compose.onNodeWithTag("appearance-hex").performScrollTo().assertTextContains("#1976D2")
+        compose.runOnIdle { assertEquals(initial, draft.value) }
+        compose.onNodeWithTag("appearance-hex").performTextReplacement("invalid")
+        compose.onNodeWithTag("preset-sky_blue").performScrollTo().performClick()
+        compose.onNodeWithTag("appearance-hex").performScrollTo().assertTextContains("#1976D2")
+        compose.runOnIdle { assertEquals(0x1976D2, draft.value.customSeedRgb) }
+        compose.onNodeWithTag("appearance-hex").performTextReplacement("#008577")
+        compose.onNodeWithTag("preset-teal_green").performScrollTo().assertIsSelected()
+        compose.onNodeWithTag("preset-sky_blue").assertIsNotSelected()
     }
 
     @Test fun saveFailureRetainsDraftAndShowsAdjacentFieldError() {
@@ -368,8 +440,9 @@ abstract class SettingsScreenCases {
         compose.onNodeWithTag("settings-save").assertDoesNotExist()
         compose.onNodeWithTag("preset-sky_blue").performScrollTo().performClick()
         compose.runOnIdle {
-            assertEquals(initial.copy(selection = ThemeSelection.PRESET, presetId = "sky_blue"), draft.value)
+            assertEquals(initial.copy(selection = ThemeSelection.CUSTOM, presetId = "sky_blue", customSeedRgb = 0x1976D2), draft.value)
         }
+        compose.onNodeWithTag("appearance-hex").performScrollTo().assertTextContains("#1976D2")
     }
 
     @Test fun appearancePresetsScrollHorizontallyAndModePrecedesIntegratedCustomPreview() {
@@ -469,32 +542,6 @@ abstract class SettingsScreenCases {
         compose.onNodeWithText("取消").assertDoesNotExist()
     }
 
-    @Test fun restoredCalendarDraftClosesAfterFirstSuccessOfNewMutationRunner() {
-        val mutation = mutableStateOf(MutationState(completed = 1L))
-        val commands = mutableListOf<DateOverride>()
-        val restoration = StateRestorationTester(compose)
-        restoration.setContent {
-            CallringTheme {
-                CalendarScreen(LoadState(CalendarInfo(emptyList(), emptyList()), loaded = true), mutation.value, {}, {}, {},
-                    { commands += it; mutation.value = MutationState(completed = mutation.value.completed + 1) }, {})
-            }
-        }
-        compose.onNodeWithText("添加日期覆盖").performClick()
-        selectDate("日期", LocalDate.of(2026, 11, 2))
-        compose.onNodeWithText("工作日").performClick()
-        compose.onNodeWithText("添加时段").performScrollTo().performClick()
-        compose.runOnIdle { mutation.value = MutationState() }
-        restoration.emulateSavedInstanceStateRestore()
-        compose.onNodeWithTag("date-日期").assertTextContains("日期：2026-11-02")
-        compose.onNodeWithTag("time-工作时段-1-开始").performScrollTo().assertTextContains("开始 09:00")
-        compose.onNodeWithTag("time-工作时段-1-结束").performScrollTo().assertTextContains("结束 12:00")
-        compose.onNodeWithText("保存").performClick()
-        compose.runOnIdle {
-            assertEquals(listOf(DateOverride(LocalDate.of(2026, 11, 2), DateOverrideKind.WORK, listOf(TimeWindow(540, 720)))), commands)
-        }
-        compose.onNodeWithText("取消").assertDoesNotExist()
-    }
-
     @Test fun restoredLeaveDraftClosesAfterFirstSuccessOfNewMutationRunner() {
         val mutation = mutableStateOf(MutationState(completed = 1L))
         val commands = mutableListOf<SaveLeave>()
@@ -511,8 +558,8 @@ abstract class SettingsScreenCases {
         compose.onNode(hasSetTextAction() and hasText("备注")).performScrollTo().performTextReplacement("恢复请假草稿")
         compose.runOnIdle { mutation.value = MutationState() }
         restoration.emulateSavedInstanceStateRestore()
-        compose.onNodeWithTag("date-开始日期").assertTextContains("开始日期：2026-10-20")
-        compose.onNodeWithTag("date-结束日期（含当天）").assertTextContains("结束日期（含当天）：2026-10-22")
+        compose.onNodeWithTag("date-开始日期").assertTextContains("2026-10-20")
+        compose.onNodeWithTag("date-结束日期（含当天）").assertTextContains("2026-10-22")
         compose.onNode(hasSetTextAction() and hasText("备注")).performScrollTo().assertTextContains("恢复请假草稿")
         compose.onNodeWithText("保存").performClick()
         compose.runOnIdle {

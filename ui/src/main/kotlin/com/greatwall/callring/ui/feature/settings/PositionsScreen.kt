@@ -47,12 +47,6 @@ fun PositionsScreen(
         else if (mutation.completed > openedAt) editorOpen = false
     }
     SettingsLayout("职位管理", state, mutation, onBack, onRetry) { data ->
-        SettingsCard("我的职位") {
-            val mine = data.options.firstOrNull { it.id == data.myPositionId }
-            Text(mine?.let { it.name + if (it.active) "" else "（已停用）" } ?: "尚未设置")
-            if (data.myPositionId != null) OutlinedButton({ onMine(null) }, enabled = !mutation.busy) { Text("清除我的职位") }
-            FieldError(mutation, "myPositionId")
-        }
         if (mutation.error?.code == ErrorCode.IN_USE) {
             SettingsCard("职位仍被使用") {
                 Text("请先调整引用此职位的联系人，或编辑职位并将其停用。")
@@ -62,7 +56,7 @@ fun PositionsScreen(
             }
         }
         BrandButton({ edit(null) }, enabled = !mutation.busy, modifier = Modifier.fillMaxWidth()) { Text("添加职位") }
-        if (data.options.isEmpty()) EmptyContent("暂无职位，请添加职位后选择我的职位")
+        if (data.options.isEmpty()) EmptyContent("暂无职位")
         data.options.forEach { option ->
             SettingsCard {
                 Text(option.name, style = MaterialTheme.typography.titleMedium)
@@ -72,7 +66,6 @@ fun PositionsScreen(
                     TextButton({ edit(option) }, enabled = !mutation.busy) { Text("编辑") }
                     TextButton({ pendingDeleteId = option.id }, enabled = !mutation.busy) { Text("删除") }
                 }
-                if (option.id != data.myPositionId && option.active) OutlinedButton({ onMine(option.id) }, enabled = !mutation.busy) { Text("设为我的职位") }
             }
         }
     }

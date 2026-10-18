@@ -1,8 +1,10 @@
 # UI 业务 API 契约
 
-日期：2026-10-15。契约版本：v1。
+日期：2026-10-18。契约版本：v1（兼容性扩展）。
 
-本契约供 UI 重构与业务解耦双方并行开发，依据[UI 重构设计](UI统一管理与彻底重构_设计.md)及现有业务行为确定。UI 使用 Kotlin、Compose、MVVM，通过以下接口获取数据和执行操作。本文交付的是接口设计，接口与后端实现尚未加入生产源码。
+本契约供 UI 与业务层对接，依据[UI 重构设计](UI统一管理与彻底重构_设计.md)及现有业务行为确定。UI 使用 Kotlin、Compose、MVVM，通过以下接口获取数据和执行操作。接口和后端实现已接入生产源码。
+
+2026-10-18 更新：首页分开显示日历类型与当前工作状态；请假入口迁至首页。工作编辑器仅保存所有工作日共用的上下班与午休时间，仍使用版本化的 `weekly` / `makeup` 存储结构以兼容历史。新增年度日历同步，原文件导入与指定日期调整 API 仅保留历史兼容，新 UI 不再提供这些操作入口。
 
 接口、入参和返回类型归属于 `com.greatwall.callring.application.api`，由业务侧提供；UI 侧注入并消费这些接口，可以先编写内存 Fake。下列 Kotlin 代码块合起来构成契约声明，依赖 Kotlin 标准库、`java.time` 和 `kotlinx.coroutines.flow.Flow`。生产代码落地时可以按类型拆文件。
 
@@ -71,6 +73,7 @@ interface SettingsApi {
     suspend fun getQuietHours(): ApiResult<QuietSettings>
     suspend fun saveQuietHours(settings: QuietSettings): ApiResult<QuietSettings>
     suspend fun setQuietMode(mode: QuietMode): ApiResult<QuietSettings>
+    suspend fun setQuietEnabled(enabled: Boolean): ApiResult<QuietSettings>
 
     suspend fun getPositions(): ApiResult<PositionSettings>
     suspend fun savePosition(command: SavePosition): ApiResult<PositionOption>
@@ -82,6 +85,8 @@ interface SettingsApi {
     suspend fun resetWorkSchedule(): ApiResult<WorkScheduleSettings>
 
     suspend fun getCalendar(): ApiResult<CalendarInfo>
+    suspend fun synchronizeCalendar(year: Int): ApiResult<CalendarInfo> =
+        ApiResult.Failure(ApiError(ErrorCode.SYSTEM_UNAVAILABLE, "calendar.sync_unavailable", retryable = true))
     suspend fun importCalendar(source: DocumentRef): ApiResult<CalendarInfo>
     suspend fun saveDateOverride(command: DateOverride): ApiResult<CalendarInfo>
     suspend fun deleteDateOverride(date: LocalDate): ApiResult<CalendarInfo>
@@ -303,10 +308,18 @@ data class ClassificationFact(
     val leaveVersion: Long
 )
 
+enum class WorkDayKind { WORKDAY, REST_DAY, HOLIDAY }
+
 data class WorkStatus(
     val evaluatedAtEpochMillis: Long,
     val classification: ClassificationFact,
-    val nextBoundaryEpochMillis: Long?
+    val nextBoundaryEpochMillis: Long?,
+    val dayKind: WorkDayKind = when (classification.reason) {
+        WorkReason.HOLIDAY -> WorkDayKind.HOLIDAY
+        WorkReason.REST_DAY -> WorkDayKind.REST_DAY
+        else -> WorkDayKind.WORKDAY
+    },
+    val holidayName: String? = classification.holidayName,
 )
 
 enum class CallResult {
@@ -517,12 +530,13 @@ data class SettingsSummary(
 | --- | --- |
 | 统计开关 | 默认关闭。开启以提交时刻建立启用区间，关闭保留历史；再次设置同一值不建立重复区间。开启成功后由应用层安排同步 |
 | 悬浮窗开关 | 开启需悬浮窗权限，缺失返回 `PERMISSION_REQUIRED`；关闭始终可保存，UI 悬浮窗协调器收到变化后关闭活动窗口 |
-| 免打扰 | 默认 `OFF`，`allNumbers=false`；`CUSTOM` 至少一个时段。`setQuietMode()` 保留范围和时段，同样校验；白名单始终绕过应用免打扰 |
+| 免打扰 | 默认 `OFF`，`allNumbers=false`；`CUSTOM` 至少一个时段。`setQuietMode()` 保留范围和时段，同样校验；`setQuietEnabled(false)` 保留配置，`true` 恢复持久化的上次启用模式，首次使用或历史自定义时段为空时回退 `NON_WORK`。首页与桌面组件共用该操作；白名单始终绕过应用免打扰 |
 | 职位 | `id=null` 新建，正 ID 更新。名称去除首尾空白后非空且唯一，层级为正整数。引用中的职位删除返回 `IN_USE`；停用保留既有引用。空我的职位 ID 表示清除 |
 | 工作时段 | 星期 1–7；分钟 0–1439，起止不同，跨午夜归开始日，开始包含、结束不含。缺少的星期视为休息 |
 | 工作配置 | 常规周安排及时区修改仅影响以后来电。恢复默认也建立新版本，不清除日历、日期调整、请假或历史 |
 | 日期调整 | `REST` 的 `windows` 必须为空；`WORK` 至少一个合法时段。保存同一天替换其调整，删除恢复日历规则 |
 | 年度日历 | UTF-8 JSON，最多 1 MiB，校验年份、来源、版本和放假/补班冲突后事务保存；保留手动日期调整 |
+| 年度日历同步 | `synchronizeCalendar(year)` 在后台下载并校验 holiday-cn 年度数据；网络阶段不持有业务锁，校验通过才原子替换年度缓存。失败不改变原数据。相同内容哈希不重复更正历史。未公布的空白年份不标记为已核验 |
 | 请假 | `id=null` 新建，正 ID 更新。全天包含结束日期，按指定时区转换为次日零点排他边界；时段结束须晚于开始。状态以查询时刻计算 |
 | 历史更正 | 日历、日期调整和请假变更更正适用历史，保存原始分类和当时响铃事实。成功结果与随后通知包含更正后的可查询状态 |
 | 评分设置 | 权重为非负整数，重复分钟、观察天数为正整数；默认 `5/2/10/30`。修改影响后续查询评分，不改原始来电事实 |

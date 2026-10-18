@@ -71,17 +71,20 @@ internal fun createSettingsApi(context: BackendContext): SettingsApi =
                     validateQuiet(settings)
                     val copy = quietCopy(settings)
                     mutate {
-                        it.quiet = copy
-                        copy
+                        updateQuiet(it, copy)
                     }
                 }
 
             override suspend fun setQuietMode(mode: QuietMode): ApiResult<QuietSettings> = write {
                 mutate { s ->
                     val q = s.quiet.copy(mode = mode)
-                    validateQuiet(q)
-                    s.quiet = quietCopy(q)
-                    s.quiet
+                    updateQuiet(s, q)
+                }
+            }
+
+            override suspend fun setQuietEnabled(enabled: Boolean): ApiResult<QuietSettings> = write {
+                mutate { s ->
+                    updateQuiet(s, s.quiet.copy(mode = if (enabled) resumedQuietMode(s) else QuietMode.OFF))
                 }
             }
 
@@ -171,58 +174,22 @@ internal fun createSettingsApi(context: BackendContext): SettingsApi =
                 read { calendar(it) }
             }
 
+            override suspend fun synchronizeCalendar(year: Int): ApiResult<CalendarInfo> = write {
+                requireField(year in 2008..9998, "year", "calendar.year.invalid")
+                // Network completes before the store transaction or coordinator lock is acquired.
+                val imported = calendarSource.fetch(year)
+                requireField(imported.metadata.year == year, "year", "calendar.year.mismatch")
+                requireField(imported.holidays.isNotEmpty(), "holidays", "calendar.incomplete")
+                val previous = read { it.calendarYears[year] }
+                // The feed omits a publication timestamp. Preserve the first fetched date when
+                // its source/hash is identical, avoiding needless history reclassification.
+                val metadata = if (previous != null && previous.source == imported.metadata.source &&
+                    previous.version == imported.metadata.version) previous else imported.metadata
+                replaceCalendar(imported.copy(metadata = metadata))
+            }
+
             override suspend fun importCalendar(source: DocumentRef): ApiResult<CalendarInfo> =
-                write {
-                    val imported = documents.readCalendar(source)
-                    val m = imported.metadata
-                    requireField(m.year in 1..9999, "year", "calendar.year.invalid")
-                    requireField(m.source.isNotBlank(), "source", "calendar.source.required")
-                    requireField(m.version.isNotBlank(), "version", "calendar.version.required")
-                    requireField(
-                        imported.holidays.keys.all { it.year == m.year } &&
-                            imported.makeupDates.all { it.year == m.year },
-                        "year",
-                        "calendar.date.outside_year",
-                    )
-                    requireField(
-                        imported.holidays.values.none { it.isBlank() },
-                        "holidays",
-                        "holiday.name.required",
-                    )
-                    requireField(
-                        imported.makeupDates.none { it in imported.holidays },
-                        "workdays",
-                        "calendar.conflict",
-                    )
-                    try {
-                        LocalDate.parse(m.published)
-                    } catch (_: Exception) {
-                        fail(ErrorCode.VALIDATION, "calendar.published.invalid", "published")
-                    }
-                    mutate { s ->
-                        if (
-                            s.calendarYears[m.year] != m ||
-                                s.holidays.filterKeys { it.year == m.year } != imported.holidays ||
-                                s.makeupDates.filter { it.year == m.year }.toSet() !=
-                                    imported.makeupDates
-                        ) {
-                            s.calendarYears[m.year] = m
-                            s.holidays.keys.removeAll { it.year == m.year }
-                            s.holidays.putAll(imported.holidays)
-                            s.makeupDates.removeAll { it.year == m.year }
-                            s.makeupDates.addAll(imported.makeupDates)
-                            s.pendingAudits +=
-                                AuditRecord(
-                                    "calendar",
-                                    m.year.toString(),
-                                    imported.rawJson.orEmpty(),
-                                    clock.millis(),
-                                )
-                            WorkClassifier.reclassify(s)
-                        }
-                        calendar(s)
-                    }
-                }
+                write { replaceCalendar(documents.readCalendar(source)) }
 
             override suspend fun saveDateOverride(command: DateOverride): ApiResult<CalendarInfo> =
                 write {
@@ -387,3 +354,54 @@ internal fun createSettingsApi(context: BackendContext): SettingsApi =
             }
         }
     }
+
+private fun BackendContext.replaceCalendar(imported: CalendarImport): CalendarInfo {
+    val m = imported.metadata
+    requireField(m.year in 1..9999, "year", "calendar.year.invalid")
+    requireField(m.source.isNotBlank(), "source", "calendar.source.required")
+    requireField(m.version.isNotBlank(), "version", "calendar.version.required")
+    requireField(
+        imported.holidays.keys.all { it.year == m.year } &&
+            imported.makeupDates.all { it.year == m.year },
+        "year",
+        "calendar.date.outside_year",
+    )
+    requireField(
+        imported.holidays.values.none { it.isBlank() },
+        "holidays",
+        "holiday.name.required",
+    )
+    requireField(
+        imported.makeupDates.none { it in imported.holidays },
+        "workdays",
+        "calendar.conflict",
+    )
+    try {
+        LocalDate.parse(m.published)
+    } catch (_: Exception) {
+        fail(ErrorCode.VALIDATION, "calendar.published.invalid", "published")
+    }
+    return mutate { s ->
+        if (
+            s.calendarYears[m.year] != m ||
+                s.holidays.filterKeys { it.year == m.year } != imported.holidays ||
+                s.makeupDates.filter { it.year == m.year }.toSet() !=
+                    imported.makeupDates
+        ) {
+            s.calendarYears[m.year] = m
+            s.holidays.keys.removeAll { it.year == m.year }
+            s.holidays.putAll(imported.holidays)
+            s.makeupDates.removeAll { it.year == m.year }
+            s.makeupDates.addAll(imported.makeupDates)
+            s.pendingAudits +=
+                AuditRecord(
+                    "calendar",
+                    m.year.toString(),
+                    imported.rawJson.orEmpty(),
+                    clock.millis(),
+                )
+            WorkClassifier.reclassify(s)
+        }
+        calendar(s)
+    }
+}

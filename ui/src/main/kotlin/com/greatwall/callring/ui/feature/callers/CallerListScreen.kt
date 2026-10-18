@@ -19,14 +19,19 @@ import androidx.compose.ui.platform.LocalFocusManager
 @Composable fun CallerListScreen(
     state: LoadState<Page<CallerProfile>>, query: CallerSearch,
     onSearch: (String) -> Unit, onPage: (Int) -> Unit, onRetry: () -> Unit,
-    onAdd: () -> Unit, onCaller: (String) -> Unit, onLookup: () -> Unit
+    onAdd: () -> Unit, onCaller: (String) -> Unit, onLookup: () -> Unit, onPositions: () -> Unit = {},
+    onRecordings: (() -> Unit)? = null,
 ) {
     val focus = LocalFocusManager.current
-    ScreenFrame("号码档案", actions = { TextButton(onClick = onAdd) { Text("新增") } }) {
+    ScreenFrame("号码档案", actions = {
+        TextButton(onClick = onPositions) { Text("职位管理") }
+        TextButton(onClick = onAdd) { Text("新增") }
+    }) {
         OutlinedTextField(query.text, onSearch, Modifier.fillMaxWidth(), label = { Text("搜索姓名、部门或号码") }, singleLine = true,
             keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
             keyboardActions = KeyboardActions(onSearch = { focus.clearFocus() }))
         TextButton(onClick = onLookup) { Text("按号码查看报表") }
+        onRecordings?.let { open -> TextButton(onClick = open) { Text("通话录音") } }
         LoadFeedback(state, onRetry)
         val page = state.data
         if (page != null) {

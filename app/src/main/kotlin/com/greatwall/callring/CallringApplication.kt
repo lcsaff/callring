@@ -28,6 +28,10 @@ open class CallringApplication : Application(), BackendProvider, UiOverlayOwner 
     override fun onCreate() {
         super.onCreate()
         lifetime.observeWidgetUpdates(this, uiApi)
+        try { RecordingJobService.schedule(this) }
+        catch (_: Exception) { android.util.Log.w("CallringRecording", "Recording jobs deferred") }
+        try { CalendarSyncJobService.schedule(this) }
+        catch (_: Exception) { android.util.Log.w("CallringCalendar", "Calendar refresh deferred") }
     }
     override fun onConfigurationChanged(newConfig: Configuration) {
         super.onConfigurationChanged(newConfig)

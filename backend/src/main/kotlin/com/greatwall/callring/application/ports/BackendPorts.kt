@@ -16,6 +16,11 @@ interface BackendStore {
     fun <T> transaction(block: (BackendState) -> T): T
 }
 
+/** Downloads a validated annual calendar; never invoked from the call decision path. */
+fun interface CalendarSource {
+    fun fetch(year: Int): CalendarImport
+}
+
 interface PreferenceStore {
     fun getAppearance(): AppearanceSettings
 

@@ -13,6 +13,7 @@ import com.greatwall.callring.ui.feature.shared.LoadFeedback
     onTestOverlay: () -> Unit = {}
 ) {
     when (page) {
+        SettingsPage.RECORDING -> RecordingSettingsRoute(api.recordings, onBack)
         SettingsPage.QUIET -> {
             val model: QuietViewModel = uiViewModel { QuietViewModel(api, it) }
             val state by model.state.collectAsStateWithLifecycle()
@@ -53,13 +54,22 @@ import com.greatwall.callring.ui.feature.shared.LoadFeedback
             ActiveRefresh(signal, refresh = model::refresh)
             PositionsScreen(state, mutation, onBack, model::refresh, model::save, model::delete, model::mine)
         }
+        SettingsPage.MY_POSITION -> {
+            val model: PositionsViewModel = uiViewModel { PositionsViewModel(api) }
+            val state by model.state.collectAsStateWithLifecycle()
+            val mutation by model.mutation.collectAsStateWithLifecycle()
+            ActiveRefresh(signal, refresh = model::refresh)
+            MyPositionScreen(state, mutation, onBack, model::refresh, model::mine)
+        }
         SettingsPage.CALENDAR -> {
             val model: CalendarViewModel = uiViewModel { CalendarViewModel(api) }
             val state by model.state.collectAsStateWithLifecycle()
             val mutation by model.mutation.collectAsStateWithLifecycle()
-            val import = rememberImportPicker(arrayOf("application/json", "text/plain"), model::import)
             ActiveRefresh(signal, refresh = model::refresh)
-            CalendarScreen(state, mutation, onBack, model::refresh, import, model::save, model::delete)
+            val summary by summaryModel.state.collectAsStateWithLifecycle()
+            val zone = summary.data?.workZoneId?.let { runCatching { java.time.ZoneId.of(it) }.getOrNull() } ?: java.time.ZoneId.systemDefault()
+            val year = java.time.LocalDate.now(zone).year
+            CalendarScreen(state, mutation, onBack, model::refresh, { model.synchronize(year) }, year)
         }
         SettingsPage.LEAVES -> {
             val model: LeavesViewModel = uiViewModel { LeavesViewModel(api) }

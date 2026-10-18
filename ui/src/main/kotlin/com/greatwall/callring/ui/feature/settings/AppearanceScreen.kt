@@ -44,7 +44,6 @@ fun AppearanceScreen(
             Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 if (!state.loaded && state.data == null && !state.loading && state.error == null) LoadingContent()
                 LoadFeedback(state, onRetry)
-                if (mutation.busy) LinearProgressIndicator(Modifier.fillMaxWidth())
                 mutation.error?.let {
                     Text(it.message, color = MaterialTheme.colorScheme.error)
                     TextButton(onClick = onSave) { Text("重试保存") }
@@ -61,16 +60,19 @@ private fun AppearanceControls(
     value: AppearanceSettings, mutation: MutationState, onChange: (AppearanceSettings) -> Unit,
     onColorChange: (AppearanceSettings) -> Unit, registry: ThemeRegistry,
 ) {
-    val seed = value.customSeedRgb?.takeIf { it in 0x000000..0xFFFFFF } ?: registry.resolve(value).seedRgb
-    var hex by rememberSaveable(value.customSeedRgb) { mutableStateOf(rgbHex(seed)) }
+    val seed = remember(registry, value.selection, value.presetId, value.customSeedRgb) { registry.resolve(value).seedRgb }
+    var hex by rememberSaveable(seed) { mutableStateOf(rgbHex(seed)) }
     val rgb = parseRgb(hex)
-    val customHexInvalid = value.selection == ThemeSelection.CUSTOM && rgb == null
+    val customHexInvalid = rgb == null
     SettingsCard("预设主题") {
         Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).testTag("appearance-presets"),
             horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             registry.presets.forEach { preset ->
-                FilterChip(selected = value.selection == ThemeSelection.PRESET && value.presetId == preset.id,
-                    onClick = { onChange(value.copy(selection = ThemeSelection.PRESET, presetId = preset.id)) },
+                FilterChip(selected = seed == preset.seedRgb,
+                    onClick = {
+                        hex = rgbHex(preset.seedRgb)
+                        onChange(value.copy(selection = ThemeSelection.CUSTOM, presetId = preset.id, customSeedRgb = preset.seedRgb))
+                    },
                     label = { Text(preset.name) },
                     leadingIcon = { Box(Modifier.size(18.dp).background(Color(preset.seedRgb or 0xFF000000.toInt()), CircleShape)) },
                     modifier = Modifier.testTag("preset-${preset.id}"))
@@ -93,18 +95,13 @@ private fun AppearanceControls(
             Text("自定义主题色", style = MaterialTheme.typography.titleMedium)
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                // This swatch always previews the retained custom color, even while a preset is active.
-                CallringTheme(value.copy(selection = ThemeSelection.CUSTOM, customSeedRgb = seed), registry = registry) {
-                    Surface(color = Color(seed or 0xFF000000.toInt()),
-                        contentColor = MaterialTheme.colorScheme.onPrimaryFixed,
-                        shape = MaterialTheme.shapes.medium,
-                        modifier = Modifier.size(64.dp, 48.dp).testTag("appearance-custom-preview")) {
-                        Box(contentAlignment = Alignment.Center) { Text("Aa", style = MaterialTheme.typography.titleLarge) }
-                    }
+                Surface(color = Color(seed or 0xFF000000.toInt()),
+                    contentColor = MaterialTheme.colorScheme.onPrimaryFixed,
+                    shape = MaterialTheme.shapes.medium,
+                    modifier = Modifier.size(64.dp, 48.dp).testTag("appearance-custom-preview")) {
+                    Box(contentAlignment = Alignment.Center) { Text("Aa", style = MaterialTheme.typography.titleLarge) }
                 }
-                FilterChip(selected = value.selection == ThemeSelection.CUSTOM, onClick = {
-                    onChange(value.copy(selection = ThemeSelection.CUSTOM, customSeedRgb = seed))
-                }, label = { Text("使用自定义颜色") })
+                Text("当前主题色", style = MaterialTheme.typography.bodyMedium)
             }
             OutlinedTextField(hex, { raw ->
                 hex = raw

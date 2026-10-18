@@ -5,6 +5,7 @@ import java.time.LocalDate
 import kotlinx.coroutines.flow.Flow
 
 interface CallringUiApi {
+    val recordings: RecordingApi get() = UnavailableRecordingApi
     val home: HomeApi
     val callers: CallersApi
     val reports: ReportsApi
@@ -47,6 +48,8 @@ interface SettingsApi {
     suspend fun getQuietHours(): ApiResult<QuietSettings>
     suspend fun saveQuietHours(settings: QuietSettings): ApiResult<QuietSettings>
     suspend fun setQuietMode(mode: QuietMode): ApiResult<QuietSettings>
+    suspend fun setQuietEnabled(enabled: Boolean): ApiResult<QuietSettings> =
+        ApiResult.Failure(ApiError(ErrorCode.SYSTEM_UNAVAILABLE, "quiet.enable_unavailable"))
 
     suspend fun getPositions(): ApiResult<PositionSettings>
     suspend fun savePosition(command: SavePosition): ApiResult<PositionOption>
@@ -58,6 +61,8 @@ interface SettingsApi {
     suspend fun resetWorkSchedule(): ApiResult<WorkScheduleSettings>
 
     suspend fun getCalendar(): ApiResult<CalendarInfo>
+    suspend fun synchronizeCalendar(year: Int): ApiResult<CalendarInfo> =
+        ApiResult.Failure(ApiError(ErrorCode.SYSTEM_UNAVAILABLE, "calendar.sync_unavailable", retryable = true))
     suspend fun importCalendar(source: DocumentRef): ApiResult<CalendarInfo>
     suspend fun saveDateOverride(command: DateOverride): ApiResult<CalendarInfo>
     suspend fun deleteDateOverride(date: LocalDate): ApiResult<CalendarInfo>
@@ -245,10 +250,18 @@ data class ClassificationFact(
     val leaveVersion: Long
 )
 
+enum class WorkDayKind { WORKDAY, REST_DAY, HOLIDAY }
+
 data class WorkStatus(
     val evaluatedAtEpochMillis: Long,
     val classification: ClassificationFact,
-    val nextBoundaryEpochMillis: Long?
+    val nextBoundaryEpochMillis: Long?,
+    val dayKind: WorkDayKind = when (classification.reason) {
+        WorkReason.HOLIDAY -> WorkDayKind.HOLIDAY
+        WorkReason.REST_DAY -> WorkDayKind.REST_DAY
+        else -> WorkDayKind.WORKDAY
+    },
+    val holidayName: String? = classification.holidayName,
 )
 
 enum class CallResult {

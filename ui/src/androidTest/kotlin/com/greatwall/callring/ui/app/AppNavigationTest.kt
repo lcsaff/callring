@@ -40,7 +40,8 @@ class AppNavigationTest {
         compose.setContent { CallringApp(api, onCapability = {}, onPreviewCall = {}, onPinWidget = {}, onAppSettings = {}) }
         compose.onNodeWithTag("tab-settings").performClick()
         compose.captureArtifact("settings")
-        val destinations = listOf("免打扰", "职位管理", "工作时间", "节假日与日期覆盖", "请假管理", "评分设置", "铃声", "运行状态与权限")
+        compose.onNodeWithText("免打扰").assertDoesNotExist()
+        val destinations = listOf("我的职位", "工作时间", "节假日同步", "评分设置", "铃声", "运行状态与权限")
         destinations.forEach { title ->
             compose.onNodeWithText(title).performScrollTo().performClick()
             compose.onNodeWithTag("tab-settings").assertDoesNotExist()

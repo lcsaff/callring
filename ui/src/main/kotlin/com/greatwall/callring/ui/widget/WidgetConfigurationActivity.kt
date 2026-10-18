@@ -159,7 +159,6 @@ fun WidgetConfigurationScreen(
                 Card(Modifier.fillMaxWidth()) { Text("已选择：$selected", Modifier.padding(16.dp), style = MaterialTheme.typography.titleMedium) }
             }
             if (mutation.error != null) item { Text(mutation.error.message, color = MaterialTheme.colorScheme.error) }
-            if (results.loading) item { LinearProgressIndicator(Modifier.fillMaxWidth()) }
             if (results.error != null) item {
                 Text(results.error.message, color = MaterialTheme.colorScheme.error)
                 TextButton(onClick = onSearch) { Text("重新搜索") }

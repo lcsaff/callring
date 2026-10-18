@@ -19,7 +19,10 @@ class QuietViewModel(api: CallringUiApi, state: SavedStateHandle) : DraftEditor<
 
 class WorkScheduleViewModel(private val api: CallringUiApi, state: SavedStateHandle) : DraftEditor<WorkScheduleSettings>(
     api.changes, setOf(DataDomain.WORK_CALENDAR), state, SettingsDraftCodecs.work,
-    api.settings::getWorkSchedule, { value -> api.settings.saveWorkSchedule(SaveWorkSchedule(value.zoneId, value.weekly, value.makeup)) }
+    api.settings::getWorkSchedule, { value ->
+        val shared = normalizeWorkSchedule(value)
+        api.settings.saveWorkSchedule(SaveWorkSchedule(shared.zoneId, shared.weekly, shared.makeup))
+    }
 ) {
     fun reset() = execute({ api.settings.resetWorkSchedule() }) { replaceDraft(it); refresh() }
 }
@@ -42,9 +45,13 @@ class PositionsViewModel(private val api: CallringUiApi) : SnapshotViewModel<Pos
 class CalendarViewModel(private val api: CallringUiApi) : SnapshotViewModel<CalendarInfo>(
     api.changes, setOf(DataDomain.WORK_CALENDAR), api.settings::getCalendar
 ) {
-    fun import(source: DocumentRef) = write({ api.settings.importCalendar(source) }, "日历已导入")
-    fun save(command: DateOverride) = write({ api.settings.saveDateOverride(command) }, "日期安排已保存")
-    fun delete(date: java.time.LocalDate) = write({ api.settings.deleteDateOverride(date) }, "日期安排已删除")
+    fun synchronize(year: Int) = write({
+        when (val result = api.settings.synchronizeCalendar(year)) {
+            is ApiResult.Success -> result
+            is ApiResult.Failure -> ApiResult.Failure(result.error.copy(message =
+                "节假日同步未完成，现有日历未改变，请稍后重试"))
+        }
+    }, "节假日已同步")
 }
 
 class LeavesViewModel(private val api: CallringUiApi) : SnapshotViewModel<List<LeaveEntry>>(

@@ -21,6 +21,7 @@ class BackendState {
     val pendingAudits: MutableList<AuditRecord> = mutableListOf()
     var myPositionId: Long? = null
     var quiet: QuietSettings = QuietSettings(QuietMode.OFF, false, emptyMap())
+    var lastQuietMode: QuietMode = QuietMode.NON_WORK
     var score: ScoreSettings = ScoreSettings(5, 2, 10, 30)
     var overlayEnabled: Boolean = false
     var leaveVersion: Long = 0

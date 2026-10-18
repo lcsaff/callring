@@ -13,11 +13,27 @@ import java.util.concurrent.Executors
 class RuntimeReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
         if (intent.action == TelephonyManager.ACTION_PHONE_STATE_CHANGED) {
+            val state = intent.getStringExtra(TelephonyManager.EXTRA_STATE)
             if (
                 intent.getStringExtra(TelephonyManager.EXTRA_STATE) ==
                     TelephonyManager.EXTRA_STATE_IDLE
             )
                 SyncJobService.schedule(context)
+            if (state in setOf(TelephonyManager.EXTRA_STATE_RINGING, TelephonyManager.EXTRA_STATE_OFFHOOK, TelephonyManager.EXTRA_STATE_IDLE)) {
+                val pending = goAsync()
+                val app = context.applicationContext
+                worker.execute {
+                    try {
+                        val session = BackendProvider.from(app).backendGraph.recordingSession
+                        when (state) {
+                            TelephonyManager.EXTRA_STATE_RINGING -> session.ringing()
+                            TelephonyManager.EXTRA_STATE_OFFHOOK -> { session.answered(); CallCaptureService.phoneState(app, true) }
+                            TelephonyManager.EXTRA_STATE_IDLE -> { session.idle(System.currentTimeMillis()); CallCaptureService.phoneState(app, false) }
+                        }
+                        if (state == TelephonyManager.EXTRA_STATE_IDLE) RecordingJobService.schedule(app, 10_000)
+                    } catch (_: Exception) {} finally { pending.finish() }
+                }
+            }
             return
         }
         if (
@@ -37,6 +53,7 @@ class RuntimeReceiver : BroadcastReceiver() {
             try {
                 BackendProvider.from(app).backendGraph.backend.refreshDecisionSnapshot()
                 SyncJobService.schedule(app)
+                RecordingJobService.schedule(app)
             } catch (_: Exception) {} finally {
                 pending.finish()
             }

@@ -19,6 +19,9 @@ internal class BackendContext(
     internal val syncScheduler: SyncScheduler,
     internal val clock: Clock = Clock.systemUTC(),
     internal val dispatcher: CoroutineDispatcher = Dispatchers.IO,
+    internal val calendarSource: CalendarSource = CalendarSource {
+        throw BackendFailure(ApiError(ErrorCode.SYSTEM_UNAVAILABLE, "calendar.sync_unavailable", retryable = true))
+    },
 ) {
     internal val lock = Any()
     internal var revision = 0L

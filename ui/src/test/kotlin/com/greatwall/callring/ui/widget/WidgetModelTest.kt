@@ -13,6 +13,18 @@ import java.time.*
 
 @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
 class WidgetModelTest {
+    @Test fun productionResumeDecisionOverridesStaleWidgetPreference() = runTest {
+        val api = object : ControlsApi() {
+            override suspend fun setQuietEnabled(enabled: Boolean): ApiResult<QuietSettings> {
+                quiet = quiet.copy(mode = if (enabled) QuietMode.NON_WORK else QuietMode.OFF)
+                return ApiResult.Success(quiet)
+            }
+            override suspend fun setQuietMode(mode: QuietMode): ApiResult<QuietSettings> = error("legacy restore must not override backend decision")
+        }
+        api.quiet = api.quiet.copy(mode = QuietMode.OFF)
+        assertTrue(WidgetModel(api).setQuietEnabled(true, { QuietMode.CUSTOM }) is ApiResult.Success)
+        assertEquals(QuietMode.NON_WORK, api.quiet.mode)
+    }
     private val zone = ZoneId.of("Asia/Shanghai")
     private val date = LocalDate.of(2026, 10, 15)
     private val noon = date.atTime(12, 0).atZone(zone).toInstant().toEpochMilli()

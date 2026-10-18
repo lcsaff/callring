@@ -21,6 +21,36 @@ import org.junit.Assert.*
 import org.junit.Test
 
 class CallringBackendTest {
+    @Test fun quickQuietEnableDefaultsToNonWorkAndRestoresCustomWithoutLosingWindows() = runBlocking {
+        assertEquals(QuietMode.NON_WORK, api.settings.setQuietEnabled(true).value().mode)
+        val custom = QuietSettings(QuietMode.CUSTOM, true, mapOf(1 to listOf(TimeWindow(1380, 60))))
+        api.settings.saveQuietHours(custom).value()
+        assertEquals(custom.copy(mode = QuietMode.OFF), api.settings.setQuietEnabled(false).value())
+        assertEquals(custom, api.settings.setQuietEnabled(true).value())
+    }
+    @Test fun allQuietWritePathsUpdateDurableResumeMode() = runBlocking {
+        api.settings.saveQuietHours(QuietSettings(QuietMode.CUSTOM, true, mapOf(2 to listOf(TimeWindow(60, 120))))).value()
+        api.settings.setQuietMode(QuietMode.NON_WORK).value()
+        api.settings.setQuietEnabled(false).value()
+        assertEquals(QuietMode.NON_WORK, api.settings.setQuietEnabled(true).value().mode)
+        api.settings.setQuietMode(QuietMode.CUSTOM).value()
+        api.settings.setQuietMode(QuietMode.OFF).value()
+        assertEquals(QuietMode.CUSTOM, api.settings.setQuietEnabled(true).value().mode)
+    }
+    @Test fun emptyHistoricalCustomResumeFallsBackWithoutEnablingInvalidMode() = runBlocking {
+        store.state.lastQuietMode = QuietMode.CUSTOM
+        assertEquals(QuietMode.NON_WORK, api.settings.setQuietEnabled(true).value().mode)
+    }
+    @Test fun failedQuickQuietSaveKeepsActualModeAndRememberedMode() = runBlocking {
+        val custom = QuietSettings(QuietMode.CUSTOM, false, mapOf(1 to listOf(TimeWindow(60, 120))))
+        api.settings.saveQuietHours(custom).value()
+        store.failCommit = true
+        assertTrue(api.settings.setQuietEnabled(false) is ApiResult.Failure)
+        assertEquals(custom, api.settings.getQuietHours().value())
+        store.failCommit = false
+        api.settings.setQuietEnabled(false).value()
+        assertEquals(custom, api.settings.setQuietEnabled(true).value())
+    }
     private val now = Instant.parse("2026-10-12T10:00:00Z").toEpochMilli()
 
     private class MemoryStore : BackendStore {
@@ -50,6 +80,7 @@ class CallringBackendTest {
                         pendingAudits.addAll(state.pendingAudits)
                         myPositionId = state.myPositionId
                         quiet = state.quiet
+                        lastQuietMode = state.lastQuietMode
                         score = state.score
                         overlayEnabled = state.overlayEnabled
                         leaveVersion = state.leaveVersion
@@ -179,6 +210,7 @@ class CallringBackendTest {
     private val probe = Probe()
     private val audio = Audio()
     private var syncs = 0
+    private var annualCalendar: () -> CalendarImport = { throw IOException("offline") }
     private val api =
         CallringBackend(
             store,
@@ -194,7 +226,57 @@ class CallringBackendTest {
             },
             Clock.fixed(Instant.ofEpochMilli(now), ZoneOffset.UTC),
             Dispatchers.Unconfined,
+            CalendarSource { annualCalendar() },
         )
+
+    @Test
+    fun annualSyncPreservesCachedCalendarWhenDownloadFails() = runBlocking {
+        val day = LocalDate.of(2026, 10, 1)
+        annualCalendar = {
+            CalendarImport(CalendarYear(2026, "holiday-cn", "2025-11-04", "v1"), mapOf(day to "国庆节"), emptySet(), "raw")
+        }
+        api.settings.synchronizeCalendar(2026).value()
+        annualCalendar = { throw IOException("offline") }
+        assertTrue(api.settings.synchronizeCalendar(2026) is ApiResult.Failure)
+        assertEquals("国庆节", store.state.holidays[day])
+        assertEquals("v1", store.state.calendarYears[2026]?.version)
+    }
+
+    @Test
+    fun annualSyncRejectsWrongYearBeforeReplacingCache() = runBlocking {
+        annualCalendar = { CalendarImport(CalendarYear(2027, "source", "2026-10-01", "v"), emptyMap(), emptySet()) }
+        assertTrue(api.settings.synchronizeCalendar(2026) is ApiResult.Failure)
+        assertTrue(store.state.calendarYears.isEmpty())
+    }
+
+    @Test
+    fun annualDownloadDoesNotHoldTheDatabaseCoordinatorLock() = runBlocking {
+        annualCalendar = {
+            val finished = CountDownLatch(1)
+            Thread {
+                runBlocking { api.settings.getCalendar().value() }
+                finished.countDown()
+            }.start()
+            assertTrue("calendar read blocked behind download", finished.await(2, TimeUnit.SECONDS))
+            CalendarImport(CalendarYear(2026, "source", "2026-10-01", "hash"),
+                mapOf(LocalDate.of(2026, 10, 1) to "国庆节"), emptySet())
+        }
+        api.settings.synchronizeCalendar(2026).value()
+        Unit
+    }
+
+    @Test
+    fun unchangedAnnualContentDoesNotRewriteAuditOrFetchDate() = runBlocking {
+        val downloaded = CalendarImport(CalendarYear(2026, "source", "2026-10-01", "same-hash"),
+            mapOf(LocalDate.of(2026, 10, 1) to "国庆节"), emptySet())
+        annualCalendar = { downloaded }
+        api.settings.synchronizeCalendar(2026).value()
+        val audits = store.state.pendingAudits.toList()
+        annualCalendar = { downloaded.copy(metadata = downloaded.metadata.copy(published = "2026-10-02")) }
+        api.settings.synchronizeCalendar(2026).value()
+        assertEquals(audits, store.state.pendingAudits)
+        assertEquals("2026-10-01", store.state.calendarYears[2026]?.published)
+    }
 
     private fun <T> ApiResult<T>.value(): T = (this as ApiResult.Success<T>).value
 

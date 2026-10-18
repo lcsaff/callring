@@ -22,6 +22,12 @@ import org.robolectric.annotation.Config
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [35], application = PermissionRecoveryApplication::class)
 class CallringActivityTest {
+    @Test fun recordingArchiveListExternalIntentKeepsIndependentDestination() {
+        val intent = CallringActivity.intent(RuntimeEnvironment.getApplication(), UiDestination.RecordingArchives)
+        assertEquals("recording-archives", intent.getStringExtra("callring.ui.target"))
+        assertEquals(UiDestination.RecordingArchives, UiDestination.fromExternal(intent.getStringExtra("callring.ui.target"), null))
+    }
+
     @Test fun overlayTestWithoutPermissionOpensOverlaySettingsInsteadOfService() {
         org.robolectric.shadows.ShadowSettings.setCanDrawOverlays(false)
         val controller = Robolectric.buildActivity(CallringActivity::class.java).setup()

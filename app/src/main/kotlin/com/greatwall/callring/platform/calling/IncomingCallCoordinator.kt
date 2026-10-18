@@ -75,12 +75,16 @@ class IncomingCallCoordinator(
     private val presentation: IncomingCallUiSink,
     private val workLease: () -> Closeable = { Closeable {} },
     private val afterCompletion: () -> Unit = {},
+    private val afterRecorded: (Long, String, Long) -> Unit = { _, _, _ -> },
+    private val onIncoming: ((String, String, Long, String?) -> Unit)? = null,
+    private val onStatisticsRecorded: ((String, Long) -> Unit)? = null,
     private val onFailure: () -> Unit,
 ) : IncomingCallOperations, Closeable {
     private val lifetime = Any()
     private var closed = false
     private val decisions: ExecutorService = Executors.newFixedThreadPool(2)
     private val writer: ExecutorService = Executors.newSingleThreadExecutor()
+    private val observations: ExecutorService = Executors.newSingleThreadExecutor()
     private val pending = ConcurrentHashMap.newKeySet<CompletableFuture<*>>()
 
     override fun execute(task: Runnable) =
@@ -106,6 +110,7 @@ class IncomingCallCoordinator(
         val record =
             synchronized(lifetime) {
                 check(!closed) { "backend.closed" }
+                onIncoming?.let { sink -> observe { sink(sessionId, number, at, account) } }
                 if (!assessment.statisticsEnabled) CompletableFuture.completedFuture(-1L)
                 else
                     tracked(
@@ -118,7 +123,10 @@ class IncomingCallCoordinator(
                                         initial,
                                         account,
                                         assessment.classification,
-                                    )
+                                    ).also { id ->
+                                        try { afterRecorded(id, number, at) } catch (_: Exception) { safeFailure() }
+                                        if (id > 0) onStatisticsRecorded?.let { sink -> observe { sink(sessionId, id) } }
+                                    }
                                 }
                             },
                             writer,
@@ -196,6 +204,11 @@ class IncomingCallCoordinator(
             /* Diagnostics cannot affect a call. */
         }
     }
+    private fun observe(block: () -> Unit) {
+        tracked(CompletableFuture.runAsync({
+            try { withWorkLease(block) } catch (_: Exception) { safeFailure() }
+        }, observations))
+    }
 
     private inline fun <T> withWorkLease(work: () -> T): T {
         val lease =
@@ -232,7 +245,11 @@ class IncomingCallCoordinator(
             }
         } finally {
             writer.shutdown()
-            if (!writer.awaitTermination(10, TimeUnit.SECONDS)) writer.shutdownNow()
+            try { if (!writer.awaitTermination(10, TimeUnit.SECONDS)) writer.shutdownNow() }
+            finally {
+                observations.shutdown()
+                if (!observations.awaitTermination(10, TimeUnit.SECONDS)) observations.shutdownNow()
+            }
         }
     }
 }

@@ -6,73 +6,60 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import com.greatwall.callring.application.api.*
-import com.greatwall.callring.ui.designsystem.components.*
-import com.greatwall.callring.ui.feature.shared.*
-import com.greatwall.callring.ui.format.*
-import com.greatwall.callring.ui.state.*
+import com.greatwall.callring.ui.designsystem.components.ScreenFrame
+import com.greatwall.callring.ui.feature.shared.LoadFeedback
+import com.greatwall.callring.ui.state.LoadState
+import java.time.Instant
 import java.time.ZoneId
+import java.time.format.DateTimeFormatter
+import java.util.Locale
 
-@Composable fun HomeScreen(
-    state: LoadState<HomeData>, mutation: MutationState,
-    onRetry: () -> Unit, onStatistics: (Boolean) -> Unit, onOverlay: (Boolean) -> Unit, onRingtone: (Boolean) -> Unit,
-    onQuietSettings: () -> Unit, onRuntime: () -> Unit, onRingtoneSettings: () -> Unit,
-    onReport: (String) -> Unit, onSettings: () -> Unit,
-    latestPreview: LoadState<CallDetail?>, onPreviewLatest: () -> Unit, onPinWidget: () -> Unit
+@Composable
+fun HomeScreen(
+    state: LoadState<HomeData>, onRetry: () -> Unit, onLeaves: () -> Unit,
+    quietCard: @Composable () -> Unit = {},
 ) {
-    ScreenFrame("规则来电", actions = { TextButton(onClick = onSettings) { Text("设置") } }) {
-        Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+    ScreenFrame("首页") {
+        Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             LoadFeedback(state, onRetry)
             state.data?.let { data ->
-                Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer), shape = MaterialTheme.shapes.large) {
-                    Column(Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Text("来电有记录，工作有分寸。", style = MaterialTheme.typography.headlineSmall)
-                        Text(UiLabels.quiet(data.quietMode), style = MaterialTheme.typography.titleMedium)
-                        Text(UiFormat.workReason(data.currentWork.classification.reason), style = MaterialTheme.typography.bodyLarge)
-                        data.currentWork.classification.holidayName?.let { Text(it) }
-                        TextButton(onClick = onQuietSettings) { Text("调整免打扰") }
-                    }
-                }
-                MutationFeedback(mutation, onCapability = { onRuntime() }, successMessage = "设置已更新")
-                Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow)) {
-                    Column(Modifier.padding(horizontal = 12.dp)) {
-                        SwitchSettingRow("来电统计", data.statisticsEnabled, onStatistics,
-                            "记录开启期间的来电，关闭后保留历史", enabled = !mutation.busy)
+                val work = data.currentWork
+                val date = Instant.ofEpochMilli(work.evaluatedAtEpochMillis).atZone(ZoneId.of(work.classification.zoneId))
+                Card(Modifier.fillMaxWidth().testTag("home-status"),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)) {
+                    Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                        Text(date.format(DateTimeFormatter.ofPattern("yyyy年M月d日 EEEE", Locale.CHINA)),
+                            style = MaterialTheme.typography.bodyLarge)
+                        Text(when (work.dayKind) {
+                            WorkDayKind.WORKDAY -> "工作日"
+                            WorkDayKind.REST_DAY -> "休息日"
+                            WorkDayKind.HOLIDAY -> "法定节假日"
+                        }, style = MaterialTheme.typography.headlineMedium)
+                        work.holidayName?.takeIf { it.isNotBlank() }?.let {
+                            Text(it, style = MaterialTheme.typography.titleLarge)
+                        }
                         HorizontalDivider()
-                        SwitchSettingRow("来电悬浮窗", data.overlayEnabled, onOverlay, "来电时显示号码档案", enabled = !mutation.busy)
+                        Text(when {
+                            work.classification.working -> "当前工作中"
+                            work.classification.reason == WorkReason.PERSONAL_LEAVE -> "请假中 · 当前不工作"
+                            else -> "当前不工作"
+                        }, style = MaterialTheme.typography.titleMedium)
+                        if (!work.classification.calendarVerified) Text("本年度节假日数据待更新",
+                            style = MaterialTheme.typography.bodySmall)
                     }
                 }
-                SectionTitle("最近来电")
-                val latest = data.latestCall
-                if (latest == null) EmptyContent("暂无来电记录") else Card(onClick = { onReport(latest.number) }) {
-                    Column(Modifier.fillMaxWidth().padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                        Text(latest.number, style = MaterialTheme.typography.titleLarge)
-                        Text(UiFormat.time(latest.startedAtEpochMillis, ZoneId.of(latest.classification.zoneId)))
-                        Text("${UiFormat.result(latest.result)} · ${UiFormat.duration(latest.durationSeconds)}")
-                        Text(UiFormat.decision(latest.decision), color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        if (!latest.counted) Text("未计入汇总", color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        Text("查看号码报表", color = MaterialTheme.colorScheme.primary)
+                quietCard()
+                Card(onClick = onLeaves, modifier = Modifier.fillMaxWidth().testTag("home-leaves"),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow)) {
+                    Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                        Text("请假管理", style = MaterialTheme.typography.titleMedium)
+                        Text("添加请假，查看和管理请假记录", style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                 }
-                OutlinedButton(onClick = onPreviewLatest, enabled = !latestPreview.loading, modifier = Modifier.fillMaxWidth()) {
-                    Text("显示最近来电卡片")
-                }
-                LoadFeedback(latestPreview, onPreviewLatest)
-                if (latestPreview.loaded && latestPreview.data == null && latestPreview.error == null && !latestPreview.loading)
-                    Text("没有可显示的最近来电")
-                OutlinedButton(onClick = onPinWidget, enabled = data.runtime.pinWidgetSupported, modifier = Modifier.fillMaxWidth()) {
-                    Text("添加桌面小组件")
-                }
-                SectionTitle("规则铃声")
-                SwitchSettingRow("规则铃声", data.ringtone.enabled, onRingtone,
-                    "${data.ringtone.displayName} · ${data.ringtone.previewSeconds} 秒", enabled = !mutation.busy)
-                TextButton(onClick = onRingtoneSettings) { Text("管理铃声与试听") }
-                OutlinedButton(onClick = onRuntime, modifier = Modifier.fillMaxWidth()) { Text("权限与运行条件") }
-                Text("${UiLabels.audibility(data.runtime.audibility)} · ${UiLabels.phoneActivity(data.runtime.phoneActivity)}",
-                    style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         }
     }

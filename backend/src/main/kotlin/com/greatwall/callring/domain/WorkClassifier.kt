@@ -91,8 +91,16 @@ object WorkClassifier {
         zone.rules.nextTransition(Instant.ofEpochMilli(at))?.instant?.toEpochMilli()?.let {
             candidates += it
         }
-        val next = candidates.firstOrNull { it > at && classify(state, it) != current }
-        return WorkStatus(at, current, next)
+        val next = candidates.firstOrNull {
+            it > at && (classify(state, it) != current || Instant.ofEpochMilli(it).atZone(zone).toLocalDate() != date)
+        }
+        val today = plan(state, config, date)
+        val dayKind = when {
+            today.reason == WorkReason.HOLIDAY -> WorkDayKind.HOLIDAY
+            today.explicitRest || today.windows.isEmpty() -> WorkDayKind.REST_DAY
+            else -> WorkDayKind.WORKDAY
+        }
+        return WorkStatus(at, current, next, dayKind, today.holiday)
     }
 
     fun inWeekly(windows: Map<Int, List<TimeWindow>>, zone: ZoneId, at: Long): Boolean {

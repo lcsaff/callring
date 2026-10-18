@@ -20,6 +20,7 @@ android {
         targetCompatibility JavaVersion.VERSION_1_8
     }
     kotlinOptions { jvmTarget = '1.8' }
+    testOptions { unitTests.includeAndroidResources = true }
     buildTypes {
         backendQa {
             initWith debug
@@ -41,4 +42,6 @@ dependencies {
     implementation project(':backend')
     implementation "org.jetbrains.kotlinx:kotlinx-coroutines-android:${rootProject.ext.callringVersions.coroutines}"
     testImplementation 'junit:junit:4.13.2'
+    testImplementation 'org.json:json:20240303'
+    testImplementation 'org.robolectric:robolectric:4.16.1'
 }

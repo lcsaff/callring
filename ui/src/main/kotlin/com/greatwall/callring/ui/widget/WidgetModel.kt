@@ -48,6 +48,10 @@ class WidgetModel(
                 is ApiResult.Success -> {
                     val current = result.value
                     if (current.mode != QuietMode.OFF) rememberMode(current.mode)
+                    if ((current.mode != QuietMode.OFF) == enabled) return@attempt result
+                    val shared = api.settings.setQuietEnabled(enabled)
+                    if (shared !is ApiResult.Failure || shared.error.code != ErrorCode.SYSTEM_UNAVAILABLE ||
+                        shared.error.message != "quiet.enable_unavailable") return@attempt shared
                     val target = when {
                         !enabled -> QuietMode.OFF
                         current.mode != QuietMode.OFF -> current.mode

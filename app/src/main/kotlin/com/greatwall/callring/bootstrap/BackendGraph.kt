@@ -11,6 +11,12 @@ import com.greatwall.callring.platform.calling.AndroidCallWorkLease
 import com.greatwall.callring.platform.calling.BackendIncomingCallEngine
 import com.greatwall.callring.platform.calling.IncomingCallCoordinator
 import java.io.Closeable
+import com.greatwall.callring.platform.ai.AndroidRecordingRuntime
+import com.greatwall.callring.application.RecordingCall
+import com.greatwall.callring.application.RecordingCallLink
+import com.greatwall.callring.application.IncomingRecordingSession
+import com.greatwall.callring.application.resolveRecordingCall
+import com.greatwall.callring.RecordingJobService
 
 /**
  * Composition only. No database, media decoder or document is opened by constructing this graph.
@@ -100,6 +106,7 @@ class BackendGraph(
             syncScheduler,
             configuration.clock,
             configuration.dispatcher,
+            HolidayCalendarSource(configuration.clock),
         )
     }
     val backend: CallringBackend
@@ -109,8 +116,22 @@ class BackendGraph(
                 backendDelegate.value
             }
 
-    val api: CallringUiApi
-        get() = backend
+    val recordingSession = IncomingRecordingSession()
+    private val recordingDelegate = lazy {
+        AndroidRecordingRuntime(application, configuration.databaseName,
+            findCall = { id -> store.read { state -> resolveRecordingCall(state.calls.values.map {
+                RecordingCallLink(it.id, it.number, it.time, it.duration, it.hidden, it.linkedScreenId)
+            }, id) } },
+            activeCallId = { recordingSession.activeCandidate(configuration.clock.millis()) },
+            schedule = { delay -> RecordingJobService.schedule(application, delay) })
+    }
+    val recordings get() = recordingDelegate.value
+    private val apiDelegate by lazy {
+        object : CallringUiApi by backend {
+            override val recordings: RecordingApi get() = this@BackendGraph.recordings
+        }
+    }
+    val api: CallringUiApi get() = apiDelegate
 
     private val incomingDelegate = lazy {
         ensureOpen()
@@ -118,6 +139,16 @@ class BackendGraph(
             BackendIncomingCallEngine(backend),
             incomingCallUi,
             workLease = { callWorkLease.acquire() },
+            onIncoming = { sessionId, number, at, account ->
+                recordings.observeIncoming(sessionId, number, at, account)?.let { call ->
+                    recordingSession.register(call.id, call.startedAt)
+                    // A fast answer can precede background persistence. Recheck this same live
+                    // session once its independent identity is durable; IDLE clears it first.
+                    if (recordingSession.activeCandidate(configuration.clock.millis()) == call.id)
+                        com.greatwall.callring.CallCaptureService.phoneState(application, true)
+                }
+            },
+            onStatisticsRecorded = { sessionId, id -> recordings.linkStatistics(sessionId, id) },
             afterCompletion = {
                 synchronized(recoveryLifetime) {
                     if (
@@ -169,6 +200,7 @@ class BackendGraph(
                 try {
                     resources.third?.close()
                 } finally {
+                    if (recordingDelegate.isInitialized()) recordingDelegate.value.close()
                     playbackState.clear()
                     store.close()
                 }

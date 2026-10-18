@@ -67,7 +67,6 @@ fun LeavesScreen(
     }
     SettingsLayout("请假管理", state, mutation, onBack, onRetry) { entries ->
         SettingsCard {
-            Text("请假时区：$zoneId")
             InputError(if (zone == null) "当前工作时区无效，请先修改工作时间设置" else null)
             BrandButton({ edit(null) }, enabled = !mutation.busy && zone != null, modifier = Modifier.fillMaxWidth()) { Text("添加请假") }
         }
@@ -103,7 +102,6 @@ fun LeavesScreen(
             }) {
                 Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     MutationFeedback(mutation, showSuccess = false)
-                    Text("时区：$zoneId")
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         FilterChip(allDay, { allDay = true }, enabled = !mutation.busy, label = { Text("全天") })
                         FilterChip(!allDay, { allDay = false }, enabled = !mutation.busy, label = { Text("指定时间") })

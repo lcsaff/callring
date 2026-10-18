@@ -16,6 +16,35 @@ class WorkClassifierTest {
 
     private fun state() = BackendState().apply { schedules += defaultWorkSchedule("UTC") }
 
+    @Test fun leaveDoesNotHideHolidayDayTypeAndName() {
+        val s = state()
+        val date = LocalDate.parse("2026-10-01")
+        s.calendarYears[2026] = CalendarYear(2026, "source", "2025-11-04", "v1")
+        s.holidays[date] = "国庆节"
+        s.leaves[1] = LeaveRecord(1, at("2026-10-01T00:00:00Z"), at("2026-10-02T00:00:00Z"), "")
+        val status = WorkClassifier.status(s, at("2026-10-01T10:00:00Z"))
+        assertFalse(status.classification.working)
+        assertEquals(WorkReason.PERSONAL_LEAVE, status.classification.reason)
+        assertEquals(WorkDayKind.HOLIDAY, status.dayKind)
+        assertEquals("国庆节", status.holidayName)
+    }
+
+    @Test fun lunchAndAfterHoursRemainCalendarWorkdays() {
+        val s = state()
+        for (hour in listOf("12:30", "19:00")) {
+            val status = WorkClassifier.status(s, at("2026-10-12T${hour}:00Z"))
+            assertEquals(WorkDayKind.WORKDAY, status.dayKind)
+            assertFalse(status.classification.working)
+        }
+    }
+
+    @Test fun midnightRefreshesDayTypeEvenDuringMultiDayLeave() {
+        val s = state()
+        s.leaves[1] = LeaveRecord(1, at("2026-10-16T00:00:00Z"), at("2026-10-19T00:00:00Z"), "")
+        val status = WorkClassifier.status(s, at("2026-10-16T23:00:00Z"))
+        assertEquals(at("2026-10-17T00:00:00Z"), status.nextBoundaryEpochMillis)
+    }
+
     @Test
     fun leaveOverridesWorkingAndHolidayOverridesOvernightCarry() {
         val s = state()

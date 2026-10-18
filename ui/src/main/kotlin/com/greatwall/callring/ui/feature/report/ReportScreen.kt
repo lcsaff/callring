@@ -21,7 +21,7 @@ import java.time.ZoneId
 @Composable fun ReportScreen(
     state: LoadState<CallerReport>, query: ReportQuery, mutation: MutationState,
     onBack: () -> Unit, onRetry: () -> Unit, onRange: (DateRange) -> Unit, onFilter: (CallFilter) -> Unit,
-    onPage: (Int) -> Unit, onExport: () -> Unit, onEdit: () -> Unit, onCapability: (Capability) -> Unit
+    onPage: (Int) -> Unit, onExport: () -> Unit, onEdit: () -> Unit, onCapability: (Capability) -> Unit, onArchive: ((CallDetail) -> Unit)? = null
 ) {
     var dateDialog by rememberSaveable { mutableStateOf(false) }
     var filterMenu by remember { mutableStateOf(false) }
@@ -47,7 +47,6 @@ import java.time.ZoneId
                             Text("未接 ${report.totals.missedCount} 次 · 拒接 ${report.totals.rejectedCount} 次")
                             ScoreBadge(report.score.points)
                             Text(UiFormat.scoreReason(report.score), style = MaterialTheme.typography.bodySmall)
-                            Text("统计时区：${report.range.zoneId}", style = MaterialTheme.typography.bodySmall)
                         }
                     }
                 }
@@ -65,7 +64,7 @@ import java.time.ZoneId
                     Text("筛选和分页仅影响明细", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     if (report.details.items.isEmpty() && !state.loading) EmptyContent("所选条件下暂无通话明细")
                 }
-                items(report.details.items, key = { it.id }) { CallDetailCard(it) }
+                items(report.details.items, key = { it.id }) { CallDetailCard(it, onArchive) }
                 item { PageControls(report.details.pageIndex, report.details.pageSize, report.details.totalItems, state.loading, onPage) }
             }
         }
@@ -87,7 +86,7 @@ import java.time.ZoneId
     }
 }
 
-@Composable fun CallDetailCard(call: CallDetail) {
+@Composable fun CallDetailCard(call: CallDetail, onArchive: ((CallDetail) -> Unit)? = null) {
     var expanded by rememberSaveable(call.id) { mutableStateOf(false) }
     Card(Modifier.fillMaxWidth().clickable { expanded = !expanded }) {
         Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -99,6 +98,7 @@ import java.time.ZoneId
             if (!call.counted) Text("未计入汇总", color = MaterialTheme.colorScheme.onSurfaceVariant)
             if (call.corrected) Text("工作分类已更正；当时响铃处理保留原始事实", color = MaterialTheme.colorScheme.primary)
             Text(if (expanded) "收起记录详情" else "展开记录详情", style = MaterialTheme.typography.labelMedium)
+            onArchive?.let { callback -> TextButton(onClick = { callback(call) }) { Text("录音与分析") } }
             if (expanded) {
                 Text("数据来源：${when (call.source) { CallSource.SCREENING -> "来电筛选"; CallSource.SYSTEM_CALL_LOG -> "系统通话记录"; CallSource.MERGED -> "已关联核对"; CallSource.UNKNOWN -> "未知" }}")
                 Text("原始工作分类：${UiFormat.workReason(call.originalClassification.reason)}")

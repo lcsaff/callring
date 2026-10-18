@@ -25,6 +25,7 @@ import androidx.compose.material.icons.filled.Settings
 import com.greatwall.callring.ui.designsystem.components.LocalFeedbackHost
 import com.greatwall.callring.ui.designsystem.components.LocalFeedbackScope
 import com.greatwall.callring.ui.designsystem.components.FeedbackSnackbar
+import kotlinx.coroutines.flow.first
 import java.time.LocalDate
 
 @Composable fun CallringApp(
@@ -49,6 +50,7 @@ import java.time.LocalDate
         val route = entry?.destination?.route
         val tabs = listOf(UiDestination.Home to "首页", UiDestination.Callers to "档案", UiDestination.Settings to "设置")
         LaunchedEffect(requestSequence) {
+            navigation.currentBackStackEntryFlow.first()
             if (navigationState.consume(requestSequence) && (requestedDestination != UiDestination.Home || requestSequence != 0L)) {
                 navigation.navigate(requestedDestination.route) { launchSingleTop = true }
             }
@@ -82,18 +84,22 @@ import java.time.LocalDate
             NavHost(navigation, UiDestination.Home.route, Modifier.padding(insets).consumeWindowInsets(insets)) {
                 composable("home") {
                     val model: HomeViewModel = uiViewModel { HomeViewModel(api) }
+                    val quiet: HomeQuietViewModel = uiViewModel { HomeQuietViewModel(api.settings, api.changes, it) }
                     val state by model.state.collectAsStateWithLifecycle()
-                    val mutation by model.mutation.collectAsStateWithLifecycle()
-                    val latestPreview by model.latestPreview.collectAsStateWithLifecycle()
-                    val pendingPreview by model.pendingPreview.collectAsStateWithLifecycle()
-                    LaunchedEffect(pendingPreview) {
-                        pendingPreview?.let { model.consumePreview(); onPreviewCall(it) }
-                    }
+                    val quietState by quiet.state.collectAsStateWithLifecycle()
+                    val quietMutation by quiet.mutation.collectAsStateWithLifecycle()
+                    val quietDraft by quiet.draft.collectAsStateWithLifecycle()
+                    val quietOpen by quiet.dialogOpen.collectAsStateWithLifecycle()
                     ActiveRefresh(refreshSignal, state.data?.currentWork?.nextBoundaryEpochMillis, 60_000, model::refresh)
-                    HomeScreen(state, mutation, model::refresh, model::statistics, model::overlay, model::ringtone,
-                        { open(UiDestination.Setting(SettingsPage.QUIET)) }, { open(UiDestination.Setting(SettingsPage.RUNTIME)) },
-                        { open(UiDestination.Setting(SettingsPage.RINGTONE)) }, { open(UiDestination.Report(it)) }, { open(UiDestination.Settings) },
-                        latestPreview, model::previewLatest, onPinWidget)
+                    ActiveRefresh(refreshSignal, refresh = quiet::refresh)
+                    HomeScreen(state, model::refresh, { open(UiDestination.Leaves) }, quietCard = {
+                        HomeQuietCard(quietState, quietMutation, quiet::refresh, quiet::setEnabled, quiet::openEditor)
+                    })
+                    val saved = quietState.data
+                    val draft = quietDraft
+                    if (quietOpen && saved != null && draft != null) {
+                        HomeQuietDialog(saved, draft, quietMutation, quiet::edit, quiet::save, quiet::closeEditor)
+                    }
                 }
                 composable("callers") {
                     val model: CallerListViewModel = uiViewModel { CallerListViewModel(api.callers::search, api.changes, it) }
@@ -101,7 +107,13 @@ import java.time.LocalDate
                     val query by model.query.collectAsStateWithLifecycle()
                     ActiveRefresh(refreshSignal, refresh = { model.refresh() })
                     CallerListScreen(state, query, model::search, model::page, { model.refresh() },
-                        { open(UiDestination.EditCaller()) }, { open(UiDestination.Report(it)) }, { open(UiDestination.Lookup) })
+                        { open(UiDestination.EditCaller()) }, { open(UiDestination.Report(it)) }, { open(UiDestination.Lookup) },
+                        { open(UiDestination.Positions) }, { open(UiDestination.RecordingArchives) })
+                }
+                composable("recording-archives") {
+                    RecordingArchivesRoute(api.recordings, refreshSignal, back) {
+                        open(UiDestination.Archive(it.callId, it.number, it.startedAtEpochMillis))
+                    }
                 }
                 composable("lookup") {
                     val model: NumberLookupViewModel = uiViewModel { NumberLookupViewModel(api::checkNumber, it) }
@@ -129,12 +141,27 @@ import java.time.LocalDate
                     val export = rememberExportPicker(model::export)
                     ActiveRefresh(refreshSignal, intervalMillis = 60_000, refresh = { model.refresh() })
                     ReportScreen(state, query, mutation, back, { model.refresh() }, model::range, model::filter, model::page,
-                        export, { open(UiDestination.EditCaller(number)) }, onCapability)
+                        export, { open(UiDestination.EditCaller(number)) }, onCapability,
+                        { open(UiDestination.Archive(it.id, number, it.startedAtEpochMillis)) })
+                }
+                composable("archive/{callId}/{number}/{startedAt}", listOf(
+                    navArgument("callId") { type = NavType.LongType }, navArgument("number") { type = NavType.StringType },
+                    navArgument("startedAt") { type = NavType.LongType })) { record ->
+                    val args = requireNotNull(record.arguments)
+                    val number = requireNotNull(args.getString("number"))
+                    ArchiveRoute(api, args.getLong("callId"), number, args.getLong("startedAt"), refreshSignal, back,
+                        { open(UiDestination.EditCaller(number)) })
                 }
                 composable("settings") {
                     val mutation by settings.mutation.collectAsStateWithLifecycle()
                     SettingsOverviewScreen(summary, mutation, null, settings::refresh, settings::statistics, settings::overlay,
                         { open(UiDestination.Setting(it)) })
+                }
+                composable("leaves") {
+                    SettingsRoute(SettingsPage.LEAVES, api, settings, appearanceModel, refreshSignal, back, onCapability, onAppSettings)
+                }
+                composable("positions") {
+                    SettingsRoute(SettingsPage.POSITIONS, api, settings, appearanceModel, refreshSignal, back, onCapability, onAppSettings)
                 }
                 SettingsPage.entries.forEach { page -> composable(UiDestination.Setting(page).route) {
                     SettingsRoute(page, api, settings, appearanceModel, refreshSignal, back, onCapability, onAppSettings,

@@ -13,6 +13,48 @@ import org.junit.Assert.*
 import org.junit.Test
 
 class IncomingCallCoordinatorTest {
+    @Test fun recordingObservesCallsWhileStatisticsRemainDisabled() {
+        val engine = Engine(statisticsEnabled = false)
+        val observed = CompletableFuture<List<Any?>>()
+        val coordinator = IncomingCallCoordinator(engine, object : IncomingCallUiSink {
+            override fun show(request: IncomingCallUiRequest) = Unit
+        }, onIncoming = { session, number, at, account -> observed.complete(listOf(session, number, at, account)); Unit }) {}
+        try {
+            val session = coordinator.inspect("independent", "31234", 1000, "sim-a")
+            assertEquals(-1L, session.record.get(2, TimeUnit.SECONDS))
+            assertEquals(listOf("independent", "31234", 1000L, "sim-a"), observed.get(2, TimeUnit.SECONDS))
+            assertEquals(1L, engine.writing.count)
+            coordinator.complete(session, CallDecision.NORMAL_RINGING).get(2, TimeUnit.SECONDS)
+            assertTrue(engine.completed.isEmpty())
+        } finally { engine.release.countDown(); coordinator.close() }
+    }
+    @Test fun blockedRecordingObserverDoesNotBlockStatisticsWriter() {
+        val engine = Engine()
+        val entered = CountDownLatch(1); val releaseObserver = CountDownLatch(1)
+        val coordinator = IncomingCallCoordinator(engine, object : IncomingCallUiSink {
+            override fun show(request: IncomingCallUiRequest) = Unit
+        }, onIncoming = { _, _, _, _ -> entered.countDown(); check(releaseObserver.await(5, TimeUnit.SECONDS)) }) {}
+        try {
+            val session = coordinator.inspect("blocked-observer", "31234", 1000, null)
+            assertTrue(entered.await(2, TimeUnit.SECONDS))
+            engine.release.countDown()
+            assertEquals(42L, session.record.get(2, TimeUnit.SECONDS))
+            coordinator.complete(session, CallDecision.NORMAL_RINGING).get(2, TimeUnit.SECONDS)
+            assertEquals(1, engine.completed.size)
+        } finally { releaseObserver.countDown(); engine.release.countDown(); coordinator.close() }
+    }
+    @Test fun recordingObserverFailureDoesNotFailStatistics() {
+        val engine = Engine()
+        val coordinator = IncomingCallCoordinator(engine, object : IncomingCallUiSink {
+            override fun show(request: IncomingCallUiRequest) = Unit
+        }, onIncoming = { _, _, _, _ -> throw IOException("recording.storage_failed") }) {}
+        try {
+            val session = coordinator.inspect("failed-observer", "31234", 1000, null)
+            engine.release.countDown()
+            coordinator.complete(session, CallDecision.NORMAL_RINGING).get(2, TimeUnit.SECONDS)
+            assertEquals(listOf(42L to CallDecision.NORMAL_RINGING), engine.completed)
+        } finally { engine.release.countDown(); coordinator.close() }
+    }
     private val fact = ClassificationFact(false, WorkReason.REST_DAY, null, true, "UTC", 1, "v1", 0)
 
     private inner class Engine(

@@ -17,6 +17,9 @@ class CallringBackend(
     syncScheduler: SyncScheduler,
     clock: Clock = Clock.systemUTC(),
     dispatcher: CoroutineDispatcher = Dispatchers.IO,
+    calendarSource: CalendarSource = CalendarSource {
+        throw BackendFailure(ApiError(ErrorCode.SYSTEM_UNAVAILABLE, "calendar.sync_unavailable", retryable = true))
+    },
 ) : CallringUiApi {
     private val context =
         BackendContext(
@@ -28,6 +31,7 @@ class CallringBackend(
             syncScheduler,
             clock,
             dispatcher,
+            calendarSource,
         )
     override val home: HomeApi = createHomeApi(context)
     override val callers: CallersApi = createCallersApi(context)

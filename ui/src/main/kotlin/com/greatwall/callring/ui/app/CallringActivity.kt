@@ -154,16 +154,21 @@ class CallringActivity : ComponentActivity() {
             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
             val target = when (destination) {
                 UiDestination.Callers -> "callers"
+                UiDestination.RecordingArchives -> "recording-archives"
                 UiDestination.Settings -> "settings"
                 is UiDestination.Report -> "report"
+                is UiDestination.Archive -> "report"
                 is UiDestination.EditCaller -> "edit"
                 UiDestination.Lookup -> "lookup"
+                UiDestination.Leaves -> "leaves"
+                UiDestination.Positions -> "positions"
                 is UiDestination.Setting -> "setting"
                 UiDestination.Home -> "home"
             }
             putExtra(EXTRA_TARGET, target)
             when (destination) {
                 is UiDestination.Report -> putExtra(EXTRA_NUMBER, destination.number)
+                is UiDestination.Archive -> putExtra(EXTRA_NUMBER, destination.number)
                 is UiDestination.EditCaller -> putExtra(EXTRA_NUMBER, destination.number)
                 is UiDestination.Setting -> putExtra(EXTRA_PAGE, destination.page.name)
                 else -> Unit

@@ -11,6 +11,7 @@ internal class SettingsStore(private val db: SQLiteDatabase) {
     private val intervalIds = mutableListOf<Long>()
     private val intervals = TableSnapshot(db, "statistics_intervals", "id")
     private var initialQuiet = QuietSettings(QuietMode.OFF, false, emptyMap())
+    private var initialLastQuietMode = QuietMode.NON_WORK
     private var initialScore = ScoreSettings(5, 2, 10, 30)
     private var initialPosition: Long? = null
     private var initialOverlay = false
@@ -27,6 +28,10 @@ internal class SettingsStore(private val db: SQLiteDatabase) {
                 setting("all_numbers", "0") == "1",
                 WorkConfigCodec.weekly(JSONObject(setting("quiet_windows", "{}"))),
             )
+        state.lastQuietMode = if (state.quiet.mode != QuietMode.OFF) state.quiet.mode else {
+            runCatching { QuietMode.valueOf(setting("last_quiet_mode", QuietMode.NON_WORK.name)) }
+                .getOrDefault(QuietMode.NON_WORK).takeUnless { it == QuietMode.OFF } ?: QuietMode.NON_WORK
+        }
         state.score =
             ScoreSettings(
                 setting("off_weight", "5").toInt(),
@@ -45,6 +50,7 @@ internal class SettingsStore(private val db: SQLiteDatabase) {
             }
         }
         initialQuiet = state.quiet
+        initialLastQuietMode = state.lastQuietMode
         initialScore = state.score
         initialPosition = state.myPositionId
         initialOverlay = state.overlayEnabled
@@ -63,8 +69,10 @@ internal class SettingsStore(private val db: SQLiteDatabase) {
             )
         if (state.quiet.mode != initialQuiet.mode) {
             put("quiet_mode", state.quiet.mode.name)
-            if (state.quiet.mode != QuietMode.OFF) put("last_quiet_mode", state.quiet.mode.name)
         }
+        val rememberedMode = state.quiet.mode.takeUnless { it == QuietMode.OFF } ?: state.lastQuietMode
+        if (rememberedMode != initialLastQuietMode || state.quiet.mode != initialQuiet.mode)
+            put("last_quiet_mode", rememberedMode.name)
         if (state.quiet.allNumbers != initialQuiet.allNumbers)
             put("all_numbers", if (state.quiet.allNumbers) "1" else "0")
         if (state.quiet.weeklyWindows != initialQuiet.weeklyWindows)
