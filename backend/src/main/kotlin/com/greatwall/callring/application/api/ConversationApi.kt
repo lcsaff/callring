@@ -15,12 +15,20 @@ interface ConversationApi {
     val state: StateFlow<ConversationState>
     val foreground: ForegroundActionApi
     suspend fun send(expectedSessionId: String, text: String): ApiResult<Unit>
+    suspend fun sendTo(expectedSessionId: String, text: String, disclosedTarget: AiConnectionView): ApiResult<Unit> = aiUnavailable()
     suspend fun stop(expectedSessionId: String): ApiResult<Unit>
     suspend fun newSession(expectedSessionId: String): ApiResult<Unit>
 }
 enum class ForegroundActionKind { CAPABILITY, APP_SETTINGS, PIN_WIDGET, TEST_OVERLAY, PREVIEW_CALL, IMPORT_AUDIO, IMPORT_RECORDING, IMPORT_CALENDAR, SELECT_FOLDER, EXPORT_CSV, CONFIRM, CREDENTIAL, COPY_CONNECTION, TEST_CONNECTION }
 enum class ForegroundResultStatus { VERIFIED, LAUNCHED, CANCELLED, DENIED, UNAVAILABLE, STALE, EXPIRED, UNKNOWN }
-data class ForegroundTicket(val requestId: String, val sessionId: String, val turnId: String, val toolCallId: String, val generation: Long, val kind: ForegroundActionKind, val parameters: AiJson.Obj, val createdAt: Long, val expiresAt: Long, val launched: Boolean = false, val commandContext: CommandContext? = null)
+sealed class ConfirmationTarget {
+    data class Position(val id: Long, val name: String, val level: Int, val active: Boolean) : ConfirmationTarget()
+    data class Leave(val id: Long, val start: Long, val end: Long, val note: String) : ConfirmationTarget()
+    data class Adoption(val previousName: String, val previousOrganization: String, val name: String?, val organization: String?)
+    data class Recording(val id: Long, val number: String, val startedAt: Long, val generation: Long, val adoption: Adoption? = null) : ConfirmationTarget()
+    data class Connection(val slot: AiSlot, val connection: AiConnectionView) : ConfirmationTarget()
+}
+data class ForegroundTicket(val requestId: String, val sessionId: String, val turnId: String, val toolCallId: String, val generation: Long, val kind: ForegroundActionKind, val parameters: AiJson.Obj, val createdAt: Long, val expiresAt: Long, val launched: Boolean = false, val commandContext: CommandContext? = null, val confirmation: ConfirmationTarget? = null)
 data class ForegroundHostResult(val status: ForegroundResultStatus, val document: DocumentRef? = null, val error: ApiError? = null)
 interface ForegroundActionApi {
     val pending: StateFlow<ForegroundTicket?>

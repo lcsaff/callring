@@ -176,6 +176,42 @@ class ToolBusinessIntegrationTest {
         }
         assertEquals(72,covered.size)
     }
+    @Test fun realConfirmationTargetsCannotReuseCancelledOrChangedApproval() = runBlocking {
+        provider()
+        for(index in listOf(20,32,53,57,63)) Fixture(300+index).use { fixture ->
+            fixture.seed()
+            val root = fixture.api()
+            val executor = ToolExecutor({ root },fixture.coordinator,fixture.foreground,fixture.resources)
+            val definition = executor.registry.definitions.single { it.index == index }
+            for(changed in listOf(false,true)) {
+                val command = CommandContext(java.util.UUID.randomUUID().toString(),fixture.coordinator.capture(),1) { true }
+                val result = async { executor.execute(ConversationToolCall("call",definition.name,parseConversationJson(arguments(index,fixture.recordingId)) as AiJson.Obj),ToolExecutionContext("s","t",1,command)) }
+                val ticket = withTimeout(5000) { fixture.foreground.pending.filterNotNull().first() }
+                when(val target = ticket.confirmation) {
+                    is ConfirmationTarget.Position -> { assertEquals(2L,target.id); assertEquals("Role2",target.name) }
+                    is ConfirmationTarget.Leave -> { assertEquals(1L,target.id); assertEquals("note",target.note) }
+                    is ConfirmationTarget.Connection -> { assertEquals("https://example.com/v1",target.connection.url); assertEquals(AiSlot.ANALYSIS,target.slot) }
+                    is ConfirmationTarget.Recording -> { assertEquals(fixture.recordingId,target.id); assertEquals("31234",target.number); if(index == 63) assertEquals("self",target.adoption!!.name) }
+                    null -> fail("Missing target $index")
+                }
+                val token = fixture.foreground.attachHost()
+                assertTrue(fixture.foreground.beginLaunch(ticket.requestId,token))
+                if(changed) when(index) {
+                    20 -> fixture.backend.settings.savePosition(SavePosition(2,"changed-role",2,true)).requiredValue()
+                    32 -> fixture.backend.settings.saveLeave(SaveLeave(1,LeavePeriod.Timed(now+1000,now+2000),"changed-note")).requiredValue()
+                    53 -> fixture.runtime.aiSettings.patchAi(fixture.runtime.aiSettings.getAiView().requiredValue(),AiSettingsPatch(analysis = ConnectionPatch(model = PatchField.Set("changed-model")))).requiredValue()
+                    else -> { val old = fixture.recordingStore.get(fixture.recordingId)!!; assertTrue(fixture.recordingStore.compareAndSet(old.callId,old.generation,old.copy(generation = old.generation+1,analysis = CallAnalysis(name = "changed-self")))) }
+                }
+                fixture.foreground.deliver(ticket.requestId,ForegroundHostResult(if(changed) ForegroundResultStatus.VERIFIED else ForegroundResultStatus.CANCELLED))
+                assertEquals(if(changed) ToolStatus.FAILED else ToolStatus.CANCELLED,withTimeout(5000) { result.await() }.status)
+                assertFalse(fixture.recordingStore.isDeleted(fixture.recordingId))
+                assertEquals("old",fixture.backend.callers.getEditor("31234").requiredValue().draft.name)
+                assertEquals(0,fixture.client.tests)
+                assertTrue(fixture.backend.settings.getPositions().requiredValue().options.any { it.id == 2L })
+                assertTrue(fixture.backend.settings.getLeaves().requiredValue().any { it.id == 1L })
+            }
+        }
+    }
     private fun arguments(index: Int, recordingId: Long): String = when(index) {
         1 -> """{"raw":"31234"}"""
         3 -> """{"text":"31234","page":{"pageSize":200}}"""

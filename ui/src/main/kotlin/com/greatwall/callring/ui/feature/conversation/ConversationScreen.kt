@@ -18,9 +18,12 @@ class ConversationViewModel(private val api: CallringUiApi, testScope: Coroutine
     val state = api.conversation.state
     val input = MutableStateFlow("")
     val localError = MutableStateFlow<ApiError?>(null)
-    val target = MutableStateFlow("")
-    init { scope.launch { api.changes.observe().collect { when(val result = api.aiSettings.getAiView()) { is ApiResult.Success -> target.value = result.value.analysis.let { "${it.url} · ${it.model}" }; is ApiResult.Failure -> localError.value = result.error } } } }
-    fun send() { val text = input.value; scope.launch { when(val result = api.conversation.send(state.value.sessionId,text)) { is ApiResult.Success -> { input.value = ""; localError.value = null }; is ApiResult.Failure -> localError.value = result.error } } }
+    val destination = MutableStateFlow<AiConnectionView?>(null)
+    init { scope.launch { api.changes.observe().collect { when(val result = api.aiSettings.getAiView()) {
+        is ApiResult.Success -> destination.value = result.value.analysis
+        is ApiResult.Failure -> { destination.value = null; localError.value = result.error }
+    } } } }
+    fun send(disclosed: AiConnectionView?) { val text = input.value; disclosed ?: return; scope.launch { when(val result = api.conversation.sendTo(state.value.sessionId,text,disclosed)) { is ApiResult.Success -> { input.value = ""; localError.value = null }; is ApiResult.Failure -> localError.value = result.error } } }
     fun stop() { scope.launch { api.conversation.stop(state.value.sessionId) } }
     fun newSession() { scope.launch { api.conversation.newSession(state.value.sessionId) } }
 }
@@ -29,12 +32,13 @@ class ConversationViewModel(private val api: CallringUiApi, testScope: Coroutine
     ScreenFrame("AI 沟通", actions = { TextButton(onClick = { confirmNew = true }) { Text("新对话") } }) {
         Column(Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Text("发送会将应用完整业务文字、配置和运行状态交给已配置的分析服务；沟通不发送音频，密钥仅提供配置状态。可能产生服务费用。")
-            Text("服务：${state.target.ifBlank { target.ifBlank { "请先配置 AI 设置" } }}")
+            Text("服务：${target.ifBlank { "请先配置 AI 设置" }}")
+            if(state.busy && state.target.isNotBlank()) Text("本轮已发送至：${state.target}")
             Text(phaseLabel(state.phase), style = MaterialTheme.typography.labelLarge)
             (state.error ?: localError)?.let { Text(aiErrorText(it), color = MaterialTheme.colorScheme.error) }
             LazyColumn(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 itemsIndexed(state.messages) { _, message ->
-                    if(message.text.isNotEmpty()) OutlinedCard(Modifier.fillMaxWidth()) { Column(Modifier.padding(12.dp)) { Text(if(message.role == "user") "你" else "AI", style = MaterialTheme.typography.labelMedium); Text(message.text) } }
+                    if(message.text.isNotEmpty()) OutlinedCard(Modifier.fillMaxWidth()) { Column(Modifier.padding(12.dp)) { Text(if(message.role == "user") "你" else if(message.toolCalls.isNotEmpty()) "AI 操作建议（未经验证，以操作回执为准）" else "AI", style = MaterialTheme.typography.labelMedium); Text(message.text) } }
                     message.receipts.forEach { ReceiptCard(it) }
                 }
                 val pairedIds = state.messages.flatMap { it.receipts }.map { it.operationId }.toSet()
@@ -42,7 +46,7 @@ class ConversationViewModel(private val api: CallringUiApi, testScope: Coroutine
             }
             if(state.busy) Row { LinearProgressIndicator(Modifier.weight(1f)); TextButton(onClick = onStop) { Text("停止") } }
             OutlinedTextField(input, onInput, enabled = !state.busy, label = { Text("说说你想了解或处理什么") }, modifier = Modifier.fillMaxWidth(), maxLines = 4)
-            Button(onClick = onSend, enabled = !state.busy && input.isNotBlank(), modifier = Modifier.fillMaxWidth()) { Text("发送") }
+            Button(onClick = onSend, enabled = !state.busy && input.isNotBlank() && target.isNotBlank(), modifier = Modifier.fillMaxWidth()) { Text("发送") }
         }
     }
     if(confirmNew) AlertDialog(onDismissRequest = { confirmNew = false }, title = { Text("开始新对话？") }, text = { Text("将停止当前请求并清空本进程对话。已提交 ${state.messages.flatMap { it.receipts }.plus(state.receipts).distinctBy { it.operationId }.count { it.status == ToolStatus.COMMITTED }} 项操作会保留，不会撤销。进程退出后也不会保留聊天。") }, confirmButton = { TextButton(onClick = { confirmNew = false; onNew() }) { Text("开始新对话") } }, dismissButton = { TextButton(onClick = { confirmNew = false }) { Text("取消") } })

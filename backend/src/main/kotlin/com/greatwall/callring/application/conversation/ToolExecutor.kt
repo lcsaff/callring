@@ -25,8 +25,8 @@ class ToolExecutor(
             }
             val bound = api().commandApi(scope.command)
             var status = if(definition.write) ToolStatus.COMMITTED else ToolStatus.READ
-            suspend fun action(kind: ForegroundActionKind, parameters: AiJson.Obj = call.arguments): ForegroundHostResult {
-                val result = foreground.request(scope.sessionId, scope.turnId, call.id, scope.generation, kind, parameters, scope.command, scope.command.active)
+            suspend fun action(kind: ForegroundActionKind, parameters: AiJson.Obj = call.arguments, confirmation: ConfirmationTarget? = null): ForegroundHostResult {
+                val result = foreground.request(scope.sessionId, scope.turnId, call.id, scope.generation, kind, parameters, scope.command, confirmation, scope.command.active)
                 result.error?.let { throw BackendFailure(it) }
                 when (result.status) {
                     ForegroundResultStatus.CANCELLED -> throw BackendFailure(ApiError(ErrorCode.SYSTEM_RESTRICTED, "action.cancelled"))
@@ -45,7 +45,12 @@ class ToolExecutor(
                 coordinator.guard(scope.command) {}
                 return result.document ?: throw BackendFailure(ApiError(ErrorCode.IO_FAILURE, "action.document_missing"))
             }
-            suspend fun confirm() { action(ForegroundActionKind.CONFIRM, AiJson.Obj(call.arguments.fields + ("operation" to aiString(call.name)))); coordinator.guard(scope.command) {} }
+            suspend fun confirm() {
+                val target = confirmationTarget(bound,definition.index,call.arguments)
+                coordinator.guard(scope.command) {}
+                action(ForegroundActionKind.CONFIRM, AiJson.Obj(call.arguments.fields + ("operation" to aiString(call.name))),target)
+                coordinator.guard(scope.command) {}
+            }
             val a = call.arguments
             val value: Any? = when (definition.index) {
                 1 -> bound.checkNumber(a.s("raw"))

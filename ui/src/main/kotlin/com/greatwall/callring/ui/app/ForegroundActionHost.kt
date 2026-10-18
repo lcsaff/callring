@@ -14,6 +14,10 @@ import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.contract.*
 import androidx.compose.runtime.*
 import androidx.compose.material3.*
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.ui.Modifier
 import androidx.lifecycle.*
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.greatwall.callring.application.api.*
@@ -143,7 +147,7 @@ class ForegroundActionHost(private val activity: ComponentActivity, private val 
         val bound = remember(current.requestId) { current.commandContext?.let(api::commandApi) ?: api }
         fun finish(saved: Boolean) { api.conversation.foreground.deliver(current.requestId,ForegroundHostResult(if(saved) ForegroundResultStatus.VERIFIED else ForegroundResultStatus.CANCELLED)) }
         when(current.kind) {
-            ForegroundActionKind.CREDENTIAL -> CredentialDialog(bound.aiSettings,AiSlot.valueOf(current.parameters["slot"].string()),::finish)
+            ForegroundActionKind.CREDENTIAL -> CredentialDialog(bound.aiSettings,AiSlot.valueOf(current.parameters["slot"].string()),onFinished = ::finish)
             ForegroundActionKind.COPY_CONNECTION -> CopyConnectionDialog(bound.aiSettings,AiSlot.valueOf(current.parameters["from"].string()),AiSlot.valueOf(current.parameters["to"].string()),::finish)
             ForegroundActionKind.CONFIRM, ForegroundActionKind.TEST_CONNECTION -> {
                 val operation = (current.parameters["operation"] as? AiJson.Str)?.value.orEmpty()
@@ -155,9 +159,34 @@ class ForegroundActionHost(private val activity: ComponentActivity, private val 
                     "settings_deleteLeave" -> "将删除所选请假记录并重新计算受影响的业务数据。"
                     else -> "请核对当前操作，确认后执行；取消时不会执行依赖操作。"
                 }
-                AlertDialog(onDismissRequest = { finish(false) },title = { Text("确认操作？") },text = { Text(message) },confirmButton = { TextButton(onClick = { finish(true) }) { Text("确认") } },dismissButton = { TextButton(onClick = { finish(false) }) { Text("取消") } })
+                AlertDialog(onDismissRequest = { finish(false) },title = { Text("确认操作？") },text = {
+                    Column(Modifier.verticalScroll(rememberScrollState())) {
+                        Text(message)
+                        current.confirmation?.let { ConfirmationSummary(it) } ?: Text("无法核对实际目标，请取消并重新发起。")
+                    }
+                },confirmButton = { TextButton(enabled = current.confirmation != null,onClick = { finish(true) }) { Text("确认") } },dismissButton = { TextButton(onClick = { finish(false) }) { Text("取消") } })
             }
             else -> Unit
+        }
+    }
+}
+
+@Composable internal fun ConfirmationSummary(target: ConfirmationTarget) {
+    fun time(at: Long) = java.time.Instant.ofEpochMilli(at).atZone(java.time.ZoneId.systemDefault()).toString()
+    when(target) {
+        is ConfirmationTarget.Position -> { Text("职位 #${target.id}：${target.name}"); Text("级别 ${target.level} · ${if(target.active) "启用" else "停用"}") }
+        is ConfirmationTarget.Leave -> { Text("请假 #${target.id}"); Text("${time(target.start)} 至 ${time(target.end)}"); Text("备注：${target.note}") }
+        is ConfirmationTarget.Recording -> {
+            Text("录音 #${target.id}：${target.number}"); Text("来电时间：${time(target.startedAt)}")
+            target.adoption?.let {
+                Text(if(it.name == null) "姓名保持：${it.previousName}" else "姓名：${it.previousName} → ${it.name}")
+                Text(if(it.organization == null) "单位保持：${it.previousOrganization}" else "单位：${it.previousOrganization} → ${it.organization}")
+            }
+        }
+        is ConfirmationTarget.Connection -> {
+            Text(if(target.slot == AiSlot.ANALYSIS) "内容分析连接" else "录音转写连接")
+            Text("${target.connection.protocol} · ${target.connection.url}"); Text("模型：${target.connection.model}")
+            Text(if(target.connection.keyConfigured) "密钥已配置" else "密钥未配置")
         }
     }
 }

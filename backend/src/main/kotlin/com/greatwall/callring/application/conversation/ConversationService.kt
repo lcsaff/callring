@@ -41,7 +41,14 @@ class ConversationService(
                 state.value = state.value.copy(phase = if(pending != null) ConversationPhase.WAITING_FOREGROUND else ConversationPhase.EXECUTING) }
         } }
     }
-    override suspend fun send(expectedSessionId: String, text: String): ApiResult<Unit> {
+    override suspend fun send(expectedSessionId: String, text: String) = enqueue(expectedSessionId,text,null)
+    override suspend fun sendTo(expectedSessionId: String, text: String, disclosedTarget: AiConnectionView): ApiResult<Unit> {
+        val current = runCatching { settings().analysis }.getOrElse { return failed(ErrorCode.STORAGE_FAILURE,"ai.settings_storage_failed") }
+        if(!matches(disclosedTarget,current)) return failed(ErrorCode.CONFLICT,"ai.connection_changed")
+        return enqueue(expectedSessionId,text,disclosedTarget)
+    }
+    private fun matches(target: AiConnectionView, connection: AiConnection) = target.protocol == connection.protocol && target.url == connection.url && target.model == connection.model
+    private fun enqueue(expectedSessionId: String, text: String, disclosedTarget: AiConnectionView?): ApiResult<Unit> {
         if(text.isBlank() || text.toByteArray(Charsets.UTF_8).size > 32768) return failed(ErrorCode.VALIDATION, "ai.message_invalid")
         synchronized(lock) {
             if(expectedSessionId != state.value.sessionId) return failed(ErrorCode.CONFLICT, "ai.session_changed")
@@ -49,7 +56,7 @@ class ConversationService(
             val token = generation.incrementAndGet()
             connectionChanged = false
             state.value = state.value.copy(phase = ConversationPhase.CAPTURING, error = null)
-            turnJob = scope.launch(start = CoroutineStart.LAZY) { runTurn(expectedSessionId, token, text) }
+            turnJob = scope.launch(start = CoroutineStart.LAZY) { runTurn(expectedSessionId, token, text, disclosedTarget) }
             turnJob!!.start()
         }
         return ApiResult.Success(Unit)
@@ -57,7 +64,7 @@ class ConversationService(
     private fun publish(phase: ConversationPhase, error: ApiError? = null, receipts: List<ToolReceipt>? = null, estimate: Long? = null) = synchronized(lock) {
         state.value = state.value.copy(phase = phase, messages = history.toList(), receipts = receipts ?: state.value.receipts, error = error, budgetBytes = estimate ?: state.value.budgetBytes)
     }
-    private suspend fun runTurn(session: String, token: Long, text: String) {
+    private suspend fun runTurn(session: String, token: Long, text: String, disclosedTarget: AiConnectionView?) {
         val turnId = UUID.randomUUID().toString()
         val ledger = linkedMapOf<String, Pair<String, ToolReceipt>>()
         val turnReceipts = mutableListOf<ToolReceipt>()
@@ -68,6 +75,7 @@ class ConversationService(
         var activeRedactor: SecretRedactor? = null
         try {
             val configuration = settings()
+            if(disclosedTarget != null && !matches(disclosedTarget,configuration.analysis)) throw BackendFailure(ApiError(ErrorCode.CONFLICT,"ai.connection_changed"))
             configuration.analysis.validate()
             val currentFingerprint = connectionFingerprint(configuration.analysis)
             if(fingerprint.isNotEmpty() && fingerprint != currentFingerprint) synchronized(lock) { history.clear() }

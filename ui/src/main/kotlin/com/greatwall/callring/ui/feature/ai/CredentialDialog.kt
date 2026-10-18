@@ -15,7 +15,9 @@ import com.greatwall.callring.application.api.*
 import kotlinx.coroutines.launch
 
 /** Plaintext exists only in this local, unsaved composition. */
-@Composable fun CredentialDialog(api: AiSettingsApi, slot: AiSlot, onFinished: (Boolean) -> Unit) {
+data class CredentialDraft(val slot: AiSlot, val base: AiSettingsView, val connection: ConnectionPatch)
+
+@Composable fun CredentialDialog(api: AiSettingsApi, slot: AiSlot, initial: CredentialDraft? = null, onFinished: (Boolean) -> Unit) {
     var base by remember { mutableStateOf<AiSettingsView?>(null) }
     var recording by remember { mutableStateOf<RecordingSettingsView?>(null) }
     var error by remember { mutableStateOf<ApiError?>(null) }
@@ -26,7 +28,8 @@ import kotlinx.coroutines.launch
     var disableAutomatic by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
     LaunchedEffect(api) {
-        when(val result = api.getAiView()) { is ApiResult.Success -> base = result.value; is ApiResult.Failure -> error = result.error }
+        if(initial != null) base = initial.base
+        else when(val result = api.getAiView()) { is ApiResult.Success -> base = result.value; is ApiResult.Failure -> error = result.error }
         when(val result = api.getRecordingView()) { is ApiResult.Success -> recording = result.value; is ApiResult.Failure -> error = result.error }
     }
     fun cancel() { if(!busy) { key = ""; onFinished(false) } }
@@ -47,7 +50,7 @@ import kotlinx.coroutines.launch
     }, confirmButton = { TextButton(enabled = !busy && base != null && recording != null && (choice != 1 || key.isNotBlank()), onClick = {
         val aiBase = base ?: return@TextButton; val recBase = recording ?: return@TextButton
         val secret = when(choice) { 1 -> LocalSecretChange.Replace(key); 2 -> LocalSecretChange.Clear; else -> LocalSecretChange.Keep }
-        val connection = if(choice == 2 && clearConnection) ConnectionPatch(url = PatchField.Set(""), model = PatchField.Set("")) else ConnectionPatch()
+        val connection = if(choice == 2 && clearConnection) ConnectionPatch(url = PatchField.Set(""), model = PatchField.Set("")) else initial?.connection ?: ConnectionPatch()
         val patch = if(slot == AiSlot.ANALYSIS) AiSettingsPatch(analysis = connection) else AiSettingsPatch(transcription = connection)
         busy = true
         scope.launch {

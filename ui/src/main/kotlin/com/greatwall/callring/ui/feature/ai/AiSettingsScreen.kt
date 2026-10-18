@@ -63,6 +63,7 @@ fun aiErrorText(error: ApiError): String = when(error.message) {
     "action.denied" -> "系统授权或本地确认被拒绝，依赖操作未执行。"
     "action.stale", "action.expired" -> "系统请求已失效或过期，旧结果不会执行，请重新发起。"
     "action.unavailable" -> "系统没有提供该操作入口。"
+    "action.target_not_found" -> "所选目标已不存在，操作未执行。请重新读取后选择。"
     "ai.invalid_tool_response", "ai.protocol_unsupported" -> "服务回复不支持完整工具调用，本批操作未执行。请检查协议与模型。"
     "ai.authentication_failed" -> "服务认证失败，请在本地检查密钥及地址。"
     "ai.rate_limited" -> "服务限流，请稍后手动重试。"

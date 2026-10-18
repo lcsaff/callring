@@ -16,6 +16,26 @@ class AiSettingsViewModel(private val api: CallringUiApi, testScope: CoroutineSc
     init { scope.launch { api.changes.observe().collect { refresh() } } }
     fun refresh() = loader.load(onSuccess = { if(!dirty.value) { baseline = it; draft.value = it } }) { api.aiSettings.getAiView() }
     fun edit(value: AiSettingsView) { if(!mutation.value.busy) { draft.value = value; dirty.value = value != baseline } }
+    fun credentialInput(slot: AiSlot): CredentialDraft? {
+        val base = baseline ?: return null; val value = draft.value ?: return null
+        val before = if(slot == AiSlot.ANALYSIS) base.analysis else base.transcription
+        val after = if(slot == AiSlot.ANALYSIS) value.analysis else value.transcription
+        fun <T> change(a: T, b: T): PatchField<T> = if(a == b) PatchField.Keep else PatchField.Set(b)
+        return CredentialDraft(slot,base,ConnectionPatch(change(before.protocol,after.protocol),change(before.url,after.url),change(before.model,after.model)))
+    }
+    fun credentialSaved(slot: AiSlot) { scope.launch {
+        when(val result = api.aiSettings.getAiView()) {
+            is ApiResult.Failure -> refresh()
+            is ApiResult.Success -> {
+                val saved = result.value
+                fun AiSettingsView.rebase() = if(slot == AiSlot.ANALYSIS) copy(analysis = saved.analysis, revision = saved.revision) else copy(transcription = saved.transcription, revision = saved.revision)
+                baseline = baseline?.rebase() ?: saved
+                draft.value = draft.value?.rebase() ?: saved
+                dirty.value = draft.value != baseline
+                refresh()
+            }
+        }
+    } }
     fun save() {
         val base = baseline ?: return; val value = draft.value ?: return
         fun <T> change(a: T, b: T): PatchField<T> = if(a == b) PatchField.Keep else PatchField.Set(b)

@@ -28,7 +28,7 @@ class AndroidRecordingRuntime(
     val store by lazy { storeFactory?.invoke() ?: AndroidRecordingStore(context, namespace, coordinator = coordinator) }
     val aiSettings by lazy { AiSettingsService(store, coordinator,
         { context.checkSelfPermission(android.Manifest.permission.RECORD_AUDIO) == android.content.pm.PackageManager.PERMISSION_GRANTED },
-        { connection, transcription -> client.test(connection, transcription) }, afterSave = { if (!it.recordingEnabled) stopCapture() }) }
+        { connection, transcription -> client.test(connection, transcription) }, afterSave = { if (!it.recordingEnabled) stopCapture() }, folderView = sources::describe) }
     private fun stopCapture() { context.stopService(android.content.Intent(context, com.greatwall.callring.CallCaptureService::class.java)) }
     val directory = File(context.filesDir, namespace + "_recordings")
     private val sources = SystemRecordingSource(context.contentResolver)

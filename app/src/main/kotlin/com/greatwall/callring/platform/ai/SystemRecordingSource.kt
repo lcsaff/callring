@@ -4,11 +4,30 @@ import android.content.ContentResolver
 import android.content.Intent
 import android.net.Uri
 import android.provider.DocumentsContract
-import com.greatwall.callring.application.api.RecordingFile
+import com.greatwall.callring.application.api.*
 import com.greatwall.callring.application.conversation.DirectoryEnumerator
 import com.greatwall.callring.application.conversation.DirectoryNode
 
-class SystemRecordingSource(private val resolver: ContentResolver) {
+class SystemRecordingSource(private val resolver: ContentResolver, private val readGranted: (Uri) -> Boolean = { uri -> resolver.persistedUriPermissions.any { it.uri == uri && it.isReadPermission } }) {
+    fun describe(folder: String?): RecordingFolderView {
+        if(folder == null) return RecordingFolderView(null,AccessState.NOT_REQUIRED)
+        return try {
+            val root = Uri.parse(folder)
+            if(root.scheme != "content" || !DocumentsContract.isTreeUri(root)) return RecordingFolderView(null,AccessState.UNKNOWN)
+            if(!readGranted(root)) return RecordingFolderView(null,AccessState.DENIED)
+            val document = DocumentsContract.buildDocumentUriUsingTree(root,DocumentsContract.getTreeDocumentId(root))
+            val cursor = resolver.query(document,arrayOf(DocumentsContract.Document.COLUMN_DISPLAY_NAME),null,null,null)
+                ?: return RecordingFolderView(null,AccessState.UNKNOWN)
+            cursor.use { c ->
+                if(!c.moveToFirst() || c.isNull(0)) RecordingFolderView(null,AccessState.UNKNOWN)
+                else {
+                    val name = c.getString(0)?.takeIf { it.isNotBlank() && it.length <= 512 && !it.contains('/') && !it.contains('\\') && !it.contains("://") }
+                    RecordingFolderView(name,AccessState.GRANTED)
+                }
+            }
+        } catch(_: SecurityException) { RecordingFolderView(null,AccessState.DENIED) }
+        catch(_: Exception) { RecordingFolderView(null,AccessState.UNKNOWN) }
+    }
     fun authorize(raw: String) {
         val uri = Uri.parse(raw)
         require(uri.scheme == "content" && DocumentsContract.isTreeUri(uri))

@@ -15,7 +15,8 @@ data class ConversationBudget(val context: Long = 49152, val output: Long = 4096
 }
 data class AiConnectionView(val protocol: AiProtocol, val url: String, val model: String, val keyConfigured: Boolean)
 data class AiSettingsView(val analysis: AiConnectionView, val transcription: AiConnectionView, val budget: ConversationBudget, val revision: Long)
-data class RecordingSettingsView(val recordingEnabled: Boolean, val automaticAnalysis: Boolean, val captureMode: CaptureMode, val folderConfigured: Boolean, val revision: Long)
+data class RecordingFolderView(val displayName: String?, val access: AccessState)
+data class RecordingSettingsView(val recordingEnabled: Boolean, val automaticAnalysis: Boolean, val captureMode: CaptureMode, val folderConfigured: Boolean, val revision: Long, val folderDisplayName: String? = null, val folderAccess: AccessState = if(folderConfigured) AccessState.UNKNOWN else AccessState.NOT_REQUIRED)
 data class ConnectionPatch(val protocol: PatchField<AiProtocol> = PatchField.Keep, val url: PatchField<String> = PatchField.Keep, val model: PatchField<String> = PatchField.Keep)
 data class AiSettingsPatch(val analysis: ConnectionPatch = ConnectionPatch(), val transcription: ConnectionPatch = ConnectionPatch(), val budget: PatchField<ConversationBudget> = PatchField.Keep)
 data class RecordingSettingsPatch(val recordingEnabled: PatchField<Boolean> = PatchField.Keep, val automaticAnalysis: PatchField<Boolean> = PatchField.Keep, val captureMode: PatchField<CaptureMode> = PatchField.Keep)

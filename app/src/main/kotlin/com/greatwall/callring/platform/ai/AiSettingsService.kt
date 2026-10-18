@@ -12,13 +12,17 @@ class AiSettingsService(
     private val testConnection: (AiConnection, Boolean) -> Unit,
     private val command: CommandContext? = null,
     private val afterSave: (RecordingSettings) -> Unit = {},
+    private val folderView: (String?) -> RecordingFolderView = { RecordingFolderView(null,if(it == null) AccessState.NOT_REQUIRED else AccessState.UNKNOWN) },
 ) : AiSettingsApi {
-    fun bound(command: CommandContext) = AiSettingsService(store, coordinator, microphoneGranted, testConnection, command, afterSave)
+    fun bound(command: CommandContext) = AiSettingsService(store, coordinator, microphoneGranted, testConnection, command, afterSave, folderView)
     private fun conflict(): Nothing = throw BackendFailure(ApiError(ErrorCode.CONFLICT, "settings.conflict", retryable = true))
     private fun revision(key: String) = coordinator.capture().values.getValue(key)
     private fun AiConnection.view() = AiConnectionView(protocol, url, model, apiKey.isNotEmpty())
     private fun RecordingSettings.aiView() = AiSettingsView(analysis.view(), transcription.view(), conversationBudget, revision("aiConfig"))
-    private fun RecordingSettings.recordingView() = RecordingSettingsView(recordingEnabled, automaticAnalysis, captureMode, systemFolder != null, revision("recordingConfig"))
+    private fun RecordingSettings.recordingView(version: Long = revision("recordingConfig")): RecordingSettingsView {
+        val folder = folderView(systemFolder)
+        return RecordingSettingsView(recordingEnabled, automaticAnalysis, captureMode, systemFolder != null, version,folder.displayName,folder.access)
+    }
     private suspend fun <T> result(block: () -> T): ApiResult<T> = withContext(Dispatchers.IO) {
         try { ApiResult.Success(block()) }
         catch (e: CancellationException) { throw e }
@@ -26,7 +30,10 @@ class AiSettingsService(
         catch (_: IllegalArgumentException) { ApiResult.Failure(ApiError(ErrorCode.VALIDATION, "ai.invalid_settings")) }
         catch (_: Exception) { ApiResult.Failure(ApiError(ErrorCode.STORAGE_FAILURE, "ai.settings_storage_failed")) }
     }
-    override suspend fun getRecordingView() = result { coordinator.guard { store.settings().recordingView() } }
+    override suspend fun getRecordingView() = result {
+        val (settings,version) = coordinator.guard { store.settings() to revision("recordingConfig") }
+        settings.recordingView(version)
+    }
     override suspend fun getAiView() = result { coordinator.guard { store.settings().aiView() } }
     private fun <T> field(base: T, current: T, patch: PatchField<T>): T = when(patch) {
         PatchField.Keep -> current

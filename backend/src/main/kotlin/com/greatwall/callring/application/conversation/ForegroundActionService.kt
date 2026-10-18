@@ -39,14 +39,14 @@ class ForegroundActionService(private val clock: Clock = Clock.systemUTC(), priv
         completion = null
         valid = { false }
     }
-    suspend fun request(session: String, turn: String, tool: String, generation: Long, kind: ForegroundActionKind, parameters: AiJson.Obj, commandContext: CommandContext? = null, active: () -> Boolean): ForegroundHostResult {
+    suspend fun request(session: String, turn: String, tool: String, generation: Long, kind: ForegroundActionKind, parameters: AiJson.Obj, commandContext: CommandContext? = null, confirmation: ConfirmationTarget? = null, active: () -> Boolean): ForegroundHostResult {
         val deferred = CompletableDeferred<ForegroundHostResult>()
         val ticket = synchronized(lock) {
             check(completion == null) { "action.busy" }
             valid = active
             completion = deferred
             val now = clock.millis()
-            ForegroundTicket(UUID.randomUUID().toString(), session, turn, tool, generation, kind, parameters, now, now + 600000, commandContext = commandContext).also { pending.value = it }
+            ForegroundTicket(UUID.randomUUID().toString(), session, turn, tool, generation, kind, parameters, now, now + 600000, commandContext = commandContext, confirmation = confirmation).also { pending.value = it }
         }
         try { return withTimeoutOrNull(600000) { deferred.await() } ?: ForegroundHostResult(ForegroundResultStatus.EXPIRED) }
         finally { synchronized(lock) { if (pending.value?.requestId == ticket.requestId) { pending.value = null; completion = null } } }

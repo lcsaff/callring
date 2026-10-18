@@ -10,6 +10,26 @@ import org.junit.Assert.*
 import org.junit.Test
 
 class ConversationServiceTest {
+    @Test fun sendRejectsUndisclosedUrlModelOrProtocolBeforeAnyRequest() = runBlocking {
+        val f = ConversationFixtures()
+        var config = settings()
+        val original = config.analysis
+        val disclosed = AiConnectionView(original.protocol,original.url,original.model,true)
+        val client = Client(ArrayDeque(listOf(ConversationReply.Final("done"))))
+        val service = ConversationService({ f.backend },snapshots(f),{ config },f.coordinator,{ client })
+        try {
+            for(connection in listOf(original.copy(url = "https://new.example/v1"),original.copy(model = "new"),original.copy(protocol = AiProtocol.ANTHROPIC))) {
+                config = config.copy(analysis = connection)
+                assertTrue(service.sendTo(service.state.value.sessionId,"next",disclosed) is ApiResult.Failure)
+                assertEquals(0,client.requests)
+            }
+            val actual = config.analysis
+            assertTrue(service.sendTo(service.state.value.sessionId,"next",AiConnectionView(actual.protocol,actual.url,actual.model,true)) is ApiResult.Success)
+            withTimeout(5000) { service.state.first { !it.busy } }
+            assertEquals(1,client.requests)
+            assertEquals(ConversationPhase.COMPLETED,service.state.value.phase)
+        } finally { service.close() }
+    }
     @Test fun analysisTargetChangeCancelsTurnAndClearsMatchingHistory() = runBlocking {
         val fixture = ConversationFixtures()
         var configuration = settings()
