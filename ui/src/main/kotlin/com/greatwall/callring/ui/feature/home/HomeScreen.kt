@@ -22,7 +22,7 @@ fun HomeScreen(
     state: LoadState<HomeData>, onRetry: () -> Unit, onLeaves: () -> Unit,
     quietCard: @Composable () -> Unit = {},
 ) {
-    ScreenFrame("首页") {
+    ScreenFrame("首页", compactTitle = true) {
         Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             LoadFeedback(state, onRetry)
             state.data?.let { data ->

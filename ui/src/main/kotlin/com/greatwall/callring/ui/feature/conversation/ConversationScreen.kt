@@ -65,7 +65,7 @@ class ConversationViewModel(private val api: CallringUiApi, testScope: Coroutine
     }
     LaunchedEffect(state.sessionId,state.messages,state.receipts,state.phase,readingHistory){if(!readingHistory){withFrameNanos{};listState.scrollToItem(latestIndex)}}
     fun send(){readingHistory=false;onSend()}
-    ScreenFrame("AI 沟通",actions={IconButton(onClick={confirmNew=true}){Icon(Icons.Filled.Add,contentDescription="新对话")}}) {
+    ScreenFrame("AI 沟通", compactTitle = true, actions = { IconButton(onClick={confirmNew=true}){Icon(Icons.Filled.Add,contentDescription="新对话")} }) {
         Column(Modifier.fillMaxSize(),verticalArrangement=Arrangement.spacedBy(8.dp)) {
             TextButton(onClick={details=true},modifier=Modifier.semantics{contentDescription="服务详情"}){Text("服务：${compactTarget(target).ifBlank{"请先配置 AI 设置"}}",style=MaterialTheme.typography.bodySmall)}
             Text(phaseLabel(state.phase),style=MaterialTheme.typography.labelLarge)

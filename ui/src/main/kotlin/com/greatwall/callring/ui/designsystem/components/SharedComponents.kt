@@ -18,7 +18,9 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.style.TextOverflow
 import com.greatwall.callring.application.api.CallerProfile
@@ -29,6 +31,9 @@ import com.greatwall.callring.ui.designsystem.ScoreBand
 import com.greatwall.callring.ui.designsystem.ScorePalette
 import com.greatwall.callring.ui.format.UiFormat
 
+/** Content height of the compact title bar. The status-bar inset is applied separately by [TopAppBar]. */
+private val CompactTitleContentHeight = 48.dp
+
 /** A shared header and inset-aware content frame. The caller chooses its scrolling container. */
 @Composable
 @OptIn(ExperimentalMaterial3Api::class)
@@ -37,6 +42,7 @@ fun ScreenFrame(
     onBack: (() -> Unit)? = null,
     actions: @Composable RowScope.() -> Unit = {},
     modifier: Modifier = Modifier,
+    compactTitle: Boolean = false,
     content: @Composable ColumnScope.() -> Unit,
 ) {
     val inheritedHost = LocalFeedbackHost.current
@@ -50,12 +56,18 @@ fun ScreenFrame(
             topBar = {
                 TopAppBar(
                     title = { Text(title, maxLines = 1, overflow = TextOverflow.Ellipsis) },
+                    modifier = Modifier.testTag("screen-frame-topbar"),
                     navigationIcon = {
                         if (onBack != null) IconButton(onClick = onBack) {
                             Icon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.callring_back))
                         }
                     },
                     actions = actions,
+                    expandedHeight = if (compactTitle) CompactTitleContentHeight else TopAppBarDefaults.TopAppBarExpandedHeight,
+                    colors = if (compactTitle) TopAppBarDefaults.topAppBarColors(
+                        containerColor = Color.Transparent,
+                        scrolledContainerColor = Color.Transparent,
+                    ) else TopAppBarDefaults.topAppBarColors(),
                     scrollBehavior = scrollBehavior,
                 )
             },

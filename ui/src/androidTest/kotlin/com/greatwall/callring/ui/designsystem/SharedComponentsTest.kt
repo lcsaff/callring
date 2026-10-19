@@ -1,10 +1,13 @@
 package com.greatwall.callring.ui.designsystem
 
+import androidx.compose.ui.test.assertHeightIsEqualTo
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.unit.dp
 import androidx.compose.material3.MaterialTheme
 import com.greatwall.callring.application.api.ColorMode
 import com.greatwall.callring.ui.designsystem.components.ScoreBadge
@@ -33,6 +36,16 @@ class SharedComponentsTest {
         compose.onNodeWithText("外观设置").assertIsDisplayed()
         compose.onNodeWithContentDescription("返回").performClick()
         assertTrue(returned)
+    }
+
+    @Test fun compactTitleContentHeightIs48dpWithoutStatusBarInset() {
+        compose.setContent { CallringTheme { ScreenFrame("号码档案", compactTitle = true) {} } }
+        compose.onNodeWithTag("screen-frame-topbar").assertHeightIsEqualTo(48.dp)
+    }
+
+    @Test fun defaultTitleKeepsTheMaterialExpandedHeight() {
+        compose.setContent { CallringTheme { ScreenFrame("录音设置") {} } }
+        compose.onNodeWithTag("screen-frame-topbar").assertHeightIsEqualTo(64.dp)
     }
 
     @Test fun explicitDarkSelectionDrivesBothUiAndSemanticScoreMode() {

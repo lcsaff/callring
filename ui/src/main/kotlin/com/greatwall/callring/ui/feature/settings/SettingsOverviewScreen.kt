@@ -17,7 +17,7 @@ fun SettingsOverviewScreen(
     onBack: (() -> Unit)?, onRetry: () -> Unit, onStatistics: (Boolean) -> Unit,
     onOverlay: (Boolean) -> Unit, onNavigate: (SettingsPage) -> Unit,
 ) {
-    SettingsLayout("设置", state, mutation, onBack, onRetry) { data ->
+    SettingsLayout("设置", state, mutation, onBack, onRetry, compactTitle = true) { data ->
         SettingsCard("个人信息") {
             SettingRow("我的职位", data.myPosition?.let { it.name + if (it.active) "" else "（已停用）" } ?: "尚未设置",
                 { onNavigate(SettingsPage.MY_POSITION) })

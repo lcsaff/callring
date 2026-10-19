@@ -27,9 +27,10 @@ import com.greatwall.callring.ui.state.MutationState
 internal fun <T> SettingsLayout(
     title: String, state: LoadState<T>, mutation: MutationState,
     onBack: (() -> Unit)?, onRetry: () -> Unit,
+    compactTitle: Boolean = false,
     content: @Composable ColumnScope.(T) -> Unit,
 ) {
-    ScreenFrame(title, onBack) {
+    ScreenFrame(title, onBack, compactTitle = compactTitle) {
         Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             if (!state.loaded && state.data == null && !state.loading && state.error == null) LoadingContent()
             LoadFeedback(state, onRetry)
