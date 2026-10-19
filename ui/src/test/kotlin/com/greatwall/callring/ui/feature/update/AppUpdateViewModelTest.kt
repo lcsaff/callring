@@ -76,4 +76,24 @@ class AppUpdateViewModelTest {
         assertNull(model.state.value.data)
         assertEquals("update.unavailable", model.state.value.error?.message)
     }
+
+    @Test fun pollingFollowsProgressUntilVerified() = runTest {
+        var calls = 0
+        val api = Fake(onStatus = {
+            calls++
+            ApiResult.Success(status(if (calls >= 3) UpdatePhase.VERIFIED else UpdatePhase.DOWNLOADING))
+        }, onDownload = { ApiResult.Success(status(UpdatePhase.DOWNLOADING)) })
+        val model = AppUpdateViewModel(api, backgroundScope)
+        model.download(); runCurrent()
+        assertEquals(UpdatePhase.DOWNLOADING, model.state.value.data?.phase)
+        advanceTimeBy(600); runCurrent()
+        assertEquals(1, calls)
+        assertEquals(UpdatePhase.DOWNLOADING, model.state.value.data?.phase)
+        advanceTimeBy(600); runCurrent()
+        assertEquals(2, calls)
+        advanceTimeBy(600); runCurrent()
+        assertEquals(3, calls)
+        assertEquals(UpdatePhase.VERIFIED, model.state.value.data?.phase)
+        assertEquals(3, calls)
+    }
 }

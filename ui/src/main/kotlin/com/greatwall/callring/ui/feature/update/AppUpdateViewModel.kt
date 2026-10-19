@@ -16,6 +16,7 @@ class AppUpdateViewModel(
     private val writer = MutationRunner(scope)
     val mutation = writer.state
     private var loadJob: Job? = null
+    private var pollJob: Job? = null
 
     fun refresh() {
         if (writer.state.value.busy) return
@@ -23,7 +24,10 @@ class AppUpdateViewModel(
         mutableState.value = mutableState.value.copy(loading = true, error = null)
         loadJob = scope.launch {
             when (val result = attempt { api.status() }) {
-                is ApiResult.Success -> mutableState.value = LoadState(result.value, loaded = true)
+                is ApiResult.Success -> {
+                    mutableState.value = LoadState(result.value, loaded = true)
+                    startPolling()
+                }
                 is ApiResult.Failure -> mutableState.value = mutableState.value.copy(loading = false, error = result.error)
             }
         }
@@ -34,8 +38,37 @@ class AppUpdateViewModel(
     fun cancel() = operate { api.cancel() }
     fun install() = operate { api.install() }
 
-    private fun operate(request: suspend () -> ApiResult<UpdateStatus>) =
-        writer.run(request, "更新状态已刷新") { latest -> mutableState.value = LoadState(latest, loaded = true) }
+    private fun operate(request: suspend () -> ApiResult<UpdateStatus>): Unit {
+        pollJob?.cancel()
+        pollJob = null
+        writer.run(request, "更新状态已刷新") { latest ->
+            mutableState.value = LoadState(latest, loaded = true)
+            startPolling()
+        }
+    }
+
+    /** 下载/校验由平台后台执行，页面打开期间按固定间隔读取进度，进入终态后停止。 */
+    private fun startPolling() {
+        if (!needsPolling(mutableState.value.data)) return
+        if (pollJob?.isActive == true) return
+        pollJob = scope.launch {
+            while (isActive) {
+                delay(POLL_INTERVAL_MS)
+                when (val result = attempt { api.status() }) {
+                    is ApiResult.Success -> {
+                        mutableState.value = LoadState(result.value, loaded = true)
+                        if (!needsPolling(result.value)) break
+                    }
+                    is ApiResult.Failure -> break
+                }
+            }
+        }
+    }
+
+    private fun needsPolling(status: UpdateStatus?): Boolean = status != null && when (status.phase) {
+        UpdatePhase.DOWNLOADING, UpdatePhase.VERIFYING -> true
+        else -> false
+    }
 
     private suspend fun <T> attempt(request: suspend () -> ApiResult<T>): ApiResult<T> = try {
         request()
@@ -44,4 +77,11 @@ class AppUpdateViewModel(
     } catch (_: Exception) {
         ApiResult.Failure(ApiError(ErrorCode.INTERNAL, "update.install_failed", retryable = true))
     }
+
+    override fun onCleared() {
+        pollJob?.cancel()
+        super.onCleared()
+    }
 }
+
+private const val POLL_INTERVAL_MS = 500L
