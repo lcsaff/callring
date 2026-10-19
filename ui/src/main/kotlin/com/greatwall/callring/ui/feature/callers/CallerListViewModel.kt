@@ -8,15 +8,22 @@ import kotlinx.coroutines.flow.*
 
 class CallerListViewModel(
     search: suspend (CallerSearch) -> ApiResult<Page<CallerProfile>>,
+    checkNumber: (String) -> NumberCheck,
     changes: ChangeFeed,
     private val savedState: SavedStateHandle,
     testScope: CoroutineScope? = null
 ) : UiViewModel(testScope) {
     private val searchRequest = search
+    private val checkNumberValue = checkNumber
     private val loader = RequestLoader<Page<CallerProfile>>(scope)
     val state = loader.state
     private val mutableQuery = MutableStateFlow(CallerSearch(savedState["text"] ?: "", PageRequest(savedState["page"] ?: 0)))
     val query = mutableQuery.asStateFlow()
+
+    /** Synchronous pure derivation: no extra request, no duplicated rule state in the screen. */
+    val check: StateFlow<NumberCheck?> = mutableQuery
+        .map { search -> search.text.takeIf { it.isNotBlank() }?.let(checkNumberValue) }
+        .stateIn(scope, SharingStarted.Eagerly, checkFor(mutableQuery.value))
 
     init { observeChanges(changes, setOf(DataDomain.CALLERS, DataDomain.POSITIONS)) { page(0) } }
 
@@ -30,6 +37,8 @@ class CallerListViewModel(
             if (captured.page.pageIndex > lastPage) page(lastPage)
         }) { searchRequest(captured) }
     }
+
+    private fun checkFor(search: CallerSearch): NumberCheck? = search.text.takeIf { it.isNotBlank() }?.let(checkNumberValue)
 
     private fun update(value: CallerSearch) {
         mutableQuery.value = value

@@ -30,6 +30,7 @@ import com.greatwall.callring.ui.state.*
 }
 
 @Composable fun PageControls(pageIndex: Int, pageSize: Int, totalItems: Long, loading: Boolean, onPage: (Int) -> Unit) {
+    if (totalItems <= pageSize.toLong()) return
     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
         TextButton(onClick = { onPage(pageIndex - 1) }, enabled = !loading && pageIndex > 0) { Text("上一页") }
         Text("第 ${pageIndex + 1} 页 · 共 $totalItems 条", style = MaterialTheme.typography.bodySmall)

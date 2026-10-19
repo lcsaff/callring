@@ -55,7 +55,7 @@ class HomeStructureJvmTest {
         compose.onNodeWithContentDescription("返回").performClick()
         compose.onNodeWithTag("home-status").assertExists()
         compose.onNodeWithTag("tab-callers").performClick()
-        compose.onNodeWithText("职位管理").performClick()
+        compose.onNodeWithContentDescription("职位管理").performClick()
         compose.onNodeWithText("添加职位").assertExists()
         compose.onNodeWithContentDescription("返回").performClick()
         compose.onNodeWithTag("tab-callers").assertIsSelected()

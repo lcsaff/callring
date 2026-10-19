@@ -2,6 +2,7 @@ package com.greatwall.callring.ui.app
 
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.unit.dp
 import com.greatwall.callring.ui.testing.UiFakeApi
 import org.junit.Rule
 import org.junit.Test
@@ -23,8 +24,28 @@ class ConversationNavigationTest {
         compose.onNodeWithText("AI 设置").performScrollTo().assertIsDisplayed()
         compose.onNodeWithText("录音设置").performScrollTo().assertIsDisplayed()
     }
+
+    @Test fun compactBottomBarIs56dpAndEveryTabKeepsA48dpTouchTarget() {
+        show()
+        compose.onNodeWithTag("bottom-bar").assertExists().assertHeightIsEqualTo(56.dp)
+        listOf("home", "callers", "conversation", "settings").forEach { route ->
+            compose.onNodeWithTag("tab-$route").assertHeightIsEqualTo(56.dp).assertHeightIsAtLeast(48.dp)
+        }
+    }
+
+    @Test fun compactBottomBarIsHiddenOnNonTabDestinations() {
+        show()
+        compose.onNodeWithTag("tab-settings").performClick()
+        compose.onNodeWithText("我的职位").performScrollTo().performClick()
+        compose.onNodeWithTag("bottom-bar").assertDoesNotExist()
+        compose.onNodeWithTag("tab-settings").assertDoesNotExist()
+        compose.onNodeWithContentDescription("返回").performClick()
+        compose.onNodeWithTag("bottom-bar").assertExists()
+    }
+
     @Test @Config(qualifiers = "w900dp-h900dp") fun wideScreenAlsoHasFourPrimaryDestinations() {
         show()
         listOf("home", "callers", "conversation", "settings").forEach { compose.onNodeWithTag("tab-$it").assertExists() }
+        compose.onNodeWithTag("bottom-bar").assertDoesNotExist()
     }
 }

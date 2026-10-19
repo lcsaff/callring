@@ -28,6 +28,30 @@ class CallringActivityTest {
         assertEquals(UiDestination.RecordingArchives, UiDestination.fromExternal(intent.getStringExtra("callring.ui.target"), null))
     }
 
+    @Test fun invalidReportDeepLinkFallsBackToLookupInsteadOfABrokenReport() {
+        val controller = Robolectric.buildActivity(CallringActivity::class.java,
+            CallringActivity.intent(RuntimeEnvironment.getApplication(), UiDestination.Report("999"))).setup()
+        try {
+            assertEquals(UiDestination.Lookup, destinationOf(controller.get()))
+        } finally { controller.pause().stop().destroy() }
+    }
+
+    @Test fun validReportDeepLinkOpensTheNormalizedNumberReport() {
+        val controller = Robolectric.buildActivity(CallringActivity::class.java,
+            CallringActivity.intent(RuntimeEnvironment.getApplication(), UiDestination.Report("100"))).setup()
+        try {
+            assertEquals(UiDestination.Report("100"), destinationOf(controller.get()))
+        } finally { controller.pause().stop().destroy() }
+    }
+
+    private fun destinationOf(activity: CallringActivity): UiDestination? {
+        val field = CallringActivity::class.java.declaredFields.firstOrNull {
+            it.name.startsWith("destination") && androidx.compose.runtime.MutableState::class.java.isAssignableFrom(it.type)
+        } ?: error("activity destination state field not found")
+        field.isAccessible = true
+        return (field.get(activity) as androidx.compose.runtime.MutableState<*>).value as UiDestination?
+    }
+
     @Test fun overlayTestWithoutPermissionOpensOverlaySettingsInsteadOfService() {
         org.robolectric.shadows.ShadowSettings.setCanDrawOverlays(false)
         val controller = Robolectric.buildActivity(CallringActivity::class.java).setup()

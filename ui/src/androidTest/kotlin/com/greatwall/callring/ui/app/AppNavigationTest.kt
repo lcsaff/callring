@@ -2,6 +2,7 @@ package com.greatwall.callring.ui.app
 
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.unit.dp
 import com.greatwall.callring.ui.testing.UiFakeApi
 import com.greatwall.callring.ui.testing.captureArtifact
 import com.greatwall.callring.application.api.*
@@ -33,6 +34,19 @@ class AppNavigationTest {
             assertEquals("更新档案", api.savedProfile?.name)
             assertNull(api.savedProfile?.whitelisted)
         }
+    }
+
+    @Test fun compactBottomNavigationKeeps56dpContentAnd48dpTargets() {
+        val api = UiFakeApi()
+        compose.setContent { CallringApp(api, onCapability = {}, onPreviewCall = {}, onPinWidget = {}, onAppSettings = {}) }
+        compose.onNodeWithTag("bottom-bar").assertExists().assertHeightIsAtLeast(56.dp)
+        listOf("home", "callers", "conversation", "settings").forEach { route ->
+            compose.onNodeWithTag("tab-$route").assertHeightIsEqualTo(56.dp).assertHeightIsAtLeast(48.dp)
+        }
+        compose.onNodeWithTag("tab-conversation").performClick()
+        compose.onNodeWithText("AI 沟通").assertExists()
+        compose.onNodeWithTag("tab-settings").performClick()
+        compose.onNodeWithTag("bottom-bar").assertExists()
     }
 
     @Test fun everySettingsDestinationOpensAndThemeSavesThroughApi() {

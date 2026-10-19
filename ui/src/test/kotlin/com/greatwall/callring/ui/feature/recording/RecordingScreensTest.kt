@@ -17,16 +17,6 @@ import org.robolectric.annotation.Config
 @Config(sdk = [35])
 class RecordingScreensTest {
     @get:Rule val compose = createComposeRule()
-    @Test fun callerListProvidesIndependentRecordingsEntry() {
-        var opens = 0
-        compose.setContent { CallringTheme {
-            com.greatwall.callring.ui.feature.callers.CallerListScreen(LoadState(), CallerSearch(),
-                {}, {}, {}, {}, {}, {}, onRecordings = { opens++ })
-        } }
-        compose.onNodeWithText("通话录音").performClick()
-        assertEquals(1, opens)
-    }
-
     @Test fun archiveNavigationWorksWithStatisticsApisUnavailable() {
         val archive = CallArchive(-51, "10086", 0, status = ArchiveStatus.COMPLETE)
         val api = object : com.greatwall.callring.ui.testing.UiFakeApi() {

@@ -29,5 +29,23 @@ class ReportScreenTest {
         compose.onNodeWithText("时长未知").assertIsDisplayed()
         compose.onNodeWithTag("report-list").performScrollToNode(hasText("0 秒"))
         compose.onNodeWithText("0 秒").assertIsDisplayed()
+        compose.onNodeWithText("上一页").assertDoesNotExist()
+        compose.onNodeWithText("下一页").assertDoesNotExist()
+    }
+
+    @Test fun moreThanOneDetailPageStillShowsPagination() {
+        val time = TimeRange(0, 100, "Asia/Shanghai")
+        val report = CallerReport(CallerProfile("100", false, "", "", null, PositionRelation.UNKNOWN, false), time,
+            ReportTotals(0, 0, 0, 0, 0, 0, 0, 0), ScoreSummary(null, 0, 0, 0, 5, 2, 10, time),
+            Page(emptyList(), 0, 50, 51, SnapshotMeta(0, 0)),
+            DataQuality(true, AccessState.GRANTED, false, false, false, false), SnapshotMeta(0, 0))
+        compose.setContent { CallringTheme {
+            ReportScreen(LoadState(report, loaded = true), ReportQuery("100", DateRange(LocalDate.of(2026, 1, 1), LocalDate.of(2026, 1, 2))), MutationState(),
+                onBack = {}, onRetry = {}, onRange = {}, onFilter = {}, onPage = {}, onExport = {}, onEdit = {}, onCapability = {})
+        } }
+        compose.onNodeWithTag("report-list").performScrollToNode(hasText("上一页"))
+        compose.onNodeWithText("上一页").assertIsDisplayed().assertIsNotEnabled()
+        compose.onNodeWithText("下一页").assertIsDisplayed().assertIsEnabled()
+        compose.onNodeWithText("第 1 页 · 共 51 条").assertExists()
     }
 }

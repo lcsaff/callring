@@ -1,15 +1,20 @@
 package com.greatwall.callring.ui.app
 
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.selection.selectable
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.navigation.NavHostController
 import androidx.navigation.NavType
 import androidx.navigation.compose.*
 import androidx.navigation.navArgument
+import androidx.window.core.layout.WindowSizeClass
 import com.greatwall.callring.application.api.*
 import com.greatwall.callring.ui.designsystem.*
 import com.greatwall.callring.ui.feature.callers.*
@@ -29,6 +34,10 @@ import com.greatwall.callring.ui.designsystem.components.FeedbackSnackbar
 import kotlinx.coroutines.flow.first
 import java.time.LocalDate
 
+/** The custom bottom bar replaces the M3 navigation suite only in compact windows. */
+private val BottomBarContentHeight = 56.dp
+private val BottomBarMinTouchTarget = 48.dp
+
 @Composable fun CallringApp(
     api: CallringUiApi, requestedDestination: UiDestination = UiDestination.Home, requestSequence: Long = 0,
     refreshSignal: Long = 0, onCapability: (Capability) -> Unit,
@@ -39,7 +48,6 @@ import java.time.LocalDate
     val settings: SettingsSummaryViewModel = uiViewModel("application-settings") { SettingsSummaryViewModel(api) }
     val appearanceModel: AppearanceViewModel = uiViewModel("application-appearance") { AppearanceViewModel(api, it) }
     val navigationState: UiNavigationState = uiViewModel("application-navigation") { UiNavigationState(it) }
-    val summary by settings.state.collectAsStateWithLifecycle()
     val appearance by appearanceModel.draft.collectAsStateWithLifecycle()
     val appearanceState by appearanceModel.state.collectAsStateWithLifecycle()
     ActiveRefresh(refreshSignal, refresh = settings::refresh)
@@ -56,8 +64,6 @@ import java.time.LocalDate
                 navigation.navigate(requestedDestination.route) { launchSingleTop = true }
             }
         }
-        fun open(destination: UiDestination) { navigation.navigate(destination.route) { launchSingleTop = true } }
-        val back: () -> Unit = { navigation.popBackStack() }
         val feedbackHost = remember { SnackbarHostState() }
         LaunchedEffect(notice?.id) {
             notice?.let { value ->
@@ -66,113 +72,189 @@ import java.time.LocalDate
             }
         }
         val adaptiveInfo = currentWindowAdaptiveInfo()
+        val wideLayout = adaptiveInfo.windowSizeClass.isWidthAtLeastBreakpoint(WindowSizeClass.WIDTH_DP_MEDIUM_LOWER_BOUND)
+        val isTabRoute = tabs.any { it.first.route == route }
         CompositionLocalProvider(LocalFeedbackHost provides feedbackHost, LocalFeedbackScope provides rememberCoroutineScope()) {
-        NavigationSuiteScaffold(
-            layoutType = if (tabs.any { it.first.route == route })
-                NavigationSuiteScaffoldDefaults.calculateFromAdaptiveInfo(adaptiveInfo) else NavigationSuiteType.None,
-            navigationSuiteItems = {
-                tabs.forEachIndexed { index, (destination, title) -> item(
-                    selected = route == destination.route,
-                    modifier = Modifier.testTag("tab-${destination.route}"),
-                    onClick = { navigation.navigate(destination.route) {
-                        popUpTo(navigation.graph.startDestinationId) { saveState = true }
-                        launchSingleTop = true; restoreState = true
-                    } }, icon = { NavigationGlyph(index) }, label = { Text(title) },
-                ) }
-            },
-        ) {
-        Scaffold(modifier = Modifier.imePadding(), snackbarHost = { FeedbackSnackbar(feedbackHost) }) { insets ->
-            NavHost(navigation, UiDestination.Home.route, Modifier.padding(insets).consumeWindowInsets(insets)) {
-                composable("home") {
-                    val model: HomeViewModel = uiViewModel { HomeViewModel(api) }
-                    val quiet: HomeQuietViewModel = uiViewModel { HomeQuietViewModel(api.settings, api.changes, it) }
-                    val state by model.state.collectAsStateWithLifecycle()
-                    val quietState by quiet.state.collectAsStateWithLifecycle()
-                    val quietMutation by quiet.mutation.collectAsStateWithLifecycle()
-                    val quietDraft by quiet.draft.collectAsStateWithLifecycle()
-                    val quietOpen by quiet.dialogOpen.collectAsStateWithLifecycle()
-                    ActiveRefresh(refreshSignal, state.data?.currentWork?.nextBoundaryEpochMillis, 60_000, model::refresh)
-                    ActiveRefresh(refreshSignal, refresh = quiet::refresh)
-                    HomeScreen(state, model::refresh, { open(UiDestination.Leaves) }, quietCard = {
-                        HomeQuietCard(quietState, quietMutation, quiet::refresh, quiet::setEnabled, quiet::openEditor)
-                    })
-                    val saved = quietState.data
-                    val draft = quietDraft
-                    if (quietOpen && saved != null && draft != null) {
-                        HomeQuietDialog(saved, draft, quietMutation, quiet::edit, quiet::save, quiet::closeEditor)
-                    }
+            if (wideLayout) {
+                NavigationSuiteScaffold(
+                    layoutType = if (isTabRoute)
+                        NavigationSuiteScaffoldDefaults.calculateFromAdaptiveInfo(adaptiveInfo) else NavigationSuiteType.None,
+                    navigationSuiteItems = {
+                        tabs.forEachIndexed { index, (destination, title) -> item(
+                            selected = route == destination.route,
+                            modifier = Modifier.testTag("tab-${destination.route}"),
+                            onClick = { selectTab(navigation, destination) },
+                            icon = { NavigationGlyph(index) }, label = { Text(title) },
+                        ) }
+                    },
+                ) {
+                    AppScaffold(api, settings, appearanceModel, navigation, refreshSignal, feedbackHost, {},
+                        onCapability, onAppSettings, onTestOverlay)
                 }
-                composable("callers") {
-                    val model: CallerListViewModel = uiViewModel { CallerListViewModel(api.callers::search, api.changes, it) }
-                    val state by model.state.collectAsStateWithLifecycle()
-                    val query by model.query.collectAsStateWithLifecycle()
-                    ActiveRefresh(refreshSignal, refresh = { model.refresh() })
-                    CallerListScreen(state, query, model::search, model::page, { model.refresh() },
-                        { open(UiDestination.EditCaller()) }, { open(UiDestination.Report(it)) }, { open(UiDestination.Lookup) },
-                        { open(UiDestination.Positions) }, { open(UiDestination.RecordingArchives) })
-                }
-                composable("recording-archives") {
-                    RecordingArchivesRoute(api, refreshSignal, back) {
-                        open(UiDestination.Archive(it.callId, it.number, it.startedAtEpochMillis))
-                    }
-                }
-                composable("lookup") {
-                    val model: NumberLookupViewModel = uiViewModel { NumberLookupViewModel(api::checkNumber, it) }
-                    val text by model.text.collectAsStateWithLifecycle()
-                    NumberLookupScreen(text, model.result(), back, model::edit) {
-                        model.checkedNumber()?.let { open(UiDestination.Report(it)) }
-                    }
-                }
-                composable("edit?number={number}", listOf(navArgument("number") { type = NavType.StringType; nullable = true; defaultValue = null })) { record ->
-                    val number = record.arguments?.getString("number")?.takeIf { it.isNotEmpty() }
-                    val model: CallerEditorViewModel = uiViewModel { CallerEditorViewModel(number, api.callers, api.changes, it, saveWithBase = api.edits::profile) }
-                    val state by model.state.collectAsStateWithLifecycle()
-                    val draft by model.draft.collectAsStateWithLifecycle()
-                    val mutation by model.mutation.collectAsStateWithLifecycle()
-                    ActiveRefresh(refreshSignal, refresh = model::refresh)
-                    CallerEditorScreen(state, draft, mutation, number == null, back, model::refresh, { value -> model.edit { value } }, model::save)
-                }
-                composable("report/{number}", listOf(navArgument("number") { type = NavType.StringType })) { record ->
-                    val number = requireNotNull(record.arguments?.getString("number"))
-                    val model: ReportViewModel = uiViewModel { ReportViewModel(number, api.reports, api.changes, it,
-                        DateRange(LocalDate.now().minusDays(29), LocalDate.now())) }
-                    val state by model.state.collectAsStateWithLifecycle()
-                    val query by model.query.collectAsStateWithLifecycle()
-                    val mutation by model.mutation.collectAsStateWithLifecycle()
-                    val export = rememberExportPicker(model::export)
-                    ActiveRefresh(refreshSignal, intervalMillis = 60_000, refresh = { model.refresh() })
-                    ReportScreen(state, query, mutation, back, { model.refresh() }, model::range, model::filter, model::page,
-                        export, { open(UiDestination.EditCaller(number)) }, onCapability,
-                        { open(UiDestination.Archive(it.id, number, it.startedAtEpochMillis)) })
-                }
-                composable("archive/{callId}/{number}/{startedAt}", listOf(
-                    navArgument("callId") { type = NavType.LongType }, navArgument("number") { type = NavType.StringType },
-                    navArgument("startedAt") { type = NavType.LongType })) { record ->
-                    val args = requireNotNull(record.arguments)
-                    val number = requireNotNull(args.getString("number"))
-                    ArchiveRoute(api, args.getLong("callId"), number, args.getLong("startedAt"), refreshSignal, back,
-                        { open(UiDestination.EditCaller(number)) })
-                }
-                composable("settings") {
-                    val mutation by settings.mutation.collectAsStateWithLifecycle()
-                    SettingsOverviewScreen(summary, mutation, null, settings::refresh, settings::statistics, settings::overlay,
-                        { open(UiDestination.Setting(it)) })
-                }
-                composable("conversation") { ConversationRoute(api) }
-                composable("leaves") {
-                    SettingsRoute(SettingsPage.LEAVES, api, settings, appearanceModel, refreshSignal, back, onCapability, onAppSettings)
-                }
-                composable("positions") {
-                    SettingsRoute(SettingsPage.POSITIONS, api, settings, appearanceModel, refreshSignal, back, onCapability, onAppSettings)
-                }
-                SettingsPage.entries.forEach { page -> composable(UiDestination.Setting(page).route) {
-                    SettingsRoute(page, api, settings, appearanceModel, refreshSignal, back, onCapability, onAppSettings,
-                        onTestOverlay = onTestOverlay)
-                } }
+            } else {
+                AppScaffold(api, settings, appearanceModel, navigation, refreshSignal, feedbackHost,
+                    bottomBar = {
+                        if (isTabRoute) CallringBottomBar(tabs, route) { destination -> selectTab(navigation, destination) }
+                    },
+                    onCapability = onCapability, onAppSettings = onAppSettings, onTestOverlay = onTestOverlay)
             }
         }
+    }
+}
+
+@Composable
+private fun AppScaffold(
+    api: CallringUiApi,
+    settings: SettingsSummaryViewModel,
+    appearanceModel: AppearanceViewModel,
+    navigation: NavHostController,
+    refreshSignal: Long,
+    feedbackHost: SnackbarHostState,
+    bottomBar: @Composable () -> Unit,
+    onCapability: (Capability) -> Unit,
+    onAppSettings: () -> Unit,
+    onTestOverlay: () -> Unit,
+) {
+    fun open(destination: UiDestination) { navigation.navigate(destination.route) { launchSingleTop = true } }
+    val back: () -> Unit = { navigation.popBackStack() }
+    Scaffold(modifier = Modifier.imePadding(), snackbarHost = { FeedbackSnackbar(feedbackHost) }, bottomBar = bottomBar) { insets ->
+        NavHost(navigation, UiDestination.Home.route, Modifier.padding(insets).consumeWindowInsets(insets)) {
+            composable("home") {
+                val model: HomeViewModel = uiViewModel { HomeViewModel(api) }
+                val quiet: HomeQuietViewModel = uiViewModel { HomeQuietViewModel(api.settings, api.changes, it) }
+                val state by model.state.collectAsStateWithLifecycle()
+                val quietState by quiet.state.collectAsStateWithLifecycle()
+                val quietMutation by quiet.mutation.collectAsStateWithLifecycle()
+                val quietDraft by quiet.draft.collectAsStateWithLifecycle()
+                val quietOpen by quiet.dialogOpen.collectAsStateWithLifecycle()
+                ActiveRefresh(refreshSignal, state.data?.currentWork?.nextBoundaryEpochMillis, 60_000, model::refresh)
+                ActiveRefresh(refreshSignal, refresh = quiet::refresh)
+                HomeScreen(state, model::refresh, { open(UiDestination.Leaves) }, quietCard = {
+                    HomeQuietCard(quietState, quietMutation, quiet::refresh, quiet::setEnabled, quiet::openEditor)
+                })
+                val saved = quietState.data
+                val draft = quietDraft
+                if (quietOpen && saved != null && draft != null) {
+                    HomeQuietDialog(saved, draft, quietMutation, quiet::edit, quiet::save, quiet::closeEditor)
+                }
+            }
+            composable("callers") {
+                val model: CallerListViewModel = uiViewModel { CallerListViewModel(api.callers::search, api::checkNumber, api.changes, it) }
+                val state by model.state.collectAsStateWithLifecycle()
+                val query by model.query.collectAsStateWithLifecycle()
+                val check by model.check.collectAsStateWithLifecycle()
+                ActiveRefresh(refreshSignal, refresh = { model.refresh() })
+                CallerListScreen(state, query, check, model::search, model::page, { model.refresh() },
+                    { open(UiDestination.EditCaller()) }, { open(UiDestination.Report(it)) },
+                    { open(UiDestination.Report(it)) }, { open(UiDestination.Positions) })
+            }
+            composable("recording-archives") {
+                RecordingArchivesRoute(api, refreshSignal, back) {
+                    open(UiDestination.Archive(it.callId, it.number, it.startedAtEpochMillis))
+                }
+            }
+            composable("lookup") {
+                val model: NumberLookupViewModel = uiViewModel { NumberLookupViewModel(api::checkNumber, it) }
+                val text by model.text.collectAsStateWithLifecycle()
+                NumberLookupScreen(text, model.result(), back, model::edit) {
+                    model.checkedNumber()?.let { open(UiDestination.Report(it)) }
+                }
+            }
+            composable("edit?number={number}", listOf(navArgument("number") { type = NavType.StringType; nullable = true; defaultValue = null })) { record ->
+                val number = record.arguments?.getString("number")?.takeIf { it.isNotEmpty() }
+                val model: CallerEditorViewModel = uiViewModel { CallerEditorViewModel(number, api.callers, api.changes, it, saveWithBase = api.edits::profile) }
+                val state by model.state.collectAsStateWithLifecycle()
+                val draft by model.draft.collectAsStateWithLifecycle()
+                val mutation by model.mutation.collectAsStateWithLifecycle()
+                ActiveRefresh(refreshSignal, refresh = model::refresh)
+                CallerEditorScreen(state, draft, mutation, number == null, back, model::refresh, { value -> model.edit { value } }, model::save)
+            }
+            composable("report/{number}", listOf(navArgument("number") { type = NavType.StringType })) { record ->
+                val number = requireNotNull(record.arguments?.getString("number"))
+                val model: ReportViewModel = uiViewModel { ReportViewModel(number, api.reports, api.changes, it,
+                    DateRange(LocalDate.now().minusDays(29), LocalDate.now())) }
+                val state by model.state.collectAsStateWithLifecycle()
+                val query by model.query.collectAsStateWithLifecycle()
+                val mutation by model.mutation.collectAsStateWithLifecycle()
+                val export = rememberExportPicker(model::export)
+                ActiveRefresh(refreshSignal, intervalMillis = 60_000, refresh = { model.refresh() })
+                ReportScreen(state, query, mutation, back, { model.refresh() }, model::range, model::filter, model::page,
+                    export, { open(UiDestination.EditCaller(number)) }, onCapability,
+                    { open(UiDestination.Archive(it.id, number, it.startedAtEpochMillis)) })
+            }
+            composable("archive/{callId}/{number}/{startedAt}", listOf(
+                navArgument("callId") { type = NavType.LongType }, navArgument("number") { type = NavType.StringType },
+                navArgument("startedAt") { type = NavType.LongType })) { record ->
+                val args = requireNotNull(record.arguments)
+                val number = requireNotNull(args.getString("number"))
+                ArchiveRoute(api, args.getLong("callId"), number, args.getLong("startedAt"), refreshSignal, back,
+                    { open(UiDestination.EditCaller(number)) })
+            }
+            composable("settings") {
+                val summary by settings.state.collectAsStateWithLifecycle()
+                val mutation by settings.mutation.collectAsStateWithLifecycle()
+                SettingsOverviewScreen(summary, mutation, null, settings::refresh, settings::statistics, settings::overlay,
+                    { open(UiDestination.Setting(it)) })
+            }
+            composable("conversation") { ConversationRoute(api) }
+            composable("leaves") {
+                SettingsRoute(SettingsPage.LEAVES, api, settings, appearanceModel, refreshSignal, back, onCapability, onAppSettings)
+            }
+            composable("positions") {
+                SettingsRoute(SettingsPage.POSITIONS, api, settings, appearanceModel, refreshSignal, back, onCapability, onAppSettings)
+            }
+            SettingsPage.entries.forEach { page -> composable(UiDestination.Setting(page).route) {
+                SettingsRoute(page, api, settings, appearanceModel, refreshSignal, back, onCapability, onAppSettings,
+                    onTestOverlay = onTestOverlay)
+            } }
         }
+    }
+}
+
+@Composable
+private fun CallringBottomBar(
+    tabs: List<Pair<UiDestination, String>>,
+    route: String?,
+    onSelect: (UiDestination) -> Unit,
+) {
+    Surface(
+        modifier = Modifier.fillMaxWidth().testTag("bottom-bar"),
+        color = MaterialTheme.colorScheme.surfaceContainer,
+    ) {
+        Row(
+            Modifier.fillMaxWidth()
+                .windowInsetsPadding(WindowInsets.navigationBars)
+                .height(BottomBarContentHeight),
+        ) {
+            tabs.forEachIndexed { index, (destination, title) ->
+                val selected = route == destination.route
+                val contentColor = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+                Column(
+                    modifier = Modifier.weight(1f).fillMaxHeight().heightIn(min = BottomBarMinTouchTarget)
+                        .selectable(selected = selected, role = Role.Tab, onClick = { onSelect(destination) })
+                        .testTag("tab-${destination.route}"),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Center,
+                ) {
+                    Icon(
+                        when (index) {
+                            0 -> Icons.Filled.Home; 1 -> Icons.Filled.Person
+                            2 -> Icons.Filled.Email; else -> Icons.Filled.Settings
+                        },
+                        contentDescription = null,
+                        tint = contentColor,
+                    )
+                    Text(title, style = MaterialTheme.typography.labelSmall, color = contentColor, maxLines = 1)
+                }
+            }
         }
+    }
+}
+
+private fun selectTab(navigation: NavHostController, destination: UiDestination) {
+    navigation.navigate(destination.route) {
+        popUpTo(navigation.graph.startDestinationId) { saveState = true }
+        launchSingleTop = true; restoreState = true
     }
 }
 
