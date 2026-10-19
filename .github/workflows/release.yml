@@ -1,0 +1,267 @@
+name: Release APK
+
+# Manual, fail-fast release pipeline (app-update design §七, plan P3 S11).
+# Steps run in the design's fixed order and every one is fatal on failure:
+#   1. validate version.properties / tag / monotonic versionCode
+#   2. full verification (tests + assembleRelease + lint)
+#   3. sign with the injected keystore and check the certificate fingerprint
+#   4. generate update.json + SHA256SUMS.txt from the signed APK
+#   5. verify APK <=> metadata <=> version.properties <=> tag consistency
+#   6-7. only when `publish` is requested: draft Release, upload, verify assets,
+#        publish with make_latest, then check /releases/latest
+#
+# Missing signing Secrets fail the job before any build, so CI can never fall
+# back to the local debug keystore or publish an unsigned build.
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Release tag; must be v<versionName> from version.properties (e.g. v0.3.0)"
+        required: true
+        type: string
+      published_max_version_code:
+        description: "Highest already-published versionCode; the new versionCode must be greater"
+        required: true
+        type: string
+      publish:
+        description: "Upload and publish the Release on GitHub (false = build and verify only)"
+        required: true
+        default: false
+        type: boolean
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-${{ inputs.tag }}
+  cancel-in-progress: false
+
+env:
+  APPLICATION_ID: com.greatwall.callring
+  # Current release identity is this machine's Android debug certificate
+  # (app-update design §六); a different signer must fail the pipeline.
+  EXPECTED_CERT_SHA256: 5a901cad57f5590483f362e4752ca8f4a56197340b71d2632ded0195bf8a24b4
+
+jobs:
+  build-and-verify:
+    name: Build and verify release artifacts
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Require release signing secrets
+        env:
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+          TAG: ${{ inputs.tag }}
+          PUBLISHED_MAX: ${{ inputs.published_max_version_code }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          missing=()
+          [ -n "${KEYSTORE_BASE64:-}" ] || missing+=("KEYSTORE_BASE64")
+          [ -n "${KEYSTORE_PASSWORD:-}" ] || missing+=("KEYSTORE_PASSWORD")
+          [ -n "${KEY_ALIAS:-}" ] || missing+=("KEY_ALIAS")
+          [ -n "${KEY_PASSWORD:-}" ] || missing+=("KEY_PASSWORD")
+          [ -n "${TAG:-}" ] || missing+=("tag input")
+          [ -n "${PUBLISHED_MAX:-}" ] || missing+=("published_max_version_code input")
+          if [ "${#missing[@]}" -ne 0 ]; then
+            echo "::error::Refusing to build: missing ${missing[*]}. Configure the release Secrets/inputs first."
+            exit 1
+          fi
+          echo "Signing Secrets are present (values are never printed)."
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+        with:
+          packages: "platforms;android-36 build-tools;36.0.0"
+
+      # This repository only ships gradlew.bat, so CI drives Gradle 8.13 directly.
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "8.13"
+
+      - name: Prepare signing material from Secrets
+        env:
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          umask 077
+          mkdir -p "$RUNNER_TEMP/signing"
+          printf '%s' "$KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/signing/release.keystore"
+          {
+            printf 'storeFile=%s\n' "$RUNNER_TEMP/signing/release.keystore"
+            printf 'storePassword=%s\n' "$KEYSTORE_PASSWORD"
+            printf 'keyAlias=%s\n' "$KEY_ALIAS"
+            printf 'keyPassword=%s\n' "$KEY_PASSWORD"
+          } > signing.properties
+          echo "signing.properties written (gitignored; contents are not printed)."
+
+      - name: Validate version and tag
+        env:
+          TAG: ${{ inputs.tag }}
+          PUBLISHED_MAX: ${{ inputs.published_max_version_code }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          case "$TAG" in
+            v*) ;;
+            *) echo "::error::tag '$TAG' must look like v0.3.0"; exit 1 ;;
+          esac
+          case "$PUBLISHED_MAX" in
+            ''|*[!0-9]*) echo "::error::published_max_version_code must be a non-negative integer"; exit 1 ;;
+          esac
+          python3 tools/release/version_tool.py check \
+            --published-max "$PUBLISHED_MAX" --tag "$TAG"
+
+      - name: Refuse to overwrite an existing Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ inputs.tag }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo "::error::Release $TAG already exists; releases are immutable for this workflow."
+            exit 1
+          fi
+
+      - name: Run unified verification and assemble signed release
+        shell: bash
+        run: |
+          set -euo pipefail
+          gradle :backend:test :ui:testDebugUnitTest :app:testDebugUnitTest \
+            :app:assembleRelease :app:lintDebug --console=plain
+
+      - name: Stage release artifacts and generate metadata
+        shell: bash
+        run: |
+          set -euo pipefail
+          version_name=$(python3 tools/release/version_tool.py get --field versionName)
+          apk=$(find app/build/outputs/apk/release -maxdepth 1 -name '*.apk' ! -name '*unsigned*' | head -n 1)
+          if [ -z "$apk" ]; then
+            echo "::error::no signed release APK was produced"
+            exit 1
+          fi
+          mkdir -p dist
+          cp "$apk" "dist/callring-${version_name}.apk"
+          python3 tools/release/generate_release_metadata.py \
+            --apk "dist/callring-${version_name}.apk" --out-dir dist
+
+      - name: Verify consistency, signature and alignment
+        env:
+          TAG: ${{ inputs.tag }}
+          PUBLISHED_MAX: ${{ inputs.published_max_version_code }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 tools/release/verify_release.py \
+            --release-dir dist \
+            --tag "$TAG" \
+            --published-max "$PUBLISHED_MAX" \
+            --application-id "$APPLICATION_ID" \
+            --expected-cert-sha256 "$EXPECTED_CERT_SHA256" \
+            --check-alignment
+
+      - name: Upload verified release candidate
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-candidate
+          path: dist/
+          if-no-files-found: error
+          retention-days: 7
+
+      - name: Remove signing material
+        if: always()
+        shell: bash
+        run: |
+          rm -f signing.properties
+          rm -rf "$RUNNER_TEMP/signing"
+
+  publish:
+    name: Publish draft Release and make it latest
+    needs: build-and-verify
+    if: ${{ inputs.publish }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    environment: release
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Download verified release candidate
+        uses: actions/download-artifact@v4
+        with:
+          name: release-candidate
+          path: dist
+
+      - name: Create draft Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ inputs.tag }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          gh release create "$TAG" --repo "$GITHUB_REPOSITORY" --draft \
+            --title "Callring $TAG" --generate-notes
+
+      - name: Upload release assets
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ inputs.tag }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          gh release upload "$TAG" dist/* --repo "$GITHUB_REPOSITORY"
+
+      - name: Verify uploaded assets (names and sizes)
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ inputs.tag }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          remote=$(gh release view "$TAG" --repo "$GITHUB_REPOSITORY" --json assets \
+            --jq '.assets[] | "\(.name)\t\(.size)"' | sort)
+          local=$(for file in dist/*; do
+            printf '%s\t%s\n' "$(basename "$file")" "$(stat -c %s "$file")"
+          done | sort)
+          if [ "$remote" != "$local" ]; then
+            echo "::error::uploaded assets do not match the verified candidate"
+            diff <(printf '%s\n' "$local") <(printf '%s\n' "$remote") || true
+            exit 1
+          fi
+          echo "Uploaded assets match the verified candidate (names and sizes)."
+
+      - name: Publish Release, set latest, and verify /releases/latest
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ inputs.tag }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          gh release edit "$TAG" --repo "$GITHUB_REPOSITORY" --draft=false --latest
+          latest=$(gh api "repos/${GITHUB_REPOSITORY}/releases/latest" --jq .tag_name)
+          if [ "$latest" != "$TAG" ]; then
+            echo "::error::/releases/latest returned '$latest' instead of '$TAG'"
+            exit 1
+          fi
+          echo "/releases/latest now points at $TAG"
