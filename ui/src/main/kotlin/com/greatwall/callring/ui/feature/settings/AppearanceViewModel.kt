@@ -3,149 +3,16 @@ package com.greatwall.callring.ui.feature.settings
 import androidx.lifecycle.SavedStateHandle
 import com.greatwall.callring.application.api.*
 import com.greatwall.callring.ui.state.*
-import kotlinx.coroutines.*
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.CoroutineScope
 
-/** The live choice and the last committed snapshot have separate lifetimes. */
+/** Appearance choices apply as they change; sliders coalesce storage writes. */
 class AppearanceViewModel(
-    private val api: CallringUiApi,
-    private val savedState: SavedStateHandle,
+    api: CallringUiApi,
+    @Suppress("UNUSED_PARAMETER") savedState: SavedStateHandle,
     testScope: CoroutineScope? = null,
-) : UiViewModel(testScope) {
-    private val mutableState = MutableStateFlow(LoadState<AppearanceSettings>())
-    val state = mutableState.asStateFlow()
-    private val restored = savedState.get<String>(PENDING_KEY)?.let(SettingsDraftCodecs.appearance::decode)
-    private val mutableDraft = MutableStateFlow(restored)
-    val draft = mutableDraft.asStateFlow()
-    private val mutableMutation = MutableStateFlow(MutationState())
-    val mutation = mutableMutation.asStateFlow()
-    private var unpersisted = restored != null
-    private var restoring = restored != null
-    private var revision = 0L
-    private var pending: AppearanceSettings? = null
-    private var pendingReady = false
-    private var writing = false
-    private var debounce: Job? = null
-    private var loadJob: Job? = null
-    private var loadRevision = 0L
-    private var refreshRequested = false
-    private var baseline = savedState.get<String>("appearance-base")?.let(SettingsDraftCodecs.appearance::decode)
-
-    private fun setBaseline(value: AppearanceSettings) {
-        baseline = value
-        savedState["appearance-base"] = SettingsDraftCodecs.appearance.encode(value)
-    }
-
-    init { observeChanges(api.changes, setOf(DataDomain.APPEARANCE), refresh = ::refresh) }
-
-    fun refresh() {
-        if (mutation.value.busy) { refreshRequested = true; return }
-        val ticket = ++loadRevision
-        loadJob?.cancel()
-        mutableState.value = state.value.copy(loading = true, error = null)
-        loadJob = scope.launch {
-            val result = attempt { api.settings.getAppearance() }
-            if (ticket != loadRevision) return@launch
-            when (result) {
-                is ApiResult.Failure -> mutableState.value = state.value.copy(loading = false, error = result.error)
-                is ApiResult.Success -> {
-                    mutableState.value = LoadState(result.value, loaded = true)
-                    if (!unpersisted) { mutableDraft.value = result.value; setBaseline(result.value) }
-                    else if (baseline == null) setBaseline(result.value)
-                    if (restoring) {
-                        restoring = false
-                        if (draft.value == result.value) {
-                            unpersisted = false
-                            savedState.remove<String>(PENDING_KEY)
-                        } else draft.value?.let(::edit)
-                    }
-                }
-            }
-        }
-    }
-
-    fun edit(value: AppearanceSettings) = enqueue(value, debounceMillis = 0)
-
+) : ImmediateEditor<AppearanceSettings>(
+    api.changes, setOf(DataDomain.APPEARANCE), api.settings::getAppearance, api.edits::appearance, testScope
+) {
     /** Sliders update the application theme on every tick and coalesce storage writes. */
-    fun editColor(value: AppearanceSettings) = enqueue(value, debounceMillis = 250)
-
-    /** Explicit retry also flushes an outstanding slider debounce. */
-    fun save() { draft.value?.let { enqueue(it, debounceMillis = 0) } }
-
-    private fun enqueue(value: AppearanceSettings, debounceMillis: Long) {
-        mutableDraft.value = value
-        savedState[PENDING_KEY] = SettingsDraftCodecs.appearance.encode(value)
-        unpersisted = true
-        revision++
-        pending = value
-        pendingReady = debounceMillis == 0L
-        mutableMutation.value = mutation.value.copy(busy = true, error = null, message = null)
-        debounce?.cancel()
-        if (pendingReady) startWriter() else debounce = scope.launch {
-            delay(debounceMillis)
-            pendingReady = true
-            startWriter()
-        }
-    }
-
-    private fun startWriter() {
-        if (writing || !pendingReady || pending == null) return
-        writing = true
-        scope.launch {
-            try {
-                while (pendingReady) {
-                    val value = pending ?: break
-                    val base = baseline ?: break
-                    val ticket = revision
-                    pending = null
-                    pendingReady = false
-                    when (val result = attempt { api.edits.appearance(base, value) }) {
-                        is ApiResult.Success -> {
-                            ++loadRevision // A read started before this commit cannot replace it.
-                            loadJob?.cancel()
-                            mutableState.value = LoadState(result.value, loaded = true)
-                            mutableMutation.value = mutation.value.copy(completed = mutation.value.completed + 1, error = null)
-                            setBaseline(result.value)
-                            if (ticket != revision) pending?.let { next ->
-                                val rebased = AppearanceSettings(
-                                    if (next.selection == value.selection) result.value.selection else next.selection,
-                                    if (next.presetId == value.presetId) result.value.presetId else next.presetId,
-                                    if (next.customSeedRgb == value.customSeedRgb) result.value.customSeedRgb else next.customSeedRgb,
-                                    if (next.colorMode == value.colorMode) result.value.colorMode else next.colorMode)
-                                pending = rebased
-                                mutableDraft.value = rebased
-                                savedState[PENDING_KEY] = SettingsDraftCodecs.appearance.encode(rebased)
-                            }
-                            if (ticket == revision) {
-                                mutableDraft.value = result.value
-                                unpersisted = false
-                                savedState.remove<String>(PENDING_KEY)
-                            }
-                        }
-                        is ApiResult.Failure -> if (ticket == revision) {
-                            mutableMutation.value = mutation.value.copy(error = result.error)
-                        }
-                    }
-                }
-            } finally {
-                writing = false
-                mutableMutation.value = mutation.value.copy(busy = pending != null)
-                if (pending == null && refreshRequested) {
-                    refreshRequested = false
-                    refresh()
-                }
-            }
-        }
-    }
-
-    private suspend fun <T> attempt(request: suspend () -> ApiResult<T>): ApiResult<T> = try {
-        request()
-    } catch (cancelled: CancellationException) {
-        throw cancelled
-    } catch (_: Exception) {
-        ApiResult.Failure(ApiError(ErrorCode.INTERNAL, "外观保存未完成，请重试", retryable = true))
-    }
-
-    private companion object { const val PENDING_KEY = "appearance-pending" }
+    fun editColor(value: AppearanceSettings) = editCoalesced(value, debounceMillis = 250)
 }

@@ -12,26 +12,22 @@ class SettingsSummaryViewModel(private val api: CallringUiApi) : SnapshotViewMod
     fun overlay(enabled: Boolean) = write({ api.settings.setOverlayEnabled(enabled) })
 }
 
-class QuietViewModel(api: CallringUiApi, state: SavedStateHandle) : DraftEditor<QuietSettings>(
-    api.changes, setOf(DataDomain.QUIET_HOURS), state, SettingsDraftCodecs.quiet,
-    api.settings::getQuietHours, api.settings::saveQuietHours, saveWithBase = api.edits::quiet
+class QuietViewModel(api: CallringUiApi, @Suppress("UNUSED_PARAMETER") state: SavedStateHandle) : ImmediateEditor<QuietSettings>(
+    api.changes, setOf(DataDomain.QUIET_HOURS), api.settings::getQuietHours, api.edits::quiet
 )
 
-class WorkScheduleViewModel(private val api: CallringUiApi, state: SavedStateHandle) : DraftEditor<WorkScheduleSettings>(
-    api.changes, setOf(DataDomain.WORK_CALENDAR), state, SettingsDraftCodecs.work,
-    api.settings::getWorkSchedule, { value ->
-        val shared = normalizeWorkSchedule(value)
-        api.settings.saveWorkSchedule(SaveWorkSchedule(shared.zoneId, shared.weekly, shared.makeup))
-    }, saveWithBase = { base, value -> api.edits.work(base, normalizeWorkSchedule(value)) }
+class WorkScheduleViewModel(private val api: CallringUiApi, @Suppress("UNUSED_PARAMETER") state: SavedStateHandle) : ImmediateEditor<WorkScheduleSettings>(
+    api.changes, setOf(DataDomain.WORK_CALENDAR), api.settings::getWorkSchedule,
+    { base, value -> api.edits.work(base, normalizeWorkSchedule(value)) }
 ) {
-    fun reset() = execute({ api.settings.resetWorkSchedule() }) { replaceDraft(it); refresh() }
+    fun reset() = submitReset { api.settings.resetWorkSchedule() }
 }
 
-class ScoreSettingsViewModel(private val api: CallringUiApi, state: SavedStateHandle) : DraftEditor<ScoreSettings>(
-    api.changes, setOf(DataDomain.SCORE_SETTINGS), state, SettingsDraftCodecs.score,
-    api.settings::getScoreSettings, api.settings::saveScoreSettings, saveWithBase = api.edits::score
+class ScoreSettingsViewModel(private val api: CallringUiApi, @Suppress("UNUSED_PARAMETER") state: SavedStateHandle) : ImmediateEditor<ScoreSettings>(
+    api.changes, setOf(DataDomain.SCORE_SETTINGS), api.settings::getScoreSettings, api.edits::score,
+    editDebounceMillis = 500L
 ) {
-    fun reset() = execute({ api.settings.resetScoreSettings() }) { replaceDraft(it); refresh() }
+    fun reset() = submitReset { api.settings.resetScoreSettings() }
 }
 
 class PositionsViewModel(private val api: CallringUiApi) : SnapshotViewModel<PositionSettings>(

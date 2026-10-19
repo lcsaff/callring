@@ -46,7 +46,7 @@ fun AppearanceScreen(
                 LoadFeedback(state, onRetry)
                 mutation.error?.let {
                     Text(it.message, color = MaterialTheme.colorScheme.error)
-                    TextButton(onClick = onSave) { Text("重试保存") }
+                    TextButton(onClick = onSave) { Text("重试") }
                 }
                 if (value != null) AppearanceControls(value, mutation, onChange, onColorChange, registry)
                 Spacer(Modifier.height(8.dp))

@@ -15,7 +15,7 @@ import com.greatwall.callring.ui.state.*
 }
 
 @Composable fun ApiErrorNotice(error: ApiError, onCapability: ((Capability) -> Unit)? = null) {
-    Text(if (error.code == ErrorCode.CONFLICT) "数据在编辑期间发生变化，草稿已保留。请核对最新值后重新编辑。" else error.message, color = MaterialTheme.colorScheme.error)
+    Text(if (error.code == ErrorCode.CONFLICT) "已更新，请重新修改。当前输入已保留。" else error.message, color = MaterialTheme.colorScheme.error)
     if (onCapability != null) error.requiredCapabilities.forEach { capability ->
         TextButton(onClick = { onCapability(capability) }) { Text("设置${UiLabels.capability(capability)}") }
     }

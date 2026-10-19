@@ -1,7 +1,5 @@
 package com.greatwall.callring.ui.feature.settings.components
 
-import com.greatwall.callring.ui.designsystem.components.BrandButton
-
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -9,14 +7,12 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import com.greatwall.callring.application.api.TimeWindow
 import com.greatwall.callring.ui.designsystem.components.LoadingContent
 import com.greatwall.callring.ui.designsystem.components.ScreenFrame
-import com.greatwall.callring.ui.designsystem.components.rememberSubmit
 import com.greatwall.callring.ui.designsystem.components.clockTimeText
 import com.greatwall.callring.ui.feature.shared.LoadFeedback
 import com.greatwall.callring.ui.feature.shared.MutationFeedback
@@ -65,14 +61,6 @@ internal fun FieldError(mutation: MutationState, vararg keys: String, includeDes
 @Composable
 internal fun InputError(message: String?) {
     if (message != null) Text(message, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
-}
-
-@Composable
-internal fun SaveAction(mutation: MutationState, enabled: Boolean = true, onSave: () -> Unit) {
-    BrandButton(onClick = rememberSubmit(onSave), enabled = enabled && !mutation.busy,
-        modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).testTag("settings-save")) {
-        Text(if (mutation.busy) "保存中…" else "保存")
-    }
 }
 
 @Composable

@@ -148,6 +148,7 @@ class AppearanceViewModelTest {
         assertEquals(latest, fake.appearance)
         assertEquals(latest, model.draft.value)
         assertNull(model.mutation.value.error)
-        assertEquals(1L, model.mutation.value.completed)
+        // Immediate field edits do not count as a completed whole-page operation.
+        assertEquals(0L, model.mutation.value.completed)
     }
 }

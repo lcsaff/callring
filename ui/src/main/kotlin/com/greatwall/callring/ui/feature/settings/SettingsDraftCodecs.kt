@@ -1,9 +1,14 @@
 package com.greatwall.callring.ui.feature.settings
 
 import com.greatwall.callring.application.api.*
-import com.greatwall.callring.ui.state.DraftCodec
 import java.io.*
 import java.util.Base64
+
+/** Only lightweight editor state is encoded here; backend snapshots are reloaded. */
+interface DraftCodec<T> {
+    fun encode(value: T): String
+    fun decode(value: String): T?
+}
 
 /** A transient saved-state representation, independent of the backend's persistence format. */
 object SettingsDraftCodecs {

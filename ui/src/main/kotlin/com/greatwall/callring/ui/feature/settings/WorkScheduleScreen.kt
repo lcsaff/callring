@@ -12,7 +12,6 @@ import com.greatwall.callring.ui.feature.settings.components.*
 import com.greatwall.callring.ui.format.UiFormat
 import com.greatwall.callring.ui.state.*
 import com.greatwall.callring.ui.designsystem.components.ConfirmAction
-import com.greatwall.callring.ui.designsystem.components.rememberFormBack
 import com.greatwall.callring.ui.designsystem.components.TimeSelectionField
 import com.greatwall.callring.ui.designsystem.components.clockTimeText
 import java.time.LocalTime
@@ -23,25 +22,22 @@ import java.time.ZoneId
 fun WorkScheduleScreen(
     state: LoadState<WorkScheduleSettings>, draft: WorkScheduleSettings?, mutation: MutationState,
     onBack: () -> Unit, onRetry: () -> Unit, onChange: (WorkScheduleSettings) -> Unit,
-    onSave: () -> Unit, onReset: () -> Unit,
+    // The route still forwards a save callback from the previous page model; immediate editing never renders one.
+    @Suppress("UNUSED_PARAMETER") onSave: () -> Unit, onReset: () -> Unit,
 ) {
-    val current = draft ?: state.data
-    val windows = current?.let(::sharedWorkWindows) ?: listOf(TimeWindow(540, 720), TimeWindow(780, 1080))
-    fun text(minute: Int) = clockTimeText(minute / 60, minute % 60)
-    // Include the completion counter so resetting to identical defaults also clears invalid local edits.
-    var start by rememberSaveable(windows, mutation.completed) { mutableStateOf(text(windows[0].startMinute)) }
-    var lunchStart by rememberSaveable(windows, mutation.completed) { mutableStateOf(text(windows[0].endMinute)) }
-    var lunchEnd by rememberSaveable(windows, mutation.completed) { mutableStateOf(text(windows[1].startMinute)) }
-    var end by rememberSaveable(windows, mutation.completed) { mutableStateOf(text(windows[1].endMinute)) }
-    val minutes = listOf(start, lunchStart, lunchEnd, end).map {
-        runCatching { LocalTime.parse(it).let { time -> time.hour * 60 + time.minute } }.getOrNull()
-    }
-    val validTimes = minutes.all { it != null } && minutes.zipWithNext().all { (a, b) -> a!! < b!! }
-    val invalidZone = current?.zoneId?.let { runCatching { ZoneId.of(it) }.isFailure } ?: false
-    val back = rememberFormBack(onBack, (draft != null && state.data != null && draft != state.data)
-        || invalidZone || !validTimes, mutation, onSave, canSave = !invalidZone && validTimes)
-    SettingsLayout("工作时间", state, mutation, back, onRetry) { saved ->
+    SettingsLayout("工作时间", state, mutation, onBack, onRetry) { saved ->
         val value = draft ?: saved
+        val windows = sharedWorkWindows(value)
+        fun text(minute: Int) = clockTimeText(minute / 60, minute % 60)
+        // Include the completion counter so resetting to identical defaults also clears invalid local edits.
+        var start by rememberSaveable(windows, mutation.completed) { mutableStateOf(text(windows[0].startMinute)) }
+        var lunchStart by rememberSaveable(windows, mutation.completed) { mutableStateOf(text(windows[0].endMinute)) }
+        var lunchEnd by rememberSaveable(windows, mutation.completed) { mutableStateOf(text(windows[1].startMinute)) }
+        var end by rememberSaveable(windows, mutation.completed) { mutableStateOf(text(windows[1].endMinute)) }
+        val minutes = listOf(start, lunchStart, lunchEnd, end).map {
+            runCatching { LocalTime.parse(it).let { time -> time.hour * 60 + time.minute } }.getOrNull()
+        }
+        val validTimes = minutes.all { it != null } && minutes.zipWithNext().all { (a, b) -> a!! < b!! }
         val parsedZone = runCatching { ZoneId.of(value.zoneId) }.getOrNull()
         var expanded by remember { mutableStateOf(false) }
         val zones = remember(value.zoneId) {
@@ -51,15 +47,15 @@ fun WorkScheduleScreen(
                 + ZoneId.getAvailableZoneIds().sorted()).distinct()
         }
         SettingsCard("时区与版本") {
-            ExposedDropdownMenuBox(expanded, onExpandedChange = { if (!mutation.busy) expanded = it }) {
+            ExposedDropdownMenuBox(expanded, onExpandedChange = { expanded = it }) {
                 OutlinedTextField(value.zoneId, {}, readOnly = true, label = { Text("时区") }, singleLine = true,
                     trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded) },
-                    isError = parsedZone == null, enabled = !mutation.busy,
+                    isError = parsedZone == null,
                     modifier = Modifier.menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable)
                         .fillMaxWidth().testTag("work-zone"))
                 ExposedDropdownMenu(expanded, onDismissRequest = { expanded = false }) {
                     zones.forEach { zone ->
-                        DropdownMenuItem(text = { Text(zone) }, enabled = !mutation.busy, onClick = {
+                        DropdownMenuItem(text = { Text(zone) }, onClick = {
                             expanded = false
                             onChange(normalizeWorkSchedule(value.copy(zoneId = zone)))
                         })
@@ -84,17 +80,16 @@ fun WorkScheduleScreen(
         SettingsCard("统一工作时间") {
             Text("所有工作日共用以下时间，午休期间不工作。")
             TimeSelectionField("上班时间", start, { updateTimes(it, lunchStart, lunchEnd, end) },
-                !mutation.busy, selectionKey = "work-start")
+                true, selectionKey = "work-start")
             TimeSelectionField("午休开始", lunchStart, { updateTimes(start, it, lunchEnd, end) },
-                !mutation.busy, selectionKey = "work-lunch-start")
+                true, selectionKey = "work-lunch-start")
             TimeSelectionField("午休结束", lunchEnd, { updateTimes(start, lunchStart, it, end) },
-                !mutation.busy, selectionKey = "work-lunch-end")
+                true, selectionKey = "work-lunch-end")
             TimeSelectionField("下班时间", end, { updateTimes(start, lunchStart, lunchEnd, it) },
-                !mutation.busy, selectionKey = "work-end")
+                true, selectionKey = "work-end")
             InputError(if (validTimes) null else "请按上班、午休开始、午休结束、下班的顺序设置同一天的时间")
             FieldError(mutation, "weekly", "makeup")
         }
-        SaveAction(mutation, parsedZone != null && validTimes, onSave)
         ConfirmAction("恢复默认工作时间", "恢复默认工作时间？", "工作时间和时区将被默认值替换。", onReset,
             enabled = !mutation.busy, modifier = Modifier.fillMaxWidth())
     }

@@ -46,26 +46,29 @@ abstract class SharedWorkScheduleScreenCases {
         }
     }
 
-    @Test fun invalidTimeOrderDisablesSaveAndResetClearsLocalInvalidValuesAndZone() {
+    @Test fun invalidTimeOrderStaysLocalAndResetClearsItWithTheZone() {
         val draft = mutableStateOf(saved)
         val mutation = mutableStateOf(MutationState())
+        val commits = mutableListOf<WorkScheduleSettings>()
         compose.setContent { CallringTheme {
             WorkScheduleScreen(LoadState(saved, loaded = true), draft.value, mutation.value, {}, {},
-                { draft.value = it }, {}, {
+                { commits += it; draft.value = it }, {}, {
                     draft.value = saved
                     mutation.value = MutationState(completed = mutation.value.completed + 1)
                 })
         } }
         compose.onNodeWithTag("work-zone").performScrollTo().performClick()
         compose.onNodeWithText("UTC").performClick()
+        compose.runOnIdle { assertEquals("UTC", draft.value.zoneId) }
+        val submitted = commits.size
         chooseHour("work-start", "12")
-        compose.onNodeWithTag("settings-save").performScrollTo().assertIsNotEnabled()
+        compose.onNodeWithTag("settings-save").assertDoesNotExist()
         compose.onNodeWithText("请按上班、午休开始、午休结束、下班的顺序设置同一天的时间").performScrollTo().assertIsDisplayed()
+        compose.runOnIdle { assertEquals(submitted, commits.size) }
         compose.onNodeWithText("恢复默认工作时间").performScrollTo().performClick()
         compose.onNodeWithText("确认").performClick()
         compose.onNodeWithTag("work-zone").performScrollTo().assertTextContains("Asia/Shanghai")
         compose.onNodeWithTag("time-work-start").performScrollTo().assertTextContains("09:00")
-        compose.onNodeWithTag("settings-save").performScrollTo().assertIsEnabled()
     }
 
     @Test fun legacySingleWindowGetsEditableLunchDefaultsWithinItsHours() {

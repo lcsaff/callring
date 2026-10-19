@@ -212,21 +212,22 @@ abstract class SettingsScreenCases {
         val saved = ScoreSettings(5, 2, 10, 30)
         val draft = mutableStateOf(saved)
         val mutation = mutableStateOf(MutationState())
+        val commits = mutableListOf<ScoreSettings>()
         compose.setContent {
             CallringTheme {
                 ScoreSettingsScreen(LoadState(saved, loaded = true), draft.value, mutation.value, {}, {},
-                    { draft.value = it }, {}, {
+                    { commits += it }, {}, {
                         draft.value = saved
                         mutation.value = MutationState(completed = mutation.value.completed + 1)
                     })
             }
         }
         compose.onNodeWithTag("score-repeatMinutes").performScrollTo().performTextClearance()
-        compose.onNodeWithTag("settings-save").performScrollTo().assertIsNotEnabled()
+        compose.onNodeWithTag("settings-save").assertDoesNotExist()
         compose.onNodeWithText("恢复默认评分设置").performScrollTo().performClick()
         compose.onNodeWithText("确认").performClick()
         compose.onNodeWithTag("score-repeatMinutes").performScrollTo().assertTextContains("10")
-        compose.onNodeWithTag("settings-save").performScrollTo().assertIsEnabled()
+        compose.runOnIdle { assertTrue(commits.isEmpty()) }
     }
 
     @Test fun failedScoreResetKeepsInvalidInputForCorrection() {
@@ -243,7 +244,7 @@ abstract class SettingsScreenCases {
         compose.onNodeWithText("恢复默认评分设置").performScrollTo().performClick()
         compose.onNodeWithText("确认").performClick()
         compose.onNodeWithTag("score-repeatMinutes").performScrollTo().assertTextEquals("重复来电窗口（分钟）", "")
-        compose.onNodeWithTag("settings-save").performScrollTo().assertIsNotEnabled()
+        compose.onNodeWithTag("settings-save").assertDoesNotExist()
     }
 
     @Test fun workResetReplacesSelectedZoneAndEditedWindowWhenDefaultsHaveNotChanged() {
@@ -268,12 +269,11 @@ abstract class SettingsScreenCases {
         compose.onAllNodes(hasSetTextAction() and hasAnyAncestor(hasTestTag("time-input")))[0].performTextReplacement("12")
         compose.onNodeWithText("确定").performClick()
         compose.onNodeWithText("请按上班、午休开始、午休结束、下班的顺序设置同一天的时间").performScrollTo().assertIsDisplayed()
-        compose.onNodeWithTag("settings-save").performScrollTo().assertIsNotEnabled()
         compose.onNodeWithText("恢复默认工作时间").performScrollTo().performClick()
         compose.onNodeWithText("确认").performClick()
         compose.onNodeWithTag("work-zone").performScrollTo().assertTextContains("Asia/Shanghai")
         compose.onNodeWithTag("time-work-start").performScrollTo().assertTextContains("09:00")
-        compose.onNodeWithTag("settings-save").performScrollTo().assertIsEnabled()
+        compose.onNodeWithTag("settings-save").assertDoesNotExist()
     }
 
     @Test fun deniedPermissionsHaveAnApplicationSettingsRecoveryEntry() {
@@ -385,10 +385,13 @@ abstract class SettingsScreenCases {
         compose.onNodeWithText("不应匹配星期一").assertDoesNotExist()
     }
 
-    @Test fun customQuietWithNoWindowCannotBeSaved() {
+    @Test fun customQuietWithNoWindowShowsInlineErrorAndNeverCommits() {
         val value = QuietSettings(QuietMode.CUSTOM, false, (1..7).associateWith { emptyList<TimeWindow>() })
-        compose.setContent { CallringTheme { QuietScreen(LoadState(value, loaded = true), value, MutationState(), {}, {}, {}, {}) } }
-        compose.onNodeWithTag("settings-save").performScrollTo().assertIsNotEnabled()
+        var changes = 0
+        compose.setContent { CallringTheme { QuietScreen(LoadState(value, loaded = true), value, MutationState(), {}, {}, { changes++ }, {}) } }
+        compose.onNodeWithTag("settings-save").assertDoesNotExist()
+        compose.onNodeWithText("自定义免打扰至少需要一个时段").performScrollTo().assertIsDisplayed()
+        compose.runOnIdle { assertEquals(0, changes) }
     }
 
     @Test fun invalidStoredCustomSeedUsesValidPreviewAndOnlyChangesOnUserInput() {
@@ -492,7 +495,7 @@ abstract class SettingsScreenCases {
             }
         }
         compose.onNodeWithText("颜色保存失败").assertIsDisplayed()
-        compose.onNodeWithText("重试保存").performClick()
+        compose.onNodeWithText("重试").performClick()
         compose.runOnIdle { assertEquals(1, retries) }
         compose.onNodeWithTag("preset-sky_blue").performScrollTo().assertIsEnabled()
         compose.onNodeWithTag("settings-save").assertDoesNotExist()
@@ -599,6 +602,94 @@ abstract class SettingsScreenCases {
         compose.runOnIdle { assertEquals(1L, mutation.value.completed) }
         compose.onNodeWithText("取消").assertDoesNotExist()
     }
+    @Test fun immediateSettingsPagesNeverRenderASaveAction() {
+        val quiet = QuietSettings(QuietMode.OFF, false, emptyMap())
+        val score = ScoreSettings(5, 2, 10, 30)
+        val work = WorkScheduleSettings("Asia/Shanghai", mapOf(1 to listOf(TimeWindow(540, 720))),
+            listOf(TimeWindow(540, 720)), 1, 0)
+        val page = mutableStateOf(0)
+        compose.setContent {
+            CallringTheme {
+                when (page.value) {
+                    0 -> QuietScreen(LoadState(quiet, loaded = true), quiet, MutationState(), {}, {}, {}, {})
+                    1 -> ScoreSettingsScreen(LoadState(score, loaded = true), score, MutationState(), {}, {}, {}, {}, {})
+                    2 -> WorkScheduleScreen(LoadState(work, loaded = true), work, MutationState(), {}, {}, {}, {}, {})
+                    else -> AppearanceScreen(LoadState(DefaultAppearance, loaded = true), DefaultAppearance,
+                        MutationState(), {}, {}, {}, {})
+                }
+            }
+        }
+        repeat(4) { index ->
+            compose.runOnIdle { page.value = index }
+            compose.waitForIdle()
+            compose.onNodeWithTag("settings-save").assertDoesNotExist()
+            compose.onAllNodes(hasText("保存")).assertCountEquals(0)
+        }
+    }
+
+    @Test fun alreadyImmediateSettingsPagesNeverRenderASaveAction() {
+        val status = RuntimeStatus(Capability.entries.associateWith { AccessState.UNKNOWN }, Audibility.UNKNOWN,
+            PhoneActivity.UNKNOWN, PlaybackStatus(PlaybackMode.NONE, PlaybackState.IDLE), false, 0)
+        val page = mutableStateOf(0)
+        compose.setContent {
+            CallringTheme {
+                when (page.value) {
+                    0 -> MyPositionScreen(LoadState(PositionSettings(emptyList(), null), loaded = true),
+                        MutationState(), {}, {}, {})
+                    1 -> RuntimeScreen(LoadState(RuntimeUiData(status, emptyList(), null), loaded = true),
+                        MutationState(), {}, {}, {}, {}, {})
+                    2 -> RingtoneScreen(LoadState(RingtoneSettings(false, AudioSource.BUILT_IN, "内置铃声", 8), loaded = true),
+                        MutationState(), {}, {}, {}, {}, {}, {}, {})
+                    else -> CalendarScreen(LoadState(CalendarInfo(
+                        listOf(CalendarYear(2026, "holiday-cn", "2026-10-18", "v1")), emptyList()), loaded = true),
+                        MutationState(), {}, {}, {}, 2026)
+                }
+            }
+        }
+        repeat(4) { index ->
+            compose.runOnIdle { page.value = index }
+            compose.waitForIdle()
+            compose.onNodeWithTag("settings-save").assertDoesNotExist()
+            compose.onAllNodes(hasText("保存")).assertCountEquals(0)
+        }
+    }
+
+    @Test fun quietModeChangeCommitsImmediately() {
+        val initial = QuietSettings(QuietMode.OFF, false, emptyMap())
+        val changes = mutableListOf<QuietSettings>()
+        compose.setContent { CallringTheme {
+            QuietScreen(LoadState(initial, loaded = true), initial, MutationState(), {}, {}, { changes += it }, {})
+        } }
+        compose.onNodeWithTag("settings-save").assertDoesNotExist()
+        compose.onNodeWithText("非工作时间静音").performClick()
+        compose.runOnIdle { assertEquals(listOf(initial.copy(mode = QuietMode.NON_WORK)), changes) }
+    }
+
+    @Test fun scoreNumericFieldsOnlySubmitParseableText() {
+        val saved = ScoreSettings(5, 2, 10, 30)
+        val commits = mutableListOf<ScoreSettings>()
+        compose.setContent { CallringTheme {
+            ScoreSettingsScreen(LoadState(saved, loaded = true), saved, MutationState(), {}, {}, { commits += it }, {}, {})
+        } }
+        compose.onNodeWithTag("score-repeatMinutes").performScrollTo().performTextReplacement("15")
+        compose.runOnIdle { assertEquals(listOf(saved.copy(repeatMinutes = 15)), commits) }
+        compose.onNodeWithTag("score-repeatMinutes").performTextClearance()
+        compose.onNodeWithText("请输入正整数").performScrollTo().assertIsDisplayed()
+        compose.runOnIdle { assertEquals(1, commits.size) }
+    }
+
+    @Test fun settingsBackLeavesImmediatelyWithoutDiscardPrompt() {
+        val saved = ScoreSettings(5, 2, 10, 30)
+        var backs = 0
+        compose.setContent { CallringTheme {
+            ScoreSettingsScreen(LoadState(saved, loaded = true), saved, MutationState(), { backs++ }, {}, {}, {}, {})
+        } }
+        compose.onNodeWithTag("score-repeatMinutes").performScrollTo().performTextReplacement("15")
+        compose.onNodeWithContentDescription("返回").performClick()
+        compose.runOnIdle { assertEquals(1, backs) }
+        compose.onNodeWithText("放弃未保存的修改？").assertDoesNotExist()
+    }
+
     private fun selectDate(label: String, date: LocalDate) {
         compose.onNodeWithTag("date-$label").performScrollTo().performClick()
         compose.onNodeWithText("输入日期").performClick()
