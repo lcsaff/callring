@@ -23,3 +23,5 @@
 本轮禁止新增付费模型请求、业务批次、卸载/清库。原十条合成档案、DARK、预算和凭据保留。原 device 目录未覆盖，原文件 SHA-256 单列以便复验。
 
 最终本地全量检查：`python -u tools/verify_backend.py` 退出0，backend185/app169/UI210，失败、错误、跳过均0；Debug、Release、AndroidTest、backendQa 构建及 app/UI lint 通过。详见 full-summary.json、full-build.log、full-boundaries.log。另 `python tools/test_backend_boundaries.py` 四项通过。
+
+新版本只读真机三个类分别通过，准确提交/安装 APK 哈希、限制及首次组合运行中止记录见 [device](device/README.md)。截图不包含系统 IME/独立 Dialog，其可见性/内容由真实窗口或界面节点断言。

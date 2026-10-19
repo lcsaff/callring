@@ -1,0 +1,24 @@
+{
+  "sourceCommit": "863d8469cf328ac18709db37d429d26ae8baec2d",
+  "package": "com.greatwall.callring",
+  "versionName": "0.2",
+  "versionCode": 2,
+  "device": "192.168.10.149:5555",
+  "api": 36,
+  "display": "1080x2400",
+  "apkSha256": "98f13f262ee63f4516668f8902f2c50dae88567f928ee93cae05de51506fd3c2",
+  "installedApkSha256": "98f13f262ee63f4516668f8902f2c50dae88567f928ee93cae05de51506fd3c2",
+  "apkBytes": 48903454,
+  "signerSha256": "5a901cad57f5590483f362e4752ca8f4a56197340b71d2632ded0195bf8a24b4",
+  "modelRequests": 0,
+  "businessWrites": 0,
+  "sameSignatureInstall": true,
+  "testsRunSeparately": true,
+  "scope": "read-only acceptance; no actual provider run",
+  "modelConfigurationSafeSummary": {
+    "protocol": "OPENAI",
+    "model": "qwen3.8-flash",
+    "resolvedProfile": "QWEN_FAST"
+  },
+  "imageCapture": "PixelCopy of own Activity surface; excludes dialogs/IME/system/other apps"
+}

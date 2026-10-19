@@ -1,0 +1,9 @@
+{
+  "schemaVersion": 2,
+  "result": "passed",
+  "compactTarget": true,
+  "fullDetailsMatchSafeView": true,
+  "actualImeVisible": true,
+  "modelRequests": 0,
+  "businessWrites": 0
+}
