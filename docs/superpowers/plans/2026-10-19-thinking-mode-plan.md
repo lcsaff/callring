@@ -11,8 +11,8 @@
 
 - 范围：能力矩阵与解析（5 个厂商×协议组合 + 未识别/不支持）、`thinkingMode` 数据模型与迁移、请求快照、两款客户端的参数/回传/认证头、投影/冲突键/会话指纹/工具 schema、录音侧端口（blocked）、UI 单开关（收口 A）、矩阵单测与真实请求模板。
 - 不做：effort/预算档位、供应商选择器、ASR 注入思考参数、更新发布（P3）、主界面布局（P1）。真实请求**不在本计划任务内执行**。
-- 依赖：[并行执行计划](2026-10-19-parallel-execution-plan.md) 的 Wave 1/2/3 与 G2/G3、M1/M3/M4 标记；spec [B](2026-10-19-ai-request-policy-design.md)、[A](2026-10-19-compact-main-ui-design.md) §7、[D](2026-10-19-external-facts-verification.md) §4/§5。
-- 与 P1/P3 的并行关系：S0–S6 与 P1 的布局/档案/分页/非 AI 设置页、P3 的版本来源/更新契约/更新页**可并行**（文件不交叉）；S7 与 P1 串行（M1）；S8 与 P3 串行（M3）；S9 等 G2；S10/S11 是 V1/V3 验证门。
+- 依赖：[并行执行计划](2026-10-19-parallel-execution-plan.md) 的 Wave 1/2/3 与 M1/M3/M4 标记；spec [B](2026-10-19-ai-request-policy-design.md)、[A](2026-10-19-compact-main-ui-design.md) §7、[D](2026-10-19-external-facts-verification.md) §4/§5。
+- 与 P1/P3 的并行关系：S0–S6 与 P1 的布局/档案/分页/非 AI 设置页、P3 的版本来源/更新契约/更新页**可并行**（文件不交叉）；S7 与 P1 串行（M1）；S8 与 P3 串行（M3）；S9 在 S3/S5 之后、无外部依赖；S10/S11 是 V1/V3 验证门。
 - 硬约束与标记：S2 纯增量字段先合入作为三线编译基线，共享文件（§5）Wave 1 冻结；标记沿用并行计划——`[并行]`=可并行、`[收口:Mx]`=需收口、`[gated:Gx]`=blocked、`[串行:Vx]`=验证类串行。
 
 ## 2. 前置事实（2026-10-19 工作区核对；`文件:行` 只用于定位，可能漂移）
@@ -32,7 +32,7 @@
 
 | 步骤 | 内容 | 主要文件 | 标记 | 门 |
 | --- | --- | --- | --- | --- |
-| S0 | Anthropic 认证头/端点核对 | 无代码（结论回写 S1/S5/S6） | `[gated:G3]` | G3 |
+| S0 | Anthropic 认证头/端点核对（已完成 2026-10-19） | 无代码（结论回写 S5/S6） | `[已完成]` | — |
 | S1 | 能力矩阵与解析 | 新增 `ThinkingPolicy.kt` + 两个新测试 | `[并行]` | — |
 | S2 | 数据模型与迁移（先合入基线） | `RecordingApi`、`AiSettingsApi`、`AndroidRecordingStore`、`AiSettingsService` | `[并行]` | — |
 | S3 | 策略快照与回传载体 | `ThinkingPolicy.kt`、`ConversationPorts/ConversationService/ContextAssembler/ConversationApi` | `[并行]` | S1/S2 |
@@ -41,17 +41,16 @@
 | S6 | 分析/转写客户端 | `CompatibleAiClient.kt` + app 测试 | `[并行]` | S0/S3 |
 | S7 | UI 开关与文案收口 | `AiSettingsScreen/ViewModel`、`RecordingScreens/ViewModels`、`AiRoutes` | `[收口:M1]` | P1 |
 | S8 | 图装配 | `BackendGraph.kt`（仅签名变化时） | `[收口:M3]` | P3 |
-| S9 | 录音侧端口与批次快照 | `RecordingPorts/RecordingWorkflow/AndroidAudioTranscriber/AndroidRecordingRuntime` | `[gated:G2]` | G2 |
+| S9 | 录音侧端口与批次快照 | `RecordingPorts/RecordingWorkflow/AndroidAudioTranscriber/AndroidRecordingRuntime` | `[并行]` | S3/S5 之后 |
 | S10 | 矩阵测试与全量验收 | 测试文件 + 命令 | `[串行:V1]` | 全部 |
 | S11 | 真实请求留证 | 执行记录（本任务不执行） | `[串行:V3]` | 密钥/发布前 |
 
 ## 4. 步骤详述
 
-### S0 `[gated:G3]` Anthropic 认证头与 DeepSeek 端点核对
-- 动作：核对 MiMo Anthropic 头（`api-key` 还是 Bearer）、`https://api.xiaomimimo.com/anthropic/v1/messages` 可用性、DeepSeek Anthropic 兼容端点与认证头；给“通过/不通过 + 依据 URL + 日期”，不通过则在 S1 删除该组合并给“改用 OpenAI 协议”提示。
-- 涉及文件：无代码改动；结论写入实施记录/PR 描述（spec 不改）。
-- 验收：厂商文档原文可引用；两项结论明确；不通过组合时 S1 返回 `ai.thinking_unsupported` 且 UI 有替代协议提示。
-- 完成定义 / 并行：G3 关闭或明确 blocked，影响面回写 S1/S5/S6 / `[gated:G3]`，不阻塞其余组合。
+### S0 `[已完成]` Anthropic 认证头与端点核对（2026-10-19）
+- 结论（Lead 已核对官方文档，写进 spec B §3 与 D §4）：MiMo Anthropic 端点 `https://api.xiaomimimo.com/anthropic/v1/messages`，认证只文档化 `api-key: $MIMO_API_KEY` 与 `Authorization: Bearer`，**没有 `x-api-key`**；DeepSeek Anthropic 端点 `https://api.deepseek.com/anthropic`（`ANTHROPIC_BASE_URL`），认证头 `x-api-key`，`thinking` 字段受支持且 `budget_tokens` 被忽略。
+- 影响：S5/S6 必须按厂商选择认证头（MiMo=`api-key`，DeepSeek=`x-api-key`）；两个 Anthropic 组合都保留，不再需要删除组合。
+- 剩余：真实端点调用需要凭据，归 S11；若实测 401，按"改用 OpenAI 协议"回退并在记录中注明。
 
 ### S1 `[并行]` 能力矩阵与解析（`backend/.../application/api/ThinkingPolicy.kt`）
 - 动作：新增 `ThinkingMode { ENABLED, DISABLED }`、`ThinkingSupport { AVAILABLE, CUSTOM_GATEWAY, UNSUPPORTED, UNRECOGNIZED }` 与“厂商/族/协议/官方直连/参数名+值+位置”矩阵；解析顺序固定为协议→模型族（`qwen*`/`deepseek*`/`mimo*`，表内精确模型优先）→官方 host 白名单（https、无 userinfo、端口 -1/443）→三态。5 个支持组合：Qwen×OpenAI、DeepSeek×OpenAI、DeepSeek×Anthropic、MiMo×OpenAI、MiMo×Anthropic；Qwen×Anthropic 明确不支持；未识别模型给 `ai.model_unrecognized`。
@@ -101,11 +100,11 @@
 - 验收：`.\gradlew.bat :app:assembleDebug` 成功；真实对话与连接测试仍走真实客户端。
 - 完成定义 / 并行：装配点唯一、无重复构造；P3 合并后一次全量验证通过 / `[收口:M3]`，与 P3 串行。
 
-### S9 `[gated:G2]` 录音侧端口、批次快照与装饰器
-- 动作：`AiClient` 的 `analyze/test` 接收策略快照（`transcribe` 不变，转写不读开关）；`RecordingWorkflow.process` 在批次开头取一次快照并传给转写/分析/后续调用，策略禁用时不发请求并落固定错误（`ai.thinking_unsupported`）；`AndroidAudioTranscriber` 透传新签名；`AndroidRecordingRuntime` 更新装配；按 spec §13 记录前置提交占位。
+### S9 `[并行]` 录音侧端口、批次快照与装饰器
+- 动作：`AiClient` 的 `analyze/test` 接收策略快照（`transcribe` 不变，转写不读开关）；`RecordingWorkflow.process` 在批次开头取一次快照并传给转写/分析/后续调用，策略禁用时不发请求并落固定错误（`ai.thinking_unsupported`）；`AndroidAudioTranscriber` 透传新签名；`AndroidRecordingRuntime` 更新装配。**端口签名与契约由本计划自行定义并在本步提交，不需要外部前置提交或 SHA 占位。**
 - 涉及文件：`backend/.../RecordingPorts.kt`、`backend/.../RecordingWorkflow.kt`、`app/.../platform/ai/AndroidAudioTranscriber.kt`、`app/.../platform/ai/AndroidRecordingRuntime.kt`；测试 `backend/src/test/.../RecordingWorkflowTest.kt`。
-- 验收：解封后 `.\gradlew.bat :backend:test --tests "com.greatwall.callring.RecordingWorkflowTest"` 全绿；断言批次内配置变更不改变本次请求、禁用策略不产生网络调用且错误固定、转写路径无思考参数。
-- 完成定义 / 并行：前置端口提交已合入并以正式名称/契约封存；未解封只做签名设计评审，不得标记完成 / `[gated:G2]`，解封条件见 §8。
+- 验收：`.\gradlew.bat :backend:test --tests "com.greatwall.callring.RecordingWorkflowTest"` 全绿；断言批次内配置变更不改变本次请求、禁用策略不产生网络调用且错误固定、转写路径无思考参数。
+- 完成定义 / 并行：端口签名与契约写入本计划 §4，无外部依赖；与 S3/S5 之后执行，不阻塞其余步骤 / `[并行]`。
 
 ### S10 `[串行:V1]` 矩阵测试补齐与全量验收
 - 动作：新增 `ThinkingPolicyMatrixTest`（矩阵中的参数形态）与 `ThinkingPolicyResolverTest`（识别/白名单/三态）；更新受影响的既有测试（`ConversationProtocolTest`、`ConversationCompatibilityTest`、`ProviderProfileTest`、`CompatibleAiClientTest`、`AiSettingsServiceTest`、`AndroidRecordingStoreTest`、`ConversationServiceTest`、`ContextAssemblerTest`、`ToolRegistryTest`、`ToolOperationCoverageTest`、`OperationScopePlannerTest`、`DraftMergeTest` 与 ui AI 测试）；按 §6 逐项映射。
@@ -151,8 +150,8 @@
 
 ## 8. blocked 项与解封条件
 
-- **G2 录音端口前置提交（S9）**：blocked。占位：`前置提交 SHA：待填`、`前置提交正式端口名称/契约：待填`、`最终封存版本：待填`。解封条件：前置提交合入集成分支并提供正式名称、契约、SHA、测试结果与封存版本；未解封前 S9 只做设计评审，不得标记完成，其余步骤照常验收。
-- **G3 Anthropic 核对（S0）**：不通过则从矩阵移除 MiMo/DeepSeek 对应 Anthropic 组合，UI 提示改用 OpenAI 协议；其余组合不受影响。
+- ~~G2 录音端口前置提交~~ **已取消**：端口由本计划 S9 自行改造，无外部依赖、无 SHA 占位（spec B §13 已同步）。
+- **G3 Anthropic 核对（S0）**：**已完成（2026-10-19）**：MiMo 用 `api-key`、DeepSeek 用 `x-api-key`，两个组合都保留；剩余仅 S11 真实请求，若 401 再回退为“仅 OpenAI 协议”提示。
 - **M3 BackendGraph**：与 P3 串行；P3 未合入前不得改该文件。
 - **V3 真实请求**：需付费密钥、真实网络与发布前窗口；未执行不得写“已实测”。
 
@@ -166,14 +165,14 @@
 
 ## 10. 风险
 
-- MiMo 只接受 `api-key`/Bearer 时，现有 `x-api-key` 会导致 401；没有 G3 不得并行实现 Anthropic 分支。
+- MiMo Anthropic 必须用 `api-key`（现有实现是 `x-api-key`，直接复用会 401）；DeepSeek Anthropic 用 `x-api-key`；两者在 S5/S6 由同一份厂商→认证头映射表驱动，禁止散落在客户端分支里。
 - DeepSeek Anthropic 端点若不支持，强制实现会产生不可用组合；必须由 S0 删除而非运行时猜测。
 - 思考回传放大请求体积与上下文成本：S3 的预算口径未落地前，长对话可能提前触顶 `ai.context_budget_exceeded`。
 - 提前删除 `compatibility`/`resolvedProfile` 会打断 Wave 1 冻结的 UI 与 Debug 设备测试（删除必须与 M1 同提交）；真实请求与设备 harness 若未执行，文档只能标“已核实、未实测”，不得用离线单测替代。
 
 ## 11. 完成定义（DoD）
 
-- S0–S6 的单元测试与 S10 全量命令全绿；S7/S8 收口提交单独全量通过；S9 在 G2 解封后通过，否则明确列为 blocked。
+- S0–S6 的单元测试与 S10 全量命令全绿；S7/S8 收口提交单独全量通过；S9 端口签名与批次快照在本计划内完成并通过（无外部依赖）。
 - 矩阵 12 项逐项有断言并通过；5 个支持组合与未识别/Qwen×Anthropic 的 UI 禁用原因可见。
 - `transcribe` 请求体与现状一致；开启态回传字段与顺序有测试；关闭态 `ai.provider_mode_mismatch` 保留且不重试。
 - v1 配置读取、三种旧值到 DISABLED 的映射、url/model/key 不丢失均有测试，无数据清空、无新表；与 A/C 的共享文件只在 M1/M3/M4 由单一 owner 改动，最终 diff 无跨 track 冲突，真实请求记录已填或明确标“未实测”。

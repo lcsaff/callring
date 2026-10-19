@@ -92,6 +92,15 @@ Release 说明原文摘录（API `body` 与页面文本一致）：
 - **不带 `User-Agent` 的请求返回 403**（此前"403 限流"判断的成因之一）；补自定义 UA 后同一接口返回 200 并正常取数。
 - 核对末尾配额用尽，后续查询返回 403 `API rate limit exceeded`。更新客户端必须显式发送 UA，并把 403 分成"UA/权限"与"限流"两类反馈。
 
+### 发行签名现状（2026-10-19 实查）
+
+- v0.2 正式包证书 SHA-256 = `ac2a448935603a5a42985969732c32109ef4980e8fb435e061d36886cf4062ee`（Release 说明）；对应**发行密钥已确认丢失**，无法再产出可覆盖 v0.2 的包。
+- 本机 debug 证书：`C:\Users\GreatWall\.android\debug.keystore`（2618 字节），DN `CN=Android Debug`，证书 SHA-256 `5a901cad57f5590483f362e4752ca8f4a56197340b71d2632ded0195bf8a24b4`，SHA-1 `4264850a8ca22e6e1cc33058cb4572db225ec8e3`；`app/build/outputs/apk/debug/app-debug.apk` 经 `apksigner verify --print-certs` 实测为同一指纹。
+- `app/build/outputs/apk/release/app-release-unsigned.apk` 未签名（`apksigner` 报 `DOES NOT VERIFY` / `Missing META-INF/MANIFEST.MF`）。
+- 推论（依据上述实测）：两把证书不同 → v0.2 安装不能被任何本机构建覆盖升级；同 debug 证书、versionCode 递增的后续版本可以覆盖本机现有 debug 安装并保留数据。
+
+
+
 ## 3. latest 语义（已核实，GitHub REST 文档 create/update release）
 
 文档原文要点：

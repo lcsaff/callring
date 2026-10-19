@@ -36,18 +36,18 @@
 | 入口 | S10 | 设置行 + 版本副标题 + 路由 | 需收口：与 A（SettingsOverview/SettingsRoute） |
 | 发布链 | S11 | `tools/` 脚本 + `.github/workflows/`、失败即停 | 可并行（与 P1/P2） |
 | 单测 | S12 | 矩阵用例 + 统一验证命令与计数 | 可并行（P1/P2 各自测试） |
-| 验收 | S13 | 真机 v0.2→0.3.0 覆盖升级 + 发布演练证据 | 不可并行（签名、真机验收） |
+| 验收 | S13 | 真机同证书 0.3.0→0.3.1 覆盖升级（v0.2 不可作为起点）+ 发布演练证据 | 不可并行（签名、真机验收） |
 
 ## 4. 每步详述
-### S01 取得并核对 v0.2 发行 keystore（第一门槛）
-- 动作：在仓库外取得候选发行 keystore 与口令；先对**已发布的 v0.2 APK** 跑 `apksigner verify --print-certs` 记基线，再用候选密钥签出测试包复跑并逐字符核对指纹；通过后备份密钥与口令到仓库外并做一次“从备份重签→复核指纹”的恢复演练；口令/密钥不得进入仓库、命令回显或构建日志。
-- 涉及文件：仓库内无改动；keystore 与备份在仓库外；`apksigner` 取自 build-tools 36.0.0。
-- 验收：两处 `--print-certs` 输出均含 `SHA-256: ac2a448935603a5a42985969732c32109ef4980e8fb435e061d36886cf4062ee`，退出码 0，指纹逐字符相等；恢复演练可复现。
-- 完成定义：指纹相等且备份可恢复 → 解锁 S02–S13；指纹不等/密钥缺失 → S01 阻塞并停止后续（不得先写更新代码），另立数据迁移评审（卸载重装会丢失档案/设置/录音，不得作为默认方案）。
+### S01 发行身份与备份（第一门槛，已定案）
+- 动作：v0.2 发行密钥已确认丢失（2026-10-19），不再寻找。改为把本机 Android debug 证书作为当前发行身份：确认 `C:\Users\GreatWall\.android\debug.keystore` 存在（2618 字节）、证书 SHA-256 = `5a901cad57f5590483f362e4752ca8f4a56197340b71d2632ded0195bf8a24b4`；把 keystore 备份到仓库外并记录文件 SHA-256；用该 keystore 签一个 versionCode 递增的测试包，`apksigner verify --print-certs` 复核指纹；在**本机现有 debug 安装**上覆盖升级，确认数据保留；记录“v0.2 不可覆盖升级”的既有事实。
+- 涉及文件：仓库内无改动；`signing.properties`（gitignore）与备份在仓库外；`apksigner` 取自 build-tools 36.0.0。
+- 验收：备份文件存在且记录摘要；测试包 `--print-certs` 指纹等于 `5a901cad…24b4`（DN `CN=Android Debug`）；覆盖本机 debug 安装成功、档案/设置/录音保留；命令与日志不含真实口令。
+- 完成定义：备份可恢复、指纹一致、覆盖升级通过 → 解锁 S02–S13；任一失败 → S01 阻塞（不得改用新证书绕过：本机现有数据将无法保留）。
 - 并行：不可并行（签名门槛，未通过即全局停止）。
 
 ### S02 版本单一来源与 signingConfigs
-- 动作：新增根 `version.properties`（versionCode=3、versionName=0.3.0）作为唯一来源，根 `build.gradle` 读取并注入 `app/build.gradle` 以替换硬编码；`app/build.gradle` 增 `signingConfigs`，正式签名从 Secrets 或本地 `~/.gradle/gradle.properties`/环境变量注入（不提交私钥）；`backendQa` 沿用 debug、保留 `-backend-qa` 后缀，不参与正式版本。
+- 动作：新增根 `version.properties`（versionCode=3、versionName=0.3.0）作为唯一来源，根 `build.gradle` 读取并注入 `app/build.gradle` 以替换硬编码；`app/build.gradle` 增 `signingConfigs`：release 指向 **debug keystore**（storeFile/alias/口令从被 gitignore 的 `signing.properties` 读取，不提交私钥；CI 存在时读 Secrets）；`backendQa` 沿用 debug、保留 `-backend-qa` 后缀，不参与正式版本。
 - 涉及文件：`version.properties`（新增）、根 `build.gradle`、`app/build.gradle`；仓库 `gradle.properties` 只放非密配置。
 - 验收：改 `version.properties` 后 `:app:assembleDebug` 产物 versionCode/versionName 跟随（`aapt2 dump badging` 或 `apkanalyzer manifest version-*`）；`:app:assembleBackendQa`（任务名以实际为准）产物 applicationId 以 `.backendqa` 结尾、versionName 带 `-backend-qa`；`git status` 与 diff 无密钥/口令。
 - 完成定义：版本单一来源生效、QA 变体不读正式 signingConfig、仓库无敏感物。
@@ -124,9 +124,9 @@
 - 并行：可并行（与 P1/P2 测试各自执行），执行时点在 S01–S11 之后。
 
 ### S13 真机覆盖升级与发布演练
-- 动作：隔离测试设备先安装**已发布的 v0.2 正式 APK**（同签名、versionCode 2）确认可启动，再用 0.3.0 覆盖升级；走完应用内检查→下载→取消→重试→进程重启恢复→未知来源授权→取消安装→安装成功；另做一次真实 Release 演练并核对 `/releases/latest`；记录机型/系统、前后 `dumpsys package`、档案/设置/录音抽查与截图/日志。禁止覆盖日常设备。
+- 动作：隔离测试设备以本机现有 debug 安装（或同一 debug 证书签名的 0.3.0 测试包）为起点（**v0.2 正式包不可作为起点**：发行密钥丢失、签名不兼容），用 versionCode 递增的同证书包（如 0.3.0 → 0.3.1）覆盖升级；走完应用内检查→下载→取消→重试→进程重启恢复→未知来源授权→取消安装→安装成功；另做一次真实 Release 演练并核对 `/releases/latest`；记录机型/系统、前后 `dumpsys package`、档案/设置/录音抽查与截图/日志。禁止覆盖日常设备。
 - 涉及文件：证据归档（路径实现时定）；不新增代码。
-- 验收：包名不变、versionCode 2→3、档案/设置/录音保留；每步状态与错误可复现；发布证据齐全（§7 清单）。
+- 验收：包名不变、versionCode 递增、档案/设置/录音保留；每步状态与错误可复现；发布证据齐全（§7 清单）。
 - 完成定义：全部证据齐备才可写“已验收”；未完成项单列，失败保留产物与日志，不把编译/Debug 通过写成链路通过。
 - 并行：不可并行（签名、真机验收与单向发布，独占设备与 Release）。
 
@@ -144,7 +144,7 @@
 | --- | --- | --- |
 | 1 | 准备版本：脚本更新 `version.properties`，校验格式与递增（> 已发布最高 2，> 现装最高 2） | 非零退出，不进入构建 |
 | 2 | 完整验证：`:backend:test`、`:ui:testDebugUnitTest`、`:app:testDebugUnitTest`、`:app:assembleRelease`、lint（`lintRelease` 可用则以 release 为准） | 任一失败即停；不签名、不上传 |
-| 3 | 签名：固定发行证书签名，`apksigner verify --print-certs` 核对 `ac2a…62ee`，`zipalign -c -v 4` | 指纹/对齐不符即停，产物作废 |
+| 3 | 签名：固定发行证书签名，`apksigner verify --print-certs` 核对 `5a901cad…24b4`（当前发行身份=debug 证书），`zipalign -c -v 4` | 指纹/对齐不符即停，产物作废 |
 | 4 | 生成元数据：从签名后 APK 生成 `update.json` 与 `SHA256SUMS.txt`，拒绝 QA 包/包名不符 | 生成失败或字段校验失败即停 |
 | 5 | 一致性：APK、`update.json`、`version.properties`、标签 `v0.3.0` 四者互校（版本/assetName/摘要/大小/包名/签名） | 任一不符即停 |
 | 6 | 上传草稿 Release（tag `v0.3.0`），核对附件名/大小/摘要 | 附件缺失或摘要不符即停，发布件不转正式 |
@@ -162,7 +162,7 @@
 ## 8. 风险与未核实项
 | # | 项 | 处理 |
 | --- | --- | --- |
-| 1 | v0.2 发行 keystore 是否仍在维护者手中（**最高风险，未核实**） | S01 第一门槛；缺失则 S02–S13 阻塞，另立数据迁移评审 |
+| 1 | 发行身份（**已定案**） | v0.2 密钥已确认丢失（2026-10-19）；发行身份=本机 debug 证书（`5a901cad…24b4`），S01 备份与覆盖升级验证；v0.2 不可覆盖，按无存量处理 |
 | 2 | Play 上架政策原文未核对 | 本链路仅服务自更新/侧载；上架前按官方政策复核，改用 Play 内更新，不得写“一定被拒” |
 | 3 | `setVisibleInDownloadsUi(false)` 在新系统行为未知（API 已标记废弃） | 真机确认系统“下载”应用不出现该条目；不满足则记录并调整策略 |
 | 4 | `.github/`/Secrets 首跑与 latest 规则未实测（`make_latest` 语义） | 工作流首跑并保留“Secrets 缺失即失败”记录；发布后核对 `/releases/latest`，不按时间/版本号推断 |
@@ -171,9 +171,9 @@
 | 7 | `lintRelease` 是否可用未核实 | 可用则以 release 变体为准；不可用记录原因 |
 
 ## 9. DoD
-- [ ] S01 指纹核对通过且备份可恢复；不通过时阶段四停止并单列阻塞（禁止绕过后继续）。
+- [ ] S01 备份可恢复、测试包指纹等于 `5a901cad…24b4`、覆盖本机现有 debug 安装通过；不通过时阶段四停止（禁止改用新证书绕过，否则本机数据不可保留）。
 - [ ] `version.properties` 为唯一来源，Debug/QA 产物版本符合预期，仓库无密钥/口令。
 - [ ] 更新契约、GitHub 检查、元数据、下载、校验、安装链路实现完成且单测全绿（含 403 两类/429/404/304/签名不符）。
 - [ ] `BackendGraph.kt` 与 B 收口、`SettingsOverviewScreen.kt`/`SettingsRoute.kt` 与 A 收口完成；更新页 14 状态唯一主操作，无启动弹窗/后台轮询；入口版本副标题来自 PackageManager，QA 变体隐藏。
 - [ ] 发布脚本与 CI 7 步失败即停，Secrets 缺失即失败，`/releases/latest` 核对通过；§7 统一命令退出码 0，三处测试计数非空且无失败；README/PROJECT 验证入口已同步。
-- [ ] 设备实测：v0.2→0.3.0 覆盖升级成功、数据保留、全链路证据齐全；未核实项（Play 政策、设备行为、`setVisibleInDownloadsUi`）未写成“已验证”。
+- [ ] 设备实测：同 debug 证书的 0.3.0→0.3.1 覆盖升级成功、数据保留、全链路证据齐全（v0.2 正式包不可作为升级起点：发行密钥丢失、签名不兼容）；未核实项（Play 政策、设备行为、`setVisibleInDownloadsUi`）未写成“已验证”。

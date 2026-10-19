@@ -30,6 +30,7 @@
 | 13 | Manifest | 无 `REQUEST_INSTALL_PACKAGES`、无 FileProvider；`app/src/main/res/xml/` 已存在（`data_extraction_rules.xml`） |
 | 14 | 契约模式 | `CallringUiApi` 用 `val aiSettings: AiSettingsApi get() = UnavailableAiSettingsApi` 提供默认实现；平台实现在 `app/.../bootstrap/BackendGraph.kt` 的 `object : CallringUiApi by backend` 中装配 |
 | 15 | 统一验证现状 | PROJECT 的构建入口只列 app 三项（`:app:testDebugUnitTest :app:assembleDebug :app:lintDebug`），README 另列 UI 三项，两处都**不含** `:backend:test`；后端是 `java-library`，单元测试任务名是 `:backend:test` |
+| 16 | 发行签名现状 | v0.2 的发行密钥已确认丢失（2026-10-19）；本机构建使用 Android debug 证书：`C:\Users\GreatWall\.android\debug.keystore`，证书 SHA-256 `5a901cad57f5590483f362e4752ca8f4a56197340b71d2632ded0195bf8a24b4`，DN `CN=Android Debug`；`app-release-unsigned.apk` 未签名（`apksigner` 报 DOES NOT VERIFY） | keytool / apksigner 实查（D §2 补充） |
 
 ### 原文需要更正的结论
 
@@ -130,11 +131,13 @@
 
 【验收】改 `version.properties` 后构建产物 `versionCode/versionName` 与文件一致；准备脚本对 `0.3`、`v0.3.0`、`0.2.9`、相同 versionCode 等输入报错并停止；标签与 versionName 不一致时校验脚本非零退出。
 
-【决策】**keystore 连续性是阶段三的第一门槛**：必须找到并备份 v0.2 的发行密钥，用 `apksigner verify --print-certs` 核对证书 SHA-256 **必须等于** `ac2a448935603a5a42985969732c32109ef4980e8fb435e061d36886cf4062ee`；拿不到该密钥则阶段四的全部升级验收作废，只能另立数据迁移方案。
+【决策】**发行身份改为本机 Android debug 证书，并把“备份 + 指纹留档”作为阶段三的第一门槛。** 使用 `C:\Users\GreatWall\.android\debug.keystore`（证书 SHA-256 `5a901cad57f5590483f362e4752ca8f4a56197340b71d2632ded0195bf8a24b4`）为 0.3.0 及后续版本签名；签名参数从仓库外/被 gitignore 的 `signing.properties` 读取，不提交私钥与口令。v0.2 的发行密钥已确认丢失，**任何构建都无法再覆盖 v0.2 安装**；v0.2 仅作为遗留版本记录，其公开下载量 1，按无存量处理。
 
-【理由】覆盖安装要求同包名、兼容签名、更高 versionCode（Release 说明与事实 5 已确认 debug 包不可覆盖）；签名不同只能卸载重装，而卸载会丢失本地数据。仓库里没有私钥、`app/build.gradle` 也没有 signingConfigs，所以“密钥是否还在”是当前最大未知项，必须在写更新代码之前先解决。
+【理由】覆盖安装要求同包名、兼容签名、更高 versionCode。本机现有安装全部来自 debug 构建（`app-debug.apk` 实测同一证书），只有沿用该 debug 证书签 0.3.0 才能直接覆盖并保留数据；重新生成正式证书会迫使所有本机安装卸载重装并丢数据。仓库里没有发行密钥、`app/build.gradle` 也没有 signingConfigs，这一现状已确认，不再是待核实项。
 
-【验收】对已发布的 v0.2 APK 与用候选密钥签出的测试包分别执行 `--print-certs`，两处 SHA-256 都等于上述值；把密钥与密码备份到仓库外的安全位置并记录恢复演练结果。若指纹不等或密钥缺失：阶段四标记为阻塞，不进入下载/安装实现，改为单独评审数据迁移。
+【不变式与代价】debug 证书是机器绑定、Play 不接受、口令是公开的 `android`（私钥仍只在本机）；因此它只是**当前阶段的发行身份**，不是长期方案。切换正式证书必须做一次性数据迁移（卸载重装 + 导出/导入），另行评审；在那之前必须把 `debug.keystore` 备份到仓库外并记录文件摘要，否则换机会再次失去升级能力。
+
+【验收】备份 `debug.keystore` 到仓库外并记录文件 SHA-256；用该 keystore 签出测试包执行 `apksigner verify --print-certs`，证书 SHA-256 等于 `5a901cad…24b4`；在本机现有 debug 安装上升级一个 versionCode 递增的同证书包，安装成功且档案/设置/录音保留；文档记录“v0.2 不可覆盖升级”的既有事实。若备份失败或指纹不符：阶段四停止。
 
 【决策】`backendQa` 构建禁用更新入口；禁止把 QA 包当正式 APK 发布。
 
@@ -165,7 +168,7 @@
 | 更新契约 | 新增 `backend/.../application/api/AppUpdateApi.kt` | 状态、发布信息、检查/下载/取消/安装操作；接入 `CallringUiApi` 默认实现模式（`val update: AppUpdateApi get() = UnavailableAppUpdateApi`） |
 | 更新界面 | 新增 `ui/.../feature/update/AppUpdateScreen.kt`、`AppUpdateViewModel.kt` | 展示当前版本、可用版本、说明、大小与状态；不直接访问网络或系统安装器 |
 | 平台实现 | 新增 `app/.../platform/update/`，按职责拆文件 | GitHub 查询（UA/Accept/ETag）、元数据校验、DownloadManager、校验与安装、状态持久化 |
-| Android 配置 | `app/src/main/AndroidManifest.xml`、新增 FileProvider 路径 XML、`app/build.gradle` | `REQUEST_INSTALL_PACKAGES`、Provider 声明、新增 `androidx.core:core` 依赖与 `signingConfigs` |
+| Android 配置 | `app/src/main/AndroidManifest.xml`、新增 FileProvider 路径 XML、`app/build.gradle` | `REQUEST_INSTALL_PACKAGES`、Provider 声明、新增 `androidx.core:core` 依赖；`signingConfigs` 使用 debug keystore（storeFile/alias/口令从被 gitignore 的 `signing.properties` 读取，不提交私钥） |
 | 版本来源 | 根 `version.properties`、`app/build.gradle` | 单一版本来源，Gradle 读取 |
 | 发布工具 | `tools/` 新增版本准备、签名校验、元数据生成、发布校验脚本 | 失败即停的本地校验链 |
 | CI | 新增 `.github/workflows/` | Secrets 驱动的签名构建与草稿上传 |
@@ -175,7 +178,7 @@
 
 ### 阶段三：版本与发布基础
 
-1. 取得并备份 v0.2 发行密钥，核对指纹等于 `ac2a4489…4062ee`（门槛；不通过则停止本阶段）。
+1. 备份 `debug.keystore` 并核对证书指纹 `5a901cad…24b4`（门槛；不通过则停止本阶段）；记录 v0.2 已不可覆盖升级。
 2. 建 `version.properties`、准备脚本、发布校验脚本；`app/build.gradle` 接入版本读取与 signingConfigs。
 3. 用固定样例验证：版本未递增、标签错、附件缺失、包名不符、摘要不符、签名不符、QA 包混入均被拦截。
 4. 在 CI 配置好 Secrets 前，工作流必须失败退出而不是产出未签名 Release。
@@ -185,8 +188,8 @@
 1. 更新契约、设置入口、更新页面、GitHub 查询、下载与校验、安装链路完成。
 2. 单元测试覆盖：高/同/低版本、缺附件、缺元数据、draft/prerelease、系统版本不满足、403 两类、429 与恢复时间、404、异常 JSON、304、下载恢复、取消清理、摘要不符、签名不符。
 3. **设备实测**（隔离测试设备，禁止覆盖正在使用的日常设备）：
-   - 先安装已发布的 **v0.2 正式 Release APK**（同签名、versionCode 2），确认可启动。
-   - 用 0.3.0 新包覆盖升级，确认包名不变、versionCode=3、档案/设置/录音均保留。
+   - 起点：本机现有 debug 安装，或用**同一 debug 证书**签名的 0.3.0 测试包（v0.2 正式包不可作为起点：发行密钥已丢失、签名不兼容）。
+   - 用 versionCode 递增的同证书包（如 0.3.0 → 0.3.1）覆盖升级，确认包名不变、versionCode 递增、档案/设置/录音均保留。
    - 走完应用内检查 → 下载 → 取消 → 重试 → 进程重启恢复 → 未知来源授权 → 取消安装 → 安装成功全链路。
    - 记录每步的时间、截图/日志与最终 `dumpsys package` 版本信息。
 4. 注意：v0.2 没有更新入口，首次获得更新能力必须手动下载安装 0.3.0；此后才走应用内更新。
@@ -207,7 +210,7 @@ README/PROJECT 的验证说明同步补上 `:backend:test`（后端是 `java-lib
 
 | # | 项 | 状态与处理 |
 | --- | --- | --- |
-| 1 | v0.2 发行 keystore 是否仍在维护者手中 | **未核实，最高风险**；阶段三第一门槛，拿不到则阶段四升级验收作废 |
+| 1 | 发行身份 | **已确认 v0.2 密钥丢失**（2026-10-19），改用本机 debug 证书；风险：机器绑定、Play 不接受、换机即失效 → 必须备份 `debug.keystore` 并记录指纹；正式证书迁移需一次性卸载重装，另行评审 |
 | 2 | Play 上架政策原文 | 未核对；本文按自更新/侧载前提设计，上架 Play 前须按官方政策复核并改用 Play 内更新，不可把“会被拒”当作已核实政策条款 |
 | 3 | GitHub 服务端 asset digest | 本轮未取得；摘要以 `SHA256SUMS.txt` 为唯一来源 |
 | 4 | 装机量 | `callring-0.2.apk` 下载 1 次是公开计数，不能推断真实安装量 |

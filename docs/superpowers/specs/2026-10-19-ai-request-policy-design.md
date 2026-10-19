@@ -48,9 +48,9 @@
 | Qwen × OpenAI | `qwen3.8-flash`（含日期后缀）及表内 Qwen 混合思考模型 | `enable_thinking=false`，同时 `preserve_thinking=false` | `enable_thinking=true` | 混合思考模型可开关；"仅思考"模型不可用（不在本轮范围）；HTTP JSON 放顶层字段，SDK 的 `extra_body` 只是传参机制 |
 | Qwen × Anthropic | — | 不支持 | 不支持 | 官方 DashScope 无 Anthropic 兼容端点；该组合不出现在可选范围 |
 | DeepSeek × OpenAI | `deepseek-*` 思考模式模型（精确标识实施时补） | `thinking={"type":"disabled"}` | `thinking={"type":"enabled"}` | 同一供应商的 OpenAI/Anthropic/Responses 三格式字段不同；思考模式不支持 `temperature`/`presence_penalty`/`frequency_penalty` |
-| DeepSeek × Anthropic | 同上 | `thinking={"type":"disabled"}`（Anthropic 格式） | `thinking={"type":"enabled"}` | **实现前必须核对**：Anthropic 兼容端点与认证头；核对不通过则该组合从可选协议中移除并提示用户改用 OpenAI 协议 |
+| DeepSeek × Anthropic | 同上 | `thinking={"type":"disabled"}`（Anthropic 格式） | `thinking={"type":"enabled"}` | **已核实 2026-10-19**：端点 `https://api.deepseek.com/anthropic`（`ANTHROPIC_BASE_URL`），认证头 `x-api-key`，`thinking` 字段受支持（`budget_tokens` 被忽略，正好符合本期只做开关） |
 | MiMo × OpenAI | `mimo-v2.6-flash`、`mimo-v2.6-pro`、`mimo-v2.6-pro-ultraspeed`、`mimo-v2.5-pro`、`mimo-v2.5` | `thinking={"type":"disabled"}`（顶层字段；SDK 用 `extra_body`） | `thinking={"type":"enabled"}` | 上述模型默认开启思考；思考模式下 `temperature`/`top_p` 被强制为 1.0/0.95；多轮工具调用必须回传 `reasoning_content`，否则 400 |
-| MiMo × Anthropic | 同上 | `thinking={"type":"disabled"}` | `thinking={"type":"enabled"}` | 端点 `https://api.xiaomimimo.com/anthropic/v1/messages`；认证支持 `api-key` 头或 `Bearer`，**现有实现发的是 `x-api-key`，需适配或核对兼容性** |
+| MiMo × Anthropic | 同上 | `thinking={"type":"disabled"}` | `thinking={"type":"enabled"}` | 端点 `https://api.xiaomimimo.com/anthropic/v1/messages`；**已核实 2026-10-19**：认证只文档化 `api-key: $MIMO_API_KEY` 与 `Bearer` 两种，**没有 `x-api-key`** → 现有 Anthropic 客户端必须按厂商切换认证头（MiMo 用 `api-key`，DeepSeek 用 `x-api-key`） |
 | 未入表模型（含其他厂商） | — | 开关禁用 | 开关禁用 | 提示"当前仅支持 Qwen / DeepSeek / MiMo"；请求不注入任何思考参数，保持现状行为 |
 
 【决策】矩阵内没有"不可关闭"的模型；因此四态收敛为三态：**可开关 / 不支持切换（开关禁用）/ 未识别（开关禁用）**。若后续加入仅思考模型（如某些 QwQ 类），按"开关禁用 + 说明"处理，不提供"强制关闭"。
@@ -186,19 +186,15 @@
 
 `...` 代表各模块现有的 `src/main/kotlin/com/greatwall/callring` 包路径。
 
-## 13. 分阶段与 blocked 项
+## 13. 分阶段与端口改造
 
-- **阶段 0（blocked-by 外部）：录音侧端口前置提交。** 封存 `AiClient`（含 `AndroidAudioTranscriber` 装饰器）与 `RecordingStore` 的设置快照路径，记录正式名称、契约、前置提交 SHA、测试结果与最终封存版本。
+录音侧端口由**本设计自己改**，不再等待外部"前置提交"：要改的是 `AiClient`（`analyze/test` 接收策略快照，`transcribe` 不变）与 `RecordingStore` 的设置快照读取路径，`AndroidAudioTranscriber` 透传新签名。先落端口签名与单测，再接入录音批次；不存在"等别人先提一版接口"的阻塞。
 
-```text
-前置提交 SHA：待填
-前置提交正式端口名称/契约：待填
-最终封存版本：待填
-```
+- **阶段 1：** 能力矩阵与解析、`thinkingMode` 数据模型、迁移、聊天与连接测试、Anthropic 认证头按厂商适配。
+- **阶段 2：** 端口签名改造 → 录音批次快照 → 被禁用时不发送并落固定错误。
+- **阶段 3（发布前）：** 离线矩阵全绿 + 真实请求（基线 2 条 Qwen；MiMo/DeepSeek 开启态各一条才能标"已实测"）。
 
-- **阶段 1（不依赖前置）：** 能力矩阵与解析、`thinkingMode` 数据模型、迁移、聊天与连接测试、Anthropic 认证头适配。
-- **阶段 2（blocked-by 阶段 0）：** 录音侧端口接入、批次快照、后台被禁用时的错误落库。
-- **阶段 3（发布前）：** 离线矩阵全绿 + 两次真实请求；MiMo/DeepSeek 开启态各需一条实测才能标"已实测"。
+若确有外部负责人在同一时间修改这两个接口，才需要其提供正式名称/契约/SHA 并以外部版本为准；否则一律按本设计执行，不设 blocked 占位。
 
 ## 14. 外部依据
 
