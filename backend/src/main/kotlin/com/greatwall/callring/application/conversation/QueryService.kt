@@ -15,7 +15,7 @@ class QueryService(sources:List<ScopedReadPort>,private val clock:()->Long=Syste
     private val refs=ConcurrentHashMap<String,Ref>()
     val sourceQueries=AtomicLong()
     val returnedRows=AtomicLong()
-    override fun reset(){cursors.clear();refs.clear()}
+    override fun reset(){cursors.clear();refs.clear();sources.values.distinct().forEach{it.reset()}}
     private fun fail(code:String,error:ErrorCode=ErrorCode.VALIDATION):Nothing=throw BackendFailure(ApiError(error,"ai.$code"))
     private fun source(domain:AiDomain)=sources[domain]?:fail("query_not_implemented",ErrorCode.INTERNAL)
     private fun stamp(domain:AiDomain,version:Long,s:ScopedReadPort)=SourceStamp(domain,version,clock(),s.scope(domain),s.consistency(domain))
@@ -58,7 +58,7 @@ class QueryService(sources:List<ScopedReadPort>,private val clock:()->Long=Syste
         returnedRows.addAndGet(items.size.toLong())
         val complete=page.complete&&next==null
         ScopedPage(items,stamp(spec.domain,before,s),page.matchedTotal,next?.let{token(Cursor(identity,spec.domain,before,it,clock()+600000))},complete,
-            if(complete&&items.isEmpty()&&page.status==QueryStatus.COMPLETE) QueryStatus.EMPTY else if(!complete) QueryStatus.PARTIAL else page.status,page.reason)
+            if(page.status in setOf(QueryStatus.NOT_CONFIGURED,QueryStatus.DENIED,QueryStatus.UNAVAILABLE))page.status else if(complete&&items.isEmpty()&&page.status==QueryStatus.COMPLETE) QueryStatus.EMPTY else if(!complete) QueryStatus.PARTIAL else page.status,page.reason)
     }
     override suspend fun get(domain:AiDomain,key:String,projection:String)=result {
         require(key.isNotBlank()&&key.length<=1024)

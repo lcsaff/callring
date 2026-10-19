@@ -49,6 +49,10 @@ class AndroidPreferences(
     private val defaultAppearance: AppearanceSettings,
     private val coordinator: com.greatwall.callring.application.BusinessRevisionCoordinator = com.greatwall.callring.application.BusinessRevisionCoordinator(),
 ) : PreferenceStore {
+    fun scopedBindingRows():Sequence<com.greatwall.callring.application.ports.SourceRow> = widgets.all.entries.asSequence().filter{it.key.startsWith("number_")}.map{entry->
+        val id=entry.key.removePrefix("number_").toInt()
+        com.greatwall.callring.application.ports.SourceRow("binding:$id",aiObject("kind" to aiString("stored_binding"),"widgetId" to aiNumber(id.toLong()),"number" to aiString(entry.value as String)))
+    }
     @Synchronized
     override fun getAppearance(): AppearanceSettings {
         fun <E : Enum<E>> safeEnum(value: String?, entries: Array<E>, fallback: E): E =

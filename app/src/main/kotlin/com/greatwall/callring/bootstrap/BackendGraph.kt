@@ -91,25 +91,18 @@ class BackendGraph(
         ensureOpen()
         AndroidSyncScheduler(application)
     }
+    private val preferenceStore by lazy {
+        AndroidPreferences(application.getSharedPreferences(configuration.appearancePreferencesName,Context.MODE_PRIVATE),application.getSharedPreferences(configuration.widgetPreferencesName,Context.MODE_PRIVATE),configuration.defaultAppearance,coordinator)
+    }
+    private fun installedWidgets()=WidgetInstallState(android.appwidget.AppWidgetManager.getInstance(application).getAppWidgetIds(android.content.ComponentName(application,com.greatwall.callring.ui.widget.CallringWidgetReceiver::class.java)).toList(),AccessState.GRANTED)
     private val backendDelegate = lazy {
         ensureOpen()
         CallringBackend(
             store,
-            AndroidPreferences(
-                application.getSharedPreferences(
-                    configuration.appearancePreferencesName,
-                    Context.MODE_PRIVATE,
-                ),
-                application.getSharedPreferences(
-                    configuration.widgetPreferencesName,
-                    Context.MODE_PRIVATE,
-                ),
-                configuration.defaultAppearance,
-                coordinator,
-            ),
+            preferenceStore,
             documents,
             AndroidRuntimeProbe(application, playbackState, diagnostics, configuration.clock) {
-                WidgetInstallState(android.appwidget.AppWidgetManager.getInstance(application).getAppWidgetIds(android.content.ComponentName(application, com.greatwall.callring.ui.widget.CallringWidgetReceiver::class.java)).toList(), AccessState.GRANTED)
+                installedWidgets()
             },
             audio,
             syncScheduler,
@@ -138,6 +131,11 @@ class BackendGraph(
     }
     val recordings get() = recordingDelegate.value
     private val resources = ForegroundResourceRegistry(configuration.clock)
+    private val queriesDelegate=lazy {scopedQueryApi(store.scopedReads(coordinator),{recordings},{api},{preferenceStore},{diagnostics},com.greatwall.callring.platform.ai.SystemRecordingSource(application.contentResolver),coordinator,resources,playbackState::snapshot,::installedWidgets,{
+        val scheduler=application.getSystemService(android.app.job.JobScheduler::class.java)
+        if(scheduler==null) aiObject("available" to aiBool(false)) else aiObject("available" to aiBool(true),"pending" to AiJson.Arr(scheduler.allPendingJobs.filter{it.service.packageName==application.packageName}.map{aiObject("service" to aiString(it.service.className),"jobId" to aiNumber(it.id.toLong()))}))
+    },configuration.clock)}
+    val queries:QueryService get()=queriesDelegate.value
     private val snapshotsDelegate = lazy { ensureOpen(); completeSnapshotApi(backend, recordings, diagnostics, coordinator, resources, configuration.clock) }
     private val conversationDelegate = lazy { ensureOpen(); ConversationService({ api }, snapshotsDelegate.value, { recordings.store.settings() }, coordinator, { CompatibleConversationClient() }, resources = resources) }
     private val apiDelegate by lazy {

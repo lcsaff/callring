@@ -9,6 +9,17 @@ import com.greatwall.callring.application.conversation.DirectoryEnumerator
 import com.greatwall.callring.application.conversation.DirectoryNode
 
 class SystemRecordingSource(private val resolver: ContentResolver, private val readGranted: (Uri) -> Boolean = { uri -> resolver.persistedUriPermissions.any { it.uri == uri && it.isReadPermission } }) {
+    fun scopedReads(folder:()->String?,version:()->Long,resources:com.greatwall.callring.application.conversation.ForegroundResourceRegistry):com.greatwall.callring.application.ports.ScopedReadPort =
+        DirectoryScopedReadSource(folder,version,resources,{readGranted(Uri.parse(it))},{root,id->
+            resolver.query(DocumentsContract.buildChildDocumentsUriUsingTree(Uri.parse(root),id),arrayOf(DocumentsContract.Document.COLUMN_DOCUMENT_ID,DocumentsContract.Document.COLUMN_DISPLAY_NAME,DocumentsContract.Document.COLUMN_MIME_TYPE,DocumentsContract.Document.COLUMN_LAST_MODIFIED,DocumentsContract.Document.COLUMN_SIZE),null,null,null)
+                ?:throw java.io.IOException("recording.directory_unavailable")
+        },::inspect)
+    fun inspect(folder:String,document:DocumentRef):RecordingFile? {
+        val root=Uri.parse(folder);val uri=Uri.parse(document.uri)
+        require(uri.authority==root.authority&&DocumentsContract.getTreeDocumentId(uri)==DocumentsContract.getTreeDocumentId(root))
+        if(!readGranted(root))throw SecurityException("recording.permission_required")
+        return resolver.query(uri,arrayOf(DocumentsContract.Document.COLUMN_DISPLAY_NAME,DocumentsContract.Document.COLUMN_LAST_MODIFIED,DocumentsContract.Document.COLUMN_SIZE),null,null,null)?.use{c->if(!c.moveToFirst())null else RecordingFile(document.uri,c.getString(0),if(c.isNull(1))0 else c.getLong(1),if(c.isNull(2))null else c.getLong(2),!c.isNull(1))}
+    }
     fun describe(folder: String?): RecordingFolderView {
         if(folder == null) return RecordingFolderView(null,AccessState.NOT_REQUIRED)
         return try {

@@ -6,6 +6,7 @@ data class SourceRow(val key:String,val value:AiJson.Obj,val textFields:Map<Stri
 data class SourcePage(val rows:List<SourceRow>,val matchedTotal:Long?,val nextKey:String?=null,val complete:Boolean=nextKey==null,val status:QueryStatus=if(nextKey==null) QueryStatus.COMPLETE else QueryStatus.PARTIAL,val reason:String?=null)
 data class SourceText(val text:String,val start:Long,val end:Long,val total:Long)
 interface ScopedReadPort {
+    fun reset()=Unit
     val domains:Set<AiDomain>
     /** Called outside source transactions. Never acquire the coordinator fence from a SQL read. */
     fun version(domain:AiDomain):Long

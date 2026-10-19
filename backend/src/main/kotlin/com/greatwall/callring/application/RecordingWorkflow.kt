@@ -16,6 +16,7 @@ class RecordingWorkflow(
     private val cancelledOperations = ConcurrentHashMap<Long, AtomicBoolean>()
     private val activeClients = ConcurrentHashMap<Long, AiClient>()
     private val versions = AtomicLong(System.currentTimeMillis() * 1000)
+    fun activitySnapshot()=aiObject("running" to aiNumber(running.size.toLong()),"activeClients" to aiNumber(activeClients.size.toLong()),"cancelledOperations" to aiNumber(cancelledOperations.values.count{it.get()}.toLong()))
     private fun version(previous: Long = 0): Long = versions.updateAndGet { maxOf(it + 1, previous + 1) }
 
     fun attach(callId: Long, number: String, startedAt: Long, path: String, source: RecordingSource, duration: Long): CallArchive {

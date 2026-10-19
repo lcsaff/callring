@@ -10,6 +10,12 @@ class ForegroundResourceRegistry(private val clock: Clock = Clock.systemUTC()) {
     private var generation = 0L
     private fun signature(file: RecordingFile) = "${file.name}:${file.modifiedAt}:${file.size}:${file.modifiedKnown}"
     @Synchronized fun reset() { generation++; resources.clear() }
+    @Synchronized fun lookup(handle:String):DocumentRef {
+        val resource=requireNotNull(resources[handle]){"action.invalid_handle"}
+        require(resource.expires>clock.millis()&&resource.generation==generation){"action.stale"}
+        return resource.document
+    }
+    @Synchronized fun verify(handle:String,file:RecordingFile){val document=lookup(handle);require(document.uri==file.uri&&resources.getValue(handle).signature==signature(file)){"action.resource_changed"}}
     @Synchronized fun issue(file: RecordingFile): String {
         val signature = signature(file)
         resources.entries.removeAll { it.value.expires <= clock.millis() }

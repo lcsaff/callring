@@ -29,6 +29,39 @@ class AndroidDiagnosticsStore(
     private val clock: Clock,
     private val coordinator: com.greatwall.callring.application.BusinessRevisionCoordinator = com.greatwall.callring.application.BusinessRevisionCoordinator(),
 ) : Closeable {
+    fun scopedReads():com.greatwall.callring.application.ports.ScopedReadPort {
+        val base=com.greatwall.callring.bootstrap.ValueScopedReadSource(setOf(com.greatwall.callring.application.api.AiDomain.D20),{coordinator.capture().values.getValue("diagnostics")}){spec->
+            require(spec.projection=="default")
+            storedEntries().map{(key,entry)->
+                val points=entry.message.codePointCount(0,entry.message.length).toLong()
+                com.greatwall.callring.application.ports.SourceRow(key,com.greatwall.callring.application.api.aiObject(
+                    "occurredAt" to com.greatwall.callring.application.api.aiNumber(entry.occurredAtEpochMillis),
+                    "legacyTime" to (entry.legacyTimeText?.let{com.greatwall.callring.application.api.aiString(it)}?:com.greatwall.callring.application.api.AiJson.Null),
+                    "message" to if(points>4096)com.greatwall.callring.application.api.AiJson.Null else com.greatwall.callring.application.api.aiString(entry.message)),
+                    if(points>4096)mapOf("message" to points)else emptyMap())
+            }
+        }
+        return object:com.greatwall.callring.application.ports.ScopedReadPort by base {
+            override fun text(domain:com.greatwall.callring.application.api.AiDomain,key:String,field:String,start:Long,maxChars:Int):com.greatwall.callring.application.ports.SourceText {
+                require(field=="message")
+                val message=storedEntries().firstOrNull{it.first==key}?.second?.message?:throw com.greatwall.callring.application.ports.BackendFailure(com.greatwall.callring.application.api.ApiError(com.greatwall.callring.application.api.ErrorCode.NOT_FOUND,"ai.not_found"))
+                return com.greatwall.callring.bootstrap.sliceSourceText(message,start,maxChars)
+            }
+        }
+    }
+    @Synchronized private fun storedEntries():Sequence<Pair<String,DiagnosticEntry>> {
+        val recent=preferences.getString("diagnostics_v2","").orEmpty()
+        val legacy=preferences.getString("events","").orEmpty()
+        val newRows=recent.lineSequence().filter{it.isNotEmpty()}.mapIndexed{i,line->
+            val fields=line.split('\t',limit=2);require(fields.size==2&&fields[0].toLongOrNull()!=null&&DiagnosticEvent.entries.any{it.code==fields[1]})
+            "recent:%016d".format(i) to DiagnosticEntry(fields[0].toLong(),null,fields[1])
+        }
+        val oldRows=legacy.lineSequence().filter{it.isNotEmpty()}.mapIndexed{i,line->
+            val row=requireNotNull(legacyDiagnostic(line));val message=line.substring(10).replace(Regex("(?:content|file)://\\S+|/(?:data|storage|sdcard)/\\S+"),"[private path]")
+            "legacy:%016d".format(i) to row.copy(message=message)
+        }
+        return newRows+oldRows
+    }
     private val lifetime = Any()
     private var closed = false
     private val writer =
