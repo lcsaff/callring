@@ -25,7 +25,7 @@ class ConversationStateUiTest {
         phases.forEach{(phase,label)->
             compose.runOnIdle{state.value=ConversationState("session",phase)}
             if(state.value.busy)compose.onNodeWithText(label).assertExists() else compose.onNodeWithText(label).assertDoesNotExist()
-            if(state.value.busy)compose.onNodeWithContentDescription("发送消息").assertIsNotEnabled()else compose.onNodeWithContentDescription("发送消息").assertIsEnabled()
+            if(state.value.busy)compose.onNodeWithContentDescription("停止输出").assertExists()else compose.onNodeWithContentDescription("发送消息").assertIsEnabled()
         }
         val statuses = listOf("已读取", "已提交，尚未核验", "已排队，尚未完成", "已发起，等待实际结果", "已取消", "已拒绝", "失败", "结果未知，不会自动重放", "未执行")
         ToolStatus.entries.zip(statuses).forEach { (status, label) ->

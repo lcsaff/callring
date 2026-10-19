@@ -68,7 +68,8 @@ class ConversationViewModel(private val api: CallringUiApi, testScope: Coroutine
     var readingHistory by remember(state.sessionId){mutableStateOf(false)}
     val paired=state.messages.flatMap{it.receipts}.map{it.operationId}.toSet()
     val additional=state.receipts.distinctBy{it.operationId}.filter{it.operationId !in paired&&(it.status!=ToolStatus.READ||it.error!=null)}
-    val latestIndex=state.messages.size+if(additional.isNotEmpty())1 else 0
+    val pendingAssistant = state.busy
+    val latestIndex=state.messages.size+(if(additional.isNotEmpty())1 else 0)+(if(pendingAssistant)1 else 0)
     val finalIndex=state.messages.lastIndex.takeIf{it>=0&&state.messages[it].role=="assistant"&&state.messages[it].toolCalls.isEmpty()}
     val historyScroll=remember(state.sessionId) {object:NestedScrollConnection {
         override fun onPreScroll(available:Offset,source:NestedScrollSource):Offset {if(source==NestedScrollSource.UserInput&&available.y>0)readingHistory=true;return Offset.Zero}
@@ -107,27 +108,38 @@ class ConversationViewModel(private val api: CallringUiApi, testScope: Coroutine
                     }
                 }
                 if(finalIndex==null&&additional.isNotEmpty())item(key="current-results"){ReceiptGroup(additional){readingHistory=true}}
+                // 等待回复期间把状态放在 AI 回复的位置；真实回复到达后被消息替换。
+                if(pendingAssistant)item(key="assistant-pending"){PendingAssistant(phaseLabel(state.phase))}
                 item(key="latest"){Spacer(Modifier.height(1.dp))}
             }
             if(readingHistory&&listState.canScrollForward)IconButton(onClick={readingHistory=false},modifier=Modifier.align(Alignment.CenterHorizontally).testTag("jump-to-latest").semantics{contentDescription="回到最新"}){Icon(Icons.Filled.KeyboardArrowDown,null,Modifier.size(24.dp))}
             if(!state.busy)state.continuableTasks.firstOrNull()?.let{task->OutlinedButton(onClick={onContinue(task)},enabled=target.isNotBlank()){Text("继续未完成任务")}}
             val canSend=!state.busy&&input.isNotBlank()&&target.isNotBlank()
             Surface(Modifier.fillMaxWidth().testTag("conversation-input"),shape=RoundedCornerShape(20.dp),border=BorderStroke(1.dp,MaterialTheme.colorScheme.outline),color=MaterialTheme.colorScheme.surface) {
-                Column(Modifier.fillMaxWidth()) {
-                    // 回复状态只显示在回复框内；回复出现后（busy=false）状态消失。
-                    if(state.busy)Row(Modifier.fillMaxWidth().padding(start=16.dp,end=8.dp,top=6.dp),verticalAlignment=Alignment.CenterVertically) {
-                        Text(phaseLabel(state.phase),style=MaterialTheme.typography.labelSmall,color=MaterialTheme.colorScheme.onSurfaceVariant,modifier=Modifier.weight(1f))
-                        TextButton(onClick=onStop,contentPadding=PaddingValues(horizontal=8.dp,vertical=0.dp),modifier=Modifier.heightIn(min=32.dp)){Text("停止",style=MaterialTheme.typography.labelMedium)}
-                    }
-                    Box(Modifier.fillMaxWidth().heightIn(min=if(state.busy)84.dp else 112.dp)) {
-                        BasicTextField(value=input,onValueChange=onInput,enabled=!state.busy,maxLines=4,textStyle=MaterialTheme.typography.bodyLarge.copy(color=MaterialTheme.colorScheme.onSurface),keyboardOptions=KeyboardOptions(imeAction=ImeAction.Send),keyboardActions=KeyboardActions(onSend={if(canSend)send()}),modifier=Modifier.fillMaxWidth().heightIn(min=if(state.busy)72.dp else 100.dp,max=220.dp).padding(start=16.dp,end=16.dp,top=14.dp,bottom=52.dp),decorationBox={inner->if(input.isEmpty())Text("说说你想了解或处理什么",color=MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha=0.55f));inner()})
-                        IconButton(onClick=::send,enabled=canSend,modifier=Modifier.align(Alignment.BottomEnd).padding(4.dp).size(48.dp).semantics{contentDescription="发送消息"}){Icon(Icons.AutoMirrored.Filled.Send,null,Modifier.size(18.dp).testTag("send-glyph"))}
+                Box(Modifier.fillMaxWidth().heightIn(min=112.dp)) {
+                    BasicTextField(value=input,onValueChange=onInput,enabled=!state.busy,maxLines=4,textStyle=MaterialTheme.typography.bodyLarge.copy(color=MaterialTheme.colorScheme.onSurface),keyboardOptions=KeyboardOptions(imeAction=ImeAction.Send),keyboardActions=KeyboardActions(onSend={if(canSend)send()}),modifier=Modifier.fillMaxWidth().heightIn(min=100.dp,max=220.dp).padding(start=16.dp,end=16.dp,top=14.dp,bottom=52.dp),decorationBox={inner->if(input.isEmpty())Text("说说你想了解或处理什么",color=MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha=0.55f));inner()})
+                    // 发送与停止合并成右下角同一个按钮。
+                    IconButton(
+                        onClick = if(state.busy) onStop else ::send,
+                        enabled = state.busy || canSend,
+                        modifier = Modifier.align(Alignment.BottomEnd).padding(4.dp).size(48.dp)
+                            .testTag("conversation-action")
+                            .semantics{contentDescription=if(state.busy)"停止输出" else "发送消息"},
+                    ) {
+                        if(state.busy) Box(Modifier.size(14.dp).clip(RoundedCornerShape(3.dp)).background(MaterialTheme.colorScheme.onSurface).testTag("stop-glyph"))
+                        else Icon(Icons.AutoMirrored.Filled.Send,null,Modifier.size(18.dp).testTag("send-glyph"))
                     }
                 }
             }
         }
     }
     if(confirmNew)AlertDialog(onDismissRequest={confirmNew=false},title={Text("开始新对话？")},text={Text("将停止当前请求并清空本进程对话。已提交的修改仍保留；退出应用后不会自动恢复任务。")},confirmButton={TextButton(onClick={confirmNew=false;onNew()}){Text("开始新对话")}},dismissButton={TextButton(onClick={confirmNew=false}){Text("取消")}})
+}
+@Composable private fun PendingAssistant(label:String) {
+    Row(Modifier.fillMaxWidth().testTag("assistant-pending"),verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(8.dp)) {
+        CircularProgressIndicator(Modifier.size(16.dp),strokeWidth=2.dp)
+        Text(label,style=MaterialTheme.typography.bodyMedium,color=MaterialTheme.colorScheme.onSurfaceVariant)
+    }
 }
 @Composable private fun ReceiptGroup(receipts:List<ToolReceipt>,onExpand:()->Unit={}) {
     val verified=receipts.filter{it.verification==VerificationStatus.VERIFIED&&it.error==null}
