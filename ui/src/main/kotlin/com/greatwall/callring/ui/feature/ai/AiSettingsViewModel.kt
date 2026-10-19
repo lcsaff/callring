@@ -23,12 +23,12 @@ class AiSettingsViewModel(private val api: CallringUiApi, testScope: CoroutineSc
         fun <T> change(a: T, b: T): PatchField<T> = if(a == b) PatchField.Keep else PatchField.Set(b)
         return CredentialDraft(slot,base,ConnectionPatch(change(before.protocol,after.protocol),change(before.url,after.url),change(before.model,after.model)))
     }
-    fun credentialSaved(slot: AiSlot) { scope.launch {
+    fun credentialSaved(slot: AiSlot,includeCompatibility:Boolean=false) { scope.launch {
         when(val result = api.aiSettings.getAiView()) {
             is ApiResult.Failure -> refresh()
             is ApiResult.Success -> {
                 val saved = result.value
-                fun AiSettingsView.rebase() = if(slot == AiSlot.ANALYSIS) copy(analysis = saved.analysis, revision = saved.revision) else copy(transcription = saved.transcription, revision = saved.revision)
+                fun AiSettingsView.rebase() = if(slot == AiSlot.ANALYSIS) copy(analysis = saved.analysis, revision = saved.revision,compatibility=if(includeCompatibility)saved.compatibility else compatibility) else copy(transcription = saved.transcription, revision = saved.revision)
                 baseline = baseline?.rebase() ?: saved
                 draft.value = draft.value?.rebase() ?: saved
                 dirty.value = draft.value != baseline
@@ -40,14 +40,14 @@ class AiSettingsViewModel(private val api: CallringUiApi, testScope: CoroutineSc
         val base = baseline ?: return; val value = draft.value ?: return
         fun <T> change(a: T, b: T): PatchField<T> = if(a == b) PatchField.Keep else PatchField.Set(b)
         fun connection(a: AiConnectionView, b: AiConnectionView) = ConnectionPatch(change(a.protocol,b.protocol),change(a.url,b.url),change(a.model,b.model))
-        writer.run({ api.aiSettings.patchAi(base, AiSettingsPatch(connection(base.analysis,value.analysis), connection(base.transcription,value.transcription), change(base.budget,value.budget))) }, "AI 设置已保存") {
+        writer.run({ api.aiSettings.patchAi(base, AiSettingsPatch(connection(base.analysis,value.analysis), connection(base.transcription,value.transcription), change(base.budget,value.budget),change(base.compatibility,value.compatibility))) }, "AI 设置已保存") {
             baseline = it; draft.value = it; dirty.value = false; refresh()
         }
     }
     fun test(slot: AiSlot) {
         val base = baseline ?: return; val value = draft.value ?: return
         fun patch(connection: AiConnectionView) = ConnectionPatch(PatchField.Set(connection.protocol),PatchField.Set(connection.url),PatchField.Set(connection.model))
-        writer.run({ api.aiSettings.testDraft(base,AiSettingsPatch(patch(value.analysis),patch(value.transcription)),slot) }, "连接测试已通过；草稿尚未保存")
+        writer.run({ api.aiSettings.testDraft(base,AiSettingsPatch(patch(value.analysis),patch(value.transcription),compatibility=PatchField.Set(value.compatibility)),slot) }, "连接测试已通过；草稿尚未保存")
     }
 }
 

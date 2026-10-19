@@ -25,17 +25,17 @@ class ConversationReviewUiTest {
             compose.onNodeWithText("服务：old-host · old-model").assertDoesNotExist()
         }
         compose.runOnIdle { target.value = "" }
-        compose.onNodeWithText("发送").assertIsNotEnabled()
+        compose.onNodeWithContentDescription("发送消息").assertIsNotEnabled()
     }
-    @Test fun toolBatchTextRemainsExplicitlyUnverifiedAcrossEveryOutcome() {
+    @Test fun toolBatchNarrationCannotMasqueradeAsVerifiedFinalText() {
         val state = mutableStateOf(ConversationState("s"))
         compose.setContent { ConversationScreen(state.value,"","host",null,{},{},{},{}) }
         val message = ConversationMessage("assistant","录音已删除",listOf(ConversationToolCall("delete","recordings_delete",aiObject("callId" to aiNumber(1)))))
         for(status in listOf<ToolStatus?>(null,ToolStatus.DENIED,ToolStatus.CANCELLED,ToolStatus.FAILED,ToolStatus.COMMITTED,ToolStatus.SKIPPED)) {
             compose.runOnIdle { state.value = ConversationState("s",if(status == null) ConversationPhase.WAITING_FOREGROUND else if(status == ToolStatus.COMMITTED) ConversationPhase.COMPLETED else ConversationPhase.FAILED,
                 messages = listOf(message),receipts = status?.let { listOf(ToolReceipt("op","delete",it)) } ?: emptyList()) }
-            compose.onNodeWithText("AI 操作建议（未经验证，以操作回执为准）").assertExists()
-            compose.onNodeWithText("录音已删除").assertExists()
+            compose.onNodeWithText("AI 操作建议（未经验证，以操作回执为准）").assertDoesNotExist()
+            compose.onNodeWithText("录音已删除").assertDoesNotExist()
             compose.onNodeWithText("AI",useUnmergedTree = true).assertDoesNotExist()
         }
     }

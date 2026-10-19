@@ -31,5 +31,7 @@ class MarkdownCompatibilityTest {
         compose.waitUntil(5_000) { compose.onAllNodesWithText("探针标题").fetchSemanticsNodes().isNotEmpty() }
         compose.onNodeWithText("探针标题").assertIsDisplayed()
         compose.onNodeWithText("中文列表").assertIsDisplayed()
+        compose.onNodeWithText("甲").assertExists()
+        compose.onNodeWithText("官方链接").assertExists()
     }
 }

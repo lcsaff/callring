@@ -16,6 +16,7 @@ import com.greatwall.callring.ui.state.*
 @Composable fun AiSettingsScreen(state: LoadState<AiSettingsView>, draft: AiSettingsView?, dirty: Boolean, mutation: MutationState, onBack: () -> Unit, onEdit: (AiSettingsView) -> Unit, onSave: () -> Unit, onCredential: (AiSlot) -> Unit, onCopy: (AiSlot,AiSlot) -> Unit, onTest: (AiSlot) -> Unit) {
     var discard by remember { mutableStateOf(false) }
     var test by remember { mutableStateOf<AiSlot?>(null) }
+    var advanced by remember { mutableStateOf(false) }
     val back = { if(dirty) discard = true else onBack() }
     BackHandler(onBack = back)
     ScreenFrame("AI 设置", back) {
@@ -25,14 +26,23 @@ import com.greatwall.callring.ui.state.*
             if(state.loading) LinearProgressIndicator(Modifier.fillMaxWidth())
             if(dirty && state.data?.revision != draft?.revision) Text("保存值已变化；保留了本页草稿。保存时会检查冲突。")
             draft?.let { value ->
-                Text("沟通复用内容分析连接。发送沟通时会提供应用完整业务文字，可能产生服务费用。密钥只在本地编辑，AI 只能看到是否已配置。")
+                Text("沟通使用内容分析连接，按需发送本次任务所需的文字。密钥仅在本地编辑，可能产生服务费用。")
                 SafeConnectionForm("内容分析 / 沟通", value.analysis, true, { onEdit(value.copy(analysis = it)) }, { onCredential(AiSlot.ANALYSIS) })
+                val resolved=runCatching{resolveConversationProfile(AiConnection(value.analysis.protocol,value.analysis.url,model=value.analysis.model),value.compatibility)}
+                Text("草稿解析方式：${resolved.getOrNull()?.name?:"配置需修正"}")
+                state.data?.let{Text("已保存解析方式：${it.analysis.resolvedProfile}",style=MaterialTheme.typography.bodySmall)}
+                TextButton(onClick={advanced=!advanced}){Text(if(advanced)"收起高级兼容"else"高级兼容")}
+                if(advanced) {
+                    Text("自动根据官方地址和模型选择；代理地址需要明确选择 Qwen FAST。")
+                    ConversationCompatibility.entries.forEach{compatibility->FilterChip(value.compatibility==compatibility,{onEdit(value.copy(compatibility=compatibility))},label={Text(when(compatibility){ConversationCompatibility.AUTO->"自动（AUTO）";ConversationCompatibility.STANDARD->"标准（STANDARD）";ConversationCompatibility.QWEN_FAST->"Qwen FAST"})})}
+                    if(resolved.isFailure)Text("当前模型或协议不支持所选兼容方式。",color=MaterialTheme.colorScheme.error)
+                }
                 Row { TextButton(onClick = { onCopy(AiSlot.TRANSCRIPTION,AiSlot.ANALYSIS) }, enabled = !mutation.busy) { Text("从转写配置复制") }; TextButton(onClick = { test = AiSlot.ANALYSIS }) { Text("测试分析连接") } }
                 SafeConnectionForm("录音转写 · OpenAI 兼容", value.transcription, false, { onEdit(value.copy(transcription = it)) }, { onCredential(AiSlot.TRANSCRIPTION) })
                 Row { TextButton(onClick = { onCopy(AiSlot.ANALYSIS,AiSlot.TRANSCRIPTION) }, enabled = !mutation.busy) { Text("从分析配置复制") }; TextButton(onClick = { test = AiSlot.TRANSCRIPTION }) { Text("测试转写连接") } }
                 Text("复制会在本地预览后保存，并在本地复制密钥；复制至转写时保持 OpenAI 协议。界面测试使用当前草稿和本地保存的密钥，不发送通话内容；AI 工具只测试已保存连接。")
                 Text("客户端上下文预算", style = MaterialTheme.typography.titleMedium)
-                Text("默认 49152，可配置 8192–1048576；输出预留 1024–16384 且小于上下文。此为保守客户端限制，不保证模型支持。完整数据、对话和全部工具均计入，超限会停止。")
+                Text("默认 49152，可配置 8192–1048576；输出预留 1024–16384 且小于上下文。本次文字、按需数据和已启用工具计入预算；容量不足时会保留已提交结果并停止。")
                 var context by remember(value.budget.context) { mutableStateOf(value.budget.context.toString()) }
                 var output by remember(value.budget.output) { mutableStateOf(value.budget.output.toString()) }
                 OutlinedTextField(context, { context = it; it.toLongOrNull()?.let { count -> onEdit(value.copy(budget = value.budget.copy(context = count))) } }, label = { Text("上下文预算") }, singleLine = true, modifier = Modifier.fillMaxWidth())
@@ -54,8 +64,8 @@ import com.greatwall.callring.ui.state.*
     OutlinedButton(onClick = credential) { Text("本地编辑密钥") }
 }
 fun aiErrorText(error: ApiError): String = when(error.message) {
-    "ai.context_budget_exceeded" -> "完整上下文超出客户端预算，已停止后续请求和操作。请调整 AI 设置预算或新建对话；若全集本身过大，首版暂不能处理。"
-    "ai.provider_context_rejected" -> "服务端拒绝了完整上下文，已停止后续操作。请核对模型容量与设置。"
+    "ai.context_budget_exceeded" -> "本轮所需内容超出客户端预算，已停止后续操作。已提交结果保留；请缩小查询范围或新建对话。"
+    "ai.provider_context_rejected" -> "服务端拒绝了本次上下文，已停止后续操作。已提交结果保留，请核对模型容量。"
     "ai.snapshot_domain_failed" -> "无法完整读取业务数据，未使用残缺上下文。${error.fieldErrors["domains"]?.let { "失败范围：$it" }.orEmpty()}"
     "ai.snapshot_changed", "business.changed", "settings.conflict", "recording.changed", "draft.field_changed" -> "数据或设置已变化；保留了草稿和已提交结果，请核对最新值后重新编辑或发送。"
     "ai.connection_changed" -> "分析连接已变化，本轮已停止；下一次发送会使用新连接，已保存的修改保留。"
@@ -65,6 +75,16 @@ fun aiErrorText(error: ApiError): String = when(error.message) {
     "action.unavailable" -> "系统没有提供该操作入口。"
     "action.target_not_found" -> "所选目标已不存在，操作未执行。请重新读取后选择。"
     "ai.invalid_tool_response", "ai.protocol_unsupported" -> "服务回复不支持完整工具调用，本批操作未执行。请检查协议与模型。"
+    "ai.invalid_tool_arguments", "ai.argument_json", "ai.unknown_tool", "ai.tool_not_enabled" -> "本次步骤的参数或功能不可用，尚未执行；会在本轮限制内尝试修正。"
+    "ai.readback_failed", "ai.readback_mismatch" -> "操作已提交，尚未通过读回核验；不会重复执行。"
+    "ai.task_incomplete" -> "计划尚未全部核验，请查看已完成与未执行步骤。"
+    "ai.task_reference_expired" -> "该任务引用已失效，请重新说明所需的未完成工作。"
+    "ai.unknown_commit_requires_review" -> "存在提交结果未知的步骤，请先核对目标数据；不会重复执行。"
+    "ai.timeout" -> "等待服务回复超时；已提交结果保留，未自动重试。"
+    "ai.transport_failed" -> "未能完成服务连接；已提交结果保留，未自动重试。"
+    "ai.http_rejected", "ai.service_failed" -> "服务未接受本次请求；已提交结果保留。"
+    "ai.output_truncated", "ai.response_too_large" -> "服务回复不完整或超过容量，本批操作未执行。"
+    "ai.provider_mode_mismatch", "ai.profile_invalid" -> "服务或模型不符合所选兼容方式，请检查高级兼容设置。"
     "ai.authentication_failed" -> "服务认证失败，请在本地检查密钥及地址。"
     "ai.rate_limited" -> "服务限流，请稍后手动重试。"
     "ai.unavailable" -> "当前环境未提供 AI 服务。"

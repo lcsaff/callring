@@ -18,17 +18,16 @@ class ConversationStateUiTest {
     @Test fun allPhasesAndActualReceiptStatusesRemainDistinct() {
         val state = mutableStateOf(ConversationState("session"))
         compose.setContent { ConversationScreen(state.value,"input","https://example.com · model",null,{},{},{},{}) }
-        val phases = listOf("准备就绪", "完整读取数据中", "检查完整上下文容量", "等待 AI 回复", "验证完整回复", "执行并同步业务操作", "等待前台系统界面或本地确认", "本轮已结束，请核对实际操作结果", "正在停止，保留已提交操作", "已停止", "本轮未完成，请查看错误和已提交结果")
-        ConversationPhase.entries.zip(phases).forEach { (phase, label) ->
-            compose.runOnIdle { state.value = ConversationState("session",phase) }
+        val phases=mapOf(ConversationPhase.IDLE to "准备就绪",ConversationPhase.PREPARING to "准备会话",ConversationPhase.DISCOVERING to "查找所需功能",ConversationPhase.READING to "读取所需数据",ConversationPhase.REPAIRING to "修正未执行步骤",ConversationPhase.PARTIAL to "部分完成，请核对结果",ConversationPhase.CAPTURING to "准备会话",ConversationPhase.BUDGETING to "检查本轮容量",ConversationPhase.REQUESTING to "等待 AI 回复",ConversationPhase.VALIDATING to "验证回复",ConversationPhase.EXECUTING to "执行并核验操作",ConversationPhase.WAITING_FOREGROUND to "等待系统界面或本地确认",ConversationPhase.COMPLETED to "本轮已完成",ConversationPhase.STOPPING to "正在停止，保留已提交操作",ConversationPhase.STOPPED to "已停止",ConversationPhase.FAILED to "本轮未完成，请查看结果")
+        phases.forEach{(phase,label)->
+            compose.runOnIdle{state.value=ConversationState("session",phase)}
             compose.onNodeWithText(label).assertExists()
-            if(state.value.busy) compose.onNodeWithText("发送").assertIsNotEnabled()
-            else compose.onNodeWithText("发送").assertIsEnabled()
+            if(state.value.busy)compose.onNodeWithContentDescription("发送消息").assertIsNotEnabled()else compose.onNodeWithContentDescription("发送消息").assertIsEnabled()
         }
-        val statuses = listOf("已读取", "已保存 / 已执行", "已排队，尚未完成", "已发起，后续状态以系统为准", "已取消", "已拒绝", "失败", "结果未知，不会自动重放", "未执行")
+        val statuses = listOf("已读取", "已提交，尚未核验", "已排队，尚未完成", "已发起，等待实际结果", "已取消", "已拒绝", "失败", "结果未知，不会自动重放", "未执行")
         ToolStatus.entries.zip(statuses).forEach { (status, label) ->
             compose.runOnIdle { state.value = ConversationState("session",ConversationPhase.FAILED,receipts = listOf(ToolReceipt("op","call",status))) }
-            compose.onNodeWithText("操作结果：$label").assertExists()
+            if(status==ToolStatus.READ)compose.onNodeWithText("操作结果：$label").assertDoesNotExist()else compose.onNodeWithText("操作结果：$label").assertExists()
         }
     }
 }

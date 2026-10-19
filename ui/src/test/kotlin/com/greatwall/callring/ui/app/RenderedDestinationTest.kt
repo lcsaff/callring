@@ -35,20 +35,20 @@ class RenderedDestinationTest {
             }
         }
         compose.setContent { ConversationRoute(api) }
-        compose.onNodeWithText("服务：OPENAI · https://old.example · old").assertExists()
+        compose.onNodeWithText("服务：OPENAI · https://old.example · old · STANDARD").assertExists()
         compose.onNodeWithText("说说你想了解或处理什么").performTextInput("next")
-        val renderedClick = compose.onNodeWithText("发送").fetchSemanticsNode().config[SemanticsActions.OnClick].action!!
+        val renderedClick = compose.onNodeWithContentDescription("发送消息").fetchSemanticsNode().config[SemanticsActions.OnClick].action!!
         compose.mainClock.autoAdvance = false
         compose.runOnIdle { config.value = config.value.copy(analysis = old.copy(url = "https://new.example",model = "new"),revision = 1) }
         compose.waitUntil(3000) { reads >= 2 }
-        compose.onNodeWithText("服务：OPENAI · https://old.example · old").assertExists()
+        compose.onNodeWithText("服务：OPENAI · https://old.example · old · STANDARD").assertExists()
         // Dispatch the action captured from the still-visible composition without the test driver's frame advancement.
         compose.runOnIdle { renderedClick() }
         compose.runOnIdle { assertEquals(old,attempts.single()) }
         compose.mainClock.autoAdvance = true
         compose.mainClock.advanceTimeByFrame()
-        compose.onNodeWithText("服务：OPENAI · https://new.example · new").assertExists()
-        compose.onNodeWithText("发送").performClick()
+        compose.onNodeWithText("服务：OPENAI · https://new.example · new · STANDARD").assertExists()
+        compose.onNodeWithContentDescription("发送消息").performClick()
         compose.runOnIdle { assertEquals(config.value.analysis,attempts.last()); assertEquals(2,attempts.size) }
     }
 }

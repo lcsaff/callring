@@ -71,10 +71,15 @@ data class CredentialDraft(val slot: AiSlot, val base: AiSettingsView, val conne
     var busy by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
     LaunchedEffect(api) { when(val result = api.getAiView()) { is ApiResult.Success -> view = result.value; is ApiResult.Failure -> error = result.error } }
-    AlertDialog(onDismissRequest = { if(!busy) onFinished(false) }, title = { Text("复制连接配置？") }, text = { Column {
+    AlertDialog(onDismissRequest = { if(!busy) onFinished(false) }, title = { Text("复制连接配置？") }, text = { Column(Modifier.verticalScroll(rememberScrollState()),verticalArrangement=Arrangement.spacedBy(8.dp)) {
         view?.let { value -> val source = if(from == AiSlot.ANALYSIS) value.analysis else value.transcription
-            Text("将从${if(from == AiSlot.ANALYSIS) "分析" else "转写"}复制到${if(to == AiSlot.ANALYSIS) "分析" else "转写"}：\n${source.url}\n${source.model}\n密钥${if(source.keyConfigured) "已配置，将在本地复制" else "未配置"}。") }
-        if(to == AiSlot.TRANSCRIPTION) Text("转写将保持 OpenAI 协议。")
+            Text("将从${if(from == AiSlot.ANALYSIS) "分析" else "转写"}复制到${if(to == AiSlot.ANALYSIS) "分析" else "转写"}：\n${source.url}\n${source.model}\n目标协议：${if(to==AiSlot.TRANSCRIPTION)AiProtocol.OPENAI else source.protocol}\n密钥${if(source.keyConfigured) "已配置，将在本地复制" else "未配置"}。") }
+        if(to == AiSlot.TRANSCRIPTION) Text("转写将保持 OpenAI 协议，分析的兼容方式保持不变；目标解析方式：STANDARD。")
+        else view?.let{value->
+            val source=if(from==AiSlot.ANALYSIS)value.analysis else value.transcription
+            val profile=runCatching{resolveConversationProfile(AiConnection(source.protocol,source.url,model=source.model),ConversationCompatibility.AUTO)}.getOrNull()
+            Text("分析兼容方式将重置为 AUTO；目标解析方式：${profile?.name?:"配置需修正"}。保存后会停止使用旧连接的沟通。")
+        }
         Text("保存会替换目标连接；源或目标已变化时会拒绝。")
         error?.let { Text(aiErrorText(it), color = MaterialTheme.colorScheme.error) }
     } }, confirmButton = { TextButton(enabled = !busy && view != null, onClick = { val base = view ?: return@TextButton; busy = true; scope.launch { try { when(val result = api.copyConnection(from,to,base.revision)) { is ApiResult.Success -> onFinished(true); is ApiResult.Failure -> error = result.error } } finally { busy = false } } }) { Text("复制并保存") } }, dismissButton = { TextButton(enabled = !busy, onClick = { onFinished(false) }) { Text("取消") } })
