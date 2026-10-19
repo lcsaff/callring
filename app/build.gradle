@@ -91,6 +91,10 @@ android {
 dependencies {
     implementation project(':ui')
     implementation project(':backend')
+    // FileProvider for the in-app update installer. `ui` declares androidx with
+    // `implementation` (not exported), so the app module needs its own entry;
+    // this also gives app/src/main/kotlin a compile classpath for FileProvider.
+    implementation 'androidx.core:core:1.16.0'
     implementation "org.jetbrains.kotlinx:kotlinx-coroutines-android:${rootProject.ext.callringVersions.coroutines}"
     testImplementation 'junit:junit:4.13.2'
     testImplementation 'org.json:json:20240303'
