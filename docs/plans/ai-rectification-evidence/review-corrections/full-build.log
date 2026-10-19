@@ -85,8 +85,8 @@
 > Task :ui:bundleLibRuntimeToDirDebug UP-TO-DATE
 > Task :ui:dexBuilderDebugAndroidTest UP-TO-DATE
 > Task :ui:mergeProjectDexDebugAndroidTest UP-TO-DATE
-> Task :ui:copyDebugJniLibsProjectOnly UP-TO-DATE
 > Task :ui:mergeLibDexDebugAndroidTest UP-TO-DATE
+> Task :ui:copyDebugJniLibsProjectOnly UP-TO-DATE
 > Task :ui:mergeDebugAndroidTestJniLibFolders UP-TO-DATE
 > Task :ui:mergeDebugAndroidTestNativeLibs UP-TO-DATE
 > Task :ui:stripDebugAndroidTestDebugSymbols UP-TO-DATE
@@ -130,7 +130,9 @@
 > Task :app:processDebugManifest UP-TO-DATE
 > Task :app:processDebugManifestForPackage UP-TO-DATE
 > Task :app:processDebugResources UP-TO-DATE
+> Task :app:compileDebugKotlin UP-TO-DATE
 > Task :app:javaPreCompileDebug UP-TO-DATE
+> Task :app:compileDebugJavaWithJavac UP-TO-DATE
 > Task :app:preDebugUnitTestBuild UP-TO-DATE
 > Task :app:javaPreCompileDebugUnitTest UP-TO-DATE
 > Task :app:mergeDebugShaders UP-TO-DATE
@@ -140,18 +142,25 @@
 > Task :app:packageDebugUnitTestForUnitTest UP-TO-DATE
 > Task :app:processDebugUnitTestManifest UP-TO-DATE
 > Task :app:generateDebugUnitTestConfig UP-TO-DATE
+> Task :app:processDebugJavaRes UP-TO-DATE
 > Task :app:mergeDebugNativeDebugMetadata NO-SOURCE
 > Task :app:compressDebugAssets UP-TO-DATE
+> Task :app:mergeDebugJavaResource UP-TO-DATE
 > Task :app:checkDebugDuplicateClasses UP-TO-DATE
 > Task :app:desugarDebugFileDependencies UP-TO-DATE
 > Task :app:mergeExtDexDebug UP-TO-DATE
 > Task :app:mergeLibDexDebug UP-TO-DATE
+> Task :app:dexBuilderDebug UP-TO-DATE
+> Task :app:mergeProjectDexDebug UP-TO-DATE
 > Task :app:mergeDebugJniLibFolders UP-TO-DATE
 > Task :app:mergeDebugNativeLibs UP-TO-DATE
 > Task :app:stripDebugDebugSymbols UP-TO-DATE
 > Task :app:validateSigningDebug UP-TO-DATE
 > Task :app:writeDebugAppMetadata UP-TO-DATE
 > Task :app:writeDebugSigningConfigVersions UP-TO-DATE
+> Task :app:packageDebug UP-TO-DATE
+> Task :app:createDebugApkListingFileRedirect UP-TO-DATE
+> Task :app:assembleDebug UP-TO-DATE
 > Task :app:preReleaseBuild UP-TO-DATE
 > Task :app:mergeReleaseJniLibFolders UP-TO-DATE
 > Task :ui:preReleaseBuild UP-TO-DATE
@@ -168,7 +177,13 @@
 > Task :ui:processReleaseNavigationResources UP-TO-DATE
 > Task :ui:parseReleaseLocalResources UP-TO-DATE
 > Task :ui:generateReleaseRFile UP-TO-DATE
+> Task :app:bundleDebugClassesToRuntimeJar
+> Task :app:bundleDebugClassesToCompileJar
 > Task :ui:compileReleaseKotlin UP-TO-DATE
+> Task :app:compileDebugUnitTestKotlin UP-TO-DATE
+> Task :app:compileDebugUnitTestJavaWithJavac UP-TO-DATE
+> Task :app:processDebugUnitTestJavaRes UP-TO-DATE
+> Task :app:testDebugUnitTest
 > Task :ui:javaPreCompileRelease UP-TO-DATE
 > Task :ui:compileReleaseJavaWithJavac NO-SOURCE
 > Task :ui:bundleLibRuntimeToDirRelease UP-TO-DATE
@@ -250,7 +265,10 @@
 > Task :app:assembleRelease UP-TO-DATE
 > Task :app:preDebugAndroidTestBuild SKIPPED
 > Task :app:generateDebugAndroidTestResValues UP-TO-DATE
+> Task :app:generateDebugAndroidTestLintModel
 > Task :ui:generateDebugLintModel UP-TO-DATE
+> Task :app:generateDebugLintReportModel
+> Task :app:generateDebugUnitTestLintModel
 > Task :app:checkDebugAndroidTestAarMetadata UP-TO-DATE
 > Task :app:processDebugAndroidTestNavigationResources UP-TO-DATE
 > Task :app:compileDebugAndroidTestNavigationResources UP-TO-DATE
@@ -259,21 +277,30 @@
 > Task :app:mergeDebugAndroidTestResources UP-TO-DATE
 > Task :app:processDebugAndroidTestManifest UP-TO-DATE
 > Task :app:processDebugAndroidTestResources UP-TO-DATE
+> Task :app:compileDebugAndroidTestKotlin NO-SOURCE
 > Task :app:javaPreCompileDebugAndroidTest UP-TO-DATE
+> Task :app:compileDebugAndroidTestJavaWithJavac NO-SOURCE
 > Task :app:mergeDebugAndroidTestShaders UP-TO-DATE
 > Task :app:compileDebugAndroidTestShaders NO-SOURCE
 > Task :app:generateDebugAndroidTestAssets UP-TO-DATE
 > Task :app:mergeDebugAndroidTestAssets UP-TO-DATE
 > Task :app:compressDebugAndroidTestAssets UP-TO-DATE
+> Task :app:processDebugAndroidTestJavaRes NO-SOURCE
+> Task :app:mergeDebugAndroidTestJavaResource UP-TO-DATE
 > Task :app:checkDebugAndroidTestDuplicateClasses UP-TO-DATE
 > Task :app:desugarDebugAndroidTestFileDependencies UP-TO-DATE
 > Task :app:mergeExtDexDebugAndroidTest UP-TO-DATE
 > Task :app:mergeLibDexDebugAndroidTest UP-TO-DATE
+> Task :app:dexBuilderDebugAndroidTest UP-TO-DATE
+> Task :app:mergeProjectDexDebugAndroidTest UP-TO-DATE
 > Task :app:mergeDebugAndroidTestJniLibFolders UP-TO-DATE
 > Task :app:mergeDebugAndroidTestNativeLibs NO-SOURCE
 > Task :app:stripDebugAndroidTestDebugSymbols NO-SOURCE
 > Task :app:validateSigningDebugAndroidTest UP-TO-DATE
 > Task :app:writeDebugAndroidTestSigningConfigVersions UP-TO-DATE
+> Task :app:packageDebugAndroidTest UP-TO-DATE
+> Task :app:createDebugAndroidTestApkListingFileRedirect UP-TO-DATE
+> Task :app:assembleDebugAndroidTest UP-TO-DATE
 > Task :app:preBackendQaBuild UP-TO-DATE
 > Task :app:mergeBackendQaNativeDebugMetadata NO-SOURCE
 > Task :app:checkBackendQaAarMetadata UP-TO-DATE
@@ -307,49 +334,19 @@
 > Task :app:validateSigningBackendQa UP-TO-DATE
 > Task :app:writeBackendQaAppMetadata UP-TO-DATE
 > Task :app:writeBackendQaSigningConfigVersions UP-TO-DATE
-> Task :app:compileDebugKotlin
-> Task :app:compileDebugJavaWithJavac UP-TO-DATE
-> Task :app:processDebugJavaRes UP-TO-DATE
-> Task :app:mergeDebugJavaResource UP-TO-DATE
-> Task :app:bundleDebugClassesToCompileJar
-> Task :app:bundleDebugClassesToRuntimeJar
-> Task :app:dexBuilderDebug
-> Task :app:compileDebugUnitTestKotlin UP-TO-DATE
+> Task :app:lintAnalyzeDebugAndroidTest
 > Task :app:compileBackendQaKotlin
-> Task :app:compileDebugUnitTestJavaWithJavac UP-TO-DATE
-> Task :app:processDebugUnitTestJavaRes UP-TO-DATE
-> Task :app:testDebugUnitTest
-> Task :app:generateDebugAndroidTestLintModel
-> Task :app:mergeProjectDexDebug
-> Task :app:generateDebugLintReportModel
-> Task :app:generateDebugUnitTestLintModel
-> Task :app:compileDebugAndroidTestKotlin NO-SOURCE
-> Task :app:compileDebugAndroidTestJavaWithJavac NO-SOURCE
-> Task :app:processDebugAndroidTestJavaRes NO-SOURCE
-> Task :app:mergeDebugAndroidTestJavaResource UP-TO-DATE
-> Task :app:dexBuilderDebugAndroidTest UP-TO-DATE
-> Task :app:mergeProjectDexDebugAndroidTest UP-TO-DATE
-> Task :app:packageDebugAndroidTest UP-TO-DATE
-> Task :app:createDebugAndroidTestApkListingFileRedirect UP-TO-DATE
-> Task :app:assembleDebugAndroidTest UP-TO-DATE
 > Task :app:compileBackendQaJavaWithJavac UP-TO-DATE
 > Task :app:processBackendQaJavaRes UP-TO-DATE
 > Task :app:mergeBackendQaJavaResource UP-TO-DATE
 > Task :app:dexBuilderBackendQa
 > Task :app:mergeProjectDexBackendQa
-> Task :app:packageDebug
-> Task :app:createDebugApkListingFileRedirect UP-TO-DATE
-> Task :app:assembleDebug
 > Task :app:packageBackendQa
 > Task :app:createBackendQaApkListingFileRedirect UP-TO-DATE
 > Task :app:assembleBackendQa
-> Task :app:lintAnalyzeDebugAndroidTest
 > Task :app:lintAnalyzeDebugUnitTest
 > Task :app:lintAnalyzeDebug
-
-> Task :app:lintReportDebug
-Wrote HTML report to file:///C:/Users/GreatWall/.codex/worktrees/6b22/callring/app/build/reports/lint-results-debug.html
-
+> Task :app:lintReportDebug UP-TO-DATE
 > Task :app:lintDebug
 
 [Incubating] Problems report is available at: file:///C:/Users/GreatWall/.codex/worktrees/6b22/callring/build/reports/problems/problems-report.html
@@ -360,5 +357,5 @@ You can use '--warning-mode all' to show the individual deprecation warnings and
 
 For more on this, please refer to https://docs.gradle.org/8.13/userguide/command_line_interface.html#sec:command_line_warnings in the Gradle documentation.
 
-BUILD SUCCESSFUL in 35s
-293 actionable tasks: 21 executed, 272 up-to-date
+BUILD SUCCESSFUL in 47s
+293 actionable tasks: 16 executed, 277 up-to-date

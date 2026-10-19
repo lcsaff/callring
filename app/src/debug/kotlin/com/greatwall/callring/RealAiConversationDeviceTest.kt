@@ -221,18 +221,20 @@ class AiConversationSyntheticUiDeviceTest:InstrumentationTestCase() {
             error("Synthetic UI value missing")
         }
         fun capture(activity:android.app.Activity,name:String){instrumentation.waitForIdleSync();val bitmap=proofWindowBitmap(activity);File(proofDirectory(context),name).outputStream().use{check(bitmap.compress(Bitmap.CompressFormat.PNG,100,it))};bitmap.recycle()}
+        fun stage(value:String){File(proofDirectory(context),"synthetic-ui-stage.txt").appendText(value+"\n")}
+        stage("launch-list")
         val list=launchProofActivity(instrumentation,UiDestination.Callers,"callers")
         try{
-            val search=waitNode{it.isEditable&&it.isEnabled};check(search.performAction(AccessibilityNodeInfo.ACTION_SET_TEXT,Bundle().apply{putCharSequence(AccessibilityNodeInfo.ACTION_ARGUMENT_SET_TEXT_CHARSEQUENCE,name)}));search.recycle()
+            stage("find-search");val search=waitNode{it.isEditable&&it.isEnabled};check(search.performAction(AccessibilityNodeInfo.ACTION_SET_TEXT,Bundle().apply{putCharSequence(AccessibilityNodeInfo.ACTION_ARGUMENT_SET_TEXT_CHARSEQUENCE,name)}));search.recycle();stage("search-set")
             waitNode{!it.isEditable&&it.text?.toString()?.contains(name)==true}.recycle()
-            SystemClock.sleep(750);capture(list,"synthetic-list.png")
+            stage("matched");SystemClock.sleep(750);capture(list,"synthetic-list.png")
         }finally{instrumentation.runOnMainSync{list.finish()}}
-        val editor=launchProofActivity(instrumentation,UiDestination.EditCaller(number),"edit",number)
+        stage("launch-editor");val editor=launchProofActivity(instrumentation,UiDestination.EditCaller(number),"edit",number)
         try{
             waitNode{it.text?.toString()==name}.recycle();waitNode{it.text?.toString()==number}.recycle()
             SystemClock.sleep(750);capture(editor,"synthetic-editor.png")
         }finally{instrumentation.runOnMainSync{editor.finish()}}
-        check((context as CallringApplication).backendGraph.api.settings.getAppearance().requiredValue().colorMode==ColorMode.DARK)
+        stage("editor-checked");check((context as CallringApplication).backendGraph.api.settings.getAppearance().requiredValue().colorMode==ColorMode.DARK)
         File(proofDirectory(context),"synthetic-ui.json").writeText(JSONObject().put("schemaVersion",2).put("result","passed").put("filteredList",true).put("editorNumberAndName",true).put("businessWrites",0).toString(2))
     }
 }
