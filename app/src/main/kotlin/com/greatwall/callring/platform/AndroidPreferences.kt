@@ -76,6 +76,7 @@ class AndroidPreferences(
 
     override fun saveAppearance(settings: AppearanceSettings) = coordinator.commit("preferences") { saveAppearanceInternal(settings) }
     @Synchronized private fun saveAppearanceInternal(settings: AppearanceSettings) {
+        val before=getAppearance()
         updatePreferences(
             appearance,
             mapOf(
@@ -85,6 +86,8 @@ class AndroidPreferences(
                 "custom_seed" to settings.customSeedRgb,
             ),
         )
+        val old=com.greatwall.callring.application.appearanceScopeValues(before);val new=com.greatwall.callring.application.appearanceScopeValues(settings)
+        coordinator.publishScopes((old.keys+new.keys).filterTo(linkedSetOf()){old[it]!=new[it]})
     }
 
     @Synchronized
@@ -93,12 +96,16 @@ class AndroidPreferences(
 
     override fun saveBinding(binding: WidgetBinding) = coordinator.commit("preferences") { saveBindingInternal(binding) }
     @Synchronized private fun saveBindingInternal(binding: WidgetBinding) {
+        val before=getBinding(binding.widgetId)
         updatePreferences(widgets, mapOf("number_${binding.widgetId}" to binding.number))
+        if(before!=binding)coordinator.publishScopes(setOf("widget:${binding.widgetId}"))
     }
 
     override fun removeBinding(widgetId: Int) = coordinator.commit("preferences") { removeBindingInternal(widgetId) }
     @Synchronized private fun removeBindingInternal(widgetId: Int) {
+        val before=getBinding(widgetId)
         updatePreferences(widgets, mapOf("number_$widgetId" to null))
+        if(before!=null)coordinator.publishScopes(setOf("widget:$widgetId"))
     }
 
     @Synchronized override fun listBindings(): List<WidgetBinding> = widgets.all.entries.filter { it.key.startsWith("number_") }.map {

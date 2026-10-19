@@ -17,6 +17,20 @@ import org.robolectric.annotation.Config
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [33], manifest = Config.NONE)
 class AiSettingsServiceTest {
+    @Test fun unrelatedBudgetDoesNotInvalidateKeyEditOrConnectionCopy()=runBlocking {
+        val coordinator=BusinessRevisionCoordinator();val store=AndroidRecordingStore(RuntimeEnvironment.getApplication(),"ai_scope_fields",cipher,coordinator)
+        val connection=AiConnection(url="https://example.com/v1",model="model",apiKey="fixture-private")
+        store.saveSettings(RecordingSettings(analysis=connection,transcription=connection))
+        val api=AiSettingsService(store,coordinator,{true},{_,_->})
+        val base=api.getAiView().ok()
+        api.patchAi(base,AiSettingsPatch(budget=PatchField.Set(ConversationBudget(65536,4096)))).ok()
+        api.patchAi(base,AiSettingsPatch(),analysisSecret=LocalSecretChange.Replace("rotated-fixture")).ok()
+        val copyBase=api.getAiView().ok()
+        api.patchAi(copyBase,AiSettingsPatch(budget=PatchField.Set(ConversationBudget(32768,4096)))).ok()
+        api.copyConnection(AiSlot.ANALYSIS,AiSlot.TRANSCRIPTION,copyBase.revision).ok()
+        assertEquals("rotated-fixture",store.settings().transcription.apiKey)
+        store.close()
+    }
     @Test fun compatibilityIsPersistentSafeAndResetOnlyWhenCopyingIntoAnalysis() = runBlocking {
         val coordinator=BusinessRevisionCoordinator()
         val store=AndroidRecordingStore(RuntimeEnvironment.getApplication(),"profile_copy_matrix",cipher,coordinator)

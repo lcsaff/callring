@@ -72,7 +72,7 @@ class AndroidRecordingStore(context: Context, namespace: String,
     /** Event identities are owned here, including when the statistics database contains no call. */
     fun registerIncoming(sessionId: String, number: String, at: Long, account: String?): RecordingCall = coordinator.guard {
         val existed = hasSession(sessionId)
-        registerIncomingInternal(sessionId, number, at, account).also { if (!existed) coordinator.changed("recording") }
+        registerIncomingInternal(sessionId, number, at, account).also { if (!existed) {coordinator.publishScopes(setOf("recordingEvents","archive:${it.id}"));coordinator.changed("recording")} }
     }
     @Synchronized private fun registerIncomingInternal(sessionId: String, number: String, at: Long, account: String?): RecordingCall {
         require(sessionId.isNotBlank() && number.isNotBlank())
@@ -101,7 +101,7 @@ class AndroidRecordingStore(context: Context, namespace: String,
         }
     }
     fun linkStatistics(statisticsId: Long, sessionId: String) = coordinator.guard {
-        if (linkStatisticsInternal(statisticsId, sessionId)) coordinator.changed("recording")
+        if (linkStatisticsInternal(statisticsId, sessionId)) {coordinator.publishScopes(setOf("recordingLinks"));coordinator.changed("recording")}
     }
     @Synchronized private fun linkStatisticsInternal(statisticsId: Long, sessionId: String): Boolean {
         require(statisticsId > 0 && sessionId.isNotBlank())
@@ -125,6 +125,8 @@ class AndroidRecordingStore(context: Context, namespace: String,
             val next = transform(old).also { it.validate() }
             if (next != old) {
                 updatePreferences(preferences, mapOf("config" to cipher.encrypt(RecordingJson.settings(next).toString())))
+                val before=com.greatwall.callring.application.recordingSettingsScopeValues(old);val after=com.greatwall.callring.application.recordingSettingsScopeValues(next)
+                coordinator.publishScopes((before.keys+after.keys).filterTo(linkedSetOf()){before[it]!=after[it]})
                 if (old.recordingEnabled != next.recordingEnabled || old.automaticAnalysis != next.automaticAnalysis || old.captureMode != next.captureMode || old.systemFolder != next.systemFolder) coordinator.changed("recordingConfig")
                 if (old.analysis != next.analysis || old.transcription != next.transcription || old.conversationBudget != next.conversationBudget || old.conversationCompatibility != next.conversationCompatibility) coordinator.changed("aiConfig")
                 coordinator.record(command)
@@ -158,7 +160,7 @@ class AndroidRecordingStore(context: Context, namespace: String,
         } finally { db.endTransaction() }
     }
     override fun compareAndSet(callId: Long, expectedGeneration: Long?, value: CallArchive): Boolean = coordinator.guard {
-        compareAndSetInternal(callId, expectedGeneration, value).also { if (it) coordinator.changed("recording") }
+        compareAndSetInternal(callId, expectedGeneration, value).also { if (it) {coordinator.publishScopes(setOf("archive:$callId"));coordinator.changed("recording")} }
     }
     @Synchronized private fun compareAndSetInternal(callId: Long, expectedGeneration: Long?, value: CallArchive): Boolean {
         require(callId == value.callId)
@@ -179,7 +181,7 @@ class AndroidRecordingStore(context: Context, namespace: String,
     }
     override fun delete(callId: Long): CallArchive? = coordinator.guard {
         val existed = isDeleted(callId)
-        deleteInternal(callId).also { if (!existed || it != null) coordinator.changed("recording") }
+        deleteInternal(callId).also { if (!existed || it != null) {coordinator.publishScopes(setOf("archive:$callId"));coordinator.changed("recording")} }
     }
     @Synchronized private fun deleteInternal(callId: Long): CallArchive? {
         val db = helper.writableDatabase

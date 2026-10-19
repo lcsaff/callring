@@ -38,4 +38,11 @@ class ScopedQueryContractTest {
         assertTrue(result is ApiResult.Failure)
         assertTrue(api.query(QuerySpec(AiDomain.D02)) is ApiResult.Failure)
     }
+    @Test fun observationsKeepTheRevisionOfTheActualReadInsteadOfRefreshingBeforeCommit()=runBlocking {
+        val source=Source();var revision=20L
+        val api=QueryService(listOf(source),revision={revision})
+        api.query(QuerySpec(AiDomain.D01,limit=1)).requiredValue()
+        revision=30L
+        assertEquals(20L,api.observedRevision(AiDomain.D01,"1"))
+    }
 }

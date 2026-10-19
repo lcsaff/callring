@@ -5,7 +5,7 @@ enum class QueryStatus { COMPLETE, EMPTY, PARTIAL, NOT_CONFIGURED, UNAVAILABLE, 
 data class QueryFilter(val number:String?=null,val id:Long?=null,val text:String?=null,val start:Long?=null,val end:Long?=null,val year:Int?=null,val status:String?=null,val kind:String?=null,val date:String?=null,val zone:String?=null)
 data class QuerySpec(val domain:AiDomain,val projection:String="default",val filter:QueryFilter=QueryFilter(),val cursor:String?=null,val limit:Int=50,val maxBytes:Int=32768)
 data class AggregateSpec(val domain:AiDomain,val metric:String="count",val filter:QueryFilter=QueryFilter(),val groupBy:String?=null)
-data class SourceStamp(val domain:AiDomain,val sourceVersion:Long,val observedAt:Long,val sourceScope:String,val consistency:String)
+data class SourceStamp(val domain:AiDomain,val sourceVersion:Long,val observedAt:Long,val sourceScope:String,val consistency:String,val scopeRevision:Long=0,val projection:String="default",val filter:QueryFilter=QueryFilter())
 data class ScopedPage(val items:List<AiJson.Obj>,val stamp:SourceStamp,val matchedTotal:Long?,val nextCursor:String?,val complete:Boolean,val status:QueryStatus,val missingReason:String?=null) {
     val schemaVersion=2
     val returnedCount get()=items.size
@@ -21,6 +21,7 @@ interface AiQueryApi {
     fun reset()=Unit
 }
 
-fun SourceStamp.json()=aiObject("domain" to aiString(domain.name),"sourceVersion" to aiNumber(sourceVersion),"observedAt" to aiNumber(observedAt),"sourceScope" to aiString(sourceScope),"consistency" to aiString(consistency))
+fun QueryFilter.json()=AiJson.Obj(mapOf("number" to (number?.let(::aiString)?:AiJson.Null),"id" to aiNumber(id),"text" to (text?.let(::aiString)?:AiJson.Null),"start" to aiNumber(start),"end" to aiNumber(end),"year" to aiNumber(year?.toLong()),"status" to (status?.let(::aiString)?:AiJson.Null),"kind" to (kind?.let(::aiString)?:AiJson.Null),"date" to (date?.let(::aiString)?:AiJson.Null),"zone" to (zone?.let(::aiString)?:AiJson.Null)).filterValues{it!=AiJson.Null})
+fun SourceStamp.json()=aiObject("domain" to aiString(domain.name),"sourceVersion" to aiNumber(sourceVersion),"observedAt" to aiNumber(observedAt),"sourceScope" to aiString(sourceScope),"consistency" to aiString(consistency),"scopeRevision" to aiNumber(scopeRevision),"projection" to aiString(projection),"filter" to filter.json())
 fun ScopedPage.json()=aiObject("schemaVersion" to aiNumber(2),"items" to AiJson.Arr(items),"stamp" to stamp.json(),"matchedTotal" to (matchedTotal?.let(::aiNumber)?:AiJson.Null),"returnedCount" to aiNumber(items.size.toLong()),"nextCursor" to (nextCursor?.let(::aiString)?:AiJson.Null),"complete" to aiBool(complete),"status" to aiString(status.name),"missingReason" to (missingReason?.let(::aiString)?:AiJson.Null))
 fun TextChunk.json()=aiObject("reference" to aiString(reference),"stamp" to stamp.json(),"codePointStart" to aiNumber(codePointStart),"codePointEnd" to aiNumber(codePointEnd),"totalCodePoints" to aiNumber(totalCodePoints),"nextCursor" to (nextCursor?.let(::aiString)?:AiJson.Null),"complete" to aiBool(complete),"text" to aiString(text))

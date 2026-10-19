@@ -81,14 +81,27 @@ internal fun createCallersApi(context: BackendContext): CallersApi =
                     val n = number(command.number)
                     mutate { s ->
                         val previous = s.profiles[n]
-                        validatePosition(s, command.positionId, previous?.positionId)
+                        val dirty=command.dirtyFields
+                        val base=command.baseline
+                        requireField(dirty==null||(base!=null&&(base.number.isEmpty()||base.number==n)&&dirty.all{it in setOf("name","department","positionId","whitelisted")}),"baseline","draft.baseline_required")
+                        fun <T> merged(field:String,wanted:T,current:T,baseline:T):T {
+                            if(dirty==null)return wanted
+                            if(field !in dirty)return current
+                            requireField(baseline==current,field,"draft.field_changed")
+                            return wanted
+                        }
+                        val name=merged("name",command.name,previous?.name.orEmpty(),base?.name.orEmpty())
+                        val department=merged("department",command.department,previous?.department.orEmpty(),base?.department.orEmpty())
+                        val position=merged("positionId",command.positionId,previous?.positionId,base?.positionId)
+                        val whitelist=merged("whitelisted",command.whitelisted?:previous?.whitelisted?:false,previous?.whitelisted?:false,base?.whitelisted?:false)
+                        validatePosition(s, position, previous?.positionId)
                         s.profiles[n] =
                             ProfileRecord(
                                 n,
-                                command.name.trim(),
-                                command.department.trim(),
-                                command.positionId,
-                                command.whitelisted ?: previous?.whitelisted ?: false,
+                                name.trim(),
+                                department.trim(),
+                                position,
+                                whitelist,
                             )
                         profile(s, n)
                     }

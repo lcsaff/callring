@@ -14,9 +14,9 @@ internal fun createUiEditsApi(context: BackendContext): UiEditsApi = with(contex
                 SaveCallerProfile(n, merge("name", base.name, value.name, current?.name.orEmpty()),
                     merge("department", base.department, value.department, current?.department.orEmpty()),
                     merge("positionId", base.positionId, value.positionId, current?.positionId),
-                    merge("whitelisted", base.whitelisted, value.whitelisted, current?.whitelisted ?: false))
+                    merge("whitelisted", base.whitelisted, value.whitelisted, current?.whitelisted ?: false),base,profileDirty(base,value))
             }
-        }) { c, v -> createCallersApi(c).saveProfile(v) }
+        },profileDirty(base,value).mapTo(linkedSetOf("profile:${checkNumber(value.number).normalized}:exists")){"profile:${checkNumber(value.number).normalized}:$it"}) { c, v -> createCallersApi(c).saveProfile(v) }
 
         override suspend fun quiet(base: QuietSettings, value: QuietSettings) = edit({
             read { s -> s.quiet.let { current -> QuietSettings(
@@ -46,7 +46,7 @@ internal fun createUiEditsApi(context: BackendContext): UiEditsApi = with(contex
                 merge("presetId", base.presetId, value.presetId, current.presetId),
                 merge("customSeedRgb", base.customSeedRgb, value.customSeedRgb, current.customSeedRgb),
                 merge("colorMode", base.colorMode, value.colorMode, current.colorMode)) }
-        }) { c, v -> c.io { c.saveAppearanceExact(v, preserveNull = false) } }
+        },appearanceDirty(base,value).mapTo(linkedSetOf()){ "appearance:$it" }.ifEmpty{setOf("appearance:colorMode")}) { c, v -> c.io { c.saveAppearanceExact(v, preserveNull = false,baseline=base,dirtyFields=appearanceDirty(base,value)) } }
 
         override suspend fun position(base: SavePosition?, value: SavePosition) = edit({
             if (base == null) { requireField(value.id == null, "id", "draft.baseline_required"); value }
@@ -77,11 +77,13 @@ private fun <T> BackendContext.merge(field: String, base: T, draft: T, current: 
     return draft
 }
 
-private suspend fun <T, R> BackendContext.edit(prepare: () -> T, save: suspend (BackendContext, T) -> ApiResult<R>): ApiResult<R> {
+private fun profileDirty(a:CallerDraft,b:CallerDraft)=setOfNotNull(if(a.name!=b.name)"name"else null,if(a.department!=b.department)"department"else null,if(a.positionId!=b.positionId)"positionId"else null,if(a.whitelisted!=b.whitelisted)"whitelisted"else null)
+private fun appearanceDirty(a:AppearanceSettings,b:AppearanceSettings)=setOfNotNull(if(a.selection!=b.selection)"selection"else null,if(a.presetId!=b.presetId)"presetId"else null,if(a.customSeedRgb!=b.customSeedRgb)"customSeedRgb"else null,if(a.colorMode!=b.colorMode)"colorMode"else null)
+private suspend fun <T, R> BackendContext.edit(prepare: () -> T,keys:Set<String> = setOf("core"), save: suspend (BackendContext, T) -> ApiResult<R>): ApiResult<R> {
     val prepared = io {
         coordinator.guard(commandContext) {
             val value = prepare()
-            val command = commandContext ?: CommandContext(UUID.randomUUID().toString(), coordinator.capture(), 0) { true }
+            val command = commandContext ?: CommandContext(UUID.randomUUID().toString(), coordinator.capture(), 0,expectedScopes=coordinator.expect(keys)) { true }
             bound(command) to value
         }
     }

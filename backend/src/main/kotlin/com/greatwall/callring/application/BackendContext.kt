@@ -95,11 +95,20 @@ internal class BackendContext(
     internal fun notifyChanged() {
         coordinator.changed("core")
     }
+    private fun <T> coreTransaction(block:(BackendState)->T):T {
+        val committed=store.transaction{state->
+            val before=coreScopeValues(state)
+            val result=block(state)
+            result to changedScopeKeys(before,coreScopeValues(state))
+        }
+        coordinator.publishScopes(committed.second)
+        return committed.first
+    }
 
     internal fun <T> mutate(block: (BackendState) -> T): T =
         coordinator.commit("core", commandContext) {
             val committed =
-                store.transaction { state -> Pair(block(state), DecisionSnapshot.capture(state)) }
+                coreTransaction { state -> Pair(block(state), DecisionSnapshot.capture(state)) }
             decisions.set(committed.second)
             committed.first
         }
@@ -122,20 +131,20 @@ internal class BackendContext(
         synchronized(lock) {
             val normalized = checkNumber(number).normalized
             val result =
-                store.transaction { s ->
+                coreTransaction { s ->
                     if (
                         !checkNumber(normalized).matchesRule ||
                             s.statisticsIntervals.none {
                                 at >= it.startMillis && (it.endMillis == null || at < it.endMillis)
                             }
                     )
-                        return@transaction -1L
+                        return@coreTransaction -1L
                     val knownAccount = account?.trim()?.takeIf { it.isNotEmpty() }
                     val key = "$normalized:$at" + (knownAccount?.let { ":$it" } ?: "")
                     s.calls.values
                         .firstOrNull { it.screeningKey == key }
                         ?.let {
-                            return@transaction it.id
+                            return@coreTransaction it.id
                         }
                     s.profiles.putIfAbsent(normalized, ProfileRecord(normalized))
                     val id = s.nextCallId++
@@ -167,9 +176,9 @@ internal class BackendContext(
         if (id <= 0) return
         synchronized(lock) {
             val changed =
-                store.transaction { s ->
-                    val call = s.calls[id] ?: return@transaction false
-                    if (call.decision == decision) return@transaction false
+                coreTransaction { s ->
+                    val call = s.calls[id] ?: return@coreTransaction false
+                    if (call.decision == decision) return@coreTransaction false
                     s.calls[id] = call.copy(decision = decision, legacyDecision = null)
                     true
                 }
@@ -180,7 +189,7 @@ internal class BackendContext(
     fun importSystemCalls(records: List<SystemCallRecord>): Set<String> =
         synchronized(lock) {
             val changed =
-                store.transaction { s ->
+                coreTransaction { s ->
                     val numbers = linkedSetOf<String>()
                     val affected = linkedSetOf<Pair<String, Long>>()
                     val byLog =

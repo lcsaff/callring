@@ -22,13 +22,13 @@ internal fun createWidgetBindingsApi(context: BackendContext): WidgetBindingsApi
             ): ApiResult<WidgetBinding> = write {
                 widgetId(widgetId)
                 val binding = WidgetBinding(widgetId, number(number))
-                coordinator.guard(commandContext) { val before = coordinator.capture(); preferences.saveBinding(binding); if(coordinator.capture() == before) notifyChanged(); coordinator.record(commandContext) }
+                coordinator.guard(commandContext) { val old=preferences.getBinding(widgetId);val before = coordinator.capture(); preferences.saveBinding(binding);if(old!=binding)coordinator.publishScopes(setOf("widget:$widgetId")); if(coordinator.capture() == before) notifyChanged(); coordinator.record(commandContext) }
                 binding
             }
 
             override suspend fun removeBinding(widgetId: Int): ApiResult<Unit> = write {
                 widgetId(widgetId)
-                coordinator.guard(commandContext) { val before = coordinator.capture(); preferences.removeBinding(widgetId); if(coordinator.capture() == before) notifyChanged(); coordinator.record(commandContext) }
+                coordinator.guard(commandContext) { val old=preferences.getBinding(widgetId);val before = coordinator.capture(); preferences.removeBinding(widgetId);if(old!=null)coordinator.publishScopes(setOf("widget:$widgetId")); if(coordinator.capture() == before) notifyChanged(); coordinator.record(commandContext) }
             }
         }
     }

@@ -56,5 +56,5 @@ fun scopedQueryApi(core:ScopedReadPort,recordings:()->AndroidRecordingRuntime,ap
     }
     val sources=listOf(core,recordingSource,views,diagnosticSource,directory.scopedReads({recordings().store.settings().systemFolder},{coordinator.capture().values.getValue("recordingConfig")},resources))
     require(sources.flatMap{it.domains}.toSet()==AiDomain.entries.toSet())
-    return QueryService(sources,clock::millis){recordings().store.settings().let{SecretRedactor(listOf(it.analysis.apiKey,it.transcription.apiKey))}}
+    return QueryService(sources,clock::millis,coordinator::marker){recordings().store.settings().let{SecretRedactor(listOf(it.analysis.apiKey,it.transcription.apiKey))}}
 }

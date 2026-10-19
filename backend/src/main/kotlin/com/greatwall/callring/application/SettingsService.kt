@@ -333,14 +333,24 @@ internal fun createSettingsApi(context: BackendContext): SettingsApi =
         }
     }
 
-internal fun BackendContext.saveAppearanceExact(settings: AppearanceSettings, preserveNull: Boolean): AppearanceSettings {
-    requireField(settings.presetId.isNotBlank(), "presetId", "preset.required")
-    requireField(settings.customSeedRgb == null || settings.customSeedRgb in 0..0xffffff, "customSeedRgb", "rgb.invalid")
-    requireField(settings.selection != ThemeSelection.CUSTOM || settings.customSeedRgb != null, "customSeedRgb", "rgb.required")
+internal fun BackendContext.saveAppearanceExact(settings: AppearanceSettings, preserveNull: Boolean,baseline:AppearanceSettings?=null,dirtyFields:Set<String>?=null): AppearanceSettings {
     return synchronized(lock) {
         coordinator.check(commandContext)
-        val saved = if (preserveNull && settings.customSeedRgb == null) settings.copy(customSeedRgb = preferences.getAppearance().customSeedRgb) else settings
+        val oldAppearance=preferences.getAppearance()
+        fun <T> merged(field:String,wanted:T,current:T,base:T):T {
+            if(dirtyFields==null)return wanted
+            if(field !in dirtyFields)return current
+            requireField(base==current,field,"draft.field_changed")
+            return wanted
+        }
+        requireField(dirtyFields==null||baseline!=null,"baseline","draft.baseline_required")
+        val desired=if(baseline==null)settings else AppearanceSettings(merged("selection",settings.selection,oldAppearance.selection,baseline.selection),merged("presetId",settings.presetId,oldAppearance.presetId,baseline.presetId),merged("customSeedRgb",settings.customSeedRgb,oldAppearance.customSeedRgb,baseline.customSeedRgb),merged("colorMode",settings.colorMode,oldAppearance.colorMode,baseline.colorMode))
+        val saved = if (preserveNull && desired.customSeedRgb == null) desired.copy(customSeedRgb = oldAppearance.customSeedRgb) else desired
+        requireField(saved.presetId.isNotBlank(), "presetId", "preset.required")
+        requireField(saved.customSeedRgb == null || saved.customSeedRgb in 0..0xffffff, "customSeedRgb", "rgb.invalid")
+        requireField(saved.selection != ThemeSelection.CUSTOM || saved.customSeedRgb != null, "customSeedRgb", "rgb.required")
         preferences.saveAppearance(saved)
+        coordinator.publishScopes(changedScopeKeys(appearanceScopeValues(oldAppearance),appearanceScopeValues(saved)))
         notifyChanged()
         coordinator.record(commandContext)
         saved

@@ -228,7 +228,9 @@ data class SaveCallerProfile(
     val name: String,
     val department: String,
     val positionId: Long?,
-    val whitelisted: Boolean? = null
+    val whitelisted: Boolean? = null,
+    val baseline:CallerDraft?=null,
+    val dirtyFields:Set<String>?=null,
 )
 
 data class CallerOverview(

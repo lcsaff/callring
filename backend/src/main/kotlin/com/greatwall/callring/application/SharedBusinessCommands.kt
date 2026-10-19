@@ -13,7 +13,7 @@ class SharedBusinessCommands(private val api: CallringUiApi) {
         if (archive.generation != expectedGeneration) return ApiResult.Failure(ApiError(ErrorCode.CONFLICT, "recording.changed"))
         val analysis = archive.analysis ?: return ApiResult.Failure(ApiError(ErrorCode.NOT_FOUND, "recording.analysis_missing"))
         val editor = when(val result = api.callers.getEditor(archive.number)) { is ApiResult.Failure -> return result; is ApiResult.Success -> result.value }
-        return api.callers.saveProfile(SaveCallerProfile(archive.number, analysis.name.ifBlank { editor.draft.name }, analysis.organization.ifBlank { editor.draft.department }, editor.draft.positionId, editor.draft.whitelisted))
+        return api.edits.profile(editor.draft,editor.draft.copy(name=analysis.name.ifBlank{editor.draft.name},department=analysis.organization.ifBlank{editor.draft.department}))
     }
 }
 fun <T> ApiResult<T>.requiredValue(): T = when(this) { is ApiResult.Success -> value; is ApiResult.Failure -> throw BackendFailure(error) }
