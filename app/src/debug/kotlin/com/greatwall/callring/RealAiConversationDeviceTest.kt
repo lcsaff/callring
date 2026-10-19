@@ -27,6 +27,28 @@ import org.json.JSONArray
 import org.json.JSONObject
 
 /** Explicit opt-in only. Never selected by the isolated backend QA runner. */
+class AiConversationPreflightDeviceTest:InstrumentationTestCase() {
+    fun testSafeFormalConfiguration()=runBlocking {
+        val context=instrumentation.targetContext.applicationContext
+        check(context.packageName=="com.greatwall.callring")
+        val graph=(context as CallringApplication).backendGraph
+        var view=graph.api.aiSettings.getAiView().requiredValue()
+        val originalCompatibility=view.compatibility
+        if((instrumentation as InstrumentationTestRunner).arguments.getString("ai_v2_enable_fast")=="true") {
+            check(view.analysis.protocol==AiProtocol.OPENAI&&view.analysis.model=="qwen3.8-flash"&&view.analysis.keyConfigured)
+            view=graph.api.aiSettings.patchAi(view,AiSettingsPatch(compatibility=PatchField.Set(ConversationCompatibility.QWEN_FAST))).requiredValue()
+            check(view.analysis.resolvedProfile==ProviderProfile.QWEN_FAST)
+        }
+        val report=JSONObject().put("protocol",view.analysis.protocol.name).put("model",view.analysis.model)
+            .put("keyConfigured",view.analysis.keyConfigured).put("resolvedProfile",view.analysis.resolvedProfile.name)
+            .put("compatibility",view.compatibility.name).put("contextBudget",view.budget.context).put("outputBudget",view.budget.output)
+            .put("originalCompatibility",originalCompatibility.name)
+            .put("batchStarted",context.getSharedPreferences(PROOF_PREFS,Context.MODE_PRIVATE).getBoolean("batchStarted",false))
+        File(proofDirectory(context),"preflight.json").writeText(report.toString(2))
+        instrumentation.sendStatus(2,Bundle().apply{putString("stream","AI_V2 preflight:$report\n")})
+    }
+}
+
 class RealAiConversationDeviceTest:InstrumentationTestCase() {
     private var shownActivity:android.app.Activity?=null
     fun testAuthorizedFormalActivityAndRealModel()=runBlocking {

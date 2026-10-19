@@ -1,0 +1,10 @@
+{
+  "protocol": "OPENAI",
+  "model": "qwen3.8-flash",
+  "keyConfigured": true,
+  "resolvedProfile": "STANDARD",
+  "compatibility": "AUTO",
+  "contextBudget": 1048576,
+  "outputBudget": 16384,
+  "batchStarted": false
+}
