@@ -2,7 +2,7 @@ package com.greatwall.callring.application.conversation
 
 import com.greatwall.callring.application.api.*
 
-data class ToolDefinition(val index: Int, val name: String, val schema: AiJson.Obj, val write: Boolean) { val id get() = "O%02d".format(index) }
+data class ToolDefinition(val index: Int, val name: String, val schema: AiJson.Obj, val write: Boolean, val description:String=toolPurpose(index,name)) { val id get() = if(index<=72) "O%02d".format(index) else "X%02d".format(index-72) }
 class ToolRegistry {
     private val string = aiObject("type" to aiString("string"))
     private val integer = aiObject("type" to aiString("integer"))
@@ -29,6 +29,18 @@ class ToolRegistry {
     private val definitionsMutable = mutableListOf<ToolDefinition>()
     private fun tool(name: String, write: Boolean = false, vararg fields: Pair<String, AiJson>) { definitionsMutable += ToolDefinition(definitionsMutable.size + 1, name, shape(*fields), write) }
     val definitions: List<ToolDefinition>
+    val allDefinitions:List<ToolDefinition> get()=definitions+extensions
+    private val extensions:List<ToolDefinition> by lazy { listOf(
+        ToolDefinition(73,"discover_tools",shape("?category" to string,"?exactNames" to array(string),"?query" to string,"?cursor" to string,"?limit" to integer),false,"按需发现工具及其参数。类别可空浏览全部；exactNames精确名称；limit默认8上限12。零业务读取。"),
+        ToolDefinition(74,"data_query",shape("domain" to choice(*AiDomain.entries.map{it.name}.toTypedArray()),"?projection" to string,"?filter" to queryFilter,"?cursor" to string,"?limit" to integer,"?maxBytes" to integer),false,"源级分页查询D01–D21，默认all_stored、limit50/最大200、maxBytes32768/最大131072。必须沿nextCursor遍历，complete=false不代表全集。"),
+        ToolDefinition(75,"data_get",shape("domain" to string,"key" to string,"?projection" to string),false,"按分页返回的entityKey读取目标详情；缺失NOT_FOUND；长文用textFields引用。"),
+        ToolDefinition(76,"data_aggregate",shape("domain" to string,"?metric" to choice("count","sumDuration","score","reportTotals"),"?filter" to queryFilter,"?groupBy" to choice("number","status","direction","year")),false,"权威匹配全集聚合，不对当前页求和；默认count。业务统计D05，声明时间范围和zone。"),
+        ToolDefinition(77,"data_readText",shape("reference" to string,"?cursor" to string,"?maxChars" to integer),false,"读取textFields中的reference全文分块，Unicode码点maxChars默认4096/最大16384；沿游标到complete=true才完整。"),
+        ToolDefinition(78,"task_prepare",shape("kind" to choice("CREATE_PROFILES","SET_APPEARANCE","OPERATIONS"),"expectedCount" to integer,"?targets" to array(string)),false,"在多项写前建立完整计划，expectedCount是用户数量，不可降低。返回taskId；CREATE_PROFILES只新建不覆盖，号码由模型生成。"),
+        ToolDefinition(79,"callers_saveProfiles",shape("taskId" to string,"items" to array(shape("number" to string,"?name" to string,"?department" to string,"?positionId" to nullable(integer),"?whitelisted" to boolean))),true,"批量添加1–32个档案，须CREATE_PROFILES计划。预检号码合法唯一且不存在，逐项共用saveProfile并读回，部分失败如实返回；姓名使用可识别合成测试标记时不得触碰真实资料。"),
+        ToolDefinition(80,"callers_getCallDetail",shape("callId" to integer),false,"按callId读取存储通话详情，包括未计分及隐藏记录；不受UI日期限制。")
+    ) }
+    private val queryFilter:AiJson.Obj get()=shape("?number" to string,"?id" to integer,"?text" to string,"?start" to integer,"?end" to integer,"?year" to integer,"?status" to string,"?kind" to string,"?date" to string,"?zone" to string)
     init {
         tool("root_checkNumber", false, "raw" to string)
         tool("home_load")
@@ -107,7 +119,8 @@ class ToolRegistry {
     }
     fun validate(call: ConversationToolCall): ToolDefinition {
         require(call.id.isNotBlank() && call.id.length <= 256) { "ai.invalid_tool_response" }
-        val definition = definitions.singleOrNull { it.name == call.name } ?: throw IllegalArgumentException("ai.unknown_tool")
+        call.argumentError?.let { throw com.greatwall.callring.application.ports.BackendFailure(it) }
+        val definition = allDefinitions.singleOrNull { it.name == call.name } ?: throw IllegalArgumentException("ai.unknown_tool")
         validateValue(call.arguments, definition.schema)
         return definition
     }
