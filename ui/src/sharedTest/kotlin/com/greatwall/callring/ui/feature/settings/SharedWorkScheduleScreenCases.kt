@@ -22,7 +22,7 @@ abstract class SharedWorkScheduleScreenCases {
 
     @Test fun commonWorkdayEditorHasFourTimesAndNoWeekdayOrMakeupEditor() {
         compose.setContent { CallringTheme {
-            WorkScheduleScreen(LoadState(saved, loaded = true), saved, MutationState(), {}, {}, {}, {}, {})
+            WorkScheduleScreen(LoadState(saved, loaded = true), saved, MutationState(), {}, {}, {}, {})
         } }
         listOf("work-start", "work-lunch-start", "work-lunch-end", "work-end").forEach {
             compose.onNodeWithTag("time-$it").performScrollTo().assertIsDisplayed()
@@ -35,7 +35,7 @@ abstract class SharedWorkScheduleScreenCases {
         val draft = mutableStateOf(saved)
         compose.setContent { CallringTheme {
             WorkScheduleScreen(LoadState(saved, loaded = true), draft.value, MutationState(), {}, {},
-                { draft.value = it }, {}, {})
+                { draft.value = it }, {})
         } }
         chooseHour("work-start", "08")
         compose.runOnIdle {
@@ -52,7 +52,7 @@ abstract class SharedWorkScheduleScreenCases {
         val commits = mutableListOf<WorkScheduleSettings>()
         compose.setContent { CallringTheme {
             WorkScheduleScreen(LoadState(saved, loaded = true), draft.value, mutation.value, {}, {},
-                { commits += it; draft.value = it }, {}, {
+                { commits += it; draft.value = it }, {
                     draft.value = saved
                     mutation.value = MutationState(completed = mutation.value.completed + 1)
                 })
@@ -74,7 +74,7 @@ abstract class SharedWorkScheduleScreenCases {
     @Test fun legacySingleWindowGetsEditableLunchDefaultsWithinItsHours() {
         val legacy = saved.copy(weekly = mapOf(3 to listOf(TimeWindow(540, 1080))))
         compose.setContent { CallringTheme {
-            WorkScheduleScreen(LoadState(legacy, loaded = true), legacy, MutationState(), {}, {}, {}, {}, {})
+            WorkScheduleScreen(LoadState(legacy, loaded = true), legacy, MutationState(), {}, {}, {}, {})
         } }
         compose.onNodeWithTag("time-work-start").performScrollTo().assertTextContains("09:00")
         compose.onNodeWithTag("time-work-lunch-start").performScrollTo().assertTextContains("12:00")

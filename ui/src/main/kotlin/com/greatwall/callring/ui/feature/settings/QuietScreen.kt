@@ -12,8 +12,6 @@ import com.greatwall.callring.ui.state.*
 fun QuietScreen(
     state: LoadState<QuietSettings>, draft: QuietSettings?, mutation: MutationState,
     onBack: () -> Unit, onRetry: () -> Unit, onChange: (QuietSettings) -> Unit,
-    // The route still forwards a save callback from the previous page model; immediate editing never renders one.
-    @Suppress("UNUSED_PARAMETER") onSave: () -> Unit,
 ) {
     SettingsLayout("免打扰", state, mutation, onBack, onRetry) { saved ->
         // Custom mode without any window is a local editing state: it is shown with an error but never committed.

@@ -60,6 +60,7 @@ class FirstConnectionUiTest {
             assertEquals(LocalSecretChange.Keep,other)
         }
         compose.onAllNodesWithText("密钥已配置").assertCountEquals(1)
-        compose.onNodeWithText("保存 AI 设置").assertIsNotEnabled()
+        compose.onNodeWithText("保存 AI 设置").assertDoesNotExist()
+        compose.onNodeWithTag("settings-save").assertDoesNotExist()
     }
 }

@@ -56,7 +56,7 @@ abstract class InteractionCases {
         val score = ScoreSettings(5, 2, 10, 30)
         var resets = 0
         compose.setContent { CallringTheme {
-            ScoreSettingsScreen(LoadState(score, loaded = true), score, MutationState(), {}, {}, {}, {}, { resets++ })
+            ScoreSettingsScreen(LoadState(score, loaded = true), score, MutationState(), {}, {}, {}, { resets++ })
         } }
         compose.onNodeWithText("恢复默认评分设置").performScrollTo().performClick()
         compose.runOnIdle { assertEquals(0, resets) }

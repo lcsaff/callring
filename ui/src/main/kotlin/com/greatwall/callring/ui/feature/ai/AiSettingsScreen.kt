@@ -1,69 +1,195 @@
 package com.greatwall.callring.ui.feature.ai
 
-import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import com.greatwall.callring.application.api.*
 import com.greatwall.callring.ui.designsystem.components.ScreenFrame
+import com.greatwall.callring.ui.designsystem.components.SwitchSettingRow
 import com.greatwall.callring.ui.feature.recording.recordingMessage
-import com.greatwall.callring.ui.state.*
+import com.greatwall.callring.ui.state.LoadState
+import com.greatwall.callring.ui.state.MutationState
 
-@Composable fun AiSettingsScreen(state: LoadState<AiSettingsView>, draft: AiSettingsView?, dirty: Boolean, mutation: MutationState, onBack: () -> Unit, onEdit: (AiSettingsView) -> Unit, onSave: () -> Unit, onCredential: (AiSlot) -> Unit, onCopy: (AiSlot,AiSlot) -> Unit, onTest: (AiSlot) -> Unit) {
-    var discard by remember { mutableStateOf(false) }
+/**
+ * AI settings are applied field by field. The page has three groups and no page-level save action;
+ * key editing and connection tests keep their one-shot confirmations.
+ */
+@Composable
+fun AiSettingsScreen(
+    state: LoadState<AiSettingsUi>, mutation: MutationState,
+    onBack: () -> Unit, onRetry: () -> Unit,
+    onAnalysisChange: (AiConnectionView) -> Unit, onAnalysisProtocol: (AiProtocol) -> Unit,
+    onTranscriptionChange: (AiConnectionView) -> Unit,
+    onThinkingMode: (ThinkingMode) -> Unit, onBudget: (ConversationBudget) -> Unit,
+    onAutomaticAnalysis: (Boolean) -> Unit,
+    onCredential: (AiSlot) -> Unit, onCopy: (AiSlot, AiSlot) -> Unit, onTest: (AiSlot) -> Unit,
+) {
     var test by remember { mutableStateOf<AiSlot?>(null) }
-    var advanced by remember { mutableStateOf(false) }
-    val back = { if(dirty) discard = true else onBack() }
-    BackHandler(onBack = back)
-    ScreenFrame("AI 设置", back) {
+    var advanced by rememberSaveable { mutableStateOf(false) }
+    ScreenFrame("AI 设置", onBack) {
         Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             (mutation.error ?: state.error)?.let { Text(aiErrorText(it), color = MaterialTheme.colorScheme.error) }
             mutation.message?.let { Text(it) }
-            if(state.loading) LinearProgressIndicator(Modifier.fillMaxWidth())
-            if(dirty && state.data?.revision != draft?.revision) Text("保存值已变化；保留了本页草稿。保存时会检查冲突。")
-            draft?.let { value ->
-                Text("沟通使用内容分析连接，按需发送本次任务所需的文字。密钥仅在本地编辑，可能产生服务费用。")
-                SafeConnectionForm("内容分析 / 沟通", value.analysis, true, { onEdit(value.copy(analysis = it)) }, { onCredential(AiSlot.ANALYSIS) })
-                val resolved=runCatching{resolveConversationProfile(AiConnection(value.analysis.protocol,value.analysis.url,model=value.analysis.model),value.compatibility)}
-                Text("草稿解析方式：${resolved.getOrNull()?.name?:"配置需修正"}")
-                state.data?.let{Text("已保存解析方式：${it.analysis.resolvedProfile}",style=MaterialTheme.typography.bodySmall)}
-                TextButton(onClick={advanced=!advanced}){Text(if(advanced)"收起高级兼容"else"高级兼容")}
-                if(advanced) {
-                    Text("自动根据官方地址和模型选择；代理地址需要明确选择 Qwen FAST。")
-                    ConversationCompatibility.entries.forEach{compatibility->FilterChip(value.compatibility==compatibility,{onEdit(value.copy(compatibility=compatibility))},label={Text(when(compatibility){ConversationCompatibility.AUTO->"自动（AUTO）";ConversationCompatibility.STANDARD->"标准（STANDARD）";ConversationCompatibility.QWEN_FAST->"Qwen FAST"})})}
-                    if(resolved.isFailure)Text("当前模型或协议不支持所选兼容方式。",color=MaterialTheme.colorScheme.error)
+            if (state.loading) LinearProgressIndicator(Modifier.fillMaxWidth())
+            if (state.data == null) {
+                if (!state.loading && state.error == null) TextButton(onClick = onRetry) { Text("加载设置") }
+            }
+            state.data?.let { data ->
+                AiGroup("内容分析与沟通") {
+                    Text("沟通使用内容分析连接，按需发送本次任务所需的文字。密钥仅在本地编辑，可能产生服务费用。")
+                    ConnectionFields(data.ai.analysis, true, onAnalysisProtocol, onAnalysisChange) {
+                        onCredential(AiSlot.ANALYSIS)
+                    }
+                    ThinkingModeRow(data.ai.analysis, onThinkingMode)
+                    Row {
+                        TextButton(onClick = { onCopy(AiSlot.TRANSCRIPTION, AiSlot.ANALYSIS) }, enabled = !mutation.busy) {
+                            Text("从转写配置复制")
+                        }
+                        TextButton(onClick = { test = AiSlot.ANALYSIS }) { Text("测试分析连接") }
+                    }
                 }
-                Row { TextButton(onClick = { onCopy(AiSlot.TRANSCRIPTION,AiSlot.ANALYSIS) }, enabled = !mutation.busy) { Text("从转写配置复制") }; TextButton(onClick = { test = AiSlot.ANALYSIS }) { Text("测试分析连接") } }
-                SafeConnectionForm("录音转写 · OpenAI 兼容", value.transcription, false, { onEdit(value.copy(transcription = it)) }, { onCredential(AiSlot.TRANSCRIPTION) })
-                Row { TextButton(onClick = { onCopy(AiSlot.ANALYSIS,AiSlot.TRANSCRIPTION) }, enabled = !mutation.busy) { Text("从分析配置复制") }; TextButton(onClick = { test = AiSlot.TRANSCRIPTION }) { Text("测试转写连接") } }
-                Text("复制会在本地预览后保存，并在本地复制密钥；复制至转写时保持 OpenAI 协议。界面测试使用当前草稿和本地保存的密钥，不发送通话内容；AI 工具只测试已保存连接。")
-                Text("客户端上下文预算", style = MaterialTheme.typography.titleMedium)
-                Text("默认 49152，可配置 8192–1048576；输出预留 1024–16384 且小于上下文。本次文字、按需数据和已启用工具计入预算；容量不足时会保留已提交结果并停止。")
-                var context by remember(value.budget.context) { mutableStateOf(value.budget.context.toString()) }
-                var output by remember(value.budget.output) { mutableStateOf(value.budget.output.toString()) }
-                OutlinedTextField(context, { context = it; it.toLongOrNull()?.let { count -> onEdit(value.copy(budget = value.budget.copy(context = count))) } }, label = { Text("上下文预算") }, singleLine = true, modifier = Modifier.fillMaxWidth())
-                OutlinedTextField(output, { output = it; it.toLongOrNull()?.let { count -> onEdit(value.copy(budget = value.budget.copy(output = count))) } }, label = { Text("输出预留") }, singleLine = true, modifier = Modifier.fillMaxWidth())
-                Button(onClick = onSave, enabled = dirty && !mutation.busy && context.toLongOrNull() != null && output.toLongOrNull() != null, modifier = Modifier.fillMaxWidth()) { Text("保存 AI 设置") }
+                AiGroup("录音转写") {
+                    ConnectionFields(data.ai.transcription, false, {}, onTranscriptionChange) {
+                        onCredential(AiSlot.TRANSCRIPTION)
+                    }
+                    Row {
+                        TextButton(onClick = { onCopy(AiSlot.ANALYSIS, AiSlot.TRANSCRIPTION) }, enabled = !mutation.busy) {
+                            Text("从分析配置复制")
+                        }
+                        TextButton(onClick = { test = AiSlot.TRANSCRIPTION }) { Text("测试转写连接") }
+                    }
+                    Text("复制会在本地预览并保存，并在本地复制密钥；复制至转写时保持 OpenAI 协议。")
+                    SwitchSettingRow("录音就绪后自动分析", data.recording.automaticAnalysis, onAutomaticAnalysis,
+                        "自动分析会将录音发送到转写服务，将转写文字发送到分析服务，可能按服务商价格收费。")
+                }
+                AdvancedSettings(data.ai.budget, mutation, advanced, { advanced = it }, onBudget)
             }
         }
     }
-    if(discard) AlertDialog(onDismissRequest = { discard = false }, title = { Text("放弃未保存的修改？") }, text = { Text("本页草稿尚未保存。") }, confirmButton = { TextButton(onClick = onBack) { Text("放弃并返回") } }, dismissButton = { TextButton(onClick = { discard = false }) { Text("继续编辑") } })
-    test?.let { slot -> AlertDialog(onDismissRequest = { test = null }, title = { Text("发送连接测试？") }, text = { Text(if(slot == AiSlot.TRANSCRIPTION) "将发送固定测试音频到当前草稿中的转写地址，可能产生费用；不会发送通话录音。" else "将发送固定测试文字到当前草稿中的分析地址，可能产生费用；不会发送业务数据。") }, confirmButton = { TextButton(onClick = { test = null; onTest(slot) }) { Text("发送测试") } }, dismissButton = { TextButton(onClick = { test = null }) { Text("取消") } }) }
+    test?.let { slot -> AlertDialog(onDismissRequest = { test = null }, title = { Text("发送连接测试？") },
+        text = { Text(if (slot == AiSlot.TRANSCRIPTION) "将发送固定测试音频到当前保存的转写地址，可能产生费用；不会发送通话录音。"
+            else "将发送固定测试文字到当前保存的分析地址，可能产生费用；不会发送业务数据。") },
+        confirmButton = { TextButton(onClick = { test = null; onTest(slot) }) { Text("发送测试") } },
+        dismissButton = { TextButton(onClick = { test = null }) { Text("取消") } }) }
 }
 
-@Composable private fun SafeConnectionForm(title: String, value: AiConnectionView, protocols: Boolean, edit: (AiConnectionView) -> Unit, credential: () -> Unit) {
-    Text(title, style = MaterialTheme.typography.titleMedium)
-    if(protocols) Row { AiProtocol.entries.forEach { protocol -> FilterChip(value.protocol == protocol, { edit(value.copy(protocol = protocol)) }, label = { Text(protocol.name) }, modifier = Modifier.padding(end = 8.dp)) } }
-    OutlinedTextField(value.url, { edit(value.copy(url = it)) }, label = { Text("API 基础地址（含 /v1 或自定义前缀）") }, singleLine = true, modifier = Modifier.fillMaxWidth())
-    OutlinedTextField(value.model, { edit(value.copy(model = it)) }, label = { Text("模型名称") }, singleLine = true, modifier = Modifier.fillMaxWidth())
-    Text(if(value.keyConfigured) "密钥已配置" else "尚未配置密钥")
-    OutlinedButton(onClick = credential) { Text("本地编辑密钥") }
+@Composable
+private fun AiGroup(title: String, content: @Composable ColumnScope.() -> Unit) {
+    Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Text(title, style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
+        content()
+        HorizontalDivider()
+    }
 }
-fun aiErrorText(error: ApiError): String = when(error.message) {
+
+@Composable
+private fun ConnectionFields(
+    value: AiConnectionView, showProtocols: Boolean,
+    onProtocol: (AiProtocol) -> Unit, onEdit: (AiConnectionView) -> Unit, onCredential: () -> Unit,
+) {
+    // Local copy so typing the address and then the model in one debounce window never loses the first edit.
+    var local by remember(value) { mutableStateOf(value) }
+    if (showProtocols) {
+        Row {
+            AiProtocol.entries.forEach { protocol ->
+                FilterChip(local.protocol == protocol, { local = local.copy(protocol = protocol); onProtocol(protocol) },
+                    label = { Text(protocol.name) }, modifier = Modifier.padding(end = 8.dp))
+            }
+        }
+    }
+    OutlinedTextField(local.url, { local = local.copy(url = it); onEdit(local) },
+        label = { Text("API 基础地址（含 /v1 或自定义前缀）") },
+        singleLine = true, modifier = Modifier.fillMaxWidth())
+    OutlinedTextField(local.model, { local = local.copy(model = it); onEdit(local) }, label = { Text("模型名称") },
+        singleLine = true, modifier = Modifier.fillMaxWidth())
+    Text(if (local.keyConfigured) "密钥已配置" else "尚未配置密钥")
+    OutlinedButton(onClick = onCredential) { Text("本地编辑密钥") }
+}
+
+@Composable
+private fun ThinkingModeRow(connection: AiConnectionView, onChange: (ThinkingMode) -> Unit) {
+    val supported = connection.thinkingSupport == ThinkingSupport.AVAILABLE ||
+        connection.thinkingSupport == ThinkingSupport.CUSTOM_GATEWAY
+    SwitchSettingRow(
+        "思考模式", connection.thinkingMode == ThinkingMode.ENABLED,
+        { checked -> onChange(if (checked) ThinkingMode.ENABLED else ThinkingMode.DISABLED) },
+        summary = thinkingReason(connection), enabled = supported,
+    )
+}
+
+internal fun thinkingReason(connection: AiConnectionView): String = when (connection.thinkingSupport) {
+    ThinkingSupport.AVAILABLE -> "当前模型支持切换思考模式。"
+    ThinkingSupport.CUSTOM_GATEWAY -> "自定义网关可能不执行思考参数。"
+    ThinkingSupport.UNSUPPORTED -> thinkingNoticeText(connection.thinkingNotice, "当前模型不支持切换思考模式。")
+    ThinkingSupport.UNRECOGNIZED -> thinkingNoticeText(connection.thinkingNotice, "当前模型未识别，不能切换思考模式。")
+}
+
+private fun thinkingNoticeText(notice: String, fallback: String): String = when (notice) {
+    "", "thinking.available" -> fallback
+    "thinking.unsupported.protocol" -> "当前协议不支持切换思考模式。"
+    "thinking.model_not_verified" -> "当前模型不支持切换思考模式。"
+    "thinking.unrecognized" -> "当前模型未识别，不能切换思考模式。"
+    else -> if (notice.startsWith("thinking.")) fallback else notice
+}
+
+@Composable
+private fun AdvancedSettings(
+    budget: ConversationBudget, mutation: MutationState,
+    expanded: Boolean, onExpandedChange: (Boolean) -> Unit, onBudget: (ConversationBudget) -> Unit,
+) {
+    var contextRaw by rememberSaveable(budget.context) { mutableStateOf(budget.context.toString()) }
+    var outputRaw by rememberSaveable(budget.output) { mutableStateOf(budget.output.toString()) }
+    val contextValue = contextRaw.toLongOrNull()
+    val outputValue = outputRaw.toLongOrNull()
+    val contextValid = contextValue != null && contextValue in 8192L..1048576L
+    val outputValid = outputValue != null && outputValue in 1024L..16384L
+    val relationValid = contextValue != null && outputValue != null && outputValue < contextValue
+    val invalidCount = listOf(contextValid, outputValid, relationValid).count { !it }
+    fun submitIfValid(nextContext: String = contextRaw, nextOutput: String = outputRaw) {
+        val context = nextContext.toLongOrNull()
+        val output = nextOutput.toLongOrNull()
+        if (context != null && context in 8192L..1048576L &&
+            output != null && output in 1024L..16384L && output < context) {
+            onBudget(ConversationBudget(context, output))
+        }
+    }
+    Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        Row(Modifier.fillMaxWidth().clickable { onExpandedChange(!expanded) }.padding(vertical = 8.dp)
+            .testTag("ai-advanced-toggle"),
+            verticalAlignment = Alignment.CenterVertically) {
+            Text("高级设置", style = MaterialTheme.typography.titleMedium)
+            Spacer(Modifier.weight(1f))
+            if (invalidCount > 0) Text("$invalidCount 项配置需要修正", color = MaterialTheme.colorScheme.error,
+                style = MaterialTheme.typography.bodySmall)
+            Text(if (expanded) "收起" else "展开", style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.primary)
+        }
+        if (expanded) {
+            Text("预算只限制客户端发送的上下文；非法值不会提交。")
+            OutlinedTextField(contextRaw, { contextRaw = it; submitIfValid(nextContext = it) },
+                label = { Text("上下文预算") },
+                singleLine = true, isError = !contextValid, modifier = Modifier.fillMaxWidth().testTag("ai-budget-context"))
+            Text("8192–1048576", style = MaterialTheme.typography.bodySmall)
+            OutlinedTextField(outputRaw, { outputRaw = it; submitIfValid(nextOutput = it) }, label = { Text("输出预留") },
+                singleLine = true, isError = !outputValid, modifier = Modifier.fillMaxWidth().testTag("ai-budget-output"))
+            Text("1024–16384，且小于上下文预算", style = MaterialTheme.typography.bodySmall)
+            if (contextValid && outputValid && !relationValid) Text("输出预留必须小于上下文预算",
+                color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+            mutation.error?.fieldErrors.orEmpty().filterKeys { it == "budget" || it.startsWith("budget.") }
+                .values.distinct().forEach { Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall) }
+        }
+    }
+}
+
+fun aiErrorText(error: ApiError): String = when (error.message) {
     "ai.context_budget_exceeded" -> "本轮所需内容超出客户端预算，已停止后续操作。已提交结果保留；请缩小查询范围或新建对话。"
     "ai.provider_context_rejected" -> "服务端拒绝了本次上下文，已停止后续操作。已提交结果保留，请核对模型容量。"
     "ai.snapshot_domain_failed" -> "无法完整读取业务数据，未使用残缺上下文。${error.fieldErrors["domains"]?.let { "失败范围：$it" }.orEmpty()}"
@@ -91,5 +217,6 @@ fun aiErrorText(error: ApiError): String = when(error.message) {
     "ai.unavailable" -> "当前环境未提供 AI 服务。"
     "ai.busy" -> "正在处理上一条消息。"
     "ai.turn_limit" -> "已达到本轮操作限制；已提交结果保留，请核对后继续。"
-    else -> if(error.code == ErrorCode.PERMISSION_REQUIRED) "所需系统授权尚未获得，配置未保存。" else recordingMessage(error.message)
+    "update.unavailable" -> "当前环境未提供应用更新服务。"
+    else -> if (error.code == ErrorCode.PERMISSION_REQUIRED) "所需系统授权尚未获得，配置未保存。" else recordingMessage(error.message)
 }

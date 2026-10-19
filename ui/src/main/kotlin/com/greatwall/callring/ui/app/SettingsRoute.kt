@@ -6,6 +6,8 @@ import com.greatwall.callring.application.api.*
 import com.greatwall.callring.ui.designsystem.components.ScreenFrame
 import com.greatwall.callring.ui.feature.settings.*
 import com.greatwall.callring.ui.feature.shared.LoadFeedback
+import com.greatwall.callring.ui.feature.update.AppUpdateScreen
+import com.greatwall.callring.ui.feature.update.AppUpdateViewModel
 
 @Composable internal fun SettingsRoute(
     page: SettingsPage, api: CallringUiApi, summaryModel: SettingsSummaryViewModel, appearanceModel: AppearanceViewModel,
@@ -21,7 +23,7 @@ import com.greatwall.callring.ui.feature.shared.LoadFeedback
             val draft by model.draft.collectAsStateWithLifecycle()
             val mutation by model.mutation.collectAsStateWithLifecycle()
             ActiveRefresh(signal, refresh = model::refresh)
-            QuietScreen(state, draft, mutation, onBack, model::refresh, model::edit, model::save)
+            QuietScreen(state, draft, mutation, onBack, model::refresh, model::edit)
         }
         SettingsPage.WORK -> {
             val model: WorkScheduleViewModel = uiViewModel { WorkScheduleViewModel(api, it) }
@@ -29,7 +31,7 @@ import com.greatwall.callring.ui.feature.shared.LoadFeedback
             val draft by model.draft.collectAsStateWithLifecycle()
             val mutation by model.mutation.collectAsStateWithLifecycle()
             ActiveRefresh(signal, refresh = model::refresh)
-            WorkScheduleScreen(state, draft, mutation, onBack, model::refresh, model::edit, model::save, model::reset)
+            WorkScheduleScreen(state, draft, mutation, onBack, model::refresh, model::edit, model::reset)
         }
         SettingsPage.SCORE -> {
             val model: ScoreSettingsViewModel = uiViewModel { ScoreSettingsViewModel(api, it) }
@@ -37,7 +39,7 @@ import com.greatwall.callring.ui.feature.shared.LoadFeedback
             val draft by model.draft.collectAsStateWithLifecycle()
             val mutation by model.mutation.collectAsStateWithLifecycle()
             ActiveRefresh(signal, refresh = model::refresh)
-            ScoreSettingsScreen(state, draft, mutation, onBack, model::refresh, model::edit, model::save, model::reset)
+            ScoreSettingsScreen(state, draft, mutation, onBack, model::refresh, model::edit, model::reset)
         }
         SettingsPage.APPEARANCE -> {
             val model = appearanceModel
@@ -96,6 +98,14 @@ import com.greatwall.callring.ui.feature.shared.LoadFeedback
             val mutation by model.mutation.collectAsStateWithLifecycle()
             ActiveRefresh(signal, intervalMillis = 10_000, refresh = model::refresh)
             RuntimeScreen(state, mutation, onBack, model::refresh, onCapability, model::synchronize, onAppSettings, onTestOverlay)
+        }
+        SettingsPage.UPDATE -> {
+            val model: AppUpdateViewModel = uiViewModel { AppUpdateViewModel(api.update) }
+            val state by model.state.collectAsStateWithLifecycle()
+            val mutation by model.mutation.collectAsStateWithLifecycle()
+            ActiveRefresh(signal, refresh = model::refresh)
+            AppUpdateScreen(state, mutation, onBack, model::refresh,
+                model::check, model::download, model::cancel, model::install)
         }
     }
 }

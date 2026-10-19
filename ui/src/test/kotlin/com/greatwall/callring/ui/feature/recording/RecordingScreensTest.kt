@@ -80,20 +80,22 @@ class RecordingScreensTest {
         compose.onNodeWithText(recordingMessage("recording.storage_or_network")).assertIsDisplayed()
     }
 
-    @Test fun unsavedBackRequiresExplicitDiscardAndKeepsEditsOnCancel() {
-        var backs = 0
+    @Test fun recordingSettingsHasNoSaveOrAutoAnalysisAndSwitchesCommitImmediately() {
+        val view = RecordingSettingsView(recordingEnabled = false, automaticAnalysis = true,
+            captureMode = CaptureMode.SYSTEM_ONLY, folderConfigured = false, revision = 1)
+        var enabled: Boolean? = null
         compose.setContent { CallringTheme {
-            RecordingSettingsScreen(LoadState(RecordingSettings(), loaded = true), RecordingSettings(), true,
-                MutationState(), { backs++ }, {}, {}, {}, {}, {}, {}, {}, {})
+            RecordingSettingsScreen(LoadState(view, loaded = true), MutationState(), {}, {}, { enabled = it }, {}, {}, {})
         } }
-        compose.onNodeWithContentDescription("返回").performClick()
-        compose.onNodeWithText("放弃未保存的修改？").assertIsDisplayed()
-        compose.onNodeWithText("继续编辑").performClick()
-        assertEquals(0, backs)
-        compose.onNodeWithContentDescription("返回").performClick()
-        compose.onNodeWithText("放弃并返回").performClick()
-        assertEquals(1, backs)
+        compose.onNodeWithTag("settings-save").assertDoesNotExist()
+        compose.onNodeWithText("保存设置").assertDoesNotExist()
+        compose.onNodeWithText("录音就绪后自动分析").assertDoesNotExist()
+        compose.onNode(hasContentDescription("启用录音归档") and
+            SemanticsMatcher.keyIsDefined(androidx.compose.ui.semantics.SemanticsProperties.ToggleableState))
+            .performClick()
+        compose.runOnIdle { assertEquals(true, enabled) }
     }
+
     @Test fun deletingArchiveRequiresExplicitConfirmation() {
         var deletes = 0
         compose.setContent { CallringTheme {
@@ -107,27 +109,5 @@ class RecordingScreensTest {
         compose.onNodeWithText("删除本次归档").performClick()
         compose.onNodeWithText("删除", useUnmergedTree = true).performClick()
         assertEquals(1, deletes)
-    }
-    @Test fun saveAndReturnWaitsForSuccessfulSaveAndKeepsPageOnFailure() {
-        val dirty = mutableStateOf(true)
-        val mutation = mutableStateOf(MutationState())
-        var backs = 0
-        var saves = 0
-        compose.setContent { CallringTheme {
-            RecordingSettingsScreen(LoadState(RecordingSettings(), loaded = true), RecordingSettings(), dirty.value,
-                mutation.value, { backs++ }, {}, {}, { saves++; mutation.value = MutationState(busy = true) }, {}, {}, {}, {}, {})
-        } }
-        compose.onNodeWithContentDescription("返回").performClick()
-        compose.onNodeWithText("保存并返回").performClick()
-        assertEquals(1, saves)
-        assertEquals(0, backs)
-        compose.runOnIdle { mutation.value = MutationState(error = ApiError(ErrorCode.STORAGE_FAILURE, "recording.storage_or_network")) }
-        compose.waitForIdle()
-        assertEquals(0, backs)
-        compose.onNodeWithContentDescription("返回").performClick()
-        compose.onNodeWithText("保存并返回").performClick()
-        compose.runOnIdle { dirty.value = false; mutation.value = MutationState(completed = 1) }
-        compose.waitForIdle()
-        assertEquals(1, backs)
     }
 }

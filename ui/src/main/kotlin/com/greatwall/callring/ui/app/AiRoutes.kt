@@ -8,14 +8,16 @@ import com.greatwall.callring.ui.feature.conversation.*
 
 @Composable internal fun AiSettingsRoute(api: CallringUiApi, signal: Long, onBack: () -> Unit) {
     val model: AiSettingsViewModel = uiViewModel { AiSettingsViewModel(api) }
-    val state by model.state.collectAsStateWithLifecycle(); val draft by model.draft.collectAsStateWithLifecycle()
-    val dirty by model.dirty.collectAsStateWithLifecycle(); val mutation by model.mutation.collectAsStateWithLifecycle()
+    val state by model.state.collectAsStateWithLifecycle(); val mutation by model.mutation.collectAsStateWithLifecycle()
     var credential by remember { mutableStateOf<CredentialDraft?>(null) }
     var copy by remember { mutableStateOf<Pair<AiSlot,AiSlot>?>(null) }
     ActiveRefresh(signal, refresh = model::refresh)
-    AiSettingsScreen(state,draft,dirty,mutation,onBack,model::edit,model::save,{ credential = model.credentialInput(it) },{ from,to -> copy = from to to },model::test)
-    credential?.let { input -> CredentialDialog(api.aiSettings,input.slot,input) { saved -> credential = null; if(saved) model.credentialSaved(input.slot) else model.refresh() } }
-    copy?.let { request->CopyConnectionDialog(api.aiSettings,request.first,request.second) { saved->copy = null; if(saved)model.credentialSaved(request.second,true)else model.refresh() } }
+    AiSettingsScreen(state, mutation, onBack, model::refresh,
+        model::editAnalysis, model::analysisProtocol, model::editTranscription,
+        model::thinkingMode, model::budget, model::automaticAnalysis,
+        { credential = model.credentialInput(it) }, { from,to -> copy = from to to }, model::test)
+    credential?.let { input -> CredentialDialog(api.aiSettings,input.slot,input) { saved -> credential = null; if(saved) model.credentialSaved() else model.credentialCancelled() } }
+    copy?.let { request->CopyConnectionDialog(api.aiSettings,request.first,request.second) { saved->copy = null; if(saved)model.credentialSaved()else model.refresh() } }
 }
 @Composable internal fun ConversationRoute(api: CallringUiApi) {
     val model: ConversationViewModel = uiViewModel { ConversationViewModel(api) }

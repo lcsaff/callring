@@ -35,7 +35,7 @@ import java.util.Locale
 fun AppearanceScreen(
     state: LoadState<AppearanceSettings>, draft: AppearanceSettings?, mutation: MutationState,
     onBack: () -> Unit, onRetry: () -> Unit, onChange: (AppearanceSettings) -> Unit,
-    onSave: () -> Unit, registry: ThemeRegistry = ThemeRegistry.Default,
+    onRetrySave: () -> Unit, registry: ThemeRegistry = ThemeRegistry.Default,
     onColorChange: (AppearanceSettings) -> Unit = onChange,
 ) {
     val value = draft ?: state.data
@@ -46,7 +46,7 @@ fun AppearanceScreen(
                 LoadFeedback(state, onRetry)
                 mutation.error?.let {
                     Text(it.message, color = MaterialTheme.colorScheme.error)
-                    TextButton(onClick = onSave) { Text("重试") }
+                    TextButton(onClick = onRetrySave) { Text("重试") }
                 }
                 if (value != null) AppearanceControls(value, mutation, onChange, onColorChange, registry)
                 Spacer(Modifier.height(8.dp))

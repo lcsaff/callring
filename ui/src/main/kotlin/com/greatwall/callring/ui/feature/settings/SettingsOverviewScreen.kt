@@ -1,7 +1,10 @@
 package com.greatwall.callring.ui.feature.settings
 
+import android.content.Context
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
+import androidx.compose.ui.platform.LocalContext
 import com.greatwall.callring.application.api.SettingsSummary
 import com.greatwall.callring.ui.designsystem.components.SettingRow
 import com.greatwall.callring.ui.designsystem.components.SwitchSettingRow
@@ -9,7 +12,16 @@ import com.greatwall.callring.ui.feature.settings.components.*
 import com.greatwall.callring.ui.state.LoadState
 import com.greatwall.callring.ui.state.MutationState
 
-enum class SettingsPage { QUIET, POSITIONS, MY_POSITION, WORK, CALENDAR, LEAVES, SCORE, RINGTONE, RUNTIME, APPEARANCE, RECORDING, AI }
+enum class SettingsPage { QUIET, POSITIONS, MY_POSITION, WORK, CALENDAR, LEAVES, SCORE, RINGTONE, RUNTIME, APPEARANCE, RECORDING, AI, UPDATE }
+
+/** QA builds must not offer the in-app update entry (their applicationId cannot match a release). */
+internal fun updateEntryVisible(packageName: String): Boolean = !packageName.endsWith(".backendqa")
+
+/** The installed version always comes from the system package manager, never from the backend summary. */
+internal fun installedVersionName(context: Context): String? = runCatching {
+    @Suppress("DEPRECATION")
+    context.packageManager.getPackageInfo(context.packageName, 0).versionName
+}.getOrNull()
 
 @Composable
 fun SettingsOverviewScreen(
@@ -17,6 +29,9 @@ fun SettingsOverviewScreen(
     onBack: (() -> Unit)?, onRetry: () -> Unit, onStatistics: (Boolean) -> Unit,
     onOverlay: (Boolean) -> Unit, onNavigate: (SettingsPage) -> Unit,
 ) {
+    val context = LocalContext.current
+    val versionName = remember(context) { installedVersionName(context) }
+    val showUpdate = remember(context) { updateEntryVisible(context.packageName) }
     SettingsLayout("设置", state, mutation, onBack, onRetry, compactTitle = true) { data ->
         SettingsCard("个人信息") {
             SettingRow("我的职位", data.myPosition?.let { it.name + if (it.active) "" else "（已停用）" } ?: "尚未设置",
@@ -43,6 +58,9 @@ fun SettingsOverviewScreen(
         }
         SettingsCard("系统与支持") {
             SettingRow("运行状态与权限", "权限授权与运行诊断", { onNavigate(SettingsPage.RUNTIME) })
+            if (showUpdate) {
+                SettingRow("检查更新", versionName?.let { "当前版本 $it" }, { onNavigate(SettingsPage.UPDATE) })
+            }
         }
     }
 }

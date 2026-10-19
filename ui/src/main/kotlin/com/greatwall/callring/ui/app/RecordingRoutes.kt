@@ -21,21 +21,19 @@ import com.greatwall.callring.ui.feature.ai.ScopedRecordingSettingsViewModel
 @Composable internal fun RecordingSettingsRoute(api: CallringUiApi, onBack: () -> Unit) {
     val model: ScopedRecordingSettingsViewModel = uiViewModel { ScopedRecordingSettingsViewModel(api) }
     val state by model.state.collectAsStateWithLifecycle()
-    val draft by model.draft.collectAsStateWithLifecycle()
-    val dirty by model.dirty.collectAsStateWithLifecycle()
     val mutation by model.mutation.collectAsStateWithLifecycle()
     var permissionError by remember { mutableStateOf<String?>(null) }
     val folder = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri ->
         if (uri != null) model.folder(DocumentRef(uri.toString()))
     }
     val microphone = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
-        if (granted) model.draft.value?.let { model.edit(it.copy(captureMode = CaptureMode.MICROPHONE_EXPERIMENTAL)) }
+        if (granted) model.captureMode(CaptureMode.MICROPHONE_EXPERIMENTAL)
         else permissionError = "未获得麦克风权限；录音模式未改变"
     }
     LaunchedEffect(Unit) { model.refresh() }
-    RecordingSettingsScreen(state, draft, dirty, mutation, onBack, model::refresh, model::edit, model::save,
+    RecordingSettingsScreen(state, mutation, onBack, model::refresh, model::enabled, model::captureMode,
         { try { folder.launch(null) } catch (_: ActivityNotFoundException) { permissionError = "系统没有可用的目录选择器" } },
-        { microphone.launch(Manifest.permission.RECORD_AUDIO) }, {}, {}, {})
+        { microphone.launch(Manifest.permission.RECORD_AUDIO) })
     permissionError?.let { message -> androidx.compose.material3.AlertDialog(onDismissRequest = { permissionError = null },
         title = { androidx.compose.material3.Text("权限提示") }, text = { androidx.compose.material3.Text(message) },
         confirmButton = { androidx.compose.material3.TextButton(onClick = { permissionError = null }) { androidx.compose.material3.Text("知道了") } }) }

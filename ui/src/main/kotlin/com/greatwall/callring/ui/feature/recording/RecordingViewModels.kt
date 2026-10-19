@@ -19,34 +19,6 @@ class RecordingArchivesViewModel(private val api: RecordingApi, testScope: Corou
 }
 
 /** Secrets deliberately stay in memory: no SavedStateHandle or saved instance bundle. */
-class RecordingSettingsViewModel(private val api: RecordingApi, testScope: CoroutineScope? = null) : UiViewModel(testScope) {
-    private val loader = RequestLoader<RecordingSettings>(scope)
-    val state = loader.state
-    private val writer = MutationRunner(scope)
-    val mutation = writer.state
-    private val mutableDraft = MutableStateFlow<RecordingSettings?>(null)
-    val draft = mutableDraft.asStateFlow()
-    private val mutableDirty = MutableStateFlow(false)
-    val dirty = mutableDirty.asStateFlow()
-    fun refresh() = loader.load(onSuccess = { if (!dirty.value) mutableDraft.value = it }) { api.getSettings() }
-    fun edit(value: RecordingSettings) {
-        if (!mutation.value.busy) { mutableDraft.value = value; mutableDirty.value = value != state.value.data }
-    }
-    fun copyAnalysisToTranscription() { draft.value?.let { edit(it.copy(transcription = it.analysis.copy(protocol = AiProtocol.OPENAI))) } }
-    fun copyTranscriptionToAnalysis() { draft.value?.let { edit(it.copy(analysis = it.transcription)) } }
-    fun save() { val value = draft.value ?: return
-        writer.run({ api.saveSettings(value) }, "设置已保存") { mutableDraft.value = it; mutableDirty.value = false; refresh() }
-    }
-    fun test(transcription: Boolean) { val value = draft.value ?: return
-        writer.run({ api.testConnection(if (transcription) value.transcription else value.analysis, transcription) }, "连接测试成功")
-    }
-    fun folder(document: DocumentRef) = writer.run({ api.setSystemFolder(document) }, "已授权录音目录") { result ->
-        mutableDraft.value = (draft.value ?: result).copy(systemFolder = result.systemFolder)
-        mutableDirty.value = mutableDraft.value != result
-        refresh()
-    }
-}
-
 class ArchiveViewModel(private val api: RecordingApi, private val callers: CallersApi, private val callId: Long,
     private val number: String, private val startedAt: Long, testScope: CoroutineScope? = null,
     private val cleanupDispatcher: CoroutineDispatcher = Dispatchers.IO,

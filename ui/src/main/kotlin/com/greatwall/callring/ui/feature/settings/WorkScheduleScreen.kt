@@ -21,9 +21,7 @@ import java.time.ZoneId
 @Composable
 fun WorkScheduleScreen(
     state: LoadState<WorkScheduleSettings>, draft: WorkScheduleSettings?, mutation: MutationState,
-    onBack: () -> Unit, onRetry: () -> Unit, onChange: (WorkScheduleSettings) -> Unit,
-    // The route still forwards a save callback from the previous page model; immediate editing never renders one.
-    @Suppress("UNUSED_PARAMETER") onSave: () -> Unit, onReset: () -> Unit,
+    onBack: () -> Unit, onRetry: () -> Unit, onChange: (WorkScheduleSettings) -> Unit, onReset: () -> Unit,
 ) {
     SettingsLayout("工作时间", state, mutation, onBack, onRetry) { saved ->
         val value = draft ?: saved

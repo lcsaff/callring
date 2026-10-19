@@ -8,34 +8,6 @@ import org.junit.Test
 
 @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
 class RecordingViewModelsTest {
-    @Test fun failedSaveKeepsSecretEditsAndRefreshDoesNotOverwriteThem() = runTest {
-        val api = object : RecordingApi by UnavailableRecordingApi {
-            override suspend fun getSettings() = ApiResult.Success(RecordingSettings())
-        }
-        val model = RecordingSettingsViewModel(api, this)
-        model.refresh(); runCurrent()
-        val edited = RecordingSettings(analysis = AiConnection(url = "https://example.com/custom/v1", apiKey = "secret", model = "model"))
-        model.edit(edited); model.save(); runCurrent(); model.refresh(); runCurrent()
-        assertEquals(edited, model.draft.value)
-        assertTrue(model.dirty.value)
-        assertNotNull(model.mutation.value.error)
-    }
-    @Test fun copyConnectionRetainsOpenAiTranscriptionAndTestingUsesCurrentUnsavedDraft() = runTest {
-        var tested: AiConnection? = null
-        val api = object : RecordingApi by UnavailableRecordingApi {
-            override suspend fun getSettings() = ApiResult.Success(RecordingSettings())
-            override suspend fun testConnection(connection: AiConnection, transcription: Boolean): ApiResult<Unit> {
-                tested = connection; return ApiResult.Success(Unit)
-            }
-        }
-        val model = RecordingSettingsViewModel(api, this)
-        model.refresh(); runCurrent()
-        val connection = AiConnection(AiProtocol.ANTHROPIC, "https://host/prefix/v1", "secret", "custom")
-        model.edit(model.draft.value!!.copy(analysis = connection)); model.copyAnalysisToTranscription()
-        model.test(true); runCurrent()
-        assertEquals(connection.copy(protocol = AiProtocol.OPENAI), tested)
-        assertTrue(model.dirty.value)
-    }
     @Test fun identityAdoptionIsExplicitAndDelegatesArchiveGenerationToSharedCommand() = runTest {
         val fake = com.greatwall.callring.ui.testing.UiFakeApi()
         var command: Pair<Long,Long>? = null

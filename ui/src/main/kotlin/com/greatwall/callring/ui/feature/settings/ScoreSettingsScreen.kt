@@ -18,9 +18,7 @@ import com.greatwall.callring.ui.state.*
 @Composable
 fun ScoreSettingsScreen(
     state: LoadState<ScoreSettings>, draft: ScoreSettings?, mutation: MutationState,
-    onBack: () -> Unit, onRetry: () -> Unit, onChange: (ScoreSettings) -> Unit,
-    // The route still forwards a save callback from the previous page model; immediate editing never renders one.
-    @Suppress("UNUSED_PARAMETER") onSave: () -> Unit, onReset: () -> Unit,
+    onBack: () -> Unit, onRetry: () -> Unit, onChange: (ScoreSettings) -> Unit, onReset: () -> Unit,
 ) {
     SettingsLayout("评分设置", state, mutation, onBack, onRetry) { saved ->
         val value = draft ?: saved

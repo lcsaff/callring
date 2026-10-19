@@ -216,7 +216,7 @@ abstract class SettingsScreenCases {
         compose.setContent {
             CallringTheme {
                 ScoreSettingsScreen(LoadState(saved, loaded = true), draft.value, mutation.value, {}, {},
-                    { commits += it }, {}, {
+                    { commits += it }, {
                         draft.value = saved
                         mutation.value = MutationState(completed = mutation.value.completed + 1)
                     })
@@ -235,7 +235,7 @@ abstract class SettingsScreenCases {
         val mutation = mutableStateOf(MutationState())
         compose.setContent {
             CallringTheme {
-                ScoreSettingsScreen(LoadState(saved, loaded = true), saved, mutation.value, {}, {}, {}, {}, {
+                ScoreSettingsScreen(LoadState(saved, loaded = true), saved, mutation.value, {}, {}, {}, {
                     mutation.value = MutationState(error = ApiError(ErrorCode.STORAGE_FAILURE, "reset failed"))
                 })
             }
@@ -255,7 +255,7 @@ abstract class SettingsScreenCases {
         compose.setContent {
             CallringTheme {
                 WorkScheduleScreen(LoadState(saved, loaded = true), draft.value, mutation.value, {}, {},
-                    { draft.value = it }, {}, {
+                    { draft.value = it }, {
                         draft.value = saved
                         mutation.value = MutationState(completed = mutation.value.completed + 1)
                     })
@@ -353,7 +353,7 @@ abstract class SettingsScreenCases {
         val mutation = MutationState(error = ApiError(ErrorCode.VALIDATION, "保存失败", mapOf("repeatMinutes" to "重复窗口不合法")))
         compose.setContent {
             CallringTheme {
-                ScoreSettingsScreen(LoadState(saved, loaded = true), draft, mutation, {}, {}, {}, {}, {})
+                ScoreSettingsScreen(LoadState(saved, loaded = true), draft, mutation, {}, {}, {}, {})
             }
         }
         compose.onNodeWithText("重复窗口不合法").performScrollTo().assertIsDisplayed()
@@ -388,7 +388,7 @@ abstract class SettingsScreenCases {
     @Test fun customQuietWithNoWindowShowsInlineErrorAndNeverCommits() {
         val value = QuietSettings(QuietMode.CUSTOM, false, (1..7).associateWith { emptyList<TimeWindow>() })
         var changes = 0
-        compose.setContent { CallringTheme { QuietScreen(LoadState(value, loaded = true), value, MutationState(), {}, {}, { changes++ }, {}) } }
+        compose.setContent { CallringTheme { QuietScreen(LoadState(value, loaded = true), value, MutationState(), {}, {}, { changes++ }) } }
         compose.onNodeWithTag("settings-save").assertDoesNotExist()
         compose.onNodeWithText("自定义免打扰至少需要一个时段").performScrollTo().assertIsDisplayed()
         compose.runOnIdle { assertEquals(0, changes) }
@@ -516,7 +516,7 @@ abstract class SettingsScreenCases {
         val initial = QuietSettings(QuietMode.OFF, false, emptyMap())
         var changed: QuietSettings? = null
         compose.setContent {
-            CallringTheme { QuietScreen(LoadState(initial, loaded = true), initial, MutationState(), {}, {}, { changed = it }, {}) }
+            CallringTheme { QuietScreen(LoadState(initial, loaded = true), initial, MutationState(), {}, {}, { changed = it }) }
         }
         compose.onNode(hasContentDescription("应用于所有号码") and SemanticsMatcher.keyIsDefined(SemanticsProperties.ToggleableState))
             .performScrollTo().performClick()
@@ -611,9 +611,9 @@ abstract class SettingsScreenCases {
         compose.setContent {
             CallringTheme {
                 when (page.value) {
-                    0 -> QuietScreen(LoadState(quiet, loaded = true), quiet, MutationState(), {}, {}, {}, {})
-                    1 -> ScoreSettingsScreen(LoadState(score, loaded = true), score, MutationState(), {}, {}, {}, {}, {})
-                    2 -> WorkScheduleScreen(LoadState(work, loaded = true), work, MutationState(), {}, {}, {}, {}, {})
+                    0 -> QuietScreen(LoadState(quiet, loaded = true), quiet, MutationState(), {}, {}, {})
+                    1 -> ScoreSettingsScreen(LoadState(score, loaded = true), score, MutationState(), {}, {}, {}, {})
+                    2 -> WorkScheduleScreen(LoadState(work, loaded = true), work, MutationState(), {}, {}, {}, {})
                     else -> AppearanceScreen(LoadState(DefaultAppearance, loaded = true), DefaultAppearance,
                         MutationState(), {}, {}, {}, {})
                 }
@@ -658,7 +658,7 @@ abstract class SettingsScreenCases {
         val initial = QuietSettings(QuietMode.OFF, false, emptyMap())
         val changes = mutableListOf<QuietSettings>()
         compose.setContent { CallringTheme {
-            QuietScreen(LoadState(initial, loaded = true), initial, MutationState(), {}, {}, { changes += it }, {})
+            QuietScreen(LoadState(initial, loaded = true), initial, MutationState(), {}, {}, { changes += it })
         } }
         compose.onNodeWithTag("settings-save").assertDoesNotExist()
         compose.onNodeWithText("非工作时间静音").performClick()
@@ -669,7 +669,7 @@ abstract class SettingsScreenCases {
         val saved = ScoreSettings(5, 2, 10, 30)
         val commits = mutableListOf<ScoreSettings>()
         compose.setContent { CallringTheme {
-            ScoreSettingsScreen(LoadState(saved, loaded = true), saved, MutationState(), {}, {}, { commits += it }, {}, {})
+            ScoreSettingsScreen(LoadState(saved, loaded = true), saved, MutationState(), {}, {}, { commits += it }, {})
         } }
         compose.onNodeWithTag("score-repeatMinutes").performScrollTo().performTextReplacement("15")
         compose.runOnIdle { assertEquals(listOf(saved.copy(repeatMinutes = 15)), commits) }
@@ -682,7 +682,7 @@ abstract class SettingsScreenCases {
         val saved = ScoreSettings(5, 2, 10, 30)
         var backs = 0
         compose.setContent { CallringTheme {
-            ScoreSettingsScreen(LoadState(saved, loaded = true), saved, MutationState(), { backs++ }, {}, {}, {}, {})
+            ScoreSettingsScreen(LoadState(saved, loaded = true), saved, MutationState(), { backs++ }, {}, {}, {})
         } }
         compose.onNodeWithTag("score-repeatMinutes").performScrollTo().performTextReplacement("15")
         compose.onNodeWithContentDescription("返回").performClick()

@@ -3,81 +3,269 @@ package com.greatwall.callring.ui.feature.ai
 import com.greatwall.callring.application.api.*
 import com.greatwall.callring.ui.state.*
 import kotlinx.coroutines.*
-import kotlinx.coroutines.flow.*
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.asStateFlow
 
-class AiSettingsViewModel(private val api: CallringUiApi, testScope: CoroutineScope? = null) : UiViewModel(testScope) {
-    private val loader = RequestLoader<AiSettingsView>(scope)
-    private val writer = MutationRunner(scope)
-    val state = loader.state
-    val mutation = writer.state
-    val draft = MutableStateFlow<AiSettingsView?>(null)
-    val dirty = MutableStateFlow(false)
-    private var baseline: AiSettingsView? = null
+/** Both snapshots rendered by the AI page; automatic analysis lives on the recording side. */
+data class AiSettingsUi(val ai: AiSettingsView, val recording: RecordingSettingsView)
+
+/**
+ * Applies AI and recording settings field by field. Text-like fields coalesce for 500 ms; switches, chips and
+ * the thinking mode commit immediately. Automatic analysis is written through one [AiSettingsApi.patchCombined]
+ * transaction so the recording-side fields are never overwritten.
+ */
+class AiSettingsViewModel(
+    private val api: CallringUiApi,
+    testScope: CoroutineScope? = null,
+) : UiViewModel(testScope) {
+    private class Queued(
+        val request: suspend (AiSettingsUi) -> ApiResult<AiSettingsUi>,
+        val message: String? = null,
+        val onSuccess: (() -> Unit)? = null,
+    )
+
+    private val mutableState = MutableStateFlow(LoadState<AiSettingsUi>())
+    val state = mutableState.asStateFlow()
+    private val mutableMutation = MutableStateFlow(MutationState())
+    val mutation = mutableMutation.asStateFlow()
+
+    private val queue = ArrayDeque<Queued>()
+    private var debounced: Queued? = null
+    private var debounceJob: Job? = null
+    private var writing = false
+    private var loadJob: Job? = null
+    private var loadRevision = 0L
+    private var refreshRequested = false
+    private var pendingAnalysis: AiConnectionView? = null
+    private var pendingTranscription: AiConnectionView? = null
+
     init { scope.launch { api.changes.observe().collect { refresh() } } }
-    fun refresh() = loader.load(onSuccess = { if(!dirty.value) { baseline = it; draft.value = it } }) { api.aiSettings.getAiView() }
-    fun edit(value: AiSettingsView) { if(!mutation.value.busy) { draft.value = value; dirty.value = value != baseline } }
-    fun credentialInput(slot: AiSlot): CredentialDraft? {
-        val base = baseline ?: return null; val value = draft.value ?: return null
-        val before = if(slot == AiSlot.ANALYSIS) base.analysis else base.transcription
-        val after = if(slot == AiSlot.ANALYSIS) value.analysis else value.transcription
-        fun <T> change(a: T, b: T): PatchField<T> = if(a == b) PatchField.Keep else PatchField.Set(b)
-        return CredentialDraft(slot,base,ConnectionPatch(change(before.protocol,after.protocol),change(before.url,after.url),change(before.model,after.model)))
-    }
-    @JvmOverloads fun credentialSaved(slot: AiSlot,includeCompatibility:Boolean=false) { scope.launch {
-        when(val result = api.aiSettings.getAiView()) {
-            is ApiResult.Failure -> refresh()
-            is ApiResult.Success -> {
-                val saved = result.value
-                fun AiSettingsView.rebase() = if(slot == AiSlot.ANALYSIS) copy(analysis = saved.analysis, revision = saved.revision,compatibility=if(includeCompatibility)saved.compatibility else compatibility) else copy(transcription = saved.transcription, revision = saved.revision)
-                baseline = baseline?.rebase() ?: saved
-                draft.value = draft.value?.rebase() ?: saved
-                dirty.value = draft.value != baseline
-                refresh()
+
+    fun refresh() {
+        if (writing) { refreshRequested = true; return }
+        val ticket = ++loadRevision
+        loadJob?.cancel()
+        mutableState.value = mutableState.value.copy(loading = true, error = null)
+        loadJob = scope.launch {
+            when (val result = loadForm()) {
+                is ApiResult.Failure -> if (ticket == loadRevision) {
+                    mutableState.value = mutableState.value.copy(loading = false, error = result.error)
+                }
+                is ApiResult.Success -> if (ticket == loadRevision) {
+                    mutableState.value = LoadState(result.value, loaded = true)
+                }
             }
         }
-    } }
-    fun save() {
-        val base = baseline ?: return; val value = draft.value ?: return
-        fun <T> change(a: T, b: T): PatchField<T> = if(a == b) PatchField.Keep else PatchField.Set(b)
-        fun connection(a: AiConnectionView, b: AiConnectionView) = ConnectionPatch(change(a.protocol,b.protocol),change(a.url,b.url),change(a.model,b.model))
-        writer.run({ api.aiSettings.patchAi(base, AiSettingsPatch(connection(base.analysis,value.analysis), connection(base.transcription,value.transcription), change(base.budget,value.budget),change(base.compatibility,value.compatibility))) }, "AI 设置已保存") {
-            baseline = it; draft.value = it; dirty.value = false; refresh()
+    }
+
+    fun editAnalysis(connection: AiConnectionView) {
+        pendingAnalysis = connection
+        scheduleDebounced(Queued({ form ->
+            val base = form.ai.analysis
+            val patch = connectionPatch(base, connection)
+            if (patch == ConnectionPatch()) ApiResult.Success(form)
+            else patchAi(form, AiSettingsPatch(analysis = patch))
+        }, onSuccess = { if (pendingAnalysis == connection) pendingAnalysis = null }))
+    }
+
+    fun editTranscription(connection: AiConnectionView) {
+        pendingTranscription = connection
+        scheduleDebounced(Queued({ form ->
+            val base = form.ai.transcription
+            val patch = connectionPatch(base, connection)
+            if (patch == ConnectionPatch()) ApiResult.Success(form)
+            else patchAi(form, AiSettingsPatch(transcription = patch))
+        }, onSuccess = { if (pendingTranscription == connection) pendingTranscription = null }))
+    }
+
+    fun analysisProtocol(protocol: AiProtocol) = submit(Queued({ form ->
+        if (form.ai.analysis.protocol == protocol) ApiResult.Success(form)
+        else patchAi(form, AiSettingsPatch(analysis = ConnectionPatch(protocol = PatchField.Set(protocol))))
+    }))
+
+    fun thinkingMode(mode: ThinkingMode) = submit(Queued({ form ->
+        if (form.ai.analysis.thinkingMode == mode) ApiResult.Success(form)
+        else patchAi(form, AiSettingsPatch(analysis = ConnectionPatch(thinkingMode = PatchField.Set(mode))))
+    }))
+
+    fun budget(budget: ConversationBudget) = scheduleDebounced(Queued({ form ->
+        if (form.ai.budget == budget) ApiResult.Success(form)
+        else patchAi(form, AiSettingsPatch(budget = PatchField.Set(budget)))
+    }))
+
+    /** One transaction: AI side all Keep, recording side only the automatic-analysis flag. */
+    fun automaticAnalysis(enabled: Boolean) = submit(Queued({ form ->
+        if (form.recording.automaticAnalysis == enabled) ApiResult.Success(form)
+        else when (val result = attempt {
+            api.aiSettings.patchCombined(form.recording,
+                RecordingSettingsPatch(automaticAnalysis = PatchField.Set(enabled)), form.ai, AiSettingsPatch())
+        }) {
+            is ApiResult.Success -> loadForm()
+            is ApiResult.Failure -> result
+        }
+    }))
+
+    fun copyConnection(from: AiSlot, to: AiSlot) = submit(Queued({ form ->
+        when (val result = attempt { api.aiSettings.copyConnection(from, to, form.ai.revision) }) {
+            is ApiResult.Success -> ApiResult.Success(form.copy(ai = result.value))
+            is ApiResult.Failure -> result
+        }
+    }))
+
+    fun test(slot: AiSlot) = submit(Queued({ form ->
+        fun current(connection: AiConnectionView) = ConnectionPatch(
+            PatchField.Set(connection.protocol), PatchField.Set(connection.url), PatchField.Set(connection.model))
+        val patch = AiSettingsPatch(current(form.ai.analysis), current(form.ai.transcription))
+        when (val result = attempt { api.aiSettings.testDraft(form.ai, patch, slot) }) {
+            is ApiResult.Success -> ApiResult.Success(form)
+            is ApiResult.Failure -> result
+        }
+    }, message = "连接测试已通过"))
+
+    fun credentialSaved() {
+        // The credential dialog writes through patchCombined itself; the page only reloads both snapshots.
+        pendingAnalysis = null
+        pendingTranscription = null
+        refresh()
+    }
+
+    /** Cancelling the key dialog keeps the typed connection edits and schedules their normal commit again. */
+    fun credentialCancelled() {
+        pendingAnalysis?.let { editAnalysis(it) }
+        pendingTranscription?.let { editTranscription(it) }
+    }
+
+    /**
+     * The dialog saves pending connection edits together with the key in one patchCombined transaction, so a
+     * debounced background write must not race with it.
+     */
+    fun credentialInput(slot: AiSlot): CredentialDraft? {
+        val form = mutableState.value.data ?: return null
+        debounceJob?.cancel()
+        debounced = null
+        val connection = when (slot) {
+            AiSlot.ANALYSIS -> pendingAnalysis?.let { connectionPatch(form.ai.analysis, it) } ?: ConnectionPatch()
+            AiSlot.TRANSCRIPTION -> pendingTranscription?.let { connectionPatch(form.ai.transcription, it) }
+                ?: ConnectionPatch()
+        }
+        return CredentialDraft(slot, form.ai, connection)
+    }
+
+    private fun connectionPatch(base: AiConnectionView, next: AiConnectionView) = ConnectionPatch(
+        change(base.protocol, next.protocol),
+        change(base.url, next.url),
+        change(base.model, next.model),
+    )
+
+    private suspend fun patchAi(form: AiSettingsUi, patch: AiSettingsPatch): ApiResult<AiSettingsUi> =
+        when (val result = attempt { api.aiSettings.patchAi(form.ai, patch) }) {
+            is ApiResult.Success -> ApiResult.Success(form.copy(ai = result.value))
+            is ApiResult.Failure -> result
+        }
+
+    private fun <T> change(before: T, after: T): PatchField<T> =
+        if (before == after) PatchField.Keep else PatchField.Set(after)
+
+    private fun scheduleDebounced(queued: Queued) {
+        debounced = queued
+        debounceJob?.cancel()
+        debounceJob = scope.launch {
+            delay(500)
+            debounced?.let { submit(it) }
+            debounced = null
         }
     }
-    fun test(slot: AiSlot) {
-        val base = baseline ?: return; val value = draft.value ?: return
-        fun patch(connection: AiConnectionView) = ConnectionPatch(PatchField.Set(connection.protocol),PatchField.Set(connection.url),PatchField.Set(connection.model))
-        writer.run({ api.aiSettings.testDraft(base,AiSettingsPatch(patch(value.analysis),patch(value.transcription),compatibility=PatchField.Set(value.compatibility)),slot) }, "连接测试已通过；草稿尚未保存")
+
+    private fun submit(queued: Queued) {
+        queue.addLast(queued)
+        startWriter()
+    }
+
+    private fun startWriter() {
+        if (writing) return
+        writing = true
+        mutableMutation.value = mutableMutation.value.copy(busy = true, error = null, message = null)
+        scope.launch {
+            try {
+                while (queue.isNotEmpty()) {
+                    val queued = queue.removeFirst()
+                    val form = mutableState.value.data ?: continue
+                    when (val result = queued.request(form)) {
+                        is ApiResult.Success -> {
+                            mutableState.value = LoadState(result.value, loaded = true)
+                            mutableMutation.value = mutableMutation.value.copy(error = null, message = queued.message)
+                            queued.onSuccess?.invoke()
+                        }
+                        is ApiResult.Failure -> reportFailure(result.error)
+                    }
+                }
+            } finally {
+                writing = false
+                mutableMutation.value = mutableMutation.value.copy(busy = queue.isNotEmpty())
+                if (queue.isEmpty() && refreshRequested) { refreshRequested = false; refresh() }
+            }
+        }
+    }
+
+    private suspend fun reportFailure(error: ApiError) {
+        val message = if (error.code == ErrorCode.CONFLICT) "已更新，请重新修改。当前输入已保留。" else error.message
+        mutableMutation.value = mutableMutation.value.copy(error = error.copy(message = message))
+        if (error.code != ErrorCode.CONFLICT) return
+        when (val latest = loadForm()) {
+            is ApiResult.Success -> mutableState.value = LoadState(latest.value, loaded = true)
+            is ApiResult.Failure -> Unit
+        }
+    }
+
+    private suspend fun loadForm(): ApiResult<AiSettingsUi> {
+        val ai = when (val result = attempt { api.aiSettings.getAiView() }) {
+            is ApiResult.Success -> result.value
+            is ApiResult.Failure -> return result
+        }
+        val recording = when (val result = attempt { api.aiSettings.getRecordingView() }) {
+            is ApiResult.Success -> result.value
+            is ApiResult.Failure -> return result
+        }
+        return ApiResult.Success(AiSettingsUi(ai, recording))
+    }
+
+    private suspend fun <T> attempt(request: suspend () -> ApiResult<T>): ApiResult<T> = try {
+        request()
+    } catch (cancelled: CancellationException) {
+        throw cancelled
+    } catch (_: Exception) {
+        ApiResult.Failure(ApiError(ErrorCode.INTERNAL, "ai.unavailable", retryable = true))
     }
 }
 
-class ScopedRecordingSettingsViewModel(private val api: CallringUiApi, testScope: CoroutineScope? = null) : UiViewModel(testScope) {
-    private val loader = RequestLoader<RecordingSettings>(scope)
-    private val writer = MutationRunner(scope)
+/** Recording settings edited outside the AI page; every change is an immediate single-field patch. */
+class ScopedRecordingSettingsViewModel(
+    private val api: CallringUiApi,
+    testScope: CoroutineScope? = null,
+) : UiViewModel(testScope) {
+    private val loader = RequestLoader<RecordingSettingsView>(scope)
     val state = loader.state
+    private val writer = MutationRunner(scope)
     val mutation = writer.state
-    val draft = MutableStateFlow<RecordingSettings?>(null)
-    val dirty = MutableStateFlow(false)
     private var base: RecordingSettingsView? = null
-    private var baseline: RecordingSettings? = null
+
     init { scope.launch { api.changes.observe().collect { refresh() } } }
-    fun refresh() = loader.load(onSuccess = { if(!dirty.value) { baseline = it; draft.value = it } }) {
-        when(val result = api.aiSettings.getRecordingView()) {
-            is ApiResult.Failure -> result
-            is ApiResult.Success -> { if(!dirty.value) base = result.value; ApiResult.Success(result.value.let { RecordingSettings(recordingEnabled = it.recordingEnabled, automaticAnalysis = it.automaticAnalysis, captureMode = it.captureMode, systemFolder = if(it.folderConfigured) "configured" else null) }) }
+
+    fun refresh() = loader.load(onSuccess = { base = it }) { api.aiSettings.getRecordingView() }
+
+    fun enabled(value: Boolean) = patch(RecordingSettingsPatch(recordingEnabled = PatchField.Set(value)))
+
+    fun captureMode(mode: CaptureMode) = patch(RecordingSettingsPatch(captureMode = PatchField.Set(mode)))
+
+    private fun patch(patch: RecordingSettingsPatch) {
+        val original = base ?: return
+        writer.run({ api.aiSettings.patchRecording(original, patch) }, "录音设置已更新") {
+            base = it
+            refresh()
         }
     }
-    fun edit(value: RecordingSettings) { if(!mutation.value.busy) { draft.value = value; dirty.value = value != baseline } }
-    fun save() {
-        val original = base ?: return; val value = draft.value ?: return
-        fun <T> change(a: T, b: T): PatchField<T> = if(a == b) PatchField.Keep else PatchField.Set(b)
-        writer.run({ api.aiSettings.patchRecording(original, RecordingSettingsPatch(change(original.recordingEnabled,value.recordingEnabled),change(original.automaticAnalysis,value.automaticAnalysis),change(original.captureMode,value.captureMode))) }, "录音设置已保存") {
-            dirty.value = false; refresh()
-        }
-    }
+
     fun folder(document: DocumentRef) = writer.run({ api.recordings.setSystemFolder(document) }, "系统录音目录已授权") {
-        draft.value = draft.value?.copy(systemFolder = "configured")
-        baseline = baseline?.copy(systemFolder = "configured")
         refresh()
     }
 }
