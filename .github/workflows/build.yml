@@ -57,6 +57,12 @@ jobs:
           set -euo pipefail
           python3 -m py_compile tools/release/*.py
 
+      - name: Check workflow script references
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 tools/release/check_workflows.py
+
       - name: Run unified verification
         shell: bash
         run: |

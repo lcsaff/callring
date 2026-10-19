@@ -95,6 +95,12 @@ jobs:
         with:
           gradle-version: "8.13"
 
+      - name: Check workflow script references
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 tools/release/check_workflows.py
+
       - name: Prepare signing material from Secrets
         env:
           KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}

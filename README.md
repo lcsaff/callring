@@ -1,6 +1,6 @@
 # 规则来电铃声与来电管理
 
-独立 Android 应用，包名 `com.greatwall.callring`，版本 **0.2**。规则号码完整匹配 `3[0-9]{4}`，例如 `31234`；接听使用手机原有电话应用。
+独立 Android 应用，包名 `com.greatwall.callring`，当前版本 **0.3.0**（`versionCode 3`；版本号由根 `version.properties` 单一来源驱动，标签统一为 `v<versionName>`，如 `v0.3.0`）。规则号码完整匹配 `3[0-9]{4}`，例如 `31234`；接听使用手机原有电话应用。
 
 ## 使用
 
@@ -93,12 +93,31 @@
 
 工具链：**JDK 17、Gradle 8.13、AGP 8.13.2、Kotlin/Compose compiler plugin 2.3.21、Compose BOM 2025.12.01**。Java/Kotlin JVM 目标为 1.8；minSdk 29、compileSdk 36、targetSdk 33、Build Tools 36.0.0。通过 `local.properties` 或 `ANDROID_HOME` / `ANDROID_SDK_ROOT` 配置 SDK；JDK 使用当前环境的 `JAVA_HOME`。
 
+版本只在根 `version.properties`（`versionCode`/`versionName`）维护：根 `build.gradle` 校验后注入 `app/build.gradle`，发布工具读同一文件，标签统一为 `v<versionName>`（当前 `0.3.0` / `versionCode 3`）。改版本请用 `python tools/release/version_tool.py set --code N --name X.Y.Z --published-max M`，脚本会拒绝 `0.3`、`v0.3.0`、非递增 versionCode 等输入。
+
+统一验证入口（`backend` 是 `java-library`，测试任务为 `:backend:test`）：
+
 ```powershell
 python tools/verify_backend.py
 python tools/verify_ui.py
+.\gradlew.bat :backend:test :ui:testDebugUnitTest :app:testDebugUnitTest :app:assembleDebug :ui:lintDebug :app:lintDebug
 ```
 
-完整构建生成 `app/build/outputs/apk/debug/app-debug.apk`；Release 默认未签名。UI 验证运行 `:ui:testDebugUnitTest`、`:ui:assembleDebugAndroidTest`、`:ui:lintDebug`，日志和带计数的结果写入忽略目录 `ui/build/qa/`。
+Debug 构建生成 `app/build/outputs/apk/debug/app-debug.apk`；Release 构建生成 `app/build/outputs/apk/release/app-release.apk`。UI 验证另运行 `:ui:assembleDebugAndroidTest`，日志和带计数的结果写入忽略目录 `ui/build/qa/`。
+
+签名：`app/build.gradle` 的 `signingConfigs.release` 优先读取被 gitignore 的根 `signing.properties`（`storeFile`/`storePassword`/`keyAlias`/`keyPassword`），文件缺失时回退本机 Android debug keystore。**当前发行身份是本机 debug 证书**（证书 SHA-256 `5a901cad…24b4`）；v0.2 正式包的发行密钥已丢失，任何构建都无法覆盖 v0.2 安装。覆盖升级要求同包名、同签名且 versionCode 递增。`backendQa` 变体沿用 debug 签名并带 `.backendqa` / `-backend-qa` 后缀，不得作为正式包发布。
+
+本地发布校验（生成元数据并四者互校，不上传）：
+
+```powershell
+.\gradlew.bat :app:assembleRelease
+python tools/release/generate_release_metadata.py --apk app/build/outputs/apk/release/app-release.apk --out-dir dist
+python tools/release/verify_release.py --release-dir dist --tag v0.3.0 --published-max 2 `
+    --expected-cert-sha256 5a901cad57f5590483f362e4752ca8f4a56197340b71d2632ded0195bf8a24b4 --check-alignment
+python tools/release/selftest.py
+```
+
+`.github/workflows/release.yml` 是手动触发的失败即停发布流水线：签名 Secrets（`KEYSTORE_BASE64`、`KEYSTORE_PASSWORD`、`KEY_ALIAS`、`KEY_PASSWORD`）缺失时在构建前失败；默认 `publish=false` 只构建与校验，不创建或上传 Release。`.github/workflows/build.yml` 在 push/PR 上运行统一验证与发布工具自检（仓库只含 `gradlew.bat`，CI 通过 Gradle 8.13 直接执行）。
 
 ## 隔离设备验证
 

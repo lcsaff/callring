@@ -11,6 +11,7 @@ CI orchestration lives in `.github/workflows/release.yml`.
 | `generate_release_metadata.py` | Stage the signed APK as `callring-<versionName>.apk` and generate `update.json` + `SHA256SUMS.txt` from that one APK. |
 | `verify_release.py` | Verify a staged release directory: tag, required attachments, APK ⇔ `update.json` ⇔ `SHA256SUMS.txt` ⇔ `version.properties`, APK package/version/minSdk, debuggable/backendQa rejection, optional signer fingerprint, zipalign and `/releases/latest` tag. |
 | `selftest.py` | Build a valid fixture from the local release APK and prove that every required failure sample returns a non-zero exit code. |
+| `check_workflows.py` | Guard that `.github/workflows/*.yml` only reference existing `tools/release/` files, registered subcommands and supported `--flags` (runs in both workflows before any build). |
 | `apk_info.py` | Shared helper: `aapt2 dump badging` parsing, SHA-256/size, build-tools discovery (`ANDROID_HOME`/`ANDROID_SDK_ROOT`, or `AAPT2`/`APKSIGNER`/`ZIPALIGN`, or `--aapt2`/`--apksigner`/`--zipalign`). |
 
 Exit codes are `0` on success and non-zero on any violation; messages are printed as
@@ -62,6 +63,18 @@ debuggable APK, plus `version_tool.py` format/monotonicity samples.
 
 ```powershell
 python tools/release/selftest.py
+```
+
+## Workflow reference guard
+
+`.github/workflows/*.yml` calls these scripts directly, so a rename or flag change
+would only fail on the first CI run. `check_workflows.py` statically verifies that
+every referenced `tools/release/` path exists (globs included), that each called
+script has the requested argparse subcommand and that every `--flag` appears as a
+literal in that script.
+
+```powershell
+python tools/release/check_workflows.py
 ```
 
 CI (`.github/workflows/release.yml`) only runs the generation/verification steps
