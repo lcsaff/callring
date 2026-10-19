@@ -185,6 +185,16 @@ class ConversationServiceTest {
         val service=ConversationService({f.backend},queries(f),::settings,f.coordinator,{client});service.foreground.attachHost()
         try{service.send(service.state.value.sessionId,"two operations");withTimeout(5000){service.state.first{!it.busy}};assertEquals(ConversationPhase.COMPLETED,service.state.value.phase);assertEquals(6,n);assertEquals(2L,f.coordinator.capture().values["core"])}finally{service.close()}
     }
+    @Test fun providerBatchThatCannotFitRequiredWireHistoryNeverStartsAWrite()=runBlocking {
+        val f=ConversationFixtures();var n=0
+        val client=object:ConversationClient {
+            override fun encode(connection:AiConnection,request:ConversationRequest)=ByteArray(request.messages.flatMap{it.toolCalls}.sumOf{it.arguments.encode().toByteArray(Charsets.UTF_8).size})
+            override suspend fun exchange(connection:AiConnection,encoded:ByteArray):ConversationReply {n++;return if(n==1)discover("settings_saveAppearance")else ConversationReply.ToolBatch("",listOf(ConversationToolCall("large","settings_saveAppearance",aiObject("colorMode" to aiString("DARK"),"presetId" to aiString("x".repeat(50000))))))}
+            override fun cancel()=Unit
+        }
+        val original=f.appearance;val service=ConversationService({f.backend},queries(f),::settings,f.coordinator,{client});service.foreground.attachHost()
+        try{service.send(service.state.value.sessionId,"change");withTimeout(5000){service.state.first{!it.busy}};assertEquals(original,f.appearance);assertEquals("ai.context_budget_exceeded",service.state.value.error?.message);assertTrue(service.state.value.receipts.none{it.status==ToolStatus.COMMITTED})}finally{service.close()}
+    }
     @Test fun sameFieldChangedAfterModelReadCannotBeRetriedOrReportedComplete()=runBlocking {
         val f=ConversationFixtures();val entered=CompletableDeferred<Unit>();val next=CompletableDeferred<ConversationReply>();var n=0
         val client=object:ConversationClient {

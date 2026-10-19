@@ -7,7 +7,9 @@ import subprocess
 import sys
 import xml.etree.ElementTree as ET
 
-ROOT = Path(__file__).resolve().parents[1]
+# Preserve the workspace spelling used by Gradle; resolving a Windows junction
+# changes C: to D: and makes dex transforms mix roots in the same build cache.
+ROOT = Path(__file__).absolute().parents[1]
 ARTIFACTS = ROOT / "app/build/qa/backend-refactor"
 QA_PACKAGE = "com.greatwall.callring.backendqa"
 

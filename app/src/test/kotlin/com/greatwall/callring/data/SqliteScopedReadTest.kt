@@ -16,6 +16,31 @@ import org.robolectric.annotation.Config
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk=[33],manifest=Config.NONE)
 class SqliteScopedReadTest {
+    @Test @Config(sdk=[29]) fun minimumApiUsesDomainProjectionContractsAndNativeCallFilters()=runBlocking {
+        SqliteBackendStore(RuntimeEnvironment.getApplication(),"scoped_minimum.db").use{store->
+            val original=ClassificationFact(false,WorkReason.OUTSIDE_WORK_HOURS,null,true,"UTC",1,null,0)
+            store.transaction{s->
+                s.profiles["31234"]=ProfileRecord("31234")
+                listOf(1000L,9000L,9000L).forEachIndexed{i,time->val current=original.copy(working=i>0,reason=if(i==1)WorkReason.MAKEUP_WORKING else if(i==2)WorkReason.WORKING else WorkReason.OUTSIDE_WORK_HOURS);s.calls[i+1L]=RawCallRecord(i+1L,"31234",time,30,if(i==1)CallResult.MISSED else CallResult.ANSWERED,CallDecision.NORMAL_RINGING,CallSource.SYSTEM_CALL_LOG,null,null,true,current,original)}
+                s.nextCallId=4
+            }
+            val q=QueryService(listOf(store.scopedReads(BusinessRevisionCoordinator())))
+            assertEquals(2L,q.query(QuerySpec(AiDomain.D04,filter=QueryFilter(kind="WORKING"))).requiredValue().matchedTotal)
+            assertEquals(2L,q.query(QuerySpec(AiDomain.D04,filter=QueryFilter(status="ANSWERED"))).requiredValue().matchedTotal)
+            assertTrue(q.query(QuerySpec(AiDomain.D01,"years")) is ApiResult.Failure)
+        }
+    }
+    @Test @Config(sdk=[29]) fun minimumApiTimeOrderCursorAlsoSurvivesByteLimitedPages()=runBlocking {
+        SqliteBackendStore(RuntimeEnvironment.getApplication(),"scoped_cursor_minimum.db").use{store->
+            val fact=ClassificationFact(false,WorkReason.OUTSIDE_WORK_HOURS,null,true,"UTC",1,null,0)
+            store.transaction{s->s.profiles["31234"]=ProfileRecord("31234");listOf(1000L,9000L,9000L).forEachIndexed{i,time->s.calls[i+1L]=RawCallRecord(i+1L,"31234",time,30,CallResult.ANSWERED,CallDecision.NORMAL_RINGING,CallSource.SYSTEM_CALL_LOG,null,null,true,fact,fact)};s.nextCallId=4}
+            val q=QueryService(listOf(store.scopedReads(BusinessRevisionCoordinator())))
+            val bytes=q.query(QuerySpec(AiDomain.D04,limit=1)).requiredValue().items.single().encode().toByteArray(Charsets.UTF_8).size+1
+            val ids=mutableListOf<Long>();var cursor:String?=null
+            do {val page=q.query(QuerySpec(AiDomain.D04,cursor=cursor,limit=3,maxBytes=bytes)).requiredValue();ids+=page.items.map{it["id"].long()};cursor=page.nextCursor}while(cursor!=null)
+            assertEquals(listOf(3L,2L,1L),ids)
+        }
+    }
     @Test fun everyCoreDomainIsImplementedAndStatisticsScanMatchingRows()=runBlocking {
         SqliteBackendStore(RuntimeEnvironment.getApplication(),"scoped_aggregate.db").use{store->
             val fact=ClassificationFact(false,WorkReason.OUTSIDE_WORK_HOURS,null,true,"UTC",1,null,0)

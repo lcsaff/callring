@@ -23,7 +23,7 @@ class AiSettingsViewModel(private val api: CallringUiApi, testScope: CoroutineSc
         fun <T> change(a: T, b: T): PatchField<T> = if(a == b) PatchField.Keep else PatchField.Set(b)
         return CredentialDraft(slot,base,ConnectionPatch(change(before.protocol,after.protocol),change(before.url,after.url),change(before.model,after.model)))
     }
-    fun credentialSaved(slot: AiSlot,includeCompatibility:Boolean=false) { scope.launch {
+    @JvmOverloads fun credentialSaved(slot: AiSlot,includeCompatibility:Boolean=false) { scope.launch {
         when(val result = api.aiSettings.getAiView()) {
             is ApiResult.Failure -> refresh()
             is ApiResult.Success -> {

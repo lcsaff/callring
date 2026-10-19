@@ -8,6 +8,8 @@ import com.greatwall.callring.application.ports.*
 import com.greatwall.callring.platform.*
 import com.greatwall.callring.platform.ai.*
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withTimeout
+import kotlinx.coroutines.flow.first
 import org.junit.Assert.*
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -20,7 +22,7 @@ import java.io.*
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [33], manifest = Config.NONE)
 class CompleteSnapshotAssemblyTest {
-    @Test fun realSmallStoresAnd72ToolsCanIssueFirstRequestUnderDefaultBudget() = runBlocking {
+    @Test fun realStoresRetainLegacySnapshotButLazyChatStartsWithDiscoveryAndNoBusinessReads() = runBlocking {
         val context = RuntimeEnvironment.getApplication()
         val configuration = BackendConfiguration(AppearanceSettings(ThemeSelection.PRESET, "default", null, ColorMode.FOLLOW_SYSTEM), databaseName = "small_snapshot.db", ringPreferencesName = "small_ring", widgetPreferencesName = "small_widgets", appearancePreferencesName = "small_appearance")
         val notifications = object : UiNotificationEntryPoints {
@@ -45,21 +47,27 @@ class CompleteSnapshotAssemblyTest {
         assertTrue(snapshot.json().encode().contains("FULL-TAIL"))
         assertFalse(snapshot.json().encode().contains(connection.apiKey))
         var sent = 0
+        val output=ByteArrayOutputStream()
         val http = object : HttpURLConnection(URL("https://example.com")) {
             override fun connect() = Unit
             override fun disconnect() = Unit
             override fun usingProxy() = false
-            override fun getOutputStream(): OutputStream { sent++; return ByteArrayOutputStream() }
+            override fun getOutputStream(): OutputStream { sent++; return output }
             override fun getResponseCode() = 200
             override fun getInputStream(): InputStream = ByteArrayInputStream("""{"choices":[{"finish_reason":"stop","message":{"role":"assistant","content":"done"}}]}""".toByteArray())
         }
         val client = CompatibleConversationClient { http }
-        val encoded = client.encode(connection, ConversationRequest(snapshot.json(), listOf(ConversationMessage("user", "show data")), ToolRegistry().definitions, 4096))
-        println("REAL_DEFAULT_MEASURE bytes=${encoded.size} estimate=${ContextBudget.estimate(encoded, ConversationBudget())} snapshot=${snapshot.json().encode().toByteArray().size}")
+        val conversation=ConversationService({graph.api},graph.queries,{store.settings()},graph.coordinator,{client})
+        conversation.send(conversation.state.value.sessionId,"你好")
+        withTimeout(5000){conversation.state.first{!it.busy}}
+        assertEquals(ConversationPhase.COMPLETED,conversation.state.value.phase)
+        assertEquals(0L,graph.queries.sourceQueries.get())
+        val encoded=output.toByteArray()
         val estimate = ContextBudget.check(encoded, ConversationBudget())
-        assertTrue(client.exchange(connection, encoded) is ConversationReply.Final)
         assertEquals(1, sent)
-        println("REAL_DEFAULT_PROOF bytes=${encoded.size} estimate=$estimate tools=72 domains=21 callers=1 archives=1 http=$sent")
-        runtime.close(); graph.close()
+        assertEquals(1,org.json.JSONObject(String(encoded)).getJSONArray("tools").length())
+        assertFalse(String(encoded).contains("FULL-TAIL"))
+        println("REAL_DEFAULT_PROOF bytes=${encoded.size} estimate=$estimate tools=1 sourceQueries=0 http=$sent")
+        conversation.close();runtime.close(); graph.close()
     }
 }

@@ -52,10 +52,11 @@ class ConversationViewModel(private val api: CallringUiApi, testScope: Coroutine
             (state.error?:localError)?.let{Text(aiErrorText(it),color=MaterialTheme.colorScheme.error)}
             LazyColumn(Modifier.weight(1f).fillMaxWidth(),verticalArrangement=Arrangement.spacedBy(12.dp)) {
                 itemsIndexed(state.messages){index,message->
-                    if(message.text.isNotEmpty()&&message.toolCalls.isEmpty()&&message.role in setOf("user","assistant")) {
+                    val body=when(message.presentationKey){"conversation.continue"->"继续未完成任务";"conversation.partial"->"任务尚未完成。请查看已核验、待核验及失败步骤；不会重复执行已提交操作。";else->message.text}
+                    if(body.isNotEmpty()&&message.toolCalls.isEmpty()&&message.role in setOf("user","assistant")) {
                         if(message.role=="user")Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.End) {
-                            Surface(Modifier.widthIn(max=560.dp).testTag("message-user-$index"),shape=RoundedCornerShape(18.dp),color=MaterialTheme.colorScheme.primaryContainer,contentColor=MaterialTheme.colorScheme.onPrimaryContainer){Text(message.text,Modifier.padding(horizontal=14.dp,vertical=10.dp))}
-                        }else Column(Modifier.fillMaxWidth().testTag("message-assistant-$index")){Markdown(message.text)}
+                            Surface(Modifier.widthIn(max=560.dp).testTag("message-user-$index"),shape=RoundedCornerShape(18.dp),color=MaterialTheme.colorScheme.primaryContainer,contentColor=MaterialTheme.colorScheme.onPrimaryContainer){Text(body,Modifier.padding(horizontal=14.dp,vertical=10.dp))}
+                        }else Column(Modifier.fillMaxWidth().testTag("message-assistant-$index")){Markdown(body)}
                     }
                     message.receipts.distinctBy{it.operationId}.filter{it.status!=ToolStatus.READ||it.error!=null}.forEach{ReceiptCard(it)}
                 }

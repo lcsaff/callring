@@ -49,7 +49,7 @@ class ConversationService(
         if(saved.session!=expectedSessionId||saved.fingerprint!=connectionFingerprint(configuration)||!matches(disclosedTarget,configuration))return failed(ErrorCode.CONFLICT,"ai.connection_changed")
         if(taskId !in saved.engine.pendingTasks())return failed(ErrorCode.NOT_FOUND,"ai.task_reference_expired")
         if(saved.engine.ledger.steps.any{it.state==StepState.UNKNOWN})return failed(ErrorCode.SYSTEM_RESTRICTED,"ai.unknown_commit_requires_review")
-        enqueue(expectedSessionId,"继续未完成任务，保留原计划数量和已提交步骤：$taskId",disclosedTarget,saved.engine)
+        enqueue(expectedSessionId,"Continue task $taskId with the original count and committed steps.",disclosedTarget,saved.engine)
     }
     private fun matches(target:AiConnectionView,configuration:RecordingSettings):Boolean {
         val c=configuration.analysis
@@ -89,17 +89,24 @@ class ConversationService(
             fingerprint=current
             sanitizer=SecretRedactor(listOf(configuration.analysis.apiKey,configuration.transcription.apiKey))
             queries.clearObservations()
-            context.begin(ConversationMessage("user",sanitizer.text(text)))
+            context.begin(ConversationMessage("user",sanitizer.text(text),presentationKey=if(resuming!=null)"conversation.continue"else null))
             synchronized(lock){state.value=state.value.copy(target=sanitizer.text("${configuration.analysis.url} · ${configuration.analysis.model} · ${resolveConversationProfile(configuration.analysis,configuration.conversationCompatibility)}"))}
             val operationClient=clientFactory().also{client=it}
+            val enabled=linkedSetOf("discover_tools")
+            fun previewBudget(results:List<ToolReceipt>,reserved:Int=0):Long {
+                val request=ConversationRequest(messages=context.requestMessages()+ConversationMessage("tool","",receipts=results),tools=executor.registry.allDefinitions.filter{it.name in enabled},output=configuration.conversationBudget.output,compatibility=configuration.conversationCompatibility,context=engine?.summary()?:AiJson.Null)
+                return ContextBudget.checkReserved(operationClient.encode(configuration.analysis,request),reserved,configuration.conversationBudget)
+            }
             val observer:(ToolReceipt)->Unit={receipt->
                 val list=state.value.receipts.filterNot{it.operationId==receipt.operationId}+sanitize(receipt,sanitizer).uiProjection()
                 publish(ConversationPhase.EXECUTING,receipts=list,sourceBase=sourceBase)
+                if(!paired&&activeBatch.isNotEmpty())previewBudget(activeBatch.map{call->
+                    engine?.receipts?.lastOrNull{it.toolCallId==call.id}?:if(call.name=="callers_saveProfiles")ToolReceipt("batch:${call.id}",call.id,ToolStatus.READ,aiObject("items" to AiJson.Arr(engine?.groupedReceipts(call.id)?.map{sanitize(it,sanitizer).json()}?:emptyList())))else ToolReceipt("pending",call.id,ToolStatus.SKIPPED)
+                }.map{sanitize(it,sanitizer)})
             }
             val active={generation.get()==token&&state.value.sessionId==session&&!connectionChanged}
             engine=resuming?.also{it.resume(token,active,{foregroundHost(session,token)},observer)}?:ToolBatchEngine(api,executor,queries,coordinator,session,turn,token,active,awaitForeground={foregroundHost(session,token)},onReceipt=observer)
             if(resuming!=null)synchronized(lock){state.value=state.value.copy(receipts=engine.receipts.distinctBy{it.operationId}.map{sanitize(it,sanitizer).uiProjection()})}
-            val enabled=linkedSetOf("discover_tools")
             while(true) {
                 ensureActive(session,token);engine.budget.request()
                 publish(ConversationPhase.BUDGETING,engine=engine,sourceBase=sourceBase)
@@ -122,8 +129,8 @@ class ConversationService(
                         publish(ConversationPhase.REPAIRING,engine=engine,sourceBase=sourceBase)
                         continue
                     }
-                    val finalText=if(done)sanitizer.text(reply.text)else "任务尚未完成。请查看已核验、待核验及失败步骤；不会重复执行已提交操作。"
-                    context.append(ConversationMessage("assistant",finalText))
+                    val finalText=if(done)sanitizer.text(reply.text)else ""
+                    context.append(ConversationMessage("assistant",finalText,presentationKey=if(done)null else "conversation.partial"))
                     context.finish(engine.summary())
                     synchronized(lock){continuation=if(!done&&engine.pendingTasks().isNotEmpty())Continuation(engine,fingerprint,session)else null}
                     val hasEffects=engine.receipts.any{it.status in setOf(ToolStatus.COMMITTED,ToolStatus.QUEUED,ToolStatus.LAUNCHED,ToolStatus.UNKNOWN)}
@@ -135,6 +142,8 @@ class ConversationService(
                 if(activeBatch.isEmpty()||activeBatch.size>32||activeBatch.map{it.id}.distinct().size!=activeBatch.size)throw BackendFailure(ApiError(ErrorCode.VALIDATION,"ai.invalid_tool_response"))
                 context.append(ConversationMessage("assistant",sanitizer.text(reply.text),activeBatch.map{it.copy(arguments=sanitizer.redact(it.arguments) as AiJson.Obj,wireArguments=it.wireArguments?.let(sanitizer::text))},blocks=reply.blocks.map{redactAssistantBlock(it,sanitizer)}))
                 paired=false
+                val writeItems=activeBatch.sumOf{call->if(call.name=="callers_saveProfiles")((call.arguments["items"] as? AiJson.Arr)?.values?.size?:1)else if(executor.registry.allDefinitions.any{it.name==call.name&&it.write})1 else 0}
+                previewBudget(activeBatch.map{ToolReceipt("pending",it.id,ToolStatus.SKIPPED)},writeItems.coerceAtMost(64)*1024)
                 val phase=when{activeBatch.all{it.name=="discover_tools"}->ConversationPhase.DISCOVERING;activeBatch.all{call->executor.registry.allDefinitions.any{it.name==call.name&&!it.write}}->ConversationPhase.READING;else->ConversationPhase.EXECUTING}
                 publish(phase,engine=engine,sourceBase=sourceBase)
                 val results=engine.execute(activeBatch,enabled).map{sanitize(it,sanitizer)}
@@ -147,7 +156,7 @@ class ConversationService(
         } catch(e:Exception) {
             if(!paired) {
                 val receipts=activeBatch.map{call->
-                    engine?.receipts?.lastOrNull{it.toolCallId==call.id}?:if(call.name=="callers_saveProfiles")ToolReceipt("batch:${call.id}",call.id,ToolStatus.READ,aiObject("items" to AiJson.Arr(engine?.receipts?.filter{it.toolCallId.startsWith("${call.id}:item:")}?.map{sanitize(it,sanitizer).json()}?:emptyList()),"complete" to aiBool(false)),verification=VerificationStatus.PENDING)else ToolReceipt("skipped",call.id,ToolStatus.SKIPPED,error=ApiError(ErrorCode.SYSTEM_RESTRICTED,"ai.turn_stopped"))
+                    engine?.receipts?.lastOrNull{it.toolCallId==call.id}?:if(call.name=="callers_saveProfiles")ToolReceipt("batch:${call.id}",call.id,ToolStatus.READ,aiObject("items" to AiJson.Arr(engine?.groupedReceipts(call.id)?.map{sanitize(it,sanitizer).json()}?:emptyList()),"complete" to aiBool(false)),verification=VerificationStatus.PENDING)else ToolReceipt("skipped",call.id,ToolStatus.SKIPPED,error=ApiError(ErrorCode.SYSTEM_RESTRICTED,"ai.turn_stopped"))
                 }.map{sanitize(it,sanitizer)}
                 context.append(ConversationMessage("tool","",receipts=receipts))
             }

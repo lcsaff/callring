@@ -1,0 +1,21 @@
+import unittest
+from pathlib import Path
+from check_backend_boundaries import ROOT, compatible_v1, has_presentation_literal
+
+
+class BoundaryPolicyTest(unittest.TestCase):
+    def test_optional_additions_do_not_hide_a_changed_or_required_v1_field(self):
+        contract = (ROOT / 'docs/contracts/CallringUiApi.kt').read_text(encoding='utf-8')
+        actual = (ROOT / 'backend/src/main/kotlin/com/greatwall/callring/application/api/CallringUiApi.kt').read_text(encoding='utf-8')
+        self.assertTrue(compatible_v1(actual, contract))
+        self.assertFalse(compatible_v1(actual.replace('val number: String', 'val number: Long'), contract))
+        self.assertFalse(compatible_v1(actual.replace('val aiFailure: ConversationFailure? = null', 'val aiFailure: ConversationFailure'), contract))
+
+    def test_protocol_metadata_exception_does_not_allow_ordinary_ui_messages(self):
+        self.assertFalse(has_presentation_literal(Path('ToolRegistry.kt'), 'ToolDefinition(73,"discover",schema,false,"发现工具")'))
+        self.assertTrue(has_presentation_literal(Path('ToolRegistry.kt'), 'fun saved() = "保存成功"'))
+        self.assertTrue(has_presentation_literal(Path('Another.kt'), 'val message = "保存成功"'))
+
+
+if __name__ == '__main__':
+    unittest.main()

@@ -19,7 +19,8 @@ internal class SqliteScopedReadAdapter(private val db:SQLiteDatabase,private val
     override fun version(domain:AiDomain)=versionProvider()
     private data class Table(val sql:String,val columns:List<String>,val texts:Set<String> = emptySet(),val structured:Set<String> = emptySet())
     private fun table(domain:AiDomain,projection:String):Table {
-        require(projection in setOf("default","history","current","work","years","days","intervals","counted","visible"))
+        val projections=when(domain){AiDomain.D02->setOf("default","current");AiDomain.D04->setOf("default","counted","visible");AiDomain.D05->setOf("default","intervals");AiDomain.D06->setOf("default","history","current","work");AiDomain.D07->setOf("default","years","days");else->setOf("default")}
+        require(projection in projections)
         return when(domain){
             AiDomain.D01 -> Table("SELECT n.number entity_key,n.number,CASE WHEN c.number IS NULL THEN 0 ELSE 1 END stored,coalesce(c.name,'') name,coalesce(c.department,'') department,c.position_id,coalesce(c.whitelist,0) whitelisted,p.name position_name,p.level position_level,p.active position_active FROM (SELECT number FROM callers UNION SELECT number FROM calls) n LEFT JOIN callers c ON n.number=c.number LEFT JOIN positions p ON p.id=c.position_id",listOf("number","stored","name","department","position_id","whitelisted","position_name","position_level","position_active"),setOf("name","department","position_name"))
             AiDomain.D02 -> if(projection=="current") Table("SELECT 'current' entity_key,(SELECT position_id FROM settings WHERE key='my_position') myPositionId",listOf("myPositionId")) else Table("SELECT printf('%020d',id) entity_key,id,name,level,active,(SELECT position_id FROM settings WHERE key='my_position') myPositionId FROM positions",listOf("id","name","level","active","myPositionId"),setOf("name"))
@@ -48,7 +49,15 @@ internal class SqliteScopedReadAdapter(private val db:SQLiteDatabase,private val
     private fun where(t:Table,f:QueryFilter):Pair<String,List<String>> {
         val clauses=mutableListOf<String>();val args=mutableListOf<String>()
         fun add(column:String,value:Any?,op:String="="){if(value!=null){require(column in t.columns);clauses+="$column $op ?";args+=value.toString()}}
-        add("number",f.number);add("id",f.id);add("year",f.year);add(if("result" in t.columns)"result" else "status",f.status);add(if("working" in t.columns)"reason" else "kind",f.kind);add("date",f.date)
+        add("number",f.number);add("id",f.id);add("year",f.year);add("date",f.date)
+        if("result" in t.columns) {
+            add("result",f.status?.let{raw->runCatching{CallResult.valueOf(raw)}.getOrNull()?.let{LegacyValueCodec.encodeResult(it)}?:raw})
+            f.kind?.let{kind->when(kind){
+                "WORKING"->add("working",1)
+                "HOLIDAY"->{clauses+="reason LIKE ?";args+="节假日·%"}
+                else->add("reason",when(kind){"MAKEUP_WORKING"->"调休上班";"PERSONAL_LEAVE"->"请假期间";"REST_DAY"->"休息日";"OUTSIDE_WORK_HOURS"->"工作时段外";"UNKNOWN"->"未知";else->kind})
+            }}
+        }else{add("status",f.status);add("kind",f.kind)}
         val time=when{ "time" in t.columns->"time";"start" in t.columns->"start";"created" in t.columns->"created";"effective" in t.columns->"effective";else->null}
         if(f.start!=null||f.end!=null){require(time!=null);add(time,f.start,">=");add(time,f.end,"<")}
         f.text?.let{text->val fields=t.texts.toList();require(fields.isNotEmpty());clauses+="("+fields.joinToString(" OR "){"instr($it,?)>0"}+")";repeat(fields.size){args+=text}}

@@ -16,6 +16,7 @@ class ToolExecutor(
     val registry: ToolRegistry = ToolRegistry(),
     private val queries:QueryService?=null,
 ) {
+    val foregroundReady:Boolean get()=foreground.hasHost
     suspend fun execute(call: ConversationToolCall, scope: ToolExecutionContext): ToolReceipt {
         val before = coordinator.capture()
         try {

@@ -20,7 +20,9 @@ class ToolBatchEngine(
     private val verifier=ReceiptVerifier(queries)
     private val repairable=mutableListOf<LedgerStep>()
     private val allReceipts=mutableListOf<ToolReceipt>()
+    private val batchChildren=mutableMapOf<String,List<String>>()
     val receipts:List<ToolReceipt> get()=allReceipts.toList()
+    fun groupedReceipts(callId:String):List<ToolReceipt> = batchChildren[callId].orEmpty().map{id->allReceipts.lastOrNull{it.toolCallId==id}?:ToolReceipt("skipped:$id",id,ToolStatus.SKIPPED)}
     fun pendingTasks()=planner.forUser(turn).filterNot{planner.satisfied(it,ledger.steps)}.map{it.id}
     private var reconcile=false
     fun resume(newGeneration:Long,newActive:()->Boolean,newAwaitForeground:suspend()->Unit=awaitForeground,newOnReceipt:(ToolReceipt)->Unit=onReceipt) {
@@ -60,8 +62,8 @@ class ToolBatchEngine(
                 val items=(call.arguments["items"] as AiJson.Arr).values
                 require(items.size in 1..32)
                 val task=planner.get(call.arguments.s("taskId"));require(task.kind==TaskKind.CREATE_PROFILES)
-                val children=items.mapIndexed{i,item->ConversationToolCall("${call.id}:item:$i","callers_saveProfile",AiJson.Obj((item as AiJson.Obj).fields+mapOf("taskId" to aiString(task.id))))}
-                groups[call.id]=children.map{it.id};expanded+=children
+                val children=items.mapIndexed{i,item->ConversationToolCall("item:${digest(call.id).take(32)}:$i","callers_saveProfile",AiJson.Obj((item as AiJson.Obj).fields+mapOf("taskId" to aiString(task.id))))}
+                groups[call.id]=children.map{it.id};batchChildren[call.id]=children.map{it.id};expanded+=children
             } catch(e:Exception){
                 if(e is CancellationException)throw e
                 expanded+=call
@@ -148,7 +150,7 @@ class ToolBatchEngine(
                     receipt=try{val plan=planner.prepare(turn,TaskKind.valueOf(call.arguments.s("kind")),call.arguments.l("expectedCount").exactInt(),(call.arguments["targets"] as? AiJson.Arr)?.values?.map{it.string()}?.toSet()?:emptySet());ToolReceipt(step.id,call.id,ToolStatus.READ,plan.json())}catch(_:IllegalArgumentException){failure(call,ApiError(ErrorCode.VALIDATION,"ai.task_target_changed"))}
                 } else {
                     if(p.definition.write)awaitForeground()
-                    val command=CommandContext(step.id,coordinator.capture(),generation,mayCommit={active()},expectedScopes=if(p.definition.write)scopes.afterOwnCommits(p.expected)else null){active()}
+                    val command=CommandContext(step.id,coordinator.capture(),generation,mayCommit={active()&&executor.foregroundReady},expectedScopes=if(p.definition.write)scopes.afterOwnCommits(p.expected)else null){active()}
                     ledger.start(step)
                     budget.consume()
                     try {

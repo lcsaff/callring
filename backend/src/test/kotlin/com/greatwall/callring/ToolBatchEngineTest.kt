@@ -113,4 +113,32 @@ class ToolBatchEngineTest {
         }
         assertEquals(4,t.engine.budget.repairs);assertTrue(t.f.state.profiles.isEmpty())
     }
+    @Test fun thirtyTwoCallReplyIsCompleteAndThirtyThreeHasZeroExecution()=runBlocking {
+        val t=Fixture()
+        val calls=(1..33).map{ConversationToolCall("r$it","root_checkNumber",aiObject("raw" to aiString("31234")))}
+        assertEquals(32,t.engine.execute(calls.take(32)).size)
+        val separate=Fixture();assertTrue(runCatching{separate.engine.execute(calls)}.exceptionOrNull() is BackendFailure);assertTrue(separate.engine.receipts.isEmpty())
+    }
+    @Test fun maximumLengthProtocolIdDoesNotBreakInternalBatchSteps()=runBlocking {
+        val t=Fixture();val task=t.plan(1)
+        val call=ConversationToolCall("x".repeat(256),"callers_saveProfiles",aiObject("taskId" to aiString(task),"items" to AiJson.Arr(listOf(aiObject("number" to aiString("31234"),"name" to aiString("合成测试"))))))
+        assertEquals(VerificationStatus.VERIFIED,t.engine.execute(listOf(call)).single().verification)
+        assertTrue(t.engine.complete)
+    }
+    @Test fun losingForegroundDuringPreparationPreventsActualPublication()=runBlocking {
+        val t=Fixture();val host=ForegroundActionService();val token=host.attachHost()
+        fun api(command:CommandContext?=null):CallringUiApi {
+            val base=command?.let(t.f.backend::commandApi)?:t.f.backend
+            return object:CallringUiApi by base {
+                override val settings=object:SettingsApi by base.settings {
+                    override suspend fun getAppearance():ApiResult<AppearanceSettings>{val result=base.settings.getAppearance();host.detachHost(token);return result}
+                }
+                override fun commandApi(context:CommandContext)=api(context)
+            }
+        }
+        val executor=ToolExecutor({api()},t.f.coordinator,host,ForegroundResourceRegistry(),queries=t.q)
+        val engine=ToolBatchEngine({api()},executor,t.q,t.f.coordinator,"s","t",1,{true})
+        val result=engine.execute(listOf(ConversationToolCall("write","settings_saveAppearance",aiObject("colorMode" to aiString("DARK"))))).single()
+        assertEquals(ToolStatus.FAILED,result.status);assertEquals(ColorMode.FOLLOW_SYSTEM,t.f.appearance.colorMode)
+    }
 }
