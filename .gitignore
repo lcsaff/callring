@@ -27,3 +27,6 @@ __pycache__/
 
 # Release signing material (keystore path and passwords) must never be committed
 signing.properties
+
+# Local release staging output (tools/release dry runs; never commit APKs)
+/dist/
