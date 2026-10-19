@@ -1,0 +1,12 @@
+{
+  "package": "com.greatwall.callring",
+  "model": "qwen3.8-flash",
+  "protocol": "OPENAI",
+  "resolvedProfile": "QWEN_FAST",
+  "startedAt": 1792390674328,
+  "realClient": true,
+  "result": "failed",
+  "failureType": "IllegalStateException",
+  "endedAt": 1792390731344,
+  "lastPhase": "IDLE"
+}

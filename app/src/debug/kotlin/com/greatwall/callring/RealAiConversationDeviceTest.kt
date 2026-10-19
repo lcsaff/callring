@@ -68,6 +68,7 @@ class RealAiConversationDeviceTest:InstrumentationTestCase() {
         instrumentation.runOnMainSync{activity.window.addFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)}
         val files=proofDirectory(context)
         try {
+            instrumentation.uiAutomation.serviceInfo=instrumentation.uiAutomation.serviceInfo.apply{flags=flags or android.accessibilityservice.AccessibilityServiceInfo.FLAG_RETRIEVE_INTERACTIVE_WINDOWS}
             instrumentation.waitForIdleSync()
             check((api.conversation.foreground as ForegroundActionService).hasHost){"Real resumed Activity host required"}
             awaitQuiet(graph)
@@ -147,8 +148,10 @@ class RealAiConversationDeviceTest:InstrumentationTestCase() {
         error("Required visible Activity control was not found")
     }
     private fun findNode(predicate:(AccessibilityNodeInfo)->Boolean):AccessibilityNodeInfo? {
-        val root=instrumentation.uiAutomation.rootInActiveWindow?:return null
-        val queue=ArrayDeque<AccessibilityNodeInfo>();queue+=root
+        val roots=instrumentation.uiAutomation.windows.mapNotNull{it.root}.filter{node->
+            if(node.packageName?.toString()==instrumentation.targetContext.packageName)true else{node.recycle();false}
+        }
+        val queue=ArrayDeque<AccessibilityNodeInfo>();queue.addAll(roots)
         var visited=0
         while(queue.isNotEmpty()&&visited++<5000){val node=queue.removeFirst();if(predicate(node)){queue.forEach{it.recycle()};return node};repeat(node.childCount){node.getChild(it)?.let{child->queue+=child}};node.recycle()}
         queue.forEach{it.recycle()};return null
