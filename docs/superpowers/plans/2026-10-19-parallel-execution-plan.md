@@ -53,19 +53,19 @@ Wave 3（验证，按序）
 
 ## 4. 步骤级并行标记约定
 
-三份计划里每步都带标记，取值为：
+三份计划里每步都带标记。P2 用方括号写法；P1/P3 在步骤表的"并行/收口"列用中文写法，**语义完全相同**，等价关系：
 
-- `[并行]`：Wave 1 内可与其他 track 同时做，文件不交叉。
-- `[收口:M1/M2/M3/M4]`：必须等对方 track 的依赖步骤完成，由收口 owner 一次改完。
-- `[gated:G1/G2/G3]`：外部事实或密钥未就绪，做到能做的部分后停下，不得标记完成。
-- `[串行:Vx]`：验证类步骤，必须在前述步骤全部合入后执行，不能与其他验证并行。
+- `[并行]`（P1/P3 写"可并行"）：Wave 1 内可与其他 track 同时做，文件不交叉。
+- `[收口:M1/M2/M3/M4]`（P1/P3 写"需收口：与 X"）：必须等对方 track 的依赖步骤完成，由收口 owner 一次改完。
+- `[gated:Gx]`（P1/P3 写"依赖/阻塞"）：外部事实或密钥未就绪，做到能做的部分后停下，不得标记完成。
+- `[串行:Vx]`（P1/P3 写"不可并行"）：验证类步骤，必须在前述步骤全部合入后执行，不能与其他验证并行。
 
 ## 5. 合并顺序（硬约束）
 
 1. **P2 数据模型先行**：`AiConnection.thinkingMode` + `AiSettingsApi` 视图/补丁字段（纯增量、带默认值）单独小提交，先合入集成分支。目的：让 P1/P3 在稳定基线上编译，避免反复 rebase。
 2. Wave 1 三条线各自合并（P1 → P3 → P2 的其余部分；顺序可调，但每合一条都要跑 V1 子集）。**合并 P1 时先不合 §7 的 AI 表单完整版**（只合结构骨架），AI 表单留到 M1。
 3. Wave 2 依次合 M1 → M2 → M3 → M4，每个收口提交单独跑全量验证。
-4. Wave 3 按 V1→V2→V3→V4 执行；V4 在 G2 解封前保持 blocked。
+4. Wave 3 按 V1→V2→V3→V4 执行；V4（P2-S9 录音侧验证）在 P2 端口改造完成后执行，不再等待 G2（已取消）。
 
 ## 6. 共享文件所有权表
 
@@ -80,6 +80,20 @@ Wave 3（验证，按序）
 | `backend/.../application/api/CallringUiApi.kt` | P3 | P3（M3 只加装配） | P1/P2 不得改 |
 | `app/build.gradle`、`version.properties`、`.github/` | P3 | P3 | P1/P2 不得改 |
 | `docs/` 下的 spec 与计划 | 无 | Lead | 实施过程中不改 spec；发现冲突写进实施记录 |
+
+### 只读引用（Wave 1 任何 track 都不得修改，写入方见括号）
+
+| 文件 | 谁在写 | 其他 track 只能读 |
+| --- | --- | --- |
+| `backend/.../application/api/AiSettingsApi.kt` | P2 | P1 只引用 `patchCombined`/`automaticAnalysis` 字段，不得改契约 |
+| `ui/.../app/AiRoutes.kt` | P2（M1） | P1 不得改 |
+| `app/build.gradle`（根 `build.gradle` 同） | P3 | P1 只引用 compose BOM/版本行作证据，不得改 |
+| `ui/.../app/CallringApp.kt` | P1 | P3 不改（更新页走 `SettingsPage.UPDATE`，无需新路由） |
+| `backend/.../application/api/CallringUiApi.kt` | P3 | P1/P2 只引用 `checkNumber`/`aiSettings` 模式，不得改 |
+| `README.md`、`PROJECT.md` | P1 先改，P3 只补 `:backend:test` | P2 不改 |
+| `docs/superpowers/**`（spec/计划） | Lead | 全部只读 |
+
+规则：出现上表以外的重叠文件时，先在该表登记 owner 再动手；未登记即视为违规，合并前必须回退。
 
 ## 7. 每个波次的验证门
 

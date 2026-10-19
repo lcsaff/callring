@@ -19,7 +19,7 @@
 | 7 | 设置首页 6 张卡，“系统与支持”仅“运行状态与权限”；`SettingsSummary` 无版本字段；`SettingsPage.entries` 统一生成子页路由 | `SettingsOverviewScreen.kt`、`SettingsRoute.kt`、`UiDestination.kt` |
 | 8 | 速率限制：未认证 60/h、**缺 User-Agent 直接 403**、限流 403 带 `X-RateLimit-*`；`make_latest` 语义见 D §3；无 `.github/`、`tools/` 无发布/签名脚本；后端是 `java-library`，测试任务为 `:backend:test` | D §2/§3/§5.28 |
 
-门槛结论：S01 指纹不通过则 S02–S13 全部不开始；除 S01、S13 外可并行，两处主收口点（A 的设置入口、B 的 `BackendGraph`）不并行。
+门槛结论：S01 只阻塞**签名配置、发布演练与真机覆盖升级**（S02 的 signingConfigs 部分、S11 的签名/发布步骤、S13）；S02 的 `version.properties` 与 Gradle 版本读取、S04–S09 的契约/查询/元数据/下载/校验/更新页实现、S12 的测试都可先做。除 S01、S13 外可并行，两处主收口点（A 的设置入口、B 的 `BackendGraph`）不并行。
 
 ## 3. 阶段步骤表
 | 阶段 | 步骤 | 目标 | 并行/收口 |
@@ -43,7 +43,7 @@
 - 动作：v0.2 发行密钥已确认丢失（2026-10-19），不再寻找。改为把本机 Android debug 证书作为当前发行身份：确认 `C:\Users\GreatWall\.android\debug.keystore` 存在（2618 字节）、证书 SHA-256 = `5a901cad57f5590483f362e4752ca8f4a56197340b71d2632ded0195bf8a24b4`；把 keystore 备份到仓库外并记录文件 SHA-256；用该 keystore 签一个 versionCode 递增的测试包，`apksigner verify --print-certs` 复核指纹；在**本机现有 debug 安装**上覆盖升级，确认数据保留；记录“v0.2 不可覆盖升级”的既有事实。
 - 涉及文件：仓库内无改动；`signing.properties`（gitignore）与备份在仓库外；`apksigner` 取自 build-tools 36.0.0。
 - 验收：备份文件存在且记录摘要；测试包 `--print-certs` 指纹等于 `5a901cad…24b4`（DN `CN=Android Debug`）；覆盖本机 debug 安装成功、档案/设置/录音保留；命令与日志不含真实口令。
-- 完成定义：备份可恢复、指纹一致、覆盖升级通过 → 解锁 S02–S13；任一失败 → S01 阻塞（不得改用新证书绕过：本机现有数据将无法保留）。
+- 完成定义：备份可恢复、指纹一致、覆盖升级通过 → 解锁签名配置/发布演练/真机覆盖升级；任一失败 → 这些步骤阻塞（不得改用新证书绕过：本机现有数据将无法保留）。**不阻塞** S02 的版本文件、S04–S09 的实现与 S12 的测试。
 - 并行：不可并行（签名门槛，未通过即全局停止）。
 
 ### S02 版本单一来源与 signingConfigs
