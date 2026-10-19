@@ -21,6 +21,7 @@ import androidx.compose.ui.Modifier
 import androidx.lifecycle.*
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.greatwall.callring.application.api.*
+import com.greatwall.callring.ui.feature.callers.NumberDeletionDialogs
 import com.greatwall.callring.ui.feature.ai.*
 import com.greatwall.callring.ui.overlay.CallringOverlayService
 import com.greatwall.callring.ui.widget.CallringWidgetReceiver
@@ -150,21 +151,34 @@ class ForegroundActionHost(private val activity: ComponentActivity, private val 
             ForegroundActionKind.CREDENTIAL -> CredentialDialog(bound.aiSettings,AiSlot.valueOf(current.parameters["slot"].string()),onFinished = ::finish)
             ForegroundActionKind.COPY_CONNECTION -> CopyConnectionDialog(bound.aiSettings,AiSlot.valueOf(current.parameters["from"].string()),AiSlot.valueOf(current.parameters["to"].string()),::finish)
             ForegroundActionKind.CONFIRM, ForegroundActionKind.TEST_CONNECTION -> {
-                val operation = (current.parameters["operation"] as? AiJson.Str)?.value.orEmpty()
-                val message = when(operation) {
-                    "recordings_testConnection" -> "将向已保存的服务发送固定测试文字或音频，可能产生费用；不会发送通话内容。"
-                    "recordings_adoptIdentity" -> "仅采纳本次分析中的非空自述姓名和单位，保留职位与白名单；模型推测不会采纳。"
-                    "recordings_delete" -> "将删除本次录音归档及其本地音频，此操作保留原删除规则。"
-                    "settings_deletePosition" -> "将删除所选职位，正在使用的职位会拒绝删除。"
-                    "settings_deleteLeave" -> "将删除所选请假记录并重新计算受影响的业务数据。"
-                    else -> "请核对当前操作，确认后执行；取消时不会执行依赖操作。"
-                }
-                AlertDialog(onDismissRequest = { finish(false) },title = { Text("确认操作？") },text = {
-                    Column(Modifier.verticalScroll(rememberScrollState())) {
-                        Text(message)
-                        current.confirmation?.let { ConfirmationSummary(it) } ?: Text("无法核对实际目标，请取消并重新发起。")
+                val target = current.confirmation
+                if (target is ConfirmationTarget.NumberDeletion) {
+                    NumberDeletionDialogs(
+                        impact = NumberDeletionImpact(
+                            target.number, target.profileExists, target.callCount,
+                            target.archiveCount, target.audioBytes, target.widgetBindingCount, false,
+                        ),
+                        state = null, error = null,
+                        onDismiss = { finish(false) },
+                        onConfirm = { finish(true) },
+                    )
+                } else {
+                    val operation = (current.parameters["operation"] as? AiJson.Str)?.value.orEmpty()
+                    val message = when(operation) {
+                        "recordings_testConnection" -> "将向已保存的服务发送固定测试文字或音频，可能产生费用；不会发送通话内容。"
+                        "recordings_adoptIdentity" -> "仅采纳本次分析中的非空自述姓名和单位，保留职位与白名单；模型推测不会采纳。"
+                        "recordings_delete" -> "将删除本次录音归档及其本地音频，此操作保留原删除规则。"
+                        "settings_deletePosition" -> "将删除所选职位，正在使用的职位会拒绝删除。"
+                        "settings_deleteLeave" -> "将删除所选请假记录并重新计算受影响的业务数据。"
+                        else -> "请核对当前操作，确认后执行；取消时不会执行依赖操作。"
                     }
-                },confirmButton = { TextButton(enabled = current.confirmation != null,onClick = { finish(true) }) { Text("确认") } },dismissButton = { TextButton(onClick = { finish(false) }) { Text("取消") } })
+                    AlertDialog(onDismissRequest = { finish(false) },title = { Text("确认操作？") },text = {
+                        Column(Modifier.verticalScroll(rememberScrollState())) {
+                            Text(message)
+                            current.confirmation?.let { ConfirmationSummary(it) } ?: Text("无法核对实际目标，请取消并重新发起。")
+                        }
+                    },confirmButton = { TextButton(enabled = current.confirmation != null,onClick = { finish(true) }) { Text("确认") } },dismissButton = { TextButton(onClick = { finish(false) }) { Text("取消") } })
+                }
             }
             else -> Unit
         }
@@ -187,6 +201,14 @@ class ForegroundActionHost(private val activity: ComponentActivity, private val 
             Text(if(target.slot == AiSlot.ANALYSIS) "内容分析连接" else "录音转写连接")
             Text("${target.connection.protocol} · ${target.connection.url}"); Text("模型：${target.connection.model}")
             Text(if(target.connection.keyConfigured) "密钥已配置" else "密钥未配置")
+        }
+        is ConfirmationTarget.NumberDeletion -> {
+            Text("号码：${target.number}")
+            if (target.profileExists) Text("档案 1 条")
+            Text("通话记录 ${target.callCount} 条")
+            Text("录音归档 ${target.archiveCount} 条")
+            if (target.widgetBindingCount > 0) Text("小组件绑定 ${target.widgetBindingCount} 个")
+            Text("删除后不可恢复。", color = MaterialTheme.colorScheme.error)
         }
     }
 }

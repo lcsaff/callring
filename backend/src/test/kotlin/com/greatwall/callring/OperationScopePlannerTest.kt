@@ -44,6 +44,8 @@ class OperationScopePlannerTest {
         assertFalse(c.unchanged(second.keys,second.values.single()))
     }
     @Test fun everyLegacyWriteHasExplicitScopeContract() {
-        assertEquals(ToolRegistry().definitions.filter{it.write}.map{it.index}.toSet(),OperationScopePlanner.writeOperations)
+        val legacy = ToolRegistry().definitions.filter{it.write}.map{it.index}.toSet()
+    assertTrue(OperationScopePlanner.writeOperations.containsAll(legacy))
+    assertEquals(legacy + setOf(81), OperationScopePlanner.writeOperations)
     }
 }

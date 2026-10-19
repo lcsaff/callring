@@ -53,6 +53,7 @@ class ConfirmationTargetTest {
                     is ConfirmationTarget.Leave -> { assertEquals("actual-note",target.note); assertEquals(10L,target.start) }
                     is ConfirmationTarget.Recording -> { assertEquals("31234",target.number); assertEquals(123L,target.startedAt); if(index == 63) assertEquals("self",target.adoption!!.name) }
                     is ConfirmationTarget.Connection -> { assertEquals(AiSlot.ANALYSIS,target.slot); assertEquals("actual-model",target.connection.model) }
+                    is ConfirmationTarget.NumberDeletion -> fail("Number deletion is not part of the legacy five confirmations")
                     null -> fail("Missing authoritative target for $index")
                 }
                 assertTrue(foreground.beginLaunch(ticket.requestId,host))

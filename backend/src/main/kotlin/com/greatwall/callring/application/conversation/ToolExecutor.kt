@@ -171,6 +171,14 @@ class ToolExecutor(
                 70 -> { status = ToolStatus.LAUNCHED; action(ForegroundActionKind.TEST_OVERLAY); Unit }
                 71 -> { val archiveId = a.l("callId"); status = ToolStatus.LAUNCHED; action(ForegroundActionKind.PREVIEW_CALL, aiObject("callId" to aiNumber(archiveId))); Unit }
                 72 -> { action(ForegroundActionKind.COPY_CONNECTION); api().aiSettings.getAiView().requiredValue() }
+                81 -> {
+                    val impact = bound.numberDeletion.impact(a.s("number")).requiredValue()
+                    confirm()
+                    bound.numberDeletion.delete(
+                        DeleteNumberCommand(impact.number, impact.callCount, impact.archiveCount, impact.widgetBindingCount),
+                    ).requiredValue()
+                    Unit
+                }
                 else -> error("ai.unknown_tool")
             }
             val after = coordinator.capture()

@@ -38,7 +38,8 @@ class ToolRegistry {
         ToolDefinition(77,"data_readText",shape("reference" to string,"?cursor" to string,"?maxChars" to integer),false,"读取textFields中的reference全文分块，Unicode码点maxChars默认4096/最大16384；沿游标到complete=true才完整。"),
         ToolDefinition(78,"task_prepare",shape("kind" to choice("CREATE_PROFILES","SET_APPEARANCE","OPERATIONS"),"expectedCount" to integer,"?targets" to array(string)),false,"在多项写前建立完整计划，expectedCount是用户数量，不可降低。返回taskId；CREATE_PROFILES只新建不覆盖，号码由模型生成。"),
         ToolDefinition(79,"callers_saveProfiles",shape("taskId" to string,"items" to array(shape("number" to string,"?name" to string,"?department" to string,"?positionId" to nullable(integer),"?whitelisted" to boolean))),true,"批量添加1–32个档案，须CREATE_PROFILES计划。预检号码合法唯一且不存在，逐项共用saveProfile并读回，部分失败如实返回；姓名使用可识别合成测试标记时不得触碰真实资料。"),
-        ToolDefinition(80,"callers_getCallDetail",shape("callId" to integer),false,"按callId读取存储通话详情，包括未计分及隐藏记录；不受UI日期限制。")
+        ToolDefinition(80,"callers_getCallDetail",shape("callId" to integer),false,"按callId读取存储通话详情，包括未计分及隐藏记录；不受UI日期限制。"),
+        ToolDefinition(81,"callers_deleteNumber",shape("number" to string),true,"删除号码及其全部关联数据（档案、应用内通话记录、录音归档与音频、小组件绑定）；执行前必须前台两次确认，不可恢复；不改系统通话记录。")
     ) }
     private val queryFilter:AiJson.Obj get()=shape("?number" to string,"?id" to integer,"?text" to string,"?start" to integer,"?end" to integer,"?year" to integer,"?status" to string,"?kind" to string,"?date" to string,"?zone" to string)
     init {

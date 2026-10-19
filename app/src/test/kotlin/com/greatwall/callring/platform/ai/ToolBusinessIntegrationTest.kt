@@ -289,6 +289,7 @@ class ToolBusinessIntegrationTest {
                     is ConfirmationTarget.Leave -> { assertEquals(1L,target.id); assertEquals("note",target.note) }
                     is ConfirmationTarget.Connection -> { assertEquals("https://example.com/v1",target.connection.url); assertEquals(AiSlot.ANALYSIS,target.slot) }
                     is ConfirmationTarget.Recording -> { assertEquals(fixture.recordingId,target.id); assertEquals("31234",target.number); if(index == 63) assertEquals("self",target.adoption!!.name) }
+                    is ConfirmationTarget.NumberDeletion -> fail("Number deletion is covered by its own tool test")
                     null -> fail("Missing target $index")
                 }
                 val token = fixture.foreground.attachHost()

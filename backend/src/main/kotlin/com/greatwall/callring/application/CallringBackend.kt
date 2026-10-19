@@ -43,6 +43,7 @@ class CallringBackend(
     override val ringtone: RingtoneApi = createRingtoneApi(context)
     override val runtime: RuntimeApi = createRuntimeApi(context)
     override val widgets: WidgetBindingsApi = createWidgetBindingsApi(context)
+    override val numberDeletion: NumberDeletionApi = CoreNumberDeletionApi(callers, widgets)
     override val changes: ChangeFeed =
         object : ChangeFeed {
             override fun observe(): Flow<DataChange> = context.observe()
@@ -57,6 +58,7 @@ class CallringBackend(
             override val settings = createSettingsApi(bound)
             override val edits = createUiEditsApi(bound)
             override val widgets = createWidgetBindingsApi(bound)
+            override val numberDeletion = CoreNumberDeletionApi(callers, widgets)
             override val ringtone = createRingtoneApi(bound)
             override val runtime = createRuntimeApi(bound)
         }

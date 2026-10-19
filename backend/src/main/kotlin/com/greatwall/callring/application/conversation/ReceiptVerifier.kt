@@ -83,6 +83,7 @@ class ReceiptVerifier(private val q:QueryService) {
                 65->compareAi(get(AiDomain.D14),a)
                 67->{val runtime=get(AiDomain.D19)["runtime"] as? AiJson.Obj;val capabilities=runtime?.get("capabilities") as? AiJson.Obj;capabilities?.get(a.s("capability")) in setOf(aiString("GRANTED"),aiString("NOT_REQUIRED"))}
                 66,72->{val value=get(AiDomain.D14);val expected=receiptObject();expected.fields.isNotEmpty()&&compare(value,expected)}
+                81->absent(AiDomain.D01,a.s("number"))
                 else->false
             }
             val proof=AiJson.Arr(evidence)

@@ -23,6 +23,13 @@ internal suspend fun confirmationTarget(api: CallringUiApi, index: Int, argument
             } else null
             ConfirmationTarget.Recording(archive.callId,archive.number,archive.startedAtEpochMillis,archive.generation,adoption)
         }
+        81 -> {
+            val impact = api.numberDeletion.impact(arguments.s("number")).requiredValue()
+            ConfirmationTarget.NumberDeletion(
+                impact.number, impact.profileExists, impact.callCount, impact.archiveCount,
+                impact.audioBytes, impact.widgetBindingCount,
+            )
+        }
         else -> throw IllegalArgumentException("action.confirmation_unsupported")
     }
 }

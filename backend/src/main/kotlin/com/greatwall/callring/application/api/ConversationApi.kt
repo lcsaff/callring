@@ -31,6 +31,14 @@ sealed class ConfirmationTarget {
     data class Adoption(val previousName: String, val previousOrganization: String, val name: String?, val organization: String?)
     data class Recording(val id: Long, val number: String, val startedAt: Long, val generation: Long, val adoption: Adoption? = null) : ConfirmationTarget()
     data class Connection(val slot: AiSlot, val connection: AiConnectionView) : ConfirmationTarget()
+    data class NumberDeletion(
+        val number: String,
+        val profileExists: Boolean,
+        val callCount: Int,
+        val archiveCount: Int,
+        val audioBytes: Long,
+        val widgetBindingCount: Int,
+    ) : ConfirmationTarget()
 }
 data class ForegroundTicket(val requestId: String, val sessionId: String, val turnId: String, val toolCallId: String, val generation: Long, val kind: ForegroundActionKind, val parameters: AiJson.Obj, val createdAt: Long, val expiresAt: Long, val launched: Boolean = false, val commandContext: CommandContext? = null, val confirmation: ConfirmationTarget? = null)
 data class ForegroundHostResult(val status: ForegroundResultStatus, val document: DocumentRef? = null, val error: ApiError? = null)

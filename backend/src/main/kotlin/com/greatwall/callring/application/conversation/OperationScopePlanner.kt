@@ -7,7 +7,7 @@ import com.greatwall.callring.application.ports.BackendFailure
 /** Read before preparing a command; preserve observations actually disclosed to the model. */
 class OperationScopePlanner(private val queries:QueryService,private val coordinator:BusinessRevisionCoordinator) {
     companion object {
-        val writeOperations=setOf(7,8,10,12,13,15,16,17,19,20,21,23,24,26,27,28,29,31,32,34,35,37,39,40,41,42,43,46,48,49,52,53,55,56,57,58,59,60,63,65,66,67,68,69,70,71,72)
+        val writeOperations=setOf(7,8,10,12,13,15,16,17,19,20,21,23,24,26,27,28,29,31,32,34,35,37,39,40,41,42,43,46,48,49,52,53,55,56,57,58,59,60,63,65,66,67,68,69,70,71,72,81)
     }
     private val own=mutableMapOf<String,Long>()
     fun resetForContinuation(){own.clear()}
@@ -49,6 +49,11 @@ class OperationScopePlanner(private val queries:QueryService,private val coordin
                     a.optL("positionId")?.let{id->observe(AiDomain.D02,id.toString(),setOf("position:$id:valid"),filter=QueryFilter(id=id))}
                 }
                 10->{val n=a.s("number");observe(AiDomain.D04,null,setOf("calls:$n"),filter=QueryFilter(number=n));config(setOf("score","statistics"))}
+                81->{
+                    val n=a.s("number")
+                    observe(AiDomain.D01,n,setOf("profile:$n:exists"),filter=QueryFilter(number=n))
+                    observe(AiDomain.D04,null,setOf("calls:$n"),filter=QueryFilter(number=n))
+                }
                 12->config(setOf("statistics"))
                 13->config(setOf("overlay"))
                 15,16,17->config(setOf("quiet"))
