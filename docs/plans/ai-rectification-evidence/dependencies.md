@@ -1,6 +1,8 @@
-# S01 Markdown兼容探针：需裁定测试运行时
+# S01 Markdown兼容探针与已批准fallback
 
-2026-10-19，基线 `387d992edab131b7ddd2f22cf72981a0bf649915`。本文件记录部分实施证据，**不是A7或整体整改完成证明**。S02–S12尚未实施，未访问设备或调用真实模型。
+2026-10-19，基线 `387d992edab131b7ddd2f22cf72981a0bf649915`。本文件记录依赖探针，**不是A7或整体整改完成证明**。以下0.40.2失败记录保留；epoch7负责人已批准core+m3固定0.39.2并保JDK17。
+
+0.39.2实测：默认JDK17下MarkdownCompatibilityTest 1项通过/失败0/错误0，UI编译与assembleDebug/D8同次通过（35秒）；未改JDK/BOM/JVM目标，无自制parser。后续继续S02–S12，真实设备和模型尚未验证。
 
 ## 已执行
 
@@ -35,8 +37,8 @@ JDK21第一次复核时标题已渲染，列表被旧Screen静态内容挤出测
 
 版本与用法来源：[固定v0.40.2 README](https://github.com/mikepenz/multiplatform-markdown-renderer/blob/v0.40.2/README.md)。class版本错误来自实际本地smoke，不从README推断。
 
-## 给主负责人的最小裁决请求
+## 历史方案与裁定
 
 建议保留0.40.2，让UI测试运行时使用JDK21；保持Gradle/应用编译JDK17、JVM目标1.8和现有Compose BOM不变。可在ui/build.gradle通过Test任务的javaLauncher指定21，再用本机已装JDK21验证，文档明确此测试前提；不硬编码机器绝对路径进产品。**仅UI测试launcher的最小改动尚未实施/单独验证**，现有通过证据是整个Gradle命令暂用21。
 
-若必须维持测试运行时17，则需要另探测较早Markdown版本；本轮未换版、未改BOM、未自制parser，不能声称旧版兼容。请主负责人确认采用JDK21测试launcher方案或安排兼容版本探针，再继续后续任务。当前固定0.40.2接入与失败/通过测试均保留在隔离分支，不应在默认Java17的全测试未恢复通过时集成。
+主负责人裁定维持JDK17并固定0.39.2；上方JDK21 launcher仅为历史提议，未实施。当前已改0.39.2并通过JDK17 smoke/编译/D8，不再等待该裁定。整体测试/UI/正式设备验收仍按计划完成后交独立审查。
