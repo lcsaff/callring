@@ -35,7 +35,7 @@ class AiSettingsService(
         try { ApiResult.Success(block()) }
         catch (e: CancellationException) { throw e }
         catch (e: BackendFailure) { ApiResult.Failure(e.error) }
-        catch (error: IllegalArgumentException) { ApiResult.Failure(if(error.message=="ai.profile_invalid")ApiError(ErrorCode.VALIDATION,"ai.profile_invalid",fieldErrors=mapOf("analysis.model" to "ai.fast_model_required"))else ApiError(ErrorCode.VALIDATION, "ai.invalid_settings")) }
+        catch (error: IllegalArgumentException) { ApiResult.Failure(ApiError(ErrorCode.VALIDATION, "ai.invalid_settings")) }
         catch (_: Exception) { ApiResult.Failure(ApiError(ErrorCode.STORAGE_FAILURE, "ai.settings_storage_failed")) }
     }
     override suspend fun getRecordingView() = result {
@@ -70,7 +70,7 @@ class AiSettingsService(
             analysis = connection(base.analysis, old.analysis, patch.analysis, analysisSecret, base.revision,AiSlot.ANALYSIS),
             transcription = connection(base.transcription, old.transcription, patch.transcription, transcriptionSecret, base.revision,AiSlot.TRANSCRIPTION),
             conversationBudget = field(base.budget, old.conversationBudget, patch.budget),
-            conversationCompatibility = field(base.compatibility,old.conversationCompatibility,patch.compatibility),
+            conversationCompatibility = field(base.compatibility,old.conversationCompatibility,patch.compatibility).normalized(),
         ) }.aiView()
     }
     override suspend fun copyConnection(from: AiSlot, to: AiSlot, expectedRevision: Long) = result {
@@ -99,7 +99,7 @@ class AiSettingsService(
                 analysis = connection(aiBase.analysis, old.analysis, ai.analysis, analysisSecret, aiBase.revision,AiSlot.ANALYSIS),
                 transcription = connection(aiBase.transcription, old.transcription, ai.transcription, transcriptionSecret, aiBase.revision,AiSlot.TRANSCRIPTION),
                 conversationBudget = field(aiBase.budget, old.conversationBudget, ai.budget),
-                conversationCompatibility = field(aiBase.compatibility,old.conversationCompatibility,ai.compatibility))
+                conversationCompatibility = field(aiBase.compatibility,old.conversationCompatibility,ai.compatibility).normalized())
         }
         runCatching { afterSave(saved) }
         Unit

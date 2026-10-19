@@ -18,16 +18,18 @@ import org.robolectric.annotation.Config
 @Config(sdk = [33], manifest = Config.NONE)
 class AiSettingsServiceTest {
 
-    @Test fun changingModelWithFastSelectedGivesRecoverableProfileFeedbackAndKeepsStoredValues()=runBlocking {
+    @Test fun legacyFastCompatibilityIsMigratedAndNeverBlocksModelChange()=runBlocking {
         val coordinator=BusinessRevisionCoordinator();val store=AndroidRecordingStore(RuntimeEnvironment.getApplication(),"unsupported-fast-model",cipher,coordinator)
         val original=RecordingSettings(analysis=AiConnection(url="https://example.com/v1",model="qwen3.8-flash",apiKey="fixture-private"),conversationCompatibility=ConversationCompatibility.QWEN_FAST,conversationBudget=ConversationBudget(65536,8192))
-        store.saveSettings(original);val api=AiSettingsService(store,coordinator,{true},{_,_->})
+        store.saveSettings(original)
+        assertEquals(ConversationCompatibility.AUTO,store.settings().conversationCompatibility)
+        val api=AiSettingsService(store,coordinator,{true},{_,_->})
         try{
-            val base=api.getAiView().ok();val result=api.patchAi(base,AiSettingsPatch(analysis=ConnectionPatch(model=PatchField.Set("deepseek-chat")))) as ApiResult.Failure
-            assertEquals("ai.profile_invalid",result.error.message);assertEquals("ai.fast_model_required",result.error.fieldErrors["analysis.model"])
-            assertEquals(original,store.settings())
-            val saved=api.patchAi(base,AiSettingsPatch(analysis=ConnectionPatch(model=PatchField.Set("deepseek-chat")),compatibility=PatchField.Set(ConversationCompatibility.STANDARD))).ok()
-            assertEquals(ProviderProfile.STANDARD,saved.analysis.resolvedProfile);assertEquals(original.conversationBudget,saved.budget);assertTrue(saved.analysis.keyConfigured)
+            val saved=api.patchAi(api.getAiView().ok(),AiSettingsPatch(analysis=ConnectionPatch(model=PatchField.Set("deepseek-chat")))).ok()
+            assertEquals("deepseek-chat",saved.analysis.model)
+            assertEquals(ProviderProfile.STANDARD,saved.analysis.resolvedProfile)
+            assertEquals(original.conversationBudget,saved.budget);assertTrue(saved.analysis.keyConfigured)
+            assertEquals(ConversationCompatibility.AUTO,store.settings().conversationCompatibility)
         }finally{store.close()}
     }
     @Test fun unrelatedBudgetDoesNotInvalidateKeyEditOrConnectionCopy()=runBlocking {

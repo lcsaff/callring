@@ -179,7 +179,7 @@ class ConversationService(
                 connectionChanged->ApiError(ErrorCode.CONFLICT,"ai.connection_changed")
                 e is CancellationException->ApiError(ErrorCode.SYSTEM_RESTRICTED,"ai.cancelled")
                 e is BackendFailure->e.error
-                e is IllegalArgumentException->if(e.message=="ai.profile_invalid")ApiError(ErrorCode.VALIDATION,"ai.profile_invalid",fieldErrors=mapOf("analysis.model" to "ai.fast_model_required"),aiFailure=ConversationFailure(AiFailureKind.PROVIDER_MODE,"PROFILE_INVALID"))else ApiError(ErrorCode.VALIDATION,"ai.invalid_tool_response")
+                e is IllegalArgumentException->ApiError(ErrorCode.VALIDATION,"ai.invalid_settings")
                 else->ApiError(ErrorCode.IO_FAILURE,"ai.conversation_failed",retryable=true)
             }
             if(connectionChanged){context.clear();queries.reset();resources.reset();synchronized(lock){continuation=null}}

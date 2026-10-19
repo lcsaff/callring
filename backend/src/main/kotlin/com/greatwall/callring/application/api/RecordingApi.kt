@@ -35,7 +35,6 @@ data class RecordingSettings(
 ) {
     fun validate() {
         conversationBudget.validate()
-        resolveConversationProfile(analysis, conversationCompatibility)
         require(transcription.protocol == AiProtocol.OPENAI) { "ai.transcription_requires_openai" }
         require(transcription.thinkingMode == ThinkingMode.DISABLED) { "ai.transcription_thinking_disabled" }
         if (analysis.url.isNotBlank() || analysis.apiKey.isNotBlank() || analysis.model.isNotBlank()) analysis.validate()
