@@ -32,7 +32,7 @@ import com.greatwall.callring.ui.designsystem.ScorePalette
 import com.greatwall.callring.ui.format.UiFormat
 
 /** Content height of the compact title bar. The status-bar inset is applied separately by [TopAppBar]. */
-private val CompactTitleContentHeight = 48.dp
+private val CompactTitleContentHeight = 40.dp
 
 /** A shared header and inset-aware content frame. The caller chooses its scrolling container. */
 @Composable

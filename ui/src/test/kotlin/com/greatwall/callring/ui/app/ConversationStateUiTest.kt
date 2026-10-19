@@ -18,7 +18,10 @@ class ConversationStateUiTest {
     @Test fun allPhasesAndActualReceiptStatusesRemainDistinct() {
         val state = mutableStateOf(ConversationState("session"))
         compose.setContent { ConversationScreen(state.value,"input","https://example.com · model",null,{},{},{},{}) }
-        val phases=mapOf(ConversationPhase.IDLE to "准备就绪",ConversationPhase.PREPARING to "准备会话",ConversationPhase.DISCOVERING to "查找所需功能",ConversationPhase.READING to "读取所需数据",ConversationPhase.REPAIRING to "修正未执行步骤",ConversationPhase.PARTIAL to "部分完成，请核对结果",ConversationPhase.CAPTURING to "准备会话",ConversationPhase.BUDGETING to "检查本轮容量",ConversationPhase.REQUESTING to "等待 AI 回复",ConversationPhase.VALIDATING to "验证回复",ConversationPhase.EXECUTING to "执行并核验操作",ConversationPhase.WAITING_FOREGROUND to "等待系统界面或本地确认",ConversationPhase.COMPLETED to "本轮已完成",ConversationPhase.STOPPING to "正在停止，保留已提交操作",ConversationPhase.STOPPED to "已停止",ConversationPhase.FAILED to "本轮未完成，请查看结果")
+        compose.runOnIdle{state.value=ConversationState("session",ConversationPhase.IDLE)}
+        compose.onNodeWithText("准备就绪").assertDoesNotExist()
+        compose.onNodeWithTag("ai-ready-dot").assertContentDescriptionEquals("就绪")
+        val phases=mapOf(ConversationPhase.PREPARING to "准备会话",ConversationPhase.DISCOVERING to "查找所需功能",ConversationPhase.READING to "读取所需数据",ConversationPhase.REPAIRING to "修正未执行步骤",ConversationPhase.PARTIAL to "部分完成，请核对结果",ConversationPhase.CAPTURING to "准备会话",ConversationPhase.BUDGETING to "检查本轮容量",ConversationPhase.REQUESTING to "等待 AI 回复",ConversationPhase.VALIDATING to "验证回复",ConversationPhase.EXECUTING to "执行并核验操作",ConversationPhase.WAITING_FOREGROUND to "等待系统界面或本地确认",ConversationPhase.COMPLETED to "本轮已完成",ConversationPhase.STOPPING to "正在停止，保留已提交操作",ConversationPhase.STOPPED to "已停止",ConversationPhase.FAILED to "本轮未完成，请查看结果")
         phases.forEach{(phase,label)->
             compose.runOnIdle{state.value=ConversationState("session",phase)}
             compose.onNodeWithText(label).assertExists()

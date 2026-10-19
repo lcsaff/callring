@@ -15,16 +15,22 @@ import org.robolectric.annotation.Config
 @Config(sdk = [35])
 class ConversationReviewUiTest {
     @get:Rule val compose = createComposeRule()
-    @Test fun nextSendAlwaysDisclosesLatestTargetAndUnknownTargetDisablesSend() {
+    @Test fun conversationHasNoServiceLabelAndReadyDotTracksPhase() {
         val state = mutableStateOf(ConversationState("s",ConversationPhase.STOPPED,target = "old-host · old-model"))
         val target = mutableStateOf("new-host · new-model")
         compose.setContent { ConversationScreen(state.value,"next",target.value,null,{},{},{},{}) }
-        listOf(ConversationPhase.STOPPED,ConversationPhase.IDLE,ConversationPhase.COMPLETED,ConversationPhase.FAILED).forEach { phase ->
+        compose.onNodeWithText("服务：new-host · new-model").assertDoesNotExist()
+        compose.onNodeWithText("服务：old-host · old-model").assertDoesNotExist()
+        compose.onNodeWithContentDescription("AI 设置").assertExists()
+        listOf(ConversationPhase.STOPPED,ConversationPhase.COMPLETED,ConversationPhase.FAILED).forEach { phase ->
             compose.runOnIdle { state.value = state.value.copy(phase = phase) }
-            compose.onNodeWithText("服务：new-host · new-model").assertExists()
-            compose.onNodeWithText("服务：old-host · old-model").assertDoesNotExist()
+            compose.onNodeWithTag("ai-ready-dot").assertExists().assertContentDescriptionEquals("未就绪")
         }
+        compose.runOnIdle { state.value = state.value.copy(phase = ConversationPhase.IDLE) }
+        compose.onNodeWithTag("ai-ready-dot").assertContentDescriptionEquals("就绪")
+        compose.onNodeWithText("准备就绪").assertDoesNotExist()
         compose.runOnIdle { target.value = "" }
+        compose.onNodeWithTag("ai-ready-dot").assertContentDescriptionEquals("未就绪")
         compose.onNodeWithContentDescription("发送消息").assertIsNotEnabled()
     }
     @Test fun toolBatchNarrationCannotMasqueradeAsVerifiedFinalText() {

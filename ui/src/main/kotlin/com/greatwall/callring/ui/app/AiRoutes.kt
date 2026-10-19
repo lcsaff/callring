@@ -19,12 +19,12 @@ import com.greatwall.callring.ui.feature.conversation.*
     credential?.let { input -> CredentialDialog(api.aiSettings,input.slot,input) { saved -> credential = null; if(saved) model.credentialSaved() else model.credentialCancelled() } }
     copy?.let { request->CopyConnectionDialog(api.aiSettings,request.first,request.second) { saved->copy = null; if(saved)model.credentialSaved()else model.refresh() } }
 }
-@Composable internal fun ConversationRoute(api: CallringUiApi) {
+@Composable internal fun ConversationRoute(api: CallringUiApi, onOpenSettings: () -> Unit = {}) {
     val model: ConversationViewModel = uiViewModel { ConversationViewModel(api) }
     val state by model.state.collectAsStateWithLifecycle(); val input by model.input.collectAsStateWithLifecycle()
     val error by model.localError.collectAsStateWithLifecycle(); val displayed by model.destination.collectAsStateWithLifecycle()
     val renderedTarget = displayed
     val target = renderedTarget?.let { "${it.protocol} · ${it.url} · ${it.model} · ${it.resolvedProfile}" }.orEmpty()
     // Capture the same view used by this composition, never a newer unrendered VM value.
-    ConversationScreen(state,input,target,error,{ model.input.value = it },{ model.send(renderedTarget) },model::stop,model::newSession,{task->model.continueTask(task,renderedTarget)})
+    ConversationScreen(state,input,target,error,{ model.input.value = it },{ model.send(renderedTarget) },model::stop,model::newSession,{task->model.continueTask(task,renderedTarget)},onOpenSettings)
 }

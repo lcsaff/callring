@@ -37,14 +37,14 @@ class ConversationProgressReviewTest {
         compose.onNodeWithText("回到最新").performClick()
         compose.onNodeWithText("NEWEST-WHILE-READING").assertIsDisplayed()
     }
-    @Test fun fullTargetIsAvailableOnDemandAndTargetChangeClosesStaleDisclosure(){
+    @Test fun conversationShowsNoServiceLabelAndNeverLeaksFullTarget(){
         val target=mutableStateOf("OPENAI · https://one.example/v1/custom · first · STANDARD")
         compose.setContent{MaterialTheme{ConversationScreen(ConversationState("s"),"input",target.value,null,{},{},{},{})}}
-        compose.onNodeWithText("服务：first · one.example").assertExists()
         compose.onNodeWithText(target.value).assertDoesNotExist()
-        compose.onNodeWithContentDescription("服务详情").performClick();compose.onNodeWithText(target.value).assertIsDisplayed()
+        compose.onNodeWithText("服务：").assertDoesNotExist()
+        compose.onNodeWithContentDescription("AI 设置").assertExists()
+        compose.onNodeWithTag("ai-ready-dot").assertContentDescriptionEquals("就绪")
         compose.runOnIdle{target.value="OPENAI · https://two.example/other · second · STANDARD"}
-        compose.onNodeWithText("服务：second · two.example").assertExists()
         compose.onNodeWithText(target.value).assertDoesNotExist()
         compose.onNodeWithContentDescription("发送消息").assertIsEnabled()
     }

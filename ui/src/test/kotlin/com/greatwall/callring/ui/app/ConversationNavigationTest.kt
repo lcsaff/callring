@@ -25,12 +25,19 @@ class ConversationNavigationTest {
         compose.onNodeWithText("录音设置").performScrollTo().assertIsDisplayed()
     }
 
-    @Test fun compactBottomBarIs56dpAndEveryTabKeepsA48dpTouchTarget() {
+    @Test fun compactBottomBarIs44dpAndEveryTabKeepsItsTouchTarget() {
         show()
-        compose.onNodeWithTag("bottom-bar").assertExists().assertHeightIsEqualTo(56.dp)
+        compose.onNodeWithTag("bottom-bar").assertExists().assertHeightIsEqualTo(44.dp)
         listOf("home", "callers", "conversation", "settings").forEach { route ->
-            compose.onNodeWithTag("tab-$route").assertHeightIsEqualTo(56.dp).assertHeightIsAtLeast(48.dp)
+            compose.onNodeWithTag("tab-$route").assertHeightIsEqualTo(44.dp)
         }
+    }
+
+    @Test fun conversationSettingsIconOpensAiSettings() {
+        show()
+        compose.onNodeWithTag("tab-conversation").performClick()
+        compose.onNodeWithContentDescription("AI 设置").performClick()
+        compose.onNodeWithText("AI 设置").assertExists()
     }
 
     @Test fun compactBottomBarIsHiddenOnNonTabDestinations() {

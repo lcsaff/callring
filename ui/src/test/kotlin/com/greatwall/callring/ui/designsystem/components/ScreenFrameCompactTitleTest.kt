@@ -15,9 +15,9 @@ import org.robolectric.annotation.Config
 class ScreenFrameCompactTitleTest {
     @get:Rule val compose = createComposeRule()
 
-    @Test fun compactTitleContentHeightIs48dp() {
+    @Test fun compactTitleContentHeightIs40dp() {
         compose.setContent { CallringTheme { ScreenFrame("号码档案", compactTitle = true) {} } }
-        compose.onNodeWithTag("screen-frame-topbar").assertHeightIsEqualTo(48.dp)
+        compose.onNodeWithTag("screen-frame-topbar").assertHeightIsEqualTo(40.dp)
     }
 
     @Test fun defaultTitleKeepsTheMaterialExpandedHeight() {
@@ -31,7 +31,7 @@ class ScreenFrameCompactTitleTest {
         compose.setContent { CallringTheme {
             ScreenFrame(longTitle, onBack = { returned = true }, compactTitle = true) {}
         } }
-        compose.onNodeWithTag("screen-frame-topbar").assertHeightIsEqualTo(48.dp)
+        compose.onNodeWithTag("screen-frame-topbar").assertHeightIsEqualTo(40.dp)
         compose.onNodeWithText(longTitle).assertExists()
         compose.onNodeWithContentDescription("返回").performClick()
         compose.runOnIdle { assert(returned) }

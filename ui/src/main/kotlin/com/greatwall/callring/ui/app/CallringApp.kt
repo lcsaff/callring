@@ -35,9 +35,9 @@ import kotlinx.coroutines.flow.first
 import java.time.LocalDate
 
 /** The custom bottom bar replaces the M3 navigation suite only in compact windows. */
-private val BottomBarContentHeight = 56.dp
-private val BottomBarMinTouchTarget = 48.dp
+private val BottomBarContentHeight = 44.dp
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable fun CallringApp(
     api: CallringUiApi, requestedDestination: UiDestination = UiDestination.Home, requestSequence: Long = 0,
     refreshSignal: Long = 0, onCapability: (Capability) -> Unit,
@@ -73,6 +73,7 @@ private val BottomBarMinTouchTarget = 48.dp
         }
         val adaptiveInfo = currentWindowAdaptiveInfo()
         val wideLayout = adaptiveInfo.windowSizeClass.isWidthAtLeastBreakpoint(WindowSizeClass.WIDTH_DP_MEDIUM_LOWER_BOUND)
+        val imeVisible = WindowInsets.isImeVisible
         val isTabRoute = tabs.any { it.first.route == route }
         CompositionLocalProvider(LocalFeedbackHost provides feedbackHost, LocalFeedbackScope provides rememberCoroutineScope()) {
             if (wideLayout) {
@@ -94,7 +95,8 @@ private val BottomBarMinTouchTarget = 48.dp
             } else {
                 AppScaffold(api, settings, appearanceModel, navigation, refreshSignal, feedbackHost,
                     bottomBar = {
-                        if (isTabRoute) CallringBottomBar(tabs, route) { destination -> selectTab(navigation, destination) }
+                        // 键盘弹出时隐藏常驻栏，只让输入区随键盘上移。
+                        if (isTabRoute && !imeVisible) CallringBottomBar(tabs, route) { destination -> selectTab(navigation, destination) }
                     },
                     onCapability = onCapability, onAppSettings = onAppSettings, onTestOverlay = onTestOverlay)
             }
@@ -117,7 +119,7 @@ private fun AppScaffold(
 ) {
     fun open(destination: UiDestination) { navigation.navigate(destination.route) { launchSingleTop = true } }
     val back: () -> Unit = { navigation.popBackStack() }
-    Scaffold(modifier = Modifier.imePadding(), snackbarHost = { FeedbackSnackbar(feedbackHost) }, bottomBar = bottomBar) { insets ->
+    Scaffold(modifier = Modifier, snackbarHost = { FeedbackSnackbar(feedbackHost) }, bottomBar = bottomBar) { insets ->
         NavHost(navigation, UiDestination.Home.route, Modifier.padding(insets).consumeWindowInsets(insets)) {
             composable("home") {
                 val model: HomeViewModel = uiViewModel { HomeViewModel(api) }
@@ -196,7 +198,7 @@ private fun AppScaffold(
                 SettingsOverviewScreen(summary, mutation, null, settings::refresh, settings::statistics, settings::overlay,
                     { open(UiDestination.Setting(it)) })
             }
-            composable("conversation") { ConversationRoute(api) }
+            composable("conversation") { ConversationRoute(api, onOpenSettings = { open(UiDestination.Setting(SettingsPage.AI)) }) }
             composable("leaves") {
                 SettingsRoute(SettingsPage.LEAVES, api, settings, appearanceModel, refreshSignal, back, onCapability, onAppSettings)
             }
@@ -230,7 +232,7 @@ private fun CallringBottomBar(
                 val selected = route == destination.route
                 val contentColor = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
                 Column(
-                    modifier = Modifier.weight(1f).fillMaxHeight().heightIn(min = BottomBarMinTouchTarget)
+                    modifier = Modifier.weight(1f).fillMaxHeight().heightIn(min = BottomBarContentHeight)
                         .selectable(selected = selected, role = Role.Tab, onClick = { onSelect(destination) })
                         .testTag("tab-${destination.route}"),
                     horizontalAlignment = Alignment.CenterHorizontally,
@@ -243,6 +245,7 @@ private fun CallringBottomBar(
                         },
                         contentDescription = null,
                         tint = contentColor,
+                        modifier = Modifier.size(20.dp),
                     )
                     Text(title, style = MaterialTheme.typography.labelSmall, color = contentColor, maxLines = 1)
                 }

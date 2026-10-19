@@ -362,6 +362,7 @@ internal class AndroidAppUpdate(
         downloadedBytes = state.downloadedBytes,
         totalBytes = state.totalBytes,
         failureReason = state.failureReason,
+        failureDetail = state.detail,
         checkedAtEpochMillis = state.checkedAtEpochMillis,
     )
 

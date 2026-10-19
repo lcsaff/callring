@@ -1,15 +1,20 @@
 package com.greatwall.callring.ui.feature.conversation
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -45,9 +50,8 @@ class ConversationViewModel(private val api: CallringUiApi, testScope: Coroutine
     fun stop() { scope.launch { api.conversation.stop(state.value.sessionId) } }
     fun newSession() { scope.launch { api.conversation.newSession(state.value.sessionId) } }
 }
-@Composable fun ConversationScreen(state:ConversationState,input:String,target:String,localError:ApiError?,onInput:(String)->Unit,onSend:()->Unit,onStop:()->Unit,onNew:()->Unit,onContinue:(String)->Unit={}) {
+@Composable fun ConversationScreen(state:ConversationState,input:String,target:String,localError:ApiError?,onInput:(String)->Unit,onSend:()->Unit,onStop:()->Unit,onNew:()->Unit,onContinue:(String)->Unit={},onOpenSettings:()->Unit={}) {
     var confirmNew by remember{mutableStateOf(false)}
-    var details by remember(target){mutableStateOf(false)}
     val listState=rememberLazyListState()
     var readingHistory by remember(state.sessionId){mutableStateOf(false)}
     val paired=state.messages.flatMap{it.receipts}.map{it.operationId}.toSet()
@@ -65,10 +69,18 @@ class ConversationViewModel(private val api: CallringUiApi, testScope: Coroutine
     }
     LaunchedEffect(state.sessionId,state.messages,state.receipts,state.phase,readingHistory){if(!readingHistory){withFrameNanos{};listState.scrollToItem(latestIndex)}}
     fun send(){readingHistory=false;onSend()}
-    ScreenFrame("AI 沟通", compactTitle = true, actions = { IconButton(onClick={confirmNew=true}){Icon(Icons.Filled.Add,contentDescription="新对话")} }) {
+    val ready = state.phase==ConversationPhase.IDLE && target.isNotBlank()
+    ScreenFrame("AI 沟通", compactTitle = true, actions = {
+        IconButton(onClick={confirmNew=true}){Icon(Icons.Filled.Add,contentDescription="新对话")}
+        Box {
+            IconButton(onClick=onOpenSettings,modifier=Modifier.semantics{contentDescription="AI 设置"}){Icon(Icons.Filled.Settings,contentDescription=null)}
+            // 就绪即绿点、未就绪即红点，与设置图标合并显示。
+            Box(Modifier.align(Alignment.TopEnd).padding(top=10.dp,end=10.dp).size(9.dp).clip(CircleShape).background(if(ready) Color(0xFF2E7D32) else MaterialTheme.colorScheme.error)
+                .testTag("ai-ready-dot").semantics{contentDescription=if(ready)"就绪" else "未就绪"})
+        }
+    }) {
         Column(Modifier.fillMaxSize(),verticalArrangement=Arrangement.spacedBy(8.dp)) {
-            TextButton(onClick={details=true},modifier=Modifier.semantics{contentDescription="服务详情"}){Text("服务：${compactTarget(target).ifBlank{"请先配置 AI 设置"}}",style=MaterialTheme.typography.bodySmall)}
-            Text(phaseLabel(state.phase),style=MaterialTheme.typography.labelLarge)
+            if(state.phase!=ConversationPhase.IDLE) Text(phaseLabel(state.phase),style=MaterialTheme.typography.labelLarge)
             (state.error?:localError)?.let{Text(aiErrorText(it),color=MaterialTheme.colorScheme.error)}
             LazyColumn(Modifier.weight(1f).fillMaxWidth().testTag("conversation-messages").nestedScroll(historyScroll),state=listState,verticalArrangement=Arrangement.spacedBy(12.dp)) {
                 state.messages.forEachIndexed{index,message->
@@ -98,14 +110,7 @@ class ConversationViewModel(private val api: CallringUiApi, testScope: Coroutine
             }
         }
     }
-    if(details)AlertDialog(onDismissRequest={details=false},title={Text("服务详情")},text={Column{Text(target);if(state.target.isNotBlank())Text("本轮已发送至：${state.target}")}},confirmButton={TextButton(onClick={details=false}){Text("关闭")}})
     if(confirmNew)AlertDialog(onDismissRequest={confirmNew=false},title={Text("开始新对话？")},text={Text("将停止当前请求并清空本进程对话。已提交的修改仍保留；退出应用后不会自动恢复任务。")},confirmButton={TextButton(onClick={confirmNew=false;onNew()}){Text("开始新对话")}},dismissButton={TextButton(onClick={confirmNew=false}){Text("取消")}})
-}
-private fun compactTarget(target:String):String {
-    val parts=target.split(" · ");val endpoint=parts.indexOfFirst{it.startsWith("https://")||it.startsWith("http://")}
-    if(endpoint<0)return target
-    val host=runCatching{java.net.URI(parts[endpoint]).authority}.getOrNull()?:return target
-    return listOfNotNull(parts.getOrNull(endpoint+1),host).joinToString(" · ")
 }
 @Composable private fun ReceiptGroup(receipts:List<ToolReceipt>,onExpand:()->Unit={}) {
     val verified=receipts.filter{it.verification==VerificationStatus.VERIFIED&&it.error==null}

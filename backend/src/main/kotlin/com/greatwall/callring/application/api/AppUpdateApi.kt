@@ -34,6 +34,7 @@ data class UpdateStatus(
     val downloadedBytes: Long = 0,
     val totalBytes: Long? = null,
     val failureReason: String? = null,
+    val failureDetail: String? = null,
     val checkedAtEpochMillis: Long? = null,
     val releasePageUrl: String = CALLRING_RELEASES_URL,
 )
