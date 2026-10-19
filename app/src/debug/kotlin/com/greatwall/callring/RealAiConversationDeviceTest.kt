@@ -66,6 +66,7 @@ class RealAiConversationDeviceTest:InstrumentationTestCase() {
         val report=JSONObject().put("package",context.packageName).put("model",view.analysis.model).put("protocol",view.analysis.protocol.name).put("resolvedProfile",view.analysis.resolvedProfile.name).put("startedAt",System.currentTimeMillis()).put("realClient",true)
         val activity=instrumentation.startActivitySync(CallringActivity.intent(context,UiDestination.Conversation).apply{flags=Intent.FLAG_ACTIVITY_NEW_TASK}).also{shownActivity=it}
         instrumentation.runOnMainSync{activity.window.addFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)}
+        android.os.ParcelFileDescriptor.AutoCloseInputStream(instrumentation.uiAutomation.executeShellCommand("am start --display 0 -n com.greatwall.callring/com.greatwall.callring.ui.app.CallringActivity --es callring.ui.target conversation")).use{it.readBytes()}
         val files=proofDirectory(context)
         try {
             instrumentation.uiAutomation.serviceInfo=instrumentation.uiAutomation.serviceInfo.apply{flags=flags or android.accessibilityservice.AccessibilityServiceInfo.FLAG_RETRIEVE_INTERACTIVE_WINDOWS}
@@ -127,7 +128,14 @@ class RealAiConversationDeviceTest:InstrumentationTestCase() {
         screenshot(File(proofDirectory(instrumentation.targetContext),keyboardFile))
         val send=waitNode{it.contentDescription?.toString()=="发送消息"&&it.isEnabled&&it.isVisibleToUser}
         beforeSend()
-        check(send.performAction(AccessibilityNodeInfo.ACTION_CLICK)){"Visible send action failed"};send.recycle()
+        val bounds=android.graphics.Rect();send.getBoundsInScreen(bounds);send.recycle()
+        check(!bounds.isEmpty){"Visible send bounds required"}
+        val touchTime=SystemClock.uptimeMillis()
+        for(action in intArrayOf(android.view.MotionEvent.ACTION_DOWN,android.view.MotionEvent.ACTION_UP)) {
+            val event=android.view.MotionEvent.obtain(touchTime,SystemClock.uptimeMillis(),action,bounds.exactCenterX(),bounds.exactCenterY(),0)
+            event.source=android.view.InputDevice.SOURCE_TOUCHSCREEN
+            try{check(instrumentation.uiAutomation.injectInputEvent(event,true)){"Visible send touch failed"}}finally{event.recycle()}
+        }
         val state=withTimeout(300000){graph.api.conversation.state.first{s->!s.busy&&s.messages.drop(before).any{it.role=="user"&&it.text==prompt}}}
         check(state.exchanges.isNotEmpty()){"Actual network exchange metrics required"}
         check(state.exchanges.all{it.profile==ProviderProfile.QWEN_FAST&&it.requestFlags==mapOf("enable_thinking" to false,"preserve_thinking" to false)}){"FAST flags missing on an actual request"}
