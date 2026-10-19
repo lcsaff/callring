@@ -13,6 +13,7 @@ import com.greatwall.callring.ui.feature.ai.aiErrorText
 import com.greatwall.callring.ui.state.*
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.*
+import com.mikepenz.markdown.m3.Markdown
 
 class ConversationViewModel(private val api: CallringUiApi, testScope: CoroutineScope? = null) : UiViewModel(testScope) {
     val state = api.conversation.state
@@ -38,7 +39,7 @@ class ConversationViewModel(private val api: CallringUiApi, testScope: Coroutine
             (state.error ?: localError)?.let { Text(aiErrorText(it), color = MaterialTheme.colorScheme.error) }
             LazyColumn(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 itemsIndexed(state.messages) { _, message ->
-                    if(message.text.isNotEmpty()) OutlinedCard(Modifier.fillMaxWidth()) { Column(Modifier.padding(12.dp)) { Text(if(message.role == "user") "你" else if(message.toolCalls.isNotEmpty()) "AI 操作建议（未经验证，以操作回执为准）" else "AI", style = MaterialTheme.typography.labelMedium); Text(message.text) } }
+                    if(message.text.isNotEmpty()) OutlinedCard(Modifier.fillMaxWidth()) { Column(Modifier.padding(12.dp)) { Text(if(message.role == "user") "你" else if(message.toolCalls.isNotEmpty()) "AI 操作建议（未经验证，以操作回执为准）" else "AI", style = MaterialTheme.typography.labelMedium); if(message.role == "assistant") Markdown(message.text) else Text(message.text) } }
                     message.receipts.forEach { ReceiptCard(it) }
                 }
                 val pairedIds = state.messages.flatMap { it.receipts }.map { it.operationId }.toSet()
