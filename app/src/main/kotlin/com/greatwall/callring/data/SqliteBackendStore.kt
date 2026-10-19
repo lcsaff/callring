@@ -11,6 +11,9 @@ class SqliteBackendStore
 constructor(context: Context, databaseName: String = "callring.db") : BackendStore, AutoCloseable {
     private val helper = CallringDatabase(context.applicationContext, databaseName)
     private val db: SQLiteDatabase
+    val stateLoads = java.util.concurrent.atomic.AtomicLong()
+    fun scopedReads(coordinator:com.greatwall.callring.application.BusinessRevisionCoordinator):com.greatwall.callring.application.ports.ScopedReadPort =
+        SqliteScopedReadAdapter(db,{coordinator.capture().values.getValue("core")})
 
     init {
         helper.setWriteAheadLoggingEnabled(true)
@@ -21,6 +24,7 @@ constructor(context: Context, databaseName: String = "callring.db") : BackendSto
     override fun <T> read(block: (BackendState) -> T): T {
         db.beginTransactionNonExclusive()
         try {
+            stateLoads.incrementAndGet()
             val state = StorageSession(db).load()
             val result = block(state)
             db.setTransactionSuccessful()
@@ -34,6 +38,7 @@ constructor(context: Context, databaseName: String = "callring.db") : BackendSto
         db.beginTransactionNonExclusive()
         try {
             checkSnapshotSize(db)
+            stateLoads.incrementAndGet()
             val state = StorageSession(db).load()
             val audits = db.rawQuery("SELECT kind,target,raw,created FROM calendar_audit ORDER BY id", null).use { c ->
                 buildList { while (c.moveToNext()) add(com.greatwall.callring.domain.AuditRecord(c.getString(0), c.getString(1), c.getString(2), c.getLong(3))) }
@@ -48,6 +53,7 @@ constructor(context: Context, databaseName: String = "callring.db") : BackendSto
         db.beginTransaction()
         try {
             val session = StorageSession(db)
+            stateLoads.incrementAndGet()
             val state = session.load()
             val result = block(state)
             session.save(state)

@@ -12,6 +12,15 @@ import java.io.Closeable
 internal class LazyBackendStore(private val factory: () -> BackendStore) : BackendStore, Closeable {
     private var instance: BackendStore? = null
     private var closed = false
+    fun scopedReads(coordinator:com.greatwall.callring.application.BusinessRevisionCoordinator):ScopedReadPort = object:ScopedReadPort {
+        override val domains=(AiDomain.entries.take(10)+AiDomain.D21).toSet()
+        override fun version(domain:AiDomain)=coordinator.capture().values.getValue("core")
+        private fun source()=(get() as com.greatwall.callring.data.SqliteBackendStore).scopedReads(coordinator)
+        override fun query(spec:QuerySpec,after:String?)=source().query(spec,after)
+        override fun get(domain:AiDomain,key:String,projection:String)=source().get(domain,key,projection)
+        override fun text(domain:AiDomain,key:String,field:String,start:Long,maxChars:Int)=source().text(domain,key,field,start,maxChars)
+        override fun aggregate(spec:AggregateSpec)=source().aggregate(spec)
+    }
 
     @Synchronized
     private fun get(): BackendStore {

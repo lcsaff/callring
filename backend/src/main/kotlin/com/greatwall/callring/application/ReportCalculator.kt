@@ -36,34 +36,9 @@ internal fun BackendContext.score(
     range: TimeRange,
     includeSaturatedMax: Boolean = false,
 ): ScoreSummary {
-    val counted =
-        calls
-            .filter {
-                it.counted &&
-                    it.startedAtEpochMillis >= range.startInclusiveEpochMillis &&
-                    (it.startedAtEpochMillis < range.endExclusiveEpochMillis || (includeSaturatedMax && it.startedAtEpochMillis == Long.MAX_VALUE && range.endExclusiveEpochMillis == Long.MAX_VALUE))
-            }
-            .sortedBy { it.startedAtEpochMillis }
-    val off = counted.count { !it.classification.working }.toLong()
-    val repeats =
-        counted
-            .zipWithNext()
-            .count { (a, b) ->
-                val gap = b.startedAtEpochMillis - a.startedAtEpochMillis
-                gap >= 0 && gap <= s.score.repeatMinutes * 60000L
-            }
-            .toLong()
-    val deductions = off * s.score.offHoursWeight + repeats * s.score.repeatWeight
-    return ScoreSummary(
-        if (counted.isEmpty()) null else (100L - deductions).coerceIn(0, 100).toInt(),
-        counted.size.toLong(),
-        off,
-        repeats,
-        s.score.offHoursWeight,
-        s.score.repeatWeight,
-        s.score.repeatMinutes,
-        range,
-    )
+    val accumulator=StreamingReportAccumulator(s.score,range,includeSaturatedMax)
+    calls.sortedBy{it.startedAtEpochMillis}.forEach{accumulator.accept(it.startedAtEpochMillis,it.counted,it.classification.working,it.durationSeconds,it.result)}
+    return accumulator.score()
 }
 
 internal fun BackendContext.quality(
@@ -117,19 +92,7 @@ internal fun BackendContext.report(
 }
 
 internal fun BackendContext.reportTotals(rows: List<CallDetail>, summary: ScoreSummary): ReportTotals {
-    val counted = rows.filter { it.counted }
-    return ReportTotals(
-            counted.size.toLong(),
-            counted.count { it.classification.working }.toLong(),
-            summary.offHoursCalls,
-            counted.mapNotNull { it.durationSeconds }.fold(0L) { a, b -> saturatedAdd(a, b) },
-            counted.count { it.durationSeconds == null }.toLong(),
-            counted.count { it.result == CallResult.MISSED }.toLong(),
-            counted
-                .count { it.result == CallResult.REJECTED || it.result == CallResult.BLOCKED }
-                .toLong(),
-            rows
-                .count { it.result == CallResult.PENDING || it.result == CallResult.UNRESOLVED }
-                .toLong(),
-        )
+    val accumulator=ReportTotalsAccumulator()
+    rows.forEach{accumulator.accept(it.counted,it.classification.working,it.durationSeconds,it.result)}
+    return accumulator.value(summary.offHoursCalls)
 }
