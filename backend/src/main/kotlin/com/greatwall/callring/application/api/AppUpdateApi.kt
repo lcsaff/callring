@@ -1,5 +1,8 @@
 package com.greatwall.callring.application.api
 
+/** 发布页地址由后端提供，UI 不硬编码。 */
+const val CALLRING_RELEASES_URL = "https://github.com/lcsaff/callring/releases"
+
 /** 当前安装版本（来自系统应用信息，不在 UI 硬编码）。 */
 data class AppVersionInfo(val versionName: String, val versionCode: Long)
 
@@ -32,6 +35,7 @@ data class UpdateStatus(
     val totalBytes: Long? = null,
     val failureReason: String? = null,
     val checkedAtEpochMillis: Long? = null,
+    val releasePageUrl: String = CALLRING_RELEASES_URL,
 )
 
 /**

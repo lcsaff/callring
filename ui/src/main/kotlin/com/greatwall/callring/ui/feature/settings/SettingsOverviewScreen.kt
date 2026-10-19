@@ -49,9 +49,11 @@ fun SettingsOverviewScreen(
             SettingRow("节假日同步", "自动获取全年放假与补班安排", { onNavigate(SettingsPage.CALENDAR) })
             SettingRow("评分设置", "非工作来电权重 ${data.score.offHoursWeight} · 重复来电权重 ${data.score.repeatWeight}", { onNavigate(SettingsPage.SCORE) })
         }
-        SettingsCard("录音与 AI") {
-            SettingRow("录音设置", "录音来源、归档与自动分析开关", { onNavigate(SettingsPage.RECORDING) })
-            SettingRow("AI 设置", "分析、转写连接与上下文预算", { onNavigate(SettingsPage.AI) })
+        SettingsCard("录音") {
+            SettingRow("录音设置", "录音来源与目录授权", { onNavigate(SettingsPage.RECORDING) })
+        }
+        SettingsCard("AI") {
+            SettingRow("AI 设置", "分析、转写连接、思考模式与上下文预算", { onNavigate(SettingsPage.AI) })
         }
         SettingsCard("显示") {
             SettingRow("外观", "主题色与深浅模式", { onNavigate(SettingsPage.APPEARANCE) })

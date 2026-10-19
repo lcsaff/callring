@@ -17,8 +17,6 @@ import java.time.Instant
 import java.time.ZoneId
 import java.util.Locale
 
-private const val RELEASE_PAGE = "https://github.com/lcsaff/callring/releases/latest"
-
 /** One screen for all update phases; each phase exposes at most one primary action. */
 @Composable
 fun AppUpdateScreen(
@@ -67,7 +65,7 @@ private fun UpdateStatusBody(
         UpdatePhase.UNSUPPORTED_DEVICE -> Text("系统版本不满足该更新要求，无法安装。")
         UpdatePhase.NO_INSTALLABLE -> {
             Text("该版本尚未提供可安装更新。")
-            ReleasePageAction()
+            ReleasePageAction(status.releasePageUrl)
         }
         UpdatePhase.CHECK_FAILED -> {
             Text(updateMessage(status.failureReason ?: "update.check_failed"), color = MaterialTheme.colorScheme.error)
@@ -137,9 +135,9 @@ private fun PrimaryUpdateAction(label: String, onClick: () -> Unit) {
 }
 
 @Composable
-private fun ReleasePageAction() {
+private fun ReleasePageAction(url: String) {
     val uriHandler = LocalUriHandler.current
-    TextButton(onClick = { runCatching { uriHandler.openUri(RELEASE_PAGE) } }) { Text("打开 Release 网页手动下载") }
+    TextButton(onClick = { runCatching { uriHandler.openUri(url) } }) { Text("打开 Release 网页手动下载") }
 }
 
 internal fun formatSize(bytes: Long): String = when {

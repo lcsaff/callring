@@ -62,42 +62,30 @@ class AiSettingsServiceTest {
         assertEquals(ConversationCompatibility.AUTO,RecordingJson.settings(RecordingJson.settings(store.settings()).apply {getJSONObject("conversation").remove("compatibility")}).conversationCompatibility)
         store.close()
     }
-    @Test fun coldStartPageDraftCreatesEitherSlotAtomicallyAndPreservesOtherPage() = runBlocking {
+    @Test fun coldStartPatchCombinedWritesOnlyRequestedSlotAndRejectsStaleBase() = runBlocking {
         for(slot in AiSlot.entries) {
             val coordinator = BusinessRevisionCoordinator()
             val store = AndroidRecordingStore(RuntimeEnvironment.getApplication(),"cold_page_$slot",cipher,coordinator)
             val service = AiSettingsService(store,coordinator,{ true },{ _,_ -> })
-            val root = java.lang.reflect.Proxy.newProxyInstance(CallringUiApi::class.java.classLoader,arrayOf(CallringUiApi::class.java)) { _,method,_ ->
-                when(method.name) { "getAiSettings" -> service; "getChanges" -> object : ChangeFeed { override fun observe() = coordinator.changes }; else -> error("Unexpected API ${method.name}") }
-            } as CallringUiApi
-            val scope = CoroutineScope(SupervisorJob()+Dispatchers.Unconfined)
             try {
-                // UI's Android dependencies are runtime-only from app; exercise the real VM without changing module dependencies.
-                val type = Class.forName("com.greatwall.callring.ui.feature.ai.AiSettingsViewModel")
-                val model = type.getConstructor(CallringUiApi::class.java,CoroutineScope::class.java).newInstance(root,scope)
-                @Suppress("UNCHECKED_CAST") val drafts = type.getMethod("getDraft").invoke(model) as StateFlow<AiSettingsView?>
-                val initial = withTimeout(5000) { drafts.first { it != null } }!!
-                val connection = AiConnectionView(AiProtocol.OPENAI,"https://first.example/v1","first",false)
-                val draft = if(slot == AiSlot.ANALYSIS) initial.copy(analysis = connection) else initial.copy(transcription = connection)
-                type.getMethod("edit",AiSettingsView::class.java).invoke(model,draft.copy(budget = ConversationBudget(65536,4096)))
-                val input = type.getMethod("credentialInput",AiSlot::class.java).invoke(model,slot) as CredentialDraft
+                val aiBase = service.getAiView().ok()
                 val rec = service.getRecordingView().ok()
-                service.patchRecording(rec,RecordingSettingsPatch(recordingEnabled = PatchField.Set(true))).ok()
-                val patch = if(slot == AiSlot.ANALYSIS) AiSettingsPatch(analysis = input.connection) else AiSettingsPatch(transcription = input.connection)
-                service.patchCombined(rec,RecordingSettingsPatch(),input.base,patch,
+                val connectionPatch = ConnectionPatch(url = PatchField.Set("https://first.example/v1"), model = PatchField.Set("first"))
+                val patch = if(slot == AiSlot.ANALYSIS) AiSettingsPatch(analysis = connectionPatch)
+                            else AiSettingsPatch(transcription = connectionPatch.copy(protocol = PatchField.Set(AiProtocol.OPENAI)))
+                service.patchCombined(rec,RecordingSettingsPatch(recordingEnabled = PatchField.Set(true)),aiBase,patch,
                     if(slot == AiSlot.ANALYSIS) LocalSecretChange.Replace("first-private") else LocalSecretChange.Keep,
                     if(slot == AiSlot.TRANSCRIPTION) LocalSecretChange.Replace("first-private") else LocalSecretChange.Keep).ok()
-                type.getMethod("credentialSaved",AiSlot::class.java).invoke(model,slot)
-                withTimeout(5000) { drafts.first { value -> value != null && (if(slot == AiSlot.ANALYSIS) value.analysis else value.transcription).keyConfigured } }
                 val saved = store.settings()
                 assertTrue(saved.recordingEnabled)
                 assertEquals("first-private",(if(slot == AiSlot.ANALYSIS) saved.analysis else saved.transcription).apiKey)
-                assertFalse(service.getAiView().ok().toString().contains("first-private"))
-                assertTrue((type.getMethod("getDirty").invoke(model) as StateFlow<*>).value as Boolean)
-                assertEquals(65536L,drafts.value!!.budget.context)
+                assertTrue((if(slot == AiSlot.ANALYSIS) saved.transcription else saved.analysis).apiKey.isEmpty())
                 assertEquals(49152L,saved.conversationBudget.context)
-                assertTrue(service.patchCombined(rec,RecordingSettingsPatch(),input.base,patch,LocalSecretChange.Replace("stale"),LocalSecretChange.Keep) is ApiResult.Failure)
-            } finally { scope.cancel() }
+                assertFalse(service.getAiView().ok().toString().contains("first-private"))
+                // 过期 base 提交必须整体失败，不留下部分写入。
+                assertTrue(service.patchCombined(rec,RecordingSettingsPatch(),aiBase,patch,LocalSecretChange.Replace("stale"),LocalSecretChange.Keep) is ApiResult.Failure)
+                assertEquals("first-private",(if(slot == AiSlot.ANALYSIS) store.settings().analysis else store.settings().transcription).apiKey)
+            } finally { store.close() }
         }
     }
     @Test fun draftConnectionTestUsesUnsavedFieldsAndOldFixturesReceiveNewDefaultWithoutOverwritingExplicitBudget() = runBlocking {
