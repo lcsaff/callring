@@ -1,5 +1,5 @@
 # 应用更新与发布实施计划（P3）
-状态：实施计划（待批准后按 `executing-plans` 逐项执行）。本文只新增本文件；不切分支、不 `git commit`、不改代码、不运行 Gradle、不执行签名/上传/真实下载。
+状态：可执行计划，2026-10-19。执行按[并行开发计划](2026-10-19-parallel-execution-plan.md)的 S4 工作包；签名、真实下载、覆盖升级与发布演练独立执行。
 
 ## 1. 范围与依赖
 - 设计依据：C（`../specs/2026-10-19-app-update-design.md`）§一/§三–§九；事实依据 D（`../specs/2026-10-19-external-facts-verification.md`）§2/§3；设置入口归属 A（`../specs/2026-10-19-compact-main-ui-design.md`）§6。
@@ -14,10 +14,10 @@
 | 2 | 资产 `callring-0.2.apk` 33,570,356 字节；APK SHA-256 `103bfebcc4ed8d326d5d48e9dc3b3c893a203e897cc62a456598a05c88278772`；`SHA256SUMS.txt` 84 字节 | D §2 |
 | 3 | 发行签名证书 SHA-256 `ac2a448935603a5a42985969732c32109ef4980e8fb435e061d36886cf4062ee`；独立发行密钥，debug 包不可覆盖安装 | C §一.5 |
 | 4 | 线上最高 versionCode 2 / versionName 0.2；本计划定 `0.3.0` / versionCode 3，标签 `v0.3.0` | C §六 |
-| 5 | `app/build.gradle`：applicationId `com.greatwall.callring`、minSdk 29、targetSdk 33、compileSdk 36、versionCode 2、versionName `'0.2'`、`backendQa` 带后缀、无 signingConfigs；app 无任何 `androidx.*` 依赖；Manifest 无 `REQUEST_INSTALL_PACKAGES`/FileProvider，`app/src/main/res/xml/` 已存在 | D §5.25–27 |
+| 5 | `app/build.gradle`：applicationId `com.greatwall.callring`、minSdk 29、targetSdk 33、compileSdk 36、versionCode 2、versionName `'0.2'`、`backendQa` 带后缀、无 signingConfigs；app 无任何 `androidx.*` 依赖；Manifest 无 `REQUEST_INSTALL_PACKAGES`/FileProvider，`app/src/main/res/xml/` 已存在 | D §5 |
 | 6 | 契约默认值模式：`CallringUiApi` 用 `val x: XApi get() = UnavailableXApi`；平台实现在 `BackendGraph` 的 `object : CallringUiApi by backend` 中装配 | `CallringUiApi.kt`、`BackendGraph.kt` |
 | 7 | 设置首页 6 张卡，“系统与支持”仅“运行状态与权限”；`SettingsSummary` 无版本字段；`SettingsPage.entries` 统一生成子页路由 | `SettingsOverviewScreen.kt`、`SettingsRoute.kt`、`UiDestination.kt` |
-| 8 | 速率限制：未认证 60/h、**缺 User-Agent 直接 403**、限流 403 带 `X-RateLimit-*`；`make_latest` 语义见 D §3；无 `.github/`、`tools/` 无发布/签名脚本；后端是 `java-library`，测试任务为 `:backend:test` | D §2/§3/§5.28 |
+| 8 | 速率限制：未认证 60/h、**缺 User-Agent 直接 403**、限流 403 带 `X-RateLimit-*`；`make_latest` 语义见 D §3；无 `.github/`、`tools/` 无发布/签名脚本；后端是 `java-library`，测试任务为 `:backend:test` | D §2/§3/§5 |
 
 门槛结论：S01 只阻塞**签名配置、发布演练与真机覆盖升级**（S02 的 signingConfigs 部分、S11 的签名/发布步骤、S13）；S02 的 `version.properties` 与 Gradle 版本读取、S04–S09 的契约/查询/元数据/下载/校验/更新页实现、S12 的测试都可先做。除 S01、S13 外可并行，两处主收口点（A 的设置入口、B 的 `BackendGraph`）不并行。
 

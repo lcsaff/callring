@@ -1,6 +1,6 @@
 # 主界面与设置即时生效实施计划（P1）
 
-状态：可执行计划，2026-10-19。对应 spec [A](../specs/2026-10-19-compact-main-ui-design.md)（第 2 版）；事实依据 [D](../specs/2026-10-19-external-facts-verification.md) §5；AI 策略细节见 [B](../specs/2026-10-19-ai-request-policy-design.md)，更新页与签名见 [C](../specs/2026-10-19-app-update-design.md)。本计划只写步骤与验收，不含实现代码；不修改 spec、不提交、不切分支。分支：`docs/spec-split-ui-ai-release`。
+状态：可执行计划，2026-10-19。设计见 [A](../specs/2026-10-19-compact-main-ui-design.md)、[B](../specs/2026-10-19-ai-request-policy-design.md)、[C](../specs/2026-10-19-app-update-design.md)；事实见 [D](../specs/2026-10-19-external-facts-verification.md) §4/§5。执行按[并行开发计划](2026-10-19-parallel-execution-plan.md)的 S3 工作包，本文件提供步骤级验收细节。
 
 范围：四个主页面公共布局、档案入口与分页、设置首页拆卡、除 AI 外设置页移除保存并逐字段即时生效、AI/录音表单收口。不涉及：思考模式枚举与请求策略（B）、更新页/下载/签名/发布（C）、记录类表单与首页免打扰弹窗的即时化（A §7.1 例外）、独立 `recording-archives` 路由去留。
 

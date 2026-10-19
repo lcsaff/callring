@@ -203,3 +203,22 @@
 - DeepSeek 思考模式：https://api-docs.deepseek.com/guides/thinking_mode/
 - Qwen 深度思考：https://help.aliyun.com/zh/model-studio/deep-thinking
 - 原始摘录与代码事实：见 D §4、§5。
+
+## 15. 与 AI 工具调用 API 的边界（只扩展、不破坏）
+
+【不变式】本次改造不得改变 AI 工具调用 API 的形状与语义，只允许追加：
+
+1. 工具集合、编号、名称与 `OperationContract` 映射不变（`ToolRegistry.kt`、`OperationContract.kt`），不新增/删除/重命名工具。
+2. 每个工具的入参只允许新增可选项，已有字段一个都不删、含义不变。
+3. 工具返回 JSON 只允许新增字段，已有字段名与类型不变。
+4. 前置确认、授权、回执与错误码语义不变；沿用 `ai.connection_changed` 等既有错误码，不引入需要模型重新理解的新码。
+
+【读取类工具（51/64/66/72）】只新增字段：`AiSettingsView` 增 `thinkingMode`、`thinkingSupport`、`thinkingNotice`；`RecordingSettingsView` 不变。旧调用方忽略新字段即可。
+
+【修改类工具（52/65）】`ai` 入参保留 `?compatibility`（deprecated：接受但只映射为 `thinkingMode=DISABLED`，不再影响解析），新增可选 `?thinkingMode`（`ENABLED`/`DISABLED`）；`patchAi`/`patchCombined` 新参数带默认值，旧调用无需改动。工具层以 `thinkingMode` 为准，`compatibility` 仅兼容。
+
+【不受影响】工具 53 连接测试走 `testSlot`；`testDraft` 只被 UI VM 使用，删除不影响工具。设置"即时生效"只改 UI 调用节奏，不改 backend API 形状。更新功能不进入 `ToolRegistry`，与 AI 调用完全解耦。
+
+【唯一行为变化】`ConversationService` 连接指纹纳入 `thinkingMode`：改开关会取消进行中的会话并返回既有 `ai.connection_changed`。这是会话内部行为，不是工具 API 变更。
+
+【验收】`ToolOperationCoverageTest` 的操作集合与编号逐项不变；新增三条用例：①只发 `compatibility` 的旧调用仍成功且等价于 `thinkingMode=DISABLED`；②只发 `thinkingMode` 成功；③`getAiView`/设置快照返回新增字段且旧字段不变。

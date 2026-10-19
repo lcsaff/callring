@@ -1,11 +1,8 @@
 # AI 思考模式（Qwen / DeepSeek / MiMo × OpenAI / Anthropic）实施计划
 
-> **For agentic workers:** REQUIRED SUB-SKILL: 用 superpowers:subagent-driven-development 或 superpowers:executing-plans 按步执行；每步是一个可独立验证、可单独提交的单元。
-> **Goal:** 在现有 AI 设置与请求链路上增加唯一的“思考模式”开关，按厂商×协议矩阵显式下发关闭/开启参数，开启态按协议回传思考内容，并把旧配置与录音侧安全迁移到策略快照。
-> **Architecture:** 新建纯数据的 `ThinkingPolicy`/`RequestPolicySnapshot` 作为唯一真相，后端派生、客户端只消费；`AiConnection.thinkingMode` 持久化；录音侧通过端口签名改造接入（blocked）。
-> **Tech Stack:** Kotlin 2.3 / Gradle 8.13 / JUnit4 + Robolectric + Compose 测试；不新增依赖。
+技术栈：Kotlin 2.3 / Gradle 8.13 / JUnit4 + Robolectric + Compose 测试；不新增依赖。
 
-状态：待实施（计划作者 plan-thinking，task-5，2026-10-19）。依据 spec B 第 2 版与 D 的证据；本文不重复设计理由，只给可执行步骤。
+状态：可执行计划，2026-10-19。设计依据 [B](../specs/2026-10-19-ai-request-policy-design.md)；执行按[并行开发计划](2026-10-19-parallel-execution-plan.md)的 S1/S2/S3 工作包，本文件提供步骤级验收细节。
 
 ## 1. 范围与依赖
 
@@ -48,7 +45,7 @@
 ## 4. 步骤详述
 
 ### S0 `[已完成]` Anthropic 认证头与端点核对（2026-10-19）
-- 结论（Lead 已核对官方文档，写进 spec B §3 与 D §4）：MiMo Anthropic 端点 `https://api.xiaomimimo.com/anthropic/v1/messages`，认证只文档化 `api-key: $MIMO_API_KEY` 与 `Authorization: Bearer`，**没有 `x-api-key`**；DeepSeek Anthropic 端点 `https://api.deepseek.com/anthropic`（`ANTHROPIC_BASE_URL`），认证头 `x-api-key`，`thinking` 字段受支持且 `budget_tokens` 被忽略。
+- 结论（已核对官方文档，2026-10-19；写进 spec B §3 与 D §4）：MiMo Anthropic 端点 `https://api.xiaomimimo.com/anthropic/v1/messages`，认证只文档化 `api-key: $MIMO_API_KEY` 与 `Authorization: Bearer`，**没有 `x-api-key`**；DeepSeek Anthropic 端点 `https://api.deepseek.com/anthropic`（`ANTHROPIC_BASE_URL`），认证头 `x-api-key`，`thinking` 字段受支持且 `budget_tokens` 被忽略。
 - 影响：S5/S6 必须按厂商选择认证头（MiMo=`api-key`，DeepSeek=`x-api-key`）；两个 Anthropic 组合都保留，不再需要删除组合。
 - 剩余：真实端点调用需要凭据，归 S11；若实测 401，按"改用 OpenAI 协议"回退并在记录中注明。
 
@@ -74,7 +71,7 @@
 - 动作：`SafeProjection` 增 `thinkingMode`/`thinkingSupport`/`thinkingNotice`；`BusinessScopes` 增 `ai:<slot>:thinkingMode`（M1 前暂留 `ai:compatibility`）；`ConversationService` 的 `matches`/指纹用新字段；`ToolRegistry.kt:25` 的 `ai` shape 增 `?thinkingMode`、`ToolExecutor.kt:148,166,203-205` 的 AI 补丁解析、`OperationScopePlanner.kt:40,80` 增加冲突键与复制计划范围（M1 前保留 `?compatibility`）。
 - 涉及文件：`backend/.../SafeProjection.kt`、`BusinessScopes.kt`、`conversation/ToolRegistry.kt`、`ToolExecutor.kt`、`OperationScopePlanner.kt`；测试 `ToolRegistryTest.kt`、`ToolOperationCoverageTest.kt`、`OperationScopePlannerTest.kt`、`DraftMergeTest.kt`。
 - 验收：`.\gradlew.bat :backend:test --tests "com.greatwall.callring.Tool*" --tests "com.greatwall.callring.OperationScopePlannerTest" --tests "com.greatwall.callring.DraftMergeTest"` 全绿；断言 schema 有 `?thinkingMode` 枚举、ai 补丁可写、冲突键包含新键、指纹随开关变化。
-- 完成定义 / 并行：投影/冲突/工具三层都可见新字段；旧 compatibility 仅保留到 M1 / `[并行]`，依赖 S2。
+- 完成定义 / 并行：投影/冲突/工具三层都可见新字段；**工具 API 只扩展**：`?compatibility` 保留为 deprecated（接受即映射 `thinkingMode=DISABLED`），新增可选 `?thinkingMode`，旧调用与新调用都可用 / `[并行]`，依赖 S2。
 
 ### S5 `[并行]` 聊天客户端：参数、认证头、回传、兜底
 - 动作：`encode` 按快照下发——Qwen×OpenAI 顶层 `enable_thinking`（关闭态同时 `preserve_thinking=false`，开启态不发 preserve）；DeepSeek/MiMo×OpenAI 顶层 `thinking:{type:enabled|disabled}`；Anthropic 协议 body 顶层 `thinking` 对象；两态都不发 `temperature/top_p/presence_penalty/frequency_penalty`；Anthropic 认证头按厂商适配（S0 结论）；`decode` 开启态保留 `reasoning_content` 并回传 assistant 历史（DeepSeek 服务端忽略、仍统一回传），Anthropic 按原顺序保留 `thinking`/`redacted_thinking` 块，关闭态保留非空 reasoning 的 `ai.provider_mode_mismatch`；400/未知字段映射 `ai.thinking_parameter_rejected`（不删参、不换模型/协议重试）；未支持组合预检 `ai.thinking_unsupported`；`ExchangeMetrics` 增脱敏 `policy` 诊断，两个既有 requestFlags 布尔键不变。
@@ -89,7 +86,7 @@
 - 完成定义 / 并行：ASR 路径零思考参数（矩阵 #12 的代码级保证）；分析侧关闭态行为不变 / `[并行]`，依赖 S0/S3。
 
 ### S7 `[收口:M1]` UI 开关与错误码（与 A 串行）
-- 动作：按 A §7.6 在“内容分析与沟通”组只放一个“思考模式”开关 + 一行状态说明（可用 / 自定义网关：参数可能不被执行 / 当前模型不支持切换），无供应商/合同/参数文案，默认关；`AiSettingsViewModel` 改单字段即时 patch（携 base 修订号、busy 禁用、冲突刷新并提示“已更新，请重新修改”），删除 save/dirty 草稿与 `testDraft` 契约（连接测试统一走 `testSlot`）；`aiErrorText`/`recordingMessage` 接 `ai.thinking_unsupported`、`ai.thinking_parameter_rejected`、`ai.model_unrecognized` 并改写 `provider_mode_mismatch` 文案；删除“高级兼容”块与 `compatibility` 运行时字段（视图/补丁/请求/工具 schema/投影/冲突键/服务映射），同步 `AiRoutes` 参数与 Debug 设备测试。
+- 动作：按 A §7.6 在“内容分析与沟通”组只放一个“思考模式”开关 + 一行状态说明（可用 / 自定义网关：参数可能不被执行 / 当前模型不支持切换），无供应商/合同/参数文案，默认关；`AiSettingsViewModel` 改单字段即时 patch（携 base 修订号、busy 禁用、冲突刷新并提示“已更新，请重新修改”），删除 save/dirty 草稿与 `testDraft` 契约（连接测试统一走 `testSlot`）；`aiErrorText`/`recordingMessage` 接 `ai.thinking_unsupported`、`ai.thinking_parameter_rejected`、`ai.model_unrecognized` 并改写 `provider_mode_mismatch` 文案；删除“高级兼容”UI 块与 `compatibility` 的运行时解析作用，但**保留 API/工具字段**：`AiSettingsView`/`ConnectionPatch`/`AiSettingsPatch` 与工具 schema 保留 `compatibility`（deprecated，接受即映射 `thinkingMode=DISABLED`），新增 `thinkingMode`；同步 `AiRoutes` 参数与 Debug 设备测试。
 - 涉及文件：`ui/.../feature/ai/AiSettingsScreen.kt`、`AiSettingsViewModel.kt`、`ui/.../feature/recording/RecordingScreens.kt`、`RecordingViewModels.kt`、`ui/.../app/AiRoutes.kt`、`ui/src/sharedTest/.../UiFakeApi.kt`（M4）；改造 `AiCompatibilityUiTest`/`AiCompatibilityComposeTest`，新增思考开关/单字段 patch 测试（放 `ui/src/test/.../feature/ai/`，与 P1 S13 的 AI VM 测试目录一致）。
 - 验收：`.\gradlew.bat :ui:testDebugUnitTest` 全绿；断言仅一个开关、无供应商/参数文案、三种禁用原因各一行、切换即 patch（其他字段 `Keep`）、冲突不覆盖、错误码命中文案。
 - 完成定义 / 并行：A 的布局与 P2 语义同提交合入，旧兼容块与草稿保存彻底消失；本步是**收口步骤，与 A 串行**（`[收口:M1]`），Wave 1 不得提交，由 M1 owner 一次合并。
