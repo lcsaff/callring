@@ -1,8 +1,8 @@
 {
   "apk": "C:\\Users\\GreatWall\\.codex\\worktrees\\6b22\\callring\\app\\build\\outputs\\apk\\debug\\app-debug.apk",
-  "sha256": "a4fc371b381a55df4849e66e603e6ccfa8986e8e88f4b6726095c6811ea67a84",
+  "sha256": "458956257afc7c89524fbc41680fff091da95a189f266f4c3c32cba5de485081",
   "bytes": 49080134,
   "package": "com.greatwall.callring",
   "device": "192.168.10.149:5555",
-  "git": "6e0e89ea7290a0cac26d2f3ee43264e91ddaacec"
+  "git": "d2823ea32eeb79c6fde1538726c1dbd39b18b9f6"
 }
