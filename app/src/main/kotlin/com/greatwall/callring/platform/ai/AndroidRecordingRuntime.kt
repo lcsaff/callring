@@ -44,12 +44,14 @@ class AndroidRecordingRuntime(
     val workflow by lazy { RecordingWorkflow(store, AndroidAudioTranscriber(client, File(context.cacheDir, namespace + "_ai_audio"))) }
     private var player: MediaPlayer? = null
     private val playbackGeneration = AtomicLong()
+    private var playbackCallId:Long?=null
     private val filesLock = Any()
     fun folderAccess(): AccessState {
         val folder = store.settings().systemFolder ?: return AccessState.NOT_REQUIRED
         return if(context.contentResolver.persistedUriPermissions.any { it.uri.toString() == folder && it.isReadPermission }) AccessState.GRANTED else AccessState.DENIED
     }
     fun playbackStatus(): PlaybackStatus = synchronized(filesLock) { PlaybackStatus(if(player == null) PlaybackMode.NONE else PlaybackMode.PREVIEW, if(player?.isPlaying == true) PlaybackState.PLAYING else PlaybackState.IDLE) }
+    fun playbackSnapshot():AiJson.Obj=synchronized(filesLock){aiObject("mode" to aiString(if(player==null)"NONE"else"PREVIEW"),"state" to aiString(if(player?.isPlaying==true)"PLAYING"else"IDLE"),"callId" to (playbackCallId?.let(::aiNumber)?:AiJson.Null))}
 
     private suspend fun <T> result(block: () -> T): ApiResult<T> = withContext(Dispatchers.IO) {
         try { ApiResult.Success(block()) }
@@ -207,14 +209,14 @@ class AndroidRecordingRuntime(
                     stopPlayer()
                     next.setOnCompletionListener { finishPlayback(it) }
                     next.setOnErrorListener { mp, _, _ -> finishPlayback(mp); true }
-                    next.start(); player = next
+                    next.start(); player = next;playbackCallId=callId
                     coordinator.changed("recording"); coordinator.record(command)
                 } }
             } catch (failure: Exception) { next.release(); throw failure }
         }
     }
     private fun finishPlayback(value: MediaPlayer) { val changed = synchronized(filesLock) { if(player === value) { stopPlayer(); true } else false }; if(changed) coordinator.changed("recording") }
-    private fun stopPlayer() { player?.release(); player = null }
+    private fun stopPlayer() { player?.release(); player = null;playbackCallId=null }
     override suspend fun stop(): ApiResult<Unit> = stopWith(null)
     private suspend fun stopWith(command: CommandContext?) = result { coordinator.guard(command) {
         playbackGeneration.incrementAndGet()

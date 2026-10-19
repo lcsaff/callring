@@ -85,7 +85,7 @@ class BackendGraph(
 
     private val documents by lazy {
         ensureOpen()
-        AndroidDocumentStore(application.contentResolver)
+        com.greatwall.callring.application.ReadbackDocumentStore(AndroidDocumentStore(application.contentResolver))
     }
     val syncScheduler by lazy {
         ensureOpen()
@@ -139,7 +139,7 @@ class BackendGraph(
     /** Safe aggregate counters; reading them neither opens a store nor probes platform state. */
     fun businessReadCounters():Map<String,Long> = mapOf("coreStateLoads" to store.stateLoadCount(),"completeCaptures" to store.completeCaptures.get(),"sourceQueries" to if(queriesDelegate.isInitialized())queries.sourceQueries.get()else 0L,"classifications" to com.greatwall.callring.domain.WorkClassifier.evaluations.get(),"runtimeProbes" to AndroidRuntimeProbe.observations.get())
     private val snapshotsDelegate = lazy { ensureOpen(); completeSnapshotApi(backend, recordings, diagnostics, coordinator, resources, configuration.clock) }
-    private val conversationDelegate = lazy { ensureOpen(); ConversationService({ api }, queries, { recordings.store.settings() }, coordinator, { CompatibleConversationClient() }, resources = resources) }
+    private val conversationDelegate = lazy { ensureOpen(); ConversationService({ api }, queries, { recordings.store.settings() }, coordinator, { CompatibleConversationClient() }, resources = resources,documentWriteVerified={documents.verifyWrite(it)}) }
     private val apiDelegate by lazy {
         object : CallringUiApi by backend {
             override val recordings: RecordingApi get() = this@BackendGraph.recordings

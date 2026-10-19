@@ -40,7 +40,7 @@ fun scopedQueryApi(core:ScopedReadPort,recordings:()->AndroidRecordingRuntime,ap
                 AiDomain.D12->aiObject("settings" to runBlocking{safeValue(api().ringtone.getSettings().requiredValue())},"playback" to safeValue(playback()))
                 AiDomain.D13->runBlocking{safeValue(recordings().aiSettings.getRecordingView().requiredValue())}
                 AiDomain.D14->runBlocking{safeValue(recordings().aiSettings.getAiView().requiredValue())}
-                AiDomain.D19->aiObject("runtime" to runBlocking{safeValue(api().runtime.getStatus().requiredValue())},"recordingPlayback" to safeValue(recordings().playbackStatus()),"processing" to recordings().workflow.activitySnapshot(),"scheduledJobs" to jobs())
+                AiDomain.D19->aiObject("runtime" to runBlocking{safeValue(api().runtime.getStatus().requiredValue())},"recordingPlayback" to recordings().playbackSnapshot(),"processing" to recordings().workflow.activitySnapshot(),"scheduledJobs" to jobs())
                 else->error("ai.query_not_implemented")
             }
             sequenceOf(SourceRow("current",value as AiJson.Obj))

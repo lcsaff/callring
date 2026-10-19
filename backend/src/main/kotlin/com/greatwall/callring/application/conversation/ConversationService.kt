@@ -16,6 +16,7 @@ class ConversationService(
     private val clientFactory:()->ConversationClient,
     private val scope:CoroutineScope=CoroutineScope(SupervisorJob()+Dispatchers.Default),
     val resources:ForegroundResourceRegistry=ForegroundResourceRegistry(),
+    documentWriteVerified:suspend(DocumentRef)->Boolean={false},
 ):ConversationApi,AutoCloseable {
     private val lock=Any()
     override val state=MutableStateFlow(ConversationState(UUID.randomUUID().toString()))
@@ -28,7 +29,7 @@ class ConversationService(
     @Volatile private var fingerprint=""
     private data class Continuation(val engine:ToolBatchEngine,val fingerprint:String,val session:String)
     private var continuation:Continuation?=null
-    private val executor=ToolExecutor(api,coordinator,foreground,resources,queries=queries)
+    private val executor=ToolExecutor(api,coordinator,foreground,resources,queries=queries,documentWriteVerified=documentWriteVerified)
     private val monitor=scope.launch {
         coordinator.changes.collect {
             if(state.value.busy&&fingerprint.isNotEmpty()&&runCatching{connectionFingerprint(settings())!=fingerprint}.getOrDefault(true)) {

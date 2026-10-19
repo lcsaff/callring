@@ -1,0 +1,15 @@
+
+com.greatwall.callring.RealAiConversationDeviceTest:AI_V2 typing:你好
+AI_V2 round:COMPLETED:requests=1:queries=0
+AI_V2 typing:添加 10 个随机号码档案
+AI_V2 round:COMPLETED:requests=4:queries=40
+AI_V2 typing:修改深色模式
+AI_V2 round:COMPLETED:requests=5:queries=3
+AI_V2 formal-model-and-activity-passed
+.
+Test results for InstrumentationTestRunner=.
+Time: 89.824
+
+OK (1 test)
+
+

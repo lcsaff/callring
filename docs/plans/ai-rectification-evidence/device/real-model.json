@@ -1,0 +1,390 @@
+{
+  "package": "com.greatwall.callring",
+  "model": "qwen3.8-flash",
+  "protocol": "OPENAI",
+  "resolvedProfile": "QWEN_FAST",
+  "startedAt": 1792390984739,
+  "realClient": true,
+  "idle": {
+    "prompt": "你好",
+    "phase": "COMPLETED",
+    "modelRequests": 1,
+    "sourceQueries": 0,
+    "work": 0,
+    "outcome": {
+      "plans": [],
+      "verifiedWrites": 0,
+      "committedUnverified": 0,
+      "unknown": 0,
+      "complete": true,
+      "work": 0
+    },
+    "error": null,
+    "errorKind": null,
+    "exchanges": [
+      {
+        "requestBytes": 4023,
+        "responseBytes": 412,
+        "httpStatus": 200,
+        "profile": "QWEN_FAST",
+        "elapsedMillis": 2384,
+        "requestFlags": {
+          "enable_thinking": false,
+          "preserve_thinking": false
+        },
+        "finishReason": "stop",
+        "usage": {
+          "input": 1027,
+          "output": 9,
+          "total": 1036,
+          "cachedInput": 0,
+          "cacheWriteInput": null,
+          "reasoningOutput": null
+        },
+        "failure": null
+      }
+    ],
+    "schemaVersion": 2,
+    "schemaCount": null,
+    "contextMessages": null
+  },
+  "idleCounterDelta": {
+    "coreStateLoads": 0,
+    "completeCaptures": 0,
+    "sourceQueries": 0,
+    "classifications": 0,
+    "runtimeProbes": 0
+  },
+  "creation": {
+    "prompt": "添加 10 个随机号码档案",
+    "phase": "COMPLETED",
+    "modelRequests": 4,
+    "sourceQueries": 40,
+    "work": 52,
+    "outcome": {
+      "plans": [
+        {
+          "taskId": "be98424f-9a1d-47ba-af60-8e561aca0619",
+          "kind": "CREATE_PROFILES",
+          "userMessageRef": "80f4a571-8845-443f-b8c2-a2a2c52340ca",
+          "expectedCount": 10,
+          "targets": [],
+          "verifiedCount": 10,
+          "satisfied": true
+        }
+      ],
+      "verifiedWrites": 10,
+      "committedUnverified": 0,
+      "unknown": 0,
+      "complete": true,
+      "work": 52
+    },
+    "error": null,
+    "errorKind": null,
+    "exchanges": [
+      {
+        "requestBytes": 4384,
+        "responseBytes": 578,
+        "httpStatus": 200,
+        "profile": "QWEN_FAST",
+        "elapsedMillis": 2094,
+        "requestFlags": {
+          "enable_thinking": false,
+          "preserve_thinking": false
+        },
+        "finishReason": "tool_calls",
+        "usage": {
+          "input": 1104,
+          "output": 36,
+          "total": 1140,
+          "cachedInput": 0,
+          "cacheWriteInput": null,
+          "reasoningOutput": null
+        },
+        "failure": null
+      },
+      {
+        "requestBytes": 7569,
+        "responseBytes": 562,
+        "httpStatus": 200,
+        "profile": "QWEN_FAST",
+        "elapsedMillis": 1349,
+        "requestFlags": {
+          "enable_thinking": false,
+          "preserve_thinking": false
+        },
+        "finishReason": "tool_calls",
+        "usage": {
+          "input": 1876,
+          "output": 42,
+          "total": 1918,
+          "cachedInput": 0,
+          "cacheWriteInput": null,
+          "reasoningOutput": null
+        },
+        "failure": null
+      },
+      {
+        "requestBytes": 8484,
+        "responseBytes": 1223,
+        "httpStatus": 200,
+        "profile": "QWEN_FAST",
+        "elapsedMillis": 4970,
+        "requestFlags": {
+          "enable_thinking": false,
+          "preserve_thinking": false
+        },
+        "finishReason": "tool_calls",
+        "usage": {
+          "input": 2214,
+          "output": 331,
+          "total": 2545,
+          "cachedInput": 1024,
+          "cacheWriteInput": null,
+          "reasoningOutput": null
+        },
+        "failure": null
+      },
+      {
+        "requestBytes": 18282,
+        "responseBytes": 1237,
+        "httpStatus": 200,
+        "profile": "QWEN_FAST",
+        "elapsedMillis": 7105,
+        "requestFlags": {
+          "enable_thinking": false,
+          "preserve_thinking": false
+        },
+        "finishReason": "stop",
+        "usage": {
+          "input": 5371,
+          "output": 365,
+          "total": 5736,
+          "cachedInput": 1024,
+          "cacheWriteInput": null,
+          "reasoningOutput": null
+        },
+        "failure": null
+      }
+    ],
+    "schemaVersion": 2,
+    "schemaCount": null,
+    "contextMessages": null
+  },
+  "existingProfilesUnchanged": true,
+  "newCount": 10,
+  "theme": {
+    "prompt": "修改深色模式",
+    "phase": "COMPLETED",
+    "modelRequests": 5,
+    "sourceQueries": 3,
+    "work": 7,
+    "outcome": {
+      "plans": [
+        {
+          "taskId": "a1cc6100-140b-440f-bcf1-e8683a4fae40",
+          "kind": "SET_APPEARANCE",
+          "userMessageRef": "21ee3988-28ab-4a52-bdfc-1022de258e0d",
+          "expectedCount": 1,
+          "targets": [],
+          "verifiedCount": 1,
+          "satisfied": true
+        }
+      ],
+      "verifiedWrites": 1,
+      "committedUnverified": 0,
+      "unknown": 0,
+      "complete": true,
+      "work": 7
+    },
+    "error": null,
+    "errorKind": null,
+    "exchanges": [
+      {
+        "requestBytes": 5793,
+        "responseBytes": 590,
+        "httpStatus": 200,
+        "profile": "QWEN_FAST",
+        "elapsedMillis": 1423,
+        "requestFlags": {
+          "enable_thinking": false,
+          "preserve_thinking": false
+        },
+        "finishReason": "tool_calls",
+        "usage": {
+          "input": 1635,
+          "output": 39,
+          "total": 1674,
+          "cachedInput": 1024,
+          "cacheWriteInput": null,
+          "reasoningOutput": null
+        },
+        "failure": null
+      },
+      {
+        "requestBytes": 6413,
+        "responseBytes": 581,
+        "httpStatus": 200,
+        "profile": "QWEN_FAST",
+        "elapsedMillis": 1309,
+        "requestFlags": {
+          "enable_thinking": false,
+          "preserve_thinking": false
+        },
+        "finishReason": "tool_calls",
+        "usage": {
+          "input": 1799,
+          "output": 32,
+          "total": 1831,
+          "cachedInput": 0,
+          "cacheWriteInput": null,
+          "reasoningOutput": null
+        },
+        "failure": null
+      },
+      {
+        "requestBytes": 11129,
+        "responseBytes": 520,
+        "httpStatus": 200,
+        "profile": "QWEN_FAST",
+        "elapsedMillis": 848,
+        "requestFlags": {
+          "enable_thinking": false,
+          "preserve_thinking": false
+        },
+        "finishReason": "tool_calls",
+        "usage": {
+          "input": 3002,
+          "output": 14,
+          "total": 3016,
+          "cachedInput": 0,
+          "cacheWriteInput": null,
+          "reasoningOutput": null
+        },
+        "failure": null
+      },
+      {
+        "requestBytes": 11957,
+        "responseBytes": 547,
+        "httpStatus": 200,
+        "profile": "QWEN_FAST",
+        "elapsedMillis": 619,
+        "requestFlags": {
+          "enable_thinking": false,
+          "preserve_thinking": false
+        },
+        "finishReason": "tool_calls",
+        "usage": {
+          "input": 3221,
+          "output": 27,
+          "total": 3248,
+          "cachedInput": 1024,
+          "cacheWriteInput": null,
+          "reasoningOutput": null
+        },
+        "failure": null
+      },
+      {
+        "requestBytes": 13126,
+        "responseBytes": 892,
+        "httpStatus": 200,
+        "profile": "QWEN_FAST",
+        "elapsedMillis": 3071,
+        "requestFlags": {
+          "enable_thinking": false,
+          "preserve_thinking": false
+        },
+        "finishReason": "stop",
+        "usage": {
+          "input": 3572,
+          "output": 155,
+          "total": 3727,
+          "cachedInput": 1024,
+          "cacheWriteInput": null,
+          "reasoningOutput": null
+        },
+        "failure": null
+      }
+    ],
+    "schemaVersion": 2,
+    "schemaCount": null,
+    "contextMessages": null
+  },
+  "themeAfter": "DARK",
+  "result": "passed",
+  "endedAt": 1792391074452,
+  "schemaVersion": 2,
+  "profileChecks": [
+    {
+      "step": 1,
+      "legal": true,
+      "syntheticName": true,
+      "uniqueNewTarget": true,
+      "verifiedFields": true
+    },
+    {
+      "step": 2,
+      "legal": true,
+      "syntheticName": true,
+      "uniqueNewTarget": true,
+      "verifiedFields": true
+    },
+    {
+      "step": 3,
+      "legal": true,
+      "syntheticName": true,
+      "uniqueNewTarget": true,
+      "verifiedFields": true
+    },
+    {
+      "step": 4,
+      "legal": true,
+      "syntheticName": true,
+      "uniqueNewTarget": true,
+      "verifiedFields": true
+    },
+    {
+      "step": 5,
+      "legal": true,
+      "syntheticName": true,
+      "uniqueNewTarget": true,
+      "verifiedFields": true
+    },
+    {
+      "step": 6,
+      "legal": true,
+      "syntheticName": true,
+      "uniqueNewTarget": true,
+      "verifiedFields": true
+    },
+    {
+      "step": 7,
+      "legal": true,
+      "syntheticName": true,
+      "uniqueNewTarget": true,
+      "verifiedFields": true
+    },
+    {
+      "step": 8,
+      "legal": true,
+      "syntheticName": true,
+      "uniqueNewTarget": true,
+      "verifiedFields": true
+    },
+    {
+      "step": 9,
+      "legal": true,
+      "syntheticName": true,
+      "uniqueNewTarget": true,
+      "verifiedFields": true
+    },
+    {
+      "step": 10,
+      "legal": true,
+      "syntheticName": true,
+      "uniqueNewTarget": true,
+      "verifiedFields": true
+    }
+  ],
+  "evidenceNote": "This run captured aggregate verified receipts; per-step receipt IDs and schema/history counts were not exported. Profile values remain only in the app-local restart journal and controlled UI screenshots."
+}

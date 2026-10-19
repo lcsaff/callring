@@ -44,4 +44,47 @@ class ArchiveProjectionMigrationTest {
             assertEquals(transcript,result.toString())
         }
     }
+    private fun legacy(namespace:String,payload:String):java.io.File {
+        val context=RuntimeEnvironment.getApplication();val path=context.getDatabasePath(namespace+"_recording.db");path.parentFile!!.mkdirs()
+        SQLiteDatabase.openOrCreateDatabase(path,null).use{db->
+            db.execSQL("CREATE TABLE archives(call_id INTEGER PRIMARY KEY,generation INTEGER NOT NULL,payload TEXT NOT NULL)")
+            db.execSQL("CREATE TABLE deleted_archives(call_id INTEGER PRIMARY KEY)")
+            db.execSQL("CREATE TABLE recording_events(id INTEGER PRIMARY KEY,session_id TEXT,number TEXT,started INTEGER,account TEXT)")
+            db.execSQL("CREATE TABLE recording_statistics_links(statistics_id INTEGER PRIMARY KEY,session_id TEXT)")
+            db.execSQL("INSERT INTO archives VALUES(-1,1,?)",arrayOf<Any>(payload));db.version=2
+        };return path
+    }
+    @Test fun corruptPayloadIsRetainedAndNeverPublishedAsEmptySuccess()=runBlocking {
+        val namespace="corrupt_legacy";val payload="{broken-json";val path=legacy(namespace,payload)
+        AndroidRecordingStore(RuntimeEnvironment.getApplication(),namespace,cipher).use{store->
+            val result=QueryService(listOf(store.scopedReads())).query(QuerySpec(AiDomain.D16))
+            assertTrue(result is ApiResult.Failure)
+        }
+        SQLiteDatabase.openDatabase(path.path,null,SQLiteDatabase.OPEN_READONLY).use{db->
+            assertEquals(payload,android.database.DatabaseUtils.stringForQuery(db,"SELECT payload FROM archives",null))
+            assertEquals(0L,android.database.DatabaseUtils.longForQuery(db,"SELECT count(*) FROM archive_projection",null))
+        }
+    }
+    @Test fun interruptedContinuationRetainsCommittedCheckpointAndReopensWithoutHalfRecord() {
+        val namespace="interrupted_legacy";val transcript="tail-safe".repeat(20000)
+        val payload=RecordingJson.archive(CallArchive(-1,"999",1,generation=1,transcript=transcript)).toString()
+        val path=legacy(namespace,payload)
+        // Open once through the real upgrade path, then interrupt the next bounded index operation.
+        AndroidRecordingStore(RuntimeEnvironment.getApplication(),namespace,cipher).use{it.scopedReads()}
+        SQLiteDatabase.openDatabase(path.path,null,SQLiteDatabase.OPEN_READWRITE).use{db->
+            val index=ArchiveProjectionIndex(db);assertFalse(index.advance(-1,1,32768).complete)
+            val before=android.database.DatabaseUtils.longForQuery(db,"SELECT raw_offset FROM archive_index_progress",null)
+            Thread.currentThread().interrupt()
+            try{index.advance(-1,1,32768);fail("interruption must stop migration")}catch(_:java.util.concurrent.CancellationException){}finally{Thread.interrupted()}
+            assertEquals(before,android.database.DatabaseUtils.longForQuery(db,"SELECT raw_offset FROM archive_index_progress",null))
+            assertEquals(0L,android.database.DatabaseUtils.longForQuery(db,"SELECT count(*) FROM archive_projection",null))
+            assertEquals(payload,android.database.DatabaseUtils.stringForQuery(db,"SELECT payload FROM archives",null))
+        }
+        SQLiteDatabase.openDatabase(path.path,null,SQLiteDatabase.OPEN_READWRITE).use{db->
+            assertTrue(ArchiveProjectionIndex(db).advance(-1,1,1024*1024).complete)
+            assertEquals(transcript.codePointCount(0,transcript.length).toLong(),android.database.DatabaseUtils.longForQuery(db,"SELECT total FROM archive_text_fields WHERE field='transcript'",null))
+            assertEquals(payload,android.database.DatabaseUtils.stringForQuery(db,"SELECT payload FROM archives",null))
+        }
+    }
+
 }

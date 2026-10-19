@@ -62,4 +62,18 @@ class ReceiptVerifierTest {
         val r=ReceiptVerifier(QueryService(emptyList())).verify(37,ConversationToolCall("c","settings_saveAppearance",aiObject("colorMode" to aiString("DARK"))),ToolReceipt("op","c",ToolStatus.COMMITTED,noOp=true))
         assertEquals(ToolStatus.FAILED,r.status);assertEquals(VerificationStatus.FAILED,r.verification);assertNull(r.commitRevision)
     }
+    @Test fun exportNeedsActualFileReadbackAndPlaybackNeedsExactTarget()=runBlocking {
+        val q=queries(aiObject("recordingPlayback" to aiObject("mode" to aiString("PREVIEW"),"state" to aiString("PLAYING"),"callId" to aiNumber(12))))
+        val verifier=ReceiptVerifier(q)
+        val file=ToolReceipt("op","c",ToolStatus.COMMITTED,verificationEvidence=AiJson.Arr(listOf(aiObject("documentReadback" to aiBool(true)))))
+        assertEquals(VerificationStatus.VERIFIED,verifier.verify(10,ConversationToolCall("c","reports_exportCsv",aiObject()),file).verification)
+        assertEquals(VerificationStatus.COMMITTED_UNVERIFIED,verifier.verify(10,ConversationToolCall("c","reports_exportCsv",aiObject()),file.copy(verificationEvidence=AiJson.Null)).verification)
+        val played=ToolReceipt("op","c",ToolStatus.COMMITTED,commitRevision=RevisionVector("test",emptyMap()))
+        assertEquals(VerificationStatus.VERIFIED,verifier.verify(58,ConversationToolCall("c","recordings_play",aiObject("callId" to aiNumber(12))),played).verification)
+        assertEquals(VerificationStatus.COMMITTED_UNVERIFIED,verifier.verify(58,ConversationToolCall("c","recordings_play",aiObject("callId" to aiNumber(13))),played).verification)
+        assertEquals(VerificationStatus.COMMITTED_UNVERIFIED,verifier.verify(59,ConversationToolCall("c","recordings_stop",aiObject()),played).verification)
+        val stopped=ReceiptVerifier(queries(aiObject("recordingPlayback" to aiObject("mode" to aiString("NONE"),"state" to aiString("IDLE"),"callId" to AiJson.Null))))
+        assertEquals(VerificationStatus.VERIFIED,stopped.verify(59,ConversationToolCall("c","recordings_stop",aiObject()),played).verification)
+    }
+
 }

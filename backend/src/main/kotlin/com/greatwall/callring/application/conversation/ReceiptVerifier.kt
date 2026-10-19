@@ -12,7 +12,8 @@ class ReceiptVerifier(private val q:QueryService) {
         if(receipt.status!=ToolStatus.COMMITTED)return receipt
         val saved=q.snapshotObservations()
         val foregroundProof=(receipt.verificationEvidence as? AiJson.Arr)?.values.orEmpty().filter{it is AiJson.Obj&&it["foregroundAction"] is AiJson.Str}
-        val evidence=foregroundProof.toMutableList()
+        val documentProof=(receipt.verificationEvidence as? AiJson.Arr)?.values.orEmpty().filter{it is AiJson.Obj&&it["documentReadback"]==aiBool(true)}
+        val evidence=(foregroundProof+documentProof).toMutableList()
         suspend fun get(d:AiDomain,key:String="current",p:String="default"):AiJson.Obj {
             val v=q.get(d,key,p).requiredValue();evidence+=aiObject("value" to v.value,"stamp" to v.stamp.json());return v.value
         }
@@ -30,6 +31,7 @@ class ReceiptVerifier(private val q:QueryService) {
             val matches=when(index) {
                 7->{val v=get(AiDomain.D01,a.s("number"));sameValue(v["stored"],aiBool(true))&&compare(v,aliases=mapOf("positionId" to "position_id"))}
                 8->compare(get(AiDomain.D01,a.s("number")),aiObject("number" to a["number"],"whitelisted" to a["enabled"]))
+                10->documentProof.isNotEmpty()
                 12->sameValue(get(AiDomain.D10,"configuration")["statisticsEnabled"],a["enabled"])
                 13->sameValue(get(AiDomain.D10,"configuration")["overlay"],a["enabled"])
                 15->compare(get(AiDomain.D10,"configuration"),aliases=mapOf("mode" to "quiet_mode","allNumbers" to "all_numbers","weeklyWindows" to "quiet_windows"))
@@ -54,6 +56,8 @@ class ReceiptVerifier(private val q:QueryService) {
                 52->{val r=a.optObj("recording");val ai=a.optObj("ai");(r==null||compare(get(AiDomain.D13),r))&&(ai==null||compareAi(get(AiDomain.D14),ai))}
                 55->{val v=get(AiDomain.D16,a.l("callId").toString());sameValue(v["audioPresent"],aiBool(true))&&v["generation"]==receiptObject()["generation"]}
                 57->absent(AiDomain.D16,a.l("callId").toString())
+                58->{val v=get(AiDomain.D19)["recordingPlayback"] as? AiJson.Obj;v!=null&&v["state"]==aiString("PLAYING")&&sameValue(v["callId"],a["callId"])}
+                59->{val v=get(AiDomain.D19)["recordingPlayback"] as? AiJson.Obj;v!=null&&v["mode"]==aiString("NONE")&&v["state"]==aiString("IDLE")&&v["callId"]==AiJson.Null}
                 60->sameValue(get(AiDomain.D13)["folderConfigured"],aiBool(true))
                 63->{val archive=get(AiDomain.D16,a.l("callId").toString());val analysis=archive["analysis"] as? AiJson.Obj;val n=archive.s("number");val profile=get(AiDomain.D01,n);analysis!=null&&compare(profile,aiObject("name" to analysis["name"],"department" to analysis["organization"]))}
                 65->compareAi(get(AiDomain.D14),a)
@@ -62,7 +66,7 @@ class ReceiptVerifier(private val q:QueryService) {
                 else->false
             }
             val proof=AiJson.Arr(evidence)
-            val actualExternalReceipt=index==67&&foregroundProof.any{it is AiJson.Obj&&it["foregroundAction"]==aiString("CAPABILITY")&&it["result"]==aiString("VERIFIED")}
+            val actualExternalReceipt=(index==10&&documentProof.isNotEmpty())||(index==67&&foregroundProof.any{it is AiJson.Obj&&it["foregroundAction"]==aiString("CAPABILITY")&&it["result"]==aiString("VERIFIED")})
             if(!matches&&receipt.noOp)return receipt.copy(status=ToolStatus.FAILED,verification=VerificationStatus.FAILED,error=ApiError(ErrorCode.CONFLICT,"business.changed"),verificationEvidence=proof)
             return if(matches&&(receipt.commitRevision!=null||receipt.noOp||actualExternalReceipt))receipt.copy(verification=VerificationStatus.VERIFIED,noOp=receipt.noOp||(before!=null&&before==proof),verificationEvidence=proof)
                 else receipt.copy(verification=VerificationStatus.COMMITTED_UNVERIFIED,error=receipt.error?:ApiError(ErrorCode.IO_FAILURE,"ai.readback_mismatch"),verificationEvidence=proof)

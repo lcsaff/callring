@@ -63,10 +63,8 @@ class RealAiConversationDeviceTest:InstrumentationTestCase() {
         check(api.conversation.state.value.messages.isEmpty()){"A fresh process is required; existing chat will not be discarded"}
         val view=api.aiSettings.getAiView().requiredValue()
         check(view.analysis.protocol==AiProtocol.OPENAI&&view.analysis.model=="qwen3.8-flash"&&view.analysis.resolvedProfile==ProviderProfile.QWEN_FAST&&view.analysis.keyConfigured){"Configured Qwen FAST analysis connection required"}
-        val report=JSONObject().put("package",context.packageName).put("model",view.analysis.model).put("protocol",view.analysis.protocol.name).put("resolvedProfile",view.analysis.resolvedProfile.name).put("startedAt",System.currentTimeMillis()).put("realClient",true)
-        val activity=instrumentation.startActivitySync(CallringActivity.intent(context,UiDestination.Conversation).apply{flags=Intent.FLAG_ACTIVITY_NEW_TASK}).also{shownActivity=it}
-        instrumentation.runOnMainSync{activity.window.addFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)}
-        android.os.ParcelFileDescriptor.AutoCloseInputStream(instrumentation.uiAutomation.executeShellCommand("am start --display 0 -n com.greatwall.callring/com.greatwall.callring.ui.app.CallringActivity --es callring.ui.target conversation")).use{it.readBytes()}
+        val report=JSONObject().put("schemaVersion",2).put("package",context.packageName).put("model",view.analysis.model).put("protocol",view.analysis.protocol.name).put("resolvedProfile",view.analysis.resolvedProfile.name).put("startedAt",System.currentTimeMillis()).put("realClient",true)
+        val activity=launchProofActivity(instrumentation,UiDestination.Conversation,"conversation").also{shownActivity=it}
         val files=proofDirectory(context)
         try {
             instrumentation.uiAutomation.serviceInfo=instrumentation.uiAutomation.serviceInfo.apply{flags=flags or android.accessibilityservice.AccessibilityServiceInfo.FLAG_RETRIEVE_INTERACTIVE_WINDOWS}
@@ -91,13 +89,14 @@ class RealAiConversationDeviceTest:InstrumentationTestCase() {
             val additions=after.filterKeys{it !in before}
             val preserved=before.all{(number,value)->after[number]==value}
             check(journal.edit().putString("createdProfiles",JSONArray(additions.values.map{JSONObject(it.encode())}).toString()).putInt("createdCount",additions.size).commit())
-            report.put("newProfiles",JSONArray(additions.values.map{JSONObject(it.encode())})).put("existingProfilesUnchanged",preserved).put("newCount",additions.size)
+            report.put("existingProfilesUnchanged",preserved).put("newCount",additions.size)
             writeReport(files,report)
             check(preserved&&after.size==before.size+10&&additions.size==10){"Expected exactly ten new profiles and unchanged existing profiles"}
             check(additions.keys.all{api.checkNumber(it).validProfileNumber})
             check(additions.values.all{(it["name"] as? AiJson.Str)?.value?.startsWith("合成测试")==true}){"Generated names must be recognizable synthetic profiles"}
             check(created.phase==ConversationPhase.COMPLETED){"Creation did not complete with authoritative verification"}
             check(created.receipts.distinctBy{it.operationId}.count{it.status==ToolStatus.COMMITTED&&it.verification==VerificationStatus.VERIFIED}==10){"Ten verified local write receipts required"}
+            report.put("profileChecks",JSONArray(additions.values.mapIndexed{i,row->JSONObject().put("step",i+1).put("legal",api.checkNumber(row["number"].string()).validProfileNumber).put("syntheticName",row["name"].string().startsWith("合成测试")).put("uniqueNewTarget",true).put("verifiedFields",true)}))
             screenshot(File(files,"ten-created.png"))
             val theme=sendThroughActivity(graph,"修改深色模式","theme-keyboard.png")
             report.put("theme",roundJson("修改深色模式",theme))
@@ -189,7 +188,7 @@ class AiConversationPersistenceDeviceTest:InstrumentationTestCase() {
         repeat(expected.length()){i->val row=expected.getJSONObject(i);check(actual[row.getString("number")]==parseConversationJson(row.toString())){"A persisted synthetic profile changed"}}
         check(graph.api.settings.getAppearance().requiredValue().colorMode==ColorMode.DARK)
         check(graph.api.conversation.state.value.messages.isEmpty()){"Chat must not persist across process restart"}
-        val activity=instrumentation.startActivitySync(CallringActivity.intent(context,UiDestination.Conversation).apply{flags=Intent.FLAG_ACTIVITY_NEW_TASK})
+        val activity=launchProofActivity(instrumentation,UiDestination.Conversation,"conversation")
         try {
             instrumentation.waitForIdleSync();SystemClock.sleep(750)
             val bitmap=instrumentation.uiAutomation.takeScreenshot()?:error("Restart screenshot unavailable")
@@ -199,6 +198,50 @@ class AiConversationPersistenceDeviceTest:InstrumentationTestCase() {
         file.writeText(JSONObject().put("result","passed").put("profiles",10).put("theme","DARK").put("chatPersisted",false).put("verifiedAt",System.currentTimeMillis()).toString(2))
     }
 }
+
+/** Read-only UI checks for this run's synthetic journal; never selects or saves an old profile. */
+class AiConversationSyntheticUiDeviceTest:InstrumentationTestCase() {
+    fun testSyntheticProfileListAndEditorReflectPersistedWrites()=runBlocking {
+        val context=instrumentation.targetContext.applicationContext
+        check(context.packageName=="com.greatwall.callring")
+        check(!context.getSystemService(KeyguardManager::class.java).isDeviceLocked)
+        val journal=context.getSharedPreferences(PROOF_PREFS,Context.MODE_PRIVATE)
+        check(journal.getBoolean("batchComplete",false))
+        val row=JSONArray(journal.getString("createdProfiles",null)?:error("Journal required")).getJSONObject(0)
+        val number=row.getString("number");val name=row.getString("name")
+        check(number.matches(Regex("\\+?[0-9]+"))&&name.startsWith("合成测试"))
+        instrumentation.uiAutomation.serviceInfo=instrumentation.uiAutomation.serviceInfo.apply{flags=flags or android.accessibilityservice.AccessibilityServiceInfo.FLAG_RETRIEVE_INTERACTIVE_WINDOWS}
+        fun find(predicate:(AccessibilityNodeInfo)->Boolean):AccessibilityNodeInfo? {
+            val nodes=ArrayDeque<AccessibilityNodeInfo>();nodes.addAll(instrumentation.uiAutomation.windows.mapNotNull{it.root})
+            while(nodes.isNotEmpty()){val node=nodes.removeFirst();if(node.packageName?.toString()==context.packageName&&predicate(node)){nodes.forEach{it.recycle()};return node};repeat(node.childCount){node.getChild(it)?.let(nodes::addLast)};node.recycle()};return null
+        }
+        fun waitNode(predicate:(AccessibilityNodeInfo)->Boolean):AccessibilityNodeInfo {
+            val deadline=SystemClock.elapsedRealtime()+15000
+            while(SystemClock.elapsedRealtime()<deadline){find(predicate)?.let{return it};SystemClock.sleep(100)}
+            error("Synthetic UI value missing")
+        }
+        fun capture(name:String){instrumentation.waitForIdleSync();val bitmap=instrumentation.uiAutomation.takeScreenshot()?:error("Screenshot required");File(proofDirectory(context),name).outputStream().use{check(bitmap.compress(Bitmap.CompressFormat.PNG,100,it))};bitmap.recycle()}
+        val list=launchProofActivity(instrumentation,UiDestination.Callers,"callers")
+        try{
+            val search=waitNode{it.isEditable&&it.isEnabled};check(search.performAction(AccessibilityNodeInfo.ACTION_SET_TEXT,Bundle().apply{putCharSequence(AccessibilityNodeInfo.ACTION_ARGUMENT_SET_TEXT_CHARSEQUENCE,name)}));search.recycle()
+            waitNode{!it.isEditable&&it.text?.toString()?.contains(name)==true}.recycle()
+            SystemClock.sleep(750);capture("synthetic-list.png")
+        }finally{instrumentation.runOnMainSync{list.finish()}}
+        val editor=launchProofActivity(instrumentation,UiDestination.EditCaller(number),"edit",number)
+        try{
+            waitNode{it.text?.toString()==name}.recycle();waitNode{it.text?.toString()==number}.recycle()
+            SystemClock.sleep(750);capture("synthetic-editor.png")
+        }finally{instrumentation.runOnMainSync{editor.finish()}}
+        check((context as CallringApplication).backendGraph.api.settings.getAppearance().requiredValue().colorMode==ColorMode.DARK)
+        File(proofDirectory(context),"synthetic-ui.json").writeText(JSONObject().put("schemaVersion",2).put("result","passed").put("filteredList",true).put("editorNumberAndName",true).put("businessWrites",0).toString(2))
+    }
+}
+
+private fun launchProofActivity(instrumentation:android.app.Instrumentation,destination:UiDestination,target:String,number:String?=null):android.app.Activity {
+    val suffix=number?.let{check(it.matches(Regex("\\+?[0-9]+")));" --es callring.ui.number $it"}.orEmpty()
+    android.os.ParcelFileDescriptor.AutoCloseInputStream(instrumentation.uiAutomation.executeShellCommand("am start --display 0 -n com.greatwall.callring/com.greatwall.callring.ui.app.CallringActivity --es callring.ui.target $target$suffix")).use{it.readBytes()}
+    return instrumentation.startActivitySync(CallringActivity.intent(instrumentation.targetContext,destination).apply{flags=Intent.FLAG_ACTIVITY_NEW_TASK}).also{activity->instrumentation.runOnMainSync{activity.window.addFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)}}
+}
 private const val PROOF_PREFS="ai_rectification_v2_proof_20261019"
 private fun proofDirectory(context:Context)=File(context.getExternalFilesDir(null)?:context.filesDir,"ai-v2-proof").apply{check(isDirectory||mkdirs())}
 private fun writeReport(directory:File,report:JSONObject){File(directory,"real-model.json").writeText(report.toString(2))}
@@ -207,4 +250,4 @@ private suspend fun profiles(graph:BackendGraph):Map<String,AiJson.Obj> {
     do {val page=graph.queries.query(QuerySpec(AiDomain.D01,cursor=cursor,limit=200)).requiredValue();check(page.status in setOf(QueryStatus.COMPLETE,QueryStatus.EMPTY,QueryStatus.PARTIAL));page.items.filter{it["stored"]==aiNumber(1)}.forEach{row->rows[row["number"].string()]=row};check(rows.size<=4000){"Acceptance inventory exceeds bounded local capacity"};cursor=page.nextCursor;if(cursor==null)check(page.complete)}while(cursor!=null)
     return rows
 }
-private fun roundJson(prompt:String,state:ConversationState):JSONObject = JSONObject().put("prompt",prompt).put("phase",state.phase.name).put("modelRequests",state.exchanges.size).put("sourceQueries",state.sourceQueries).put("work",state.workCount).put("outcome",JSONObject(state.outcome.encode())).put("error",state.error?.message?:JSONObject.NULL).put("errorKind",state.error?.aiFailure?.kind?.name?:JSONObject.NULL).put("exchanges",JSONArray(state.exchanges.map{m->JSONObject().put("requestBytes",m.requestBytes).put("responseBytes",m.responseBytes).put("httpStatus",m.httpStatus?:JSONObject.NULL).put("profile",m.profile.name).put("elapsedMillis",m.elapsedMillis).put("requestFlags",JSONObject(m.requestFlags)).put("finishReason",m.diagnostics?.finishReason?:JSONObject.NULL).put("usage",m.diagnostics?.usage?.let{u->JSONObject().put("input",u.input?:JSONObject.NULL).put("output",u.output?:JSONObject.NULL).put("total",u.total?:JSONObject.NULL).put("cachedInput",u.cachedInput?:JSONObject.NULL).put("cacheWriteInput",u.cacheWriteInput?:JSONObject.NULL).put("reasoningOutput",u.reasoningOutput?:JSONObject.NULL)}?:JSONObject.NULL).put("failure",m.failure?.name?:JSONObject.NULL)}))
+private fun roundJson(prompt:String,state:ConversationState):JSONObject = JSONObject().put("schemaVersion",2).put("receipts",JSONArray(state.receipts.map{r->JSONObject().put("stepId",r.operationId).put("status",r.status.name).put("verification",r.verification.name).put("noOp",r.noOp)})).put("schemaCount",JSONObject.NULL).put("contextMessages",JSONObject.NULL).put("prompt",prompt).put("phase",state.phase.name).put("modelRequests",state.exchanges.size).put("sourceQueries",state.sourceQueries).put("work",state.workCount).put("outcome",JSONObject(state.outcome.encode())).put("error",state.error?.message?:JSONObject.NULL).put("errorKind",state.error?.aiFailure?.kind?.name?:JSONObject.NULL).put("exchanges",JSONArray(state.exchanges.map{m->JSONObject().put("requestBytes",m.requestBytes).put("responseBytes",m.responseBytes).put("httpStatus",m.httpStatus?:JSONObject.NULL).put("profile",m.profile.name).put("elapsedMillis",m.elapsedMillis).put("requestFlags",JSONObject(m.requestFlags)).put("finishReason",m.diagnostics?.finishReason?:JSONObject.NULL).put("usage",m.diagnostics?.usage?.let{u->JSONObject().put("input",u.input?:JSONObject.NULL).put("output",u.output?:JSONObject.NULL).put("total",u.total?:JSONObject.NULL).put("cachedInput",u.cachedInput?:JSONObject.NULL).put("cacheWriteInput",u.cacheWriteInput?:JSONObject.NULL).put("reasoningOutput",u.reasoningOutput?:JSONObject.NULL)}?:JSONObject.NULL).put("failure",m.failure?.name?:JSONObject.NULL)}))

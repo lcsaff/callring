@@ -15,6 +15,7 @@ class ToolExecutor(
     private val resources: ForegroundResourceRegistry,
     val registry: ToolRegistry = ToolRegistry(),
     private val queries:QueryService?=null,
+    private val documentWriteVerified:suspend(DocumentRef)->Boolean={false},
 ) {
     val foregroundReady:Boolean get()=foreground.hasHost
     suspend fun execute(call: ConversationToolCall, scope: ToolExecutionContext): ToolReceipt {
@@ -73,7 +74,7 @@ class ToolExecutor(
                 }
                 8 -> bound.callers.setWhitelisted(a.s("number"), a.b("enabled")).requiredValue()
                 9 -> bound.reports.load(ReportQuery(a.s("number"), a.range(), a.optS("filter")?.let(CallFilter::valueOf) ?: CallFilter.ALL, a.page())).requiredValue()
-                10 -> { val target = document(ForegroundActionKind.EXPORT_CSV); bound.reports.exportCsv(ReportExportQuery(a.s("number"), a.range()), target).requiredValue() }
+                10 -> { val target = document(ForegroundActionKind.EXPORT_CSV); val exported=bound.reports.exportCsv(ReportExportQuery(a.s("number"), a.range()), target).requiredValue();if(documentWriteVerified(target))actionEvidence+=aiObject("documentReadback" to aiBool(true));exported }
                 11 -> bound.settings.getSummary().requiredValue()
                 12 -> bound.settings.setStatisticsEnabled(a.b("enabled")).requiredValue()
                 13 -> bound.settings.setOverlayEnabled(a.b("enabled")).requiredValue()

@@ -40,7 +40,7 @@ class ToolBusinessIntegrationTest {
         val namespace = "tool_${index}"
         val coordinator = BusinessRevisionCoordinator()
         val store = SqliteBackendStore(context,"$namespace.db")
-        val docs = AndroidDocumentStore(context.contentResolver)
+        val docs = ReadbackDocumentStore(AndroidDocumentStore(context.contentResolver))
         val audio = AndroidAudioController(context,context.getSharedPreferences("${namespace}_ring",0),{ File(context.filesDir,"${namespace}_audio") },docs,coordinator)
         val preferences = AndroidPreferences(context.getSharedPreferences("${namespace}_appearance",0),context.getSharedPreferences("${namespace}_widgets",0),AppearanceSettings(ThemeSelection.PRESET,"default",null,ColorMode.FOLLOW_SYSTEM),coordinator)
         val client = Client()
@@ -109,7 +109,7 @@ class ToolBusinessIntegrationTest {
                 if(!uri.toString().contains("children")) addRow((projection ?: arrayOf("_display_name")).map { if(it == "_size") audio.length() else "fixture.wav" }.toTypedArray<Any>())
             }
             override fun openFile(uri: Uri, mode: String): ParcelFileDescriptor {
-                val file = if(uri.lastPathSegment == "calendar") calendar else if(mode.contains("w")) csv else audio
+                val file = if(uri.lastPathSegment == "calendar") calendar else if(uri.lastPathSegment == "csv"||mode.contains("w")) csv else audio
                 return ParcelFileDescriptor.open(file,if(mode.contains("w")) ParcelFileDescriptor.MODE_CREATE or ParcelFileDescriptor.MODE_TRUNCATE or ParcelFileDescriptor.MODE_WRITE_ONLY else ParcelFileDescriptor.MODE_READ_ONLY)
             }
             override fun insert(uri: Uri, values: ContentValues?): Uri? = null
@@ -149,7 +149,7 @@ class ToolBusinessIntegrationTest {
                     fixture.foreground.deliver(ticket.requestId,ForegroundHostResult(status,document))
                 }
             } }
-            val executor = ToolExecutor({ root },fixture.coordinator,fixture.foreground,fixture.resources,registry)
+            val executor = ToolExecutor({ root },fixture.coordinator,fixture.foreground,fixture.resources,registry,documentWriteVerified={fixture.docs.verifyWrite(it)})
             fun scope(id: String) = ToolExecutionContext("session","turn",1,CommandContext(id,fixture.coordinator.capture(),1) { true })
             val call = ConversationToolCall("call",definition.name,parseConversationJson(arguments(definition.index,fixture.recordingId)) as AiJson.Obj)
             val receipt = withTimeout(10000) { executor.execute(call,scope("op")) }
@@ -161,6 +161,15 @@ class ToolBusinessIntegrationTest {
             assertFalse(receipt.value.encode().contains("content://"))
             if(definition.index == 7) { val saved = root.callers.getEditor("31234").requiredValue().draft; assertEquals("changed",saved.name); assertEquals(1L,saved.positionId); assertTrue(saved.whitelisted) }
             if(definition.index == 10) assertTrue(File(context.cacheDir,"tool-output.csv").readText().contains("31234"))
+            if(definition.index in setOf(10,58,59)) {
+                val queries=QueryService(listOf(object:ScopedReadPort {
+                    override val domains=setOf(AiDomain.D19)
+                    override fun version(domain:AiDomain)=0L
+                    override fun query(spec:QuerySpec,after:String?)=error("unused")
+                    override fun get(domain:AiDomain,key:String,projection:String)=SourceRow(key,aiObject("recordingPlayback" to fixture.runtime.playbackSnapshot()))
+                }))
+                assertEquals("Authoritative readback ${definition.index}",VerificationStatus.VERIFIED,ReceiptVerifier(queries).verify(definition.index,call,receipt).verification)
+            }
             if(definition.index == 55) assertNotNull(fixture.recordingStore.get(fixture.recordingId)!!.audioPath)
             if(definition.index == 56) assertEquals(ArchiveStatus.QUEUED,fixture.recordingStore.get(fixture.recordingId)!!.status)
             if(definition.index == 57) assertTrue(fixture.recordingStore.isDeleted(fixture.recordingId))
