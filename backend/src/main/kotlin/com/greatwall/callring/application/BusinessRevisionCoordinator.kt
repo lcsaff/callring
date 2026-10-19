@@ -21,6 +21,7 @@ class BusinessRevisionCoordinator {
         if(keys.isNotEmpty()){revision=Math.addExact(revision,1);keys.forEach{scopeChanges[it]=revision};changes.value=DataChange(revision,DataDomain.values().toSet(),null,null)}
     }
     private val commandCommits = linkedMapOf<String, RevisionVector>()
+    private val commandMarkers = linkedMapOf<String,Long>()
     val changes = MutableStateFlow(DataChange(0, DataDomain.values().toSet(), null, null))
     fun capture(): RevisionVector = synchronized(fence) { RevisionVector(incarnation, versions.toMap()) }
     fun check(context: CommandContext?) { synchronized(fence){
@@ -39,7 +40,8 @@ class BusinessRevisionCoordinator {
         domainMarkers.getValue(domain).let{history->history[versions.getValue(domain)]=revision;if(history.size>1024)history.remove(history.keys.first())}
         changes.value = DataChange(revision, DataDomain.values().toSet(), null, null)
     }
-    fun record(context: CommandContext?) { if(context != null) synchronized(fence) { commandCommits[context.operationId] = capture() } }
+    fun record(context: CommandContext?) { if(context != null) synchronized(fence) { commandCommits[context.operationId] = capture();commandMarkers[context.operationId]=revision } }
+    fun committedMarker(operationId:String):Long?=synchronized(fence){commandMarkers[operationId]}
     fun committed(operationId: String): RevisionVector? = synchronized(fence) { commandCommits[operationId] }
     fun runtimeChanged() = synchronized(fence) { revision = Math.addExact(revision,1); changes.value = DataChange(revision,DataDomain.values().toSet(),null,null) }
     fun <T> commit(domain: String, context: CommandContext? = null, block: () -> T): T = guard(context) { block().also { changed(domain); record(context) } }

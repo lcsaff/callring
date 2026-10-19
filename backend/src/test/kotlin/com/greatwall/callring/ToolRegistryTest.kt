@@ -6,6 +6,13 @@ import org.junit.Assert.*
 import org.junit.Test
 
 class ToolRegistryTest {
+    @Test fun invalidEnumReturnsSafeKnownFieldPathForRepair() {
+        val failure=runCatching{ToolRegistry().validate(ConversationToolCall("one","settings_saveAppearance",aiObject("colorMode" to aiString("secret-invalid-value"))))}.exceptionOrNull()
+        assertTrue(failure is com.greatwall.callring.application.ports.BackendFailure)
+        val error=(failure as com.greatwall.callring.application.ports.BackendFailure).error
+        assertTrue(error.fieldErrors.containsKey("$.colorMode"))
+        assertFalse(error.toString().contains("secret-invalid-value"))
+    }
     @Test fun all72OperationsHaveUniqueStrictSchemasAndRejectUnknownArguments() {
         val registry = ToolRegistry()
         assertEquals((1..72).map { "O%02d".format(it) }.toSet(), registry.definitions.map { it.id }.toSet())

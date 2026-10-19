@@ -1,5 +1,7 @@
 package com.greatwall.callring.platform.ai
 
+import com.greatwall.callring.application.ports.BackendFailure
+
 import android.content.Context
 import android.media.MediaMetadataRetriever
 import android.media.MediaPlayer
@@ -234,6 +236,7 @@ class AndroidRecordingRuntime(
         override suspend fun saveSettings(settings: RecordingSettings) = result { store.updateSettings(command) { settings } }
     }
     override suspend fun systemRecordings() = result { store.settings().systemFolder?.let(sources::list).orEmpty() }
+    override suspend fun inspectSystemRecording(document:DocumentRef)=result {val folder=store.settings().systemFolder?:throw BackendFailure(ApiError(ErrorCode.NOT_FOUND,"recording.folder_required"));sources.inspect(folder,document)?:throw BackendFailure(ApiError(ErrorCode.NOT_FOUND,"recording.file_missing"))}
 
     /** Called after phone state settles. Unknown filename formats stay available for manual selection. */
     fun discoverSystemRecordings() {

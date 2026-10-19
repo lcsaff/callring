@@ -48,7 +48,7 @@ internal class SqliteScopedReadAdapter(private val db:SQLiteDatabase,private val
     private fun where(t:Table,f:QueryFilter):Pair<String,List<String>> {
         val clauses=mutableListOf<String>();val args=mutableListOf<String>()
         fun add(column:String,value:Any?,op:String="="){if(value!=null){require(column in t.columns);clauses+="$column $op ?";args+=value.toString()}}
-        add("number",f.number);add("id",f.id);add("year",f.year);add("status",f.status);add("kind",f.kind);add("date",f.date)
+        add("number",f.number);add("id",f.id);add("year",f.year);add(if("result" in t.columns)"result" else "status",f.status);add(if("working" in t.columns)"reason" else "kind",f.kind);add("date",f.date)
         val time=when{ "time" in t.columns->"time";"start" in t.columns->"start";"created" in t.columns->"created";"effective" in t.columns->"effective";else->null}
         if(f.start!=null||f.end!=null){require(time!=null);add(time,f.start,">=");add(time,f.end,"<")}
         f.text?.let{text->val fields=t.texts.toList();require(fields.isNotEmpty());clauses+="("+fields.joinToString(" OR "){"instr($it,?)>0"}+")";repeat(fields.size){args+=text}}
@@ -78,14 +78,17 @@ internal class SqliteScopedReadAdapter(private val db:SQLiteDatabase,private val
         if(spec.domain==AiDomain.D06&&spec.projection=="work")return@read SourcePage(listOf(SourceRow("work",safeValue(workStatus()) as AiJson.Obj)),1)
         val t=table(spec.domain,spec.projection);val (filter,args)=where(t,spec.filter)
         val total=DatabaseUtils.longForQuery(db,"SELECT count(*) FROM (${t.sql}) WHERE $filter",args.toTypedArray())
-        val continuation=if(after==null)"" else " AND entity_key>?"
-        val rows=db.rawQuery("SELECT ${selection(t).joinToString(",")} FROM (${t.sql}) WHERE ($filter)$continuation ORDER BY entity_key LIMIT ?",(args+listOfNotNull(after)+(spec.limit+1).toString()).toTypedArray()).use{c->buildList{while(c.moveToNext())add(row(c,t))}}
+        val calls=spec.domain in setOf(AiDomain.D03,AiDomain.D04)
+        val tail=if(after==null)emptyList() else if(calls){val parts=after.split('|');require(parts.size==2);listOf(parts[0],parts[0],parts[1])}else listOf(after)
+        val continuation=if(after==null)"" else if(calls)" AND (time<? OR (time=? AND id<?))" else " AND entity_key>?"
+        val order=if(calls)"time DESC,id DESC" else "entity_key"
+        val rows=db.rawQuery("SELECT ${selection(t).joinToString(",")} FROM (${t.sql}) WHERE ($filter)$continuation ORDER BY $order LIMIT ?",(args+tail+(spec.limit+1).toString()).toTypedArray()).use{c->buildList{while(c.moveToNext()){val r=row(c,t);add(if(calls)r.copy(cursorKey="${r.value["time"].long()}|${r.value["id"].long()}")else r)}}}
         val page=rows.take(spec.limit)
-        SourcePage(page,total,if(rows.size>spec.limit)page.last().key else null)
+        SourcePage(page,total,if(rows.size>spec.limit)page.last().cursorKey else null)
     }
     override fun get(domain:AiDomain,key:String,projection:String):SourceRow?=read {
         val t=table(domain,projection)
-        val normalized=if("id" in t.columns) key.toLongOrNull()?.let{"%020d".format(it)}?:key else key
+        val normalized=if(domain==AiDomain.D10&&key=="current")"configuration" else if("id" in t.columns) key.toLongOrNull()?.let{"%020d".format(it)}?:key else key
         db.rawQuery("SELECT ${selection(t).joinToString(",")} FROM (${t.sql}) WHERE entity_key=?",arrayOf(normalized)).use{c->if(c.moveToFirst())row(c,t) else null}
     }
     override fun text(domain:AiDomain,key:String,field:String,start:Long,maxChars:Int):SourceText=read {
@@ -105,7 +108,7 @@ internal class SqliteScopedReadAdapter(private val db:SQLiteDatabase,private val
         }
         val effectiveFilter=if(spec.domain==AiDomain.D05)"($filter) AND counted=1" else filter
         if(spec.groupBy==null)aiObject("count" to aiNumber(DatabaseUtils.longForQuery(db,"SELECT count(*) FROM (${t.sql}) WHERE $effectiveFilter",args.toTypedArray())))
-        else {require(spec.groupBy in t.columns);AiJson.Arr(db.rawQuery("SELECT ${spec.groupBy},count(*) FROM (${t.sql}) WHERE $filter GROUP BY ${spec.groupBy} ORDER BY ${spec.groupBy}",args.toTypedArray()).use{c->buildList{while(c.moveToNext())add(aiObject("group" to aiString(c.getString(0).orEmpty()),"count" to aiNumber(c.getLong(1))))}})}
+        else {require(spec.groupBy in t.columns);AiJson.Arr(db.rawQuery("SELECT ${spec.groupBy},count(*) FROM (${t.sql}) WHERE $effectiveFilter GROUP BY ${spec.groupBy} ORDER BY ${spec.groupBy} LIMIT 201",args.toTypedArray()).use{c->buildList{while(c.moveToNext()){if(size==200)throw BackendFailure(ApiError(ErrorCode.SYSTEM_RESTRICTED,"ai.aggregate_incomplete"));add(aiObject("group" to aiString(c.getString(0).orEmpty()),"count" to aiNumber(c.getLong(1))))}}})}
     }
     private fun statistics(spec:AggregateSpec,t:Table,filter:String,args:List<String>):AiJson {
         require(spec.groupBy==null||spec.groupBy=="number")
@@ -143,7 +146,7 @@ internal class SqliteScopedReadAdapter(private val db:SQLiteDatabase,private val
         db.rawQuery("SELECT year,source,published,version FROM calendar_years WHERE year BETWEEN ? AND ?",arrayOf(date.minusDays(1).year.toString(),date.plusDays(10).year.toString())).use{c->while(c.moveToNext()){val y=CalendarYear(c.getInt(0),c.getString(1),c.getString(2),c.getString(3));s.calendarYears[y.year]=y}}
         db.rawQuery("SELECT date,working,name FROM calendar_days WHERE date BETWEEN ? AND ?",arrayOf(date.minusDays(1).toString(),date.plusDays(10).toString())).use{c->while(c.moveToNext()){val d=LocalDate.parse(c.getString(0));if(c.getInt(1)==1)s.makeupDates+=d else s.holidays[d]=c.getString(2)}}
         db.rawQuery("SELECT date,windows FROM overrides WHERE date BETWEEN ? AND ?",arrayOf(date.minusDays(1).toString(),date.plusDays(10).toString())).use{c->while(c.moveToNext()){val d=LocalDate.parse(c.getString(0));val w=WorkConfigCodec.windows(JSONArray(c.getString(1)));s.overrides[d]=DateOverride(d,if(w.isEmpty())DateOverrideKind.REST else DateOverrideKind.WORK,w)}}
-        db.rawQuery("SELECT id,start,end,note FROM leaves WHERE start<=? AND end>=?",arrayOf(end.toString(),at.toString())).use{c->while(c.moveToNext()){val l=LeaveRecord(c.getLong(0),c.getLong(1),c.getLong(2),c.getString(3));s.leaves[l.id]=l}}
+        db.rawQuery("SELECT id,start,end FROM leaves WHERE start<=? AND end>=?",arrayOf(end.toString(),at.toString())).use{c->while(c.moveToNext()){val l=LeaveRecord(c.getLong(0),c.getLong(1),c.getLong(2),"");s.leaves[l.id]=l}}
         s.leaveVersion=DatabaseUtils.stringForQuery(db,"SELECT coalesce((SELECT value FROM settings WHERE key='leave_revision'),'0')",null).toLong()
         return WorkClassifier.status(s,at)
     }

@@ -14,17 +14,21 @@ class ToolExecutor(
     private val foreground: ForegroundActionService,
     private val resources: ForegroundResourceRegistry,
     val registry: ToolRegistry = ToolRegistry(),
+    private val queries:QueryService?=null,
 ) {
     suspend fun execute(call: ConversationToolCall, scope: ToolExecutionContext): ToolReceipt {
         val before = coordinator.capture()
         try {
             val definition = registry.validate(call)
+            if(definition.index==73)return ToolReceipt(scope.command.operationId,call.id,ToolStatus.READ,CapabilityCatalog(registry).discover(call.arguments.optS("category"),(call.arguments["exactNames"] as? AiJson.Arr)?.values?.map{it.string()}?:emptyList(),call.arguments.optS("query"),call.arguments.optS("cursor"),(call.arguments.optL("limit")?:8).exactInt()).json())
+            if(queries!=null&&(definition.index in ScopedToolReader.legacyReads||definition.index in setOf(74,75,76,77,80)))return ToolReceipt(scope.command.operationId,call.id,ToolStatus.READ,ScopedToolReader(queries).read(definition.index,call.arguments))
             if (definition.write) {
                 require(foreground.hasHost) { "action.foreground_required" }
                 coordinator.guard(scope.command) {}
             }
             val bound = api().commandApi(scope.command)
             var status = if(definition.write) ToolStatus.COMMITTED else ToolStatus.READ
+            var noOp=false
             suspend fun action(kind: ForegroundActionKind, parameters: AiJson.Obj = call.arguments, confirmation: ConfirmationTarget? = null): ForegroundHostResult {
                 val result = foreground.request(scope.sessionId, scope.turnId, call.id, scope.generation, kind, parameters, scope.command, confirmation, scope.command.active)
                 result.error?.let { throw BackendFailure(it) }
@@ -61,8 +65,8 @@ class ToolExecutor(
                 6 -> bound.callers.getLatestCall().requiredValue()
                 7 -> {
                     val current = bound.callers.getEditor(a.s("number")).requiredValue().draft
-                    bound.callers.saveProfile(SaveCallerProfile(current.number, a.optS("name") ?: current.name, a.optS("department") ?: current.department,
-                        if(a.has("positionId")) a.optL("positionId") else current.positionId, a.optB("whitelisted") ?: current.whitelisted)).requiredValue()
+                    val draft=current.copy(name=a.optS("name")?:current.name,department=a.optS("department")?:current.department,positionId=if(a.has("positionId"))a.optL("positionId")else current.positionId,whitelisted=a.optB("whitelisted")?:current.whitelisted)
+                    bound.edits.profile(current,draft).requiredValue()
                 }
                 8 -> bound.callers.setWhitelisted(a.s("number"), a.b("enabled")).requiredValue()
                 9 -> bound.reports.load(ReportQuery(a.s("number"), a.range(), a.optS("filter")?.let(CallFilter::valueOf) ?: CallFilter.ALL, a.page())).requiredValue()
@@ -118,8 +122,9 @@ class ToolExecutor(
                 36 -> bound.settings.getAppearance().requiredValue()
                 37 -> {
                     val old = bound.settings.getAppearance().requiredValue()
-                    bound.edits.appearance(old, AppearanceSettings(a.optS("selection")?.let(ThemeSelection::valueOf) ?: old.selection, a.optS("presetId") ?: old.presetId,
-                        if(a.has("customSeedRgb")) a.optL("customSeedRgb")?.exactInt() else old.customSeedRgb, a.optS("colorMode")?.let(ColorMode::valueOf) ?: old.colorMode)).requiredValue()
+                    val updated=AppearanceSettings(a.optS("selection")?.let(ThemeSelection::valueOf) ?: old.selection,a.optS("presetId") ?: old.presetId,if(a.has("customSeedRgb")) a.optL("customSeedRgb")?.exactInt() else old.customSeedRgb,a.optS("colorMode")?.let(ColorMode::valueOf) ?: old.colorMode)
+                    noOp=old==updated
+                    bound.edits.appearance(old,updated).requiredValue()
                 }
                 38 -> bound.ringtone.getSettings().requiredValue()
                 39 -> bound.ringtone.setEnabled(a.b("enabled")).requiredValue()
@@ -141,7 +146,7 @@ class ToolExecutor(
                 55 -> {
                     val identity = bound.recordings.getIdentity(a.l("callId")).requiredValue()
                     val source = if(a.has("handle")) RecordingSource.SYSTEM else RecordingSource.IMPORTED
-                    val target = if(a.has("handle")) resources.resolve(a.s("handle"), identity.callId, bound.recordings.systemRecordings().requiredValue()) else document(ForegroundActionKind.IMPORT_RECORDING)
+                    val target = if(a.has("handle")) resources.resolveScoped(a.s("handle"),identity.callId){bound.recordings.inspectSystemRecording(it).requiredValue()} else document(ForegroundActionKind.IMPORT_RECORDING)
                     bound.recordings.importRecording(identity.callId, identity.number, identity.startedAtEpochMillis, target, source).requiredValue()
                 }
                 56 -> { status = ToolStatus.QUEUED; bound.recordings.retry(a.l("callId")).requiredValue() }
@@ -164,7 +169,7 @@ class ToolExecutor(
                 else -> error("ai.unknown_tool")
             }
             val after = coordinator.capture()
-            return ToolReceipt(scope.command.operationId, call.id, status, safeValue(value), commitRevision = coordinator.committed(scope.command.operationId) ?: if(status == ToolStatus.COMMITTED) after else null, changedDomains = if(before != after) DataDomain.values().toSet() else emptySet())
+            return ToolReceipt(scope.command.operationId, call.id, status, safeValue(value), commitRevision = coordinator.committed(scope.command.operationId), changedDomains = if(before != after) DataDomain.values().toSet() else emptySet(),noOp=noOp)
         } catch(e: CancellationException) { throw e }
         catch(e: BackendFailure) { return failure(call, scope, e.error) }
         catch(_: IllegalArgumentException) { return failure(call, scope, ApiError(ErrorCode.VALIDATION, "ai.invalid_tool_arguments")) }
@@ -192,5 +197,5 @@ private fun AiJson.Obj.weekly(key: String): Map<Int, List<TimeWindow>> = obj(key
 private fun <T> AiJson.Obj.patch(key: String, read: (AiJson) -> T): PatchField<T> = if(has(key)) PatchField.Set(read(get(key))) else PatchField.Keep
 private fun AiJson.Obj.connectionPatch() = ConnectionPatch(patch("protocol") { AiProtocol.valueOf(it.string()) }, patch("url") { it.string() }, patch("model") { it.string() })
 private fun AiJson.Obj.aiPatch(base: ConversationBudget): AiSettingsPatch = AiSettingsPatch(optObj("analysis")?.connectionPatch() ?: ConnectionPatch(), optObj("transcription")?.connectionPatch() ?: ConnectionPatch(),
-    if(has("context") || has("output")) PatchField.Set(ConversationBudget(optL("context") ?: base.context, optL("output") ?: base.output)) else PatchField.Keep)
+    if(has("context") || has("output")) PatchField.Set(ConversationBudget(optL("context") ?: base.context, optL("output") ?: base.output)) else PatchField.Keep,patch("compatibility"){ConversationCompatibility.valueOf(it.string())})
 private fun AiJson.Obj.recordingPatch() = RecordingSettingsPatch(patch("recordingEnabled") { it.boolean() }, patch("automaticAnalysis") { it.boolean() }, patch("captureMode") { CaptureMode.valueOf(it.string()) })

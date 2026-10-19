@@ -22,12 +22,12 @@ class ToolRegistry {
     private val weekly = aiObject("type" to aiString("object"), "propertyNames" to aiObject("enum" to AiJson.Arr((1..7).map { aiString(it.toString()) })), "additionalProperties" to windows)
     private val slot = choice("ANALYSIS", "TRANSCRIPTION")
     private val connection = shape("?protocol" to choice("OPENAI", "ANTHROPIC"), "?url" to string, "?model" to string)
-    private val ai = shape("?analysis" to connection, "?transcription" to connection, "?context" to integer, "?output" to integer)
+    private val ai = shape("?analysis" to connection, "?transcription" to connection, "?context" to integer, "?output" to integer, "?compatibility" to choice("AUTO","STANDARD","QWEN_FAST"))
     private val recording = shape("?recordingEnabled" to boolean, "?automaticAnalysis" to boolean, "?captureMode" to choice("SYSTEM_ONLY", "MICROPHONE_EXPERIMENTAL"))
     private val range = shape("startDate" to string, "endDateInclusive" to string, "?zoneId" to string)
     private val page = shape("?pageIndex" to integer, "?pageSize" to integer)
     private val definitionsMutable = mutableListOf<ToolDefinition>()
-    private fun tool(name: String, write: Boolean = false, vararg fields: Pair<String, AiJson>) { definitionsMutable += ToolDefinition(definitionsMutable.size + 1, name, shape(*fields), write) }
+    private fun tool(name: String, write: Boolean = false, vararg fields: Pair<String, AiJson>) { definitionsMutable += ToolDefinition(definitionsMutable.size + 1, name, shape(*(fields.toList()+listOf("?dependsOn" to array(string))+if(write)listOf("?taskId" to string)else emptyList()).toTypedArray()), write) }
     val definitions: List<ToolDefinition>
     val allDefinitions:List<ToolDefinition> get()=definitions+extensions
     private val extensions:List<ToolDefinition> by lazy { listOf(
@@ -44,13 +44,13 @@ class ToolRegistry {
     init {
         tool("root_checkNumber", false, "raw" to string)
         tool("home_load")
-        tool("callers_search", false, "?text" to string, "?page" to page)
+        tool("callers_search", false, "?text" to string, "?page" to page, "?cursor" to string, "?limit" to integer)
         tool("callers_getEditor", false, "?number" to nullable(string))
         tool("callers_getOverview", false, "number" to string, "?workAtEpochMillis" to integer)
         tool("callers_getLatestCall")
         tool("callers_saveProfile", true, "number" to string, "?name" to string, "?department" to string, "?positionId" to nullable(integer), "?whitelisted" to boolean)
         tool("callers_setWhitelisted", true, "number" to string, "enabled" to boolean)
-        tool("reports_load", false, "number" to string, "range" to range, "?filter" to choice(*CallFilter.values().map { it.name }.toTypedArray()), "?page" to page)
+        tool("reports_load", false, "number" to string, "range" to range, "?filter" to choice(*CallFilter.values().map { it.name }.toTypedArray()), "?page" to page, "?cursor" to string, "?limit" to integer)
         tool("reports_exportCsv", true, "number" to string, "range" to range)
         tool("settings_getSummary")
         tool("settings_setStatisticsEnabled", true, "enabled" to boolean)
@@ -117,31 +117,36 @@ class ToolRegistry {
         definitions = definitionsMutable.toList()
         check(definitions.size == 72 && definitions.map { it.name }.distinct().size == 72)
     }
+    private fun invalid(path:String,reason:String):Nothing = throw com.greatwall.callring.application.ports.BackendFailure(ApiError(ErrorCode.VALIDATION,"ai.invalid_tool_arguments",fieldErrors=mapOf(path to reason)))
     fun validate(call: ConversationToolCall): ToolDefinition {
-        require(call.id.isNotBlank() && call.id.length <= 256) { "ai.invalid_tool_response" }
+        if(call.id.isBlank()||call.id.length>256)invalid("$","ai.invalid_call_id")
         call.argumentError?.let { throw com.greatwall.callring.application.ports.BackendFailure(it) }
-        val definition = allDefinitions.singleOrNull { it.name == call.name } ?: throw IllegalArgumentException("ai.unknown_tool")
-        validateValue(call.arguments, definition.schema)
+        val definition = allDefinitions.singleOrNull { it.name == call.name } ?: throw com.greatwall.callring.application.ports.BackendFailure(ApiError(ErrorCode.VALIDATION,"ai.unknown_tool"))
+        validateValue(call.arguments, definition.schema,"$")
         return definition
     }
-    private fun validateValue(value: AiJson, schema: AiJson.Obj) {
+    private fun validateValue(value: AiJson, schema: AiJson.Obj,path:String) {
         val type = schema["type"]
         val allowed = if(type is AiJson.Arr) type.values.map { it.string() } else listOf(type.string())
-        if(value == AiJson.Null) { require("null" in allowed); return }
+        if(value == AiJson.Null) { if("null" !in allowed)invalid(path,"ai.null_not_allowed"); return }
         when {
             "object" in allowed -> {
-                require(value is AiJson.Obj)
+                if(value !is AiJson.Obj)invalid(path,"ai.expected_object")
                 val properties = schema["properties"] as? AiJson.Obj ?: aiObject()
                 val names = schema["propertyNames"] as? AiJson.Obj
                 val additional = schema["additionalProperties"] as? AiJson.Obj
-                require(value.fields.keys.all { it in properties.fields || (names != null && (names["enum"] as AiJson.Arr).values.any { name -> name.string() == it }) }) { "ai.extra_argument" }
-                require(((schema["required"] as? AiJson.Arr)?.values ?: emptyList()).all { it.string() in value.fields }) { "ai.missing_argument" }
-                value.fields.forEach { (key, item) -> validateValue(item, (properties[key] as? AiJson.Obj ?: additional) ?: throw IllegalArgumentException()) }
+                if(value.fields.keys.any { it !in properties.fields && (names == null || (names["enum"] as AiJson.Arr).values.none { name -> name.string() == it }) })invalid(path,"ai.extra_argument")
+                ((schema["required"] as? AiJson.Arr)?.values ?: emptyList()).forEach{if(it.string() !in value.fields)invalid("$path.${it.string()}","ai.missing_argument")}
+                value.fields.forEach { (key, item) -> validateValue(item, (properties[key] as? AiJson.Obj ?: additional) ?: error("invalid schema"),"$path.$key") }
             }
-            "array" in allowed -> { require(value is AiJson.Arr && value.values.size <= 20000); value.values.forEach { validateValue(it, schema["items"] as AiJson.Obj) } }
-            "integer" in allowed -> value.long()
-            "boolean" in allowed -> value.boolean()
-            "string" in allowed -> { val text = value.string(); val enum = schema["enum"]; require(enum == AiJson.Null || (enum as AiJson.Arr).values.any { it.string() == text }) }
+            "array" in allowed -> { if(value !is AiJson.Arr || value.values.size > 20000)invalid(path,"ai.expected_bounded_array"); value.values.forEachIndexed { i,v->validateValue(v, schema["items"] as AiJson.Obj,"$path[$i]") } }
+            "integer" in allowed -> if(runCatching{value.long()}.isFailure)invalid(path,"ai.expected_integer")
+            "boolean" in allowed -> if(value !is AiJson.Bool)invalid(path,"ai.expected_boolean")
+            "string" in allowed -> {
+                if(value !is AiJson.Str)invalid(path,"ai.expected_string")
+                val enum = schema["enum"]
+                if(enum!=AiJson.Null&&(enum as AiJson.Arr).values.none{it==value})invalid(path,"ai.expected_enum:"+enum.values.joinToString("/"){it.string()})
+            }
             else -> error("ai.invalid_schema")
         }
     }

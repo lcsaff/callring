@@ -17,6 +17,8 @@ class QueryService(sources:List<ScopedReadPort>,private val clock:()->Long=Syste
     private fun canonical(key:String)=key.toLongOrNull()?.toString()?:key
     fun observedRevision(domain:AiDomain,key:String)=observations[domain to canonical(key)]
     fun clearObservations(){observations.clear()}
+    internal fun snapshotObservations()=observations.toMap()
+    internal fun restoreObservations(values:Map<Pair<AiDomain,String>,Long>){observations.clear();observations.putAll(values)}
     private fun observe(domain:AiDomain,key:String,at:Long){if(observations.size>=4096&&!observations.containsKey(domain to canonical(key)))fail("capacity_exceeded",ErrorCode.SYSTEM_RESTRICTED);observations[domain to canonical(key)]=at}
     val sourceQueries=AtomicLong()
     val returnedRows=AtomicLong()
@@ -57,11 +59,12 @@ class QueryService(sources:List<ScopedReadPort>,private val clock:()->Long=Syste
         val items=mutableListOf<AiJson.Obj>();var bytes=0;var next=page.nextKey
         for(row in page.rows){
             val item=project(row,spec.domain,before);val size=item.encode().toByteArray(Charsets.UTF_8).size
-            if(bytes+size>spec.maxBytes){if(items.isEmpty()) fail("item_too_large",ErrorCode.SYSTEM_RESTRICTED);next=page.rows[items.size-1].key;break}
+            if(bytes+size>spec.maxBytes){if(items.isEmpty()) fail("item_too_large",ErrorCode.SYSTEM_RESTRICTED);next=page.rows[items.size-1].cursorKey;break}
             items+=item;bytes+=size;observe(spec.domain,row.key,observed)
         }
         returnedRows.addAndGet(items.size.toLong())
         val complete=page.complete&&next==null
+        if(spec.filter==QueryFilter())observe(spec.domain,"*",observed)
         if(complete&&page.matchedTotal==0L)spec.filter.number?.let{observe(spec.domain,it,observed)}
         ScopedPage(items,stamp(spec.domain,before,s,observed).copy(projection=spec.projection,filter=spec.filter),page.matchedTotal,next?.let{token(Cursor(identity,spec.domain,before,it,clock()+600000))},complete,
             if(page.status in setOf(QueryStatus.NOT_CONFIGURED,QueryStatus.DENIED,QueryStatus.UNAVAILABLE))page.status else if(complete&&items.isEmpty()&&page.status==QueryStatus.COMPLETE) QueryStatus.EMPTY else if(!complete) QueryStatus.PARTIAL else page.status,page.reason)
@@ -83,6 +86,7 @@ class QueryService(sources:List<ScopedReadPort>,private val clock:()->Long=Syste
         val value=s.aggregate(spec)
         if(s.version(spec.domain)!=before) fail("aggregate_incomplete",ErrorCode.CONFLICT)
         if(value.encode().toByteArray(Charsets.UTF_8).size>131072)fail("aggregate_incomplete",ErrorCode.SYSTEM_RESTRICTED)
+        observe(spec.domain,spec.filter.number?:"*",observed)
         ScopedAggregate(redactor().redact(value),stamp(spec.domain,before,s,observed).copy(filter=spec.filter))
     }
     override suspend fun readText(reference:String,cursor:String?,maxChars:Int)=result {
@@ -91,10 +95,13 @@ class QueryService(sources:List<ScopedReadPort>,private val clock:()->Long=Syste
         val s=source(r.domain);val v=s.version(r.domain);val observed=revision()
         if(v!=r.version||r.expires<clock()) fail("cursor_stale",ErrorCode.CONFLICT)
         val start=cursor?.let{cursor(it,reference,r.domain,v).toLong()}?:0L
-        sourceQueries.incrementAndGet();val chunk=s.text(r.domain,r.key,r.field,start,maxChars)
+        val sanitizer=redactor();val overlap=sanitizer.overlapCodePoints.toLong()
+        val expandedStart=maxOf(0L,start-overlap);val requested=maxChars.toLong()+(start-expandedStart)+overlap
+        if(requested>131072)fail("capacity_exceeded",ErrorCode.SYSTEM_RESTRICTED)
+        sourceQueries.incrementAndGet();val chunk=s.text(r.domain,r.key,r.field,expandedStart,requested.toInt())
         if(s.version(r.domain)!=v) fail("cursor_stale",ErrorCode.CONFLICT)
-        require(chunk.start==start&&chunk.end>=start&&chunk.end<=chunk.total&&chunk.text.codePointCount(0,chunk.text.length)<=maxChars)
-        val complete=chunk.end==chunk.total
-        TextChunk(reference,stamp(r.domain,v,s,observed),start,chunk.end,chunk.total,if(complete)null else token(Cursor(reference,r.domain,v,chunk.end.toString(),clock()+600000)),complete,redactor().text(chunk.text))
+        require(chunk.start==expandedStart&&chunk.end>=start&&chunk.end<=chunk.total&&chunk.text.codePointCount(0,chunk.text.length)<=requested)
+        val end=minOf(start+maxChars,chunk.total);val complete=end==chunk.total
+        TextChunk(reference,stamp(r.domain,v,s,observed),start,end,chunk.total,if(complete)null else token(Cursor(reference,r.domain,v,end.toString(),clock()+600000)),complete,sanitizer.textRange(chunk.text,(start-expandedStart).toInt(),(end-expandedStart).toInt()))
     }
 }

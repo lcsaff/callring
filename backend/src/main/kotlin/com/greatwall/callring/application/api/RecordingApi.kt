@@ -80,6 +80,7 @@ interface RecordingApi {
     suspend fun stop(): ApiResult<Unit>
     suspend fun setSystemFolder(document: DocumentRef): ApiResult<RecordingSettings>
     suspend fun systemRecordings(): ApiResult<List<RecordingFile>>
+    suspend fun inspectSystemRecording(document:DocumentRef):ApiResult<RecordingFile> = aiUnavailable()
 }
 
 data class RecordingIdentity(val callId: Long, val number: String, val startedAtEpochMillis: Long)

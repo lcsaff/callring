@@ -1,0 +1,161 @@
+package com.greatwall.callring.application.conversation
+
+import com.greatwall.callring.application.*
+import com.greatwall.callring.application.api.*
+import com.greatwall.callring.application.ports.BackendFailure
+import java.util.UUID
+import kotlinx.coroutines.CancellationException
+
+/** Protocol batches are validated whole; the local execution window never truncates their tail. */
+class ToolBatchEngine(
+    private val api:()->CallringUiApi,private val executor:ToolExecutor,private val queries:QueryService,
+    private val coordinator:BusinessRevisionCoordinator,private val session:String,private val turn:String,
+    private val generation:Long,private val active:()->Boolean,
+    private val awaitForeground:suspend()->Unit={},private val onReceipt:(ToolReceipt)->Unit={},
+) {
+    val budget=TurnBudget()
+    val ledger=StepLedger{api().checkNumber(it).normalized}
+    val planner=TaskPlanner()
+    private val scopes=OperationScopePlanner(queries,coordinator)
+    private val verifier=ReceiptVerifier(queries)
+    private val repairable=mutableListOf<LedgerStep>()
+    private val allReceipts=mutableListOf<ToolReceipt>()
+    val receipts:List<ToolReceipt> get()=allReceipts.toList()
+    val complete:Boolean get() {
+        val plans=planner.forUser(turn)
+        return plans.all{planner.satisfied(it,ledger.steps)}&&ledger.steps.none{it.state in setOf(StepState.UNKNOWN,StepState.STARTED,StepState.COMMITTED)}&&
+            (plans.isNotEmpty()||ledger.steps.none{it.state in setOf(StepState.FAILED,StepState.CANCELLED,StepState.DENIED,StepState.SKIPPED)})
+    }
+    fun summary():AiJson=aiObject("plans" to AiJson.Arr(planner.forUser(turn).map{p->AiJson.Obj(p.json().fields+mapOf("verifiedCount" to aiNumber(planner.verifiedCount(p,ledger.steps).toLong()),"satisfied" to aiBool(planner.satisfied(p,ledger.steps))))}),"verifiedWrites" to aiNumber(ledger.steps.count{it.write&&it.state==StepState.VERIFIED}.toLong()),"committedUnverified" to aiNumber(ledger.steps.count{it.state==StepState.COMMITTED}.toLong()),"unknown" to aiNumber(ledger.steps.count{it.state==StepState.UNKNOWN}.toLong()),"complete" to aiBool(complete),"work" to aiNumber(budget.work.toLong()))
+    private suspend fun <T> metered(block:suspend()->T):T {val before=queries.sourceQueries.get();try{return block()}finally{budget.consume((queries.sourceQueries.get()-before).toInt())}}
+    private fun failure(call:ConversationToolCall,error:ApiError,status:ToolStatus=ToolStatus.FAILED)=ToolReceipt(UUID.randomUUID().toString(),call.id,status,error=error)
+    private fun report(receipt:ToolReceipt):ToolReceipt {allReceipts+=receipt;onReceipt(receipt);return receipt}
+    private fun target(call:ConversationToolCall):Map<String,AiJson> = call.arguments.fields.filterKeys{it in setOf("number","id","callId","widgetId","date","slot","from","to","taskId")}
+    private fun isRepairable(error:ApiError?)=error?.code==ErrorCode.VALIDATION&&error.message !in setOf("ai.duplicate_call_mismatch","ai.repair_target_changed","ai.task_target_changed","ai.task_required","ai.profile_exists")
+    private data class Prepared(val call:ConversationToolCall,val step:LedgerStep,val definition:ToolDefinition?,var expected:Map<String,Long> = emptyMap(),var error:ApiError?=null)
+    suspend fun execute(calls:List<ConversationToolCall>):List<ToolReceipt> {
+        if(calls.isEmpty()||calls.size>32||calls.map{it.id}.distinct().size!=calls.size)throw BackendFailure(ApiError(ErrorCode.VALIDATION,"ai.invalid_tool_response"))
+        val expanded=mutableListOf<ConversationToolCall>()
+        val groups=linkedMapOf<String,List<String>>()
+        for(call in calls) {
+            if(call.name!="callers_saveProfiles"){expanded+=call;continue}
+            try {
+                executor.registry.validate(call)
+                val items=(call.arguments["items"] as AiJson.Arr).values
+                require(items.size in 1..32)
+                val task=planner.get(call.arguments.s("taskId"));require(task.kind==TaskKind.CREATE_PROFILES)
+                val children=items.mapIndexed{i,item->ConversationToolCall("${call.id}:item:$i","callers_saveProfile",AiJson.Obj((item as AiJson.Obj).fields+mapOf("taskId" to aiString(task.id))))}
+                groups[call.id]=children.map{it.id};expanded+=children
+            } catch(e:Exception){
+                if(e is CancellationException)throw e
+                expanded+=call
+            }
+        }
+        if(expanded.size>64)throw BackendFailure(ApiError(ErrorCode.SYSTEM_RESTRICTED,"ai.turn_limit"))
+        val pending=mutableListOf<Prepared>()
+        val writes=expanded.count{c->executor.registry.allDefinitions.any{it.name==c.name&&it.write}}
+        for(original in expanded) {
+            var call=original
+            val definition=executor.registry.allDefinitions.singleOrNull{it.name==call.name}
+            val write=definition?.write==true
+            val explicitTask=call.arguments.optS("taskId")
+            val task=if(write&&explicitTask==null&&writes==1)planner.prepare(turn,if(definition?.index==37)TaskKind.SET_APPEARANCE else TaskKind.OPERATIONS,1)else null
+            val taskId=explicitTask?:task?.id?:"read:$turn"
+            val old=repairable.lastOrNull{s->!s.started&&s.call.name==call.name&&target(s.call).all{(k,v)->call.arguments[k]==v}}
+            val step=if(old!=null&&ledger.signature(call)!=old.signature){
+                if(!budget.repair(old.id))throw BackendFailure(ApiError(ErrorCode.SYSTEM_RESTRICTED,"ai.repair_limit"))
+                repairable.remove(old);ledger.repair(old,call,write)
+            }else ledger.prepare(taskId,call,write)
+            val p=Prepared(call,step,definition);pending+=p
+            if(step.receipt!=null)continue
+            try {
+                executor.registry.validate(call)
+                if(write&&explicitTask==null&&writes>1)throw BackendFailure(ApiError(ErrorCode.VALIDATION,"ai.task_required"))
+                if(write&&explicitTask!=null)planner.get(explicitTask)
+                if(definition?.index in setOf(7,8)) {
+                    val checked=api().checkNumber(call.arguments.s("number"))
+                    if(!checked.validProfileNumber)throw BackendFailure(ApiError(ErrorCode.VALIDATION,"number.invalid",fieldErrors=mapOf("$.number" to "number.valid_profile_required")))
+                    call=call.copy(arguments=AiJson.Obj(call.arguments.fields+("number" to aiString(checked.normalized))));p.step.call=call
+                }
+                if(write) {
+                    if(definition?.index==79)throw BackendFailure(ApiError(ErrorCode.VALIDATION,"ai.invalid_profile_batch"))
+                    p.expected=metered{scopes.prepare(call,definition!!.index)}
+                    if(explicitTask!=null&&planner.get(explicitTask).kind==TaskKind.CREATE_PROFILES) {
+                        if(definition?.index!=7)throw BackendFailure(ApiError(ErrorCode.VALIDATION,"ai.task_operation_mismatch"))
+                        val disclosed=queries.snapshotObservations()
+                        val page=try{metered{queries.query(QuerySpec(AiDomain.D01,filter=QueryFilter(number=call.arguments.s("number")),limit=1)).requiredValue()}}finally{queries.restoreObservations(disclosed)}
+                        if(page.items.any{sameValue(it["stored"],aiBool(true))})throw BackendFailure(ApiError(ErrorCode.CONFLICT,"ai.profile_exists"))
+                    }
+                }
+            } catch(e:CancellationException){throw e}
+            catch(e:BackendFailure){p.error=e.error}
+            catch(_:IllegalArgumentException){p.error=ApiError(ErrorCode.VALIDATION,"ai.invalid_tool_arguments")}
+        }
+        // Explicit dependencies are protocol IDs; unknown/cyclic graphs reject before any write.
+        val byCall=pending.associateBy{it.call.id}
+        pending.forEach{p->
+            val deps=(p.call.arguments["dependsOn"] as? AiJson.Arr)?.values?.map{it.string()}?:emptyList()
+            if(deps.any{it !in byCall&&ledger.steps.none{s->s.call.id==it}})p.error=ApiError(ErrorCode.VALIDATION,"ai.unknown_dependency")
+            p.step.dependencies+=deps
+        }
+        pending.forEachIndexed{i,p->pending.take(i).filter{prior->prior.step!==p.step&&prior.definition?.write==true&&p.expected.keys.any{it in prior.expected}}.forEach{p.step.dependencies+=it.call.id}}
+        fun cycle(id:String,visiting:MutableSet<String>,done:MutableSet<String>):Boolean {
+            if(id in done)return false
+            if(!visiting.add(id))return true
+            if(byCall[id]?.step?.dependencies?.any{cycle(it,visiting,done)}==true)return true
+            visiting.remove(id);done+=id;return false
+        }
+        if(pending.any{cycle(it.call.id,mutableSetOf(),mutableSetOf())})throw BackendFailure(ApiError(ErrorCode.VALIDATION,"ai.dependency_cycle"))
+        // A malformed item may only be bypassed when its resource target is demonstrably different.
+        val invalid=pending.filter{it.error!=null}
+        val validWrites=pending.count{it.definition?.write==true&&it.error==null&&it.step.receipt==null}
+        if(!budget.canStartWrites(validWrites))throw BackendFailure(ApiError(ErrorCode.SYSTEM_RESTRICTED,"ai.turn_limit"))
+        val results=linkedMapOf<String,ToolReceipt>()
+        val remaining=pending.toMutableList()
+        while(remaining.isNotEmpty()) {
+            val p=remaining.firstOrNull{it.step.dependencies.none{d->d in remaining.map{x->x.call.id}}}?:error("dependency ordering")
+            remaining.remove(p)
+            val call=p.call;val step=p.step
+            val cached=step.receipt
+            if(cached!=null){results[call.id]=report(cached.copy(toolCallId=call.id));continue}
+            val blocked=step.dependencies.any{id->val receipt=results[id]?:ledger.steps.firstOrNull{it.call.id==id}?.receipt;receipt==null||receipt.error!=null||receipt.status in setOf(ToolStatus.FAILED,ToolStatus.SKIPPED,ToolStatus.UNKNOWN,ToolStatus.DENIED,ToolStatus.CANCELLED)}
+            val uncertain=invalid.any{bad->bad!==p&&(target(bad.call).isEmpty()||target(p.call).isEmpty()||target(bad.call)==target(p.call))}
+            var receipt:ToolReceipt
+            if(p.error!=null)receipt=failure(call,p.error!!)
+            else if(blocked||uncertain)receipt=failure(call,ApiError(ErrorCode.SYSTEM_RESTRICTED,"ai.dependency_failed"),ToolStatus.SKIPPED)
+            else {
+                if(!active())throw CancellationException("ai.cancelled")
+                val index=p.definition!!.index
+                if(index==78) {
+                    budget.consume()
+                    receipt=try{val plan=planner.prepare(turn,TaskKind.valueOf(call.arguments.s("kind")),call.arguments.l("expectedCount").exactInt(),(call.arguments["targets"] as? AiJson.Arr)?.values?.map{it.string()}?.toSet()?:emptySet());ToolReceipt(step.id,call.id,ToolStatus.READ,plan.json())}catch(_:IllegalArgumentException){failure(call,ApiError(ErrorCode.VALIDATION,"ai.task_target_changed"))}
+                } else {
+                    if(p.definition.write)awaitForeground()
+                    val command=CommandContext(step.id,coordinator.capture(),generation,mayCommit={active()},expectedScopes=if(p.definition.write)scopes.afterOwnCommits(p.expected)else null){active()}
+                    ledger.start(step)
+                    budget.consume()
+                    try {
+                        receipt=metered{executor.execute(step.call,ToolExecutionContext(session,turn,generation,command))}
+                        if(p.definition.write) {
+                            receipt=metered{verifier.verify(index,step.call,receipt)}
+                            if(receipt.commitRevision!=null)scopes.committed(command.operationId,p.expected.keys)
+                        }
+                    } catch(e:CancellationException){
+                        val committed=coordinator.committed(command.operationId)
+                        val cancelled=ToolReceipt(command.operationId,call.id,if(committed!=null)ToolStatus.COMMITTED else ToolStatus.CANCELLED,commitRevision=committed,verification=if(committed!=null)VerificationStatus.COMMITTED_UNVERIFIED else VerificationStatus.NOT_REQUIRED)
+                        ledger.finish(step,cancelled);report(cancelled);throw e
+                    }
+                }
+            }
+            ledger.finish(step,receipt)
+            if(isRepairable(receipt.error))repairable+=step
+            results[call.id]=report(receipt)
+        }
+        return calls.map{call->groups[call.id]?.let{ids->
+            val children=ids.map{results.getValue(it)}
+            val verified=children.count{it.verification==VerificationStatus.VERIFIED}
+            ToolReceipt("batch:${call.id}",call.id,if(verified==children.size)ToolStatus.COMMITTED else ToolStatus.READ,aiObject("items" to AiJson.Arr(children.map{it.json()}),"verifiedCount" to aiNumber(verified.toLong()),"expectedCount" to aiNumber(children.size.toLong()),"complete" to aiBool(verified==children.size)),verification=if(verified==children.size)VerificationStatus.VERIFIED else VerificationStatus.PENDING)
+        }?:results.getValue(call.id)}
+    }
+}
+fun ToolReceipt.json()=aiObject("operationId" to aiString(operationId),"toolCallId" to aiString(toolCallId),"status" to aiString(status.name),"value" to value,"verification" to aiString(verification.name),"noOp" to aiBool(noOp),"verificationEvidence" to verificationEvidence,"error" to (error?.let{aiObject("code" to aiString(it.code.name),"message" to aiString(it.message),"fieldErrors" to AiJson.Obj(it.fieldErrors.mapValues{entry->aiString(entry.value)}),"retryable" to aiBool(it.retryable))}?:AiJson.Null))

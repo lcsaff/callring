@@ -155,7 +155,7 @@ class ToolBusinessIntegrationTest {
             val receipt = withTimeout(10000) { executor.execute(call,scope("op")) }
             assertTrue("${definition.id} ${definition.name}: $receipt",receipt.status in setOf(ToolStatus.READ,ToolStatus.COMMITTED,ToolStatus.QUEUED,ToolStatus.LAUNCHED))
             assertNull("${definition.id}: ${receipt.error}",receipt.error)
-            val expected = when(definition.index) { 37 -> "edits.appearance"; 51 -> "recordings.getSettings"; 52 -> "ai.patchCombined"; 53 -> "ai.testSlot"; 63 -> "root.adoptIdentity"; 64 -> "ai.getAiView"; 65 -> "ai.patchAi"; 66 -> "ai.patchAi"; 67,68 -> "runtime.getStatus"; 69 -> "widgets.listBindings"; 70 -> "foreground.TEST_OVERLAY"; 71 -> "callers.getCallDetail"; 72 -> "ai.copyConnection"; else -> definition.name.replace('_','.') }
+            val expected = when(definition.index) { 7 -> "edits.profile"; 37 -> "edits.appearance"; 51 -> "recordings.getSettings"; 52 -> "ai.patchCombined"; 53 -> "ai.testSlot"; 63 -> "root.adoptIdentity"; 64 -> "ai.getAiView"; 65 -> "ai.patchAi"; 66 -> "ai.patchAi"; 67,68 -> "runtime.getStatus"; 69 -> "widgets.listBindings"; 70 -> "foreground.TEST_OVERLAY"; 71 -> "callers.getCallDetail"; 72 -> "ai.copyConnection"; else -> definition.name.replace('_','.') }
             assertTrue("${definition.id} missing real API $expected in ${fixture.calls}",expected in fixture.calls)
             assertFalse(receipt.value.encode().contains("fixture-secret-"))
             assertFalse(receipt.value.encode().contains("content://"))

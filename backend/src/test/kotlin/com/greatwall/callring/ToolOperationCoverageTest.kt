@@ -7,6 +7,14 @@ import org.junit.Assert.*
 import org.junit.Test
 
 class ToolOperationCoverageTest {
+    @Test fun all72DefinitionsHaveSourceOrWriteScopeAndReceiptPolicy() {
+        val registry=ToolRegistry();val contracts=registry.operationContracts()
+        assertEquals(registry.definitions.map{it.index},contracts.map{it.index})
+        assertEquals(72,contracts.size)
+        assertTrue(contracts.all{it.sharedApi.isNotBlank()})
+        assertEquals(ReceiptPolicy.QUEUED,contracts.single{it.index==46}.receiptPolicy)
+        assertEquals(ReceiptPolicy.PERSISTED_READBACK,contracts.single{it.index==37}.receiptPolicy)
+    }
     @Test fun patchUsesActualProfileStorageAndPreservesPositionAndWhitelist() = runBlocking {
         val fixture = ConversationFixtures()
         val position = (fixture.backend.settings.savePosition(SavePosition(name = "Position", level = 1, active = true)) as ApiResult.Success).value

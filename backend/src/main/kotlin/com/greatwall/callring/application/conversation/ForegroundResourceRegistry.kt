@@ -29,5 +29,10 @@ class ForegroundResourceRegistry(private val clock: Clock = Clock.systemUTC()) {
         resource.target = target
         return resource.document
     }
+    suspend fun resolveScoped(handle:String,target:Long,probe:suspend(DocumentRef)->RecordingFile):DocumentRef {
+        val document=lookup(handle)
+        val file=probe(document)
+        return synchronized(this){verify(handle,file);val resource=resources.getValue(handle);require(resource.target==null||resource.target==target){"action.stale"};resource.target=target;document}
+    }
     fun project(files: List<RecordingFile>): AiJson = AiJson.Arr(files.map { aiObject("handle" to aiString(issue(it)), "name" to aiString(it.name), "modifiedAt" to if(it.modifiedKnown) aiNumber(it.modifiedAt) else AiJson.Null, "size" to aiNumber(it.size)) })
 }

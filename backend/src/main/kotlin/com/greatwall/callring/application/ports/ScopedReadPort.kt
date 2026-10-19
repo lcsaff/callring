@@ -2,7 +2,7 @@ package com.greatwall.callring.application.ports
 
 import com.greatwall.callring.application.api.*
 
-data class SourceRow(val key:String,val value:AiJson.Obj,val textFields:Map<String,Long> = emptyMap())
+data class SourceRow(val key:String,val value:AiJson.Obj,val textFields:Map<String,Long> = emptyMap(),val cursorKey:String=key)
 data class SourcePage(val rows:List<SourceRow>,val matchedTotal:Long?,val nextKey:String?=null,val complete:Boolean=nextKey==null,val status:QueryStatus=if(nextKey==null) QueryStatus.COMPLETE else QueryStatus.PARTIAL,val reason:String?=null)
 data class SourceText(val text:String,val start:Long,val end:Long,val total:Long)
 interface ScopedReadPort {
