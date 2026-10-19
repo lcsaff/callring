@@ -199,8 +199,8 @@ class AndroidRecordingStore(context: Context, namespace: String,
 }
 
 internal object RecordingJson {
-    private fun connection(v: AiConnection) = JSONObject().put("protocol", v.protocol.name).put("url", v.url).put("key", v.apiKey).put("model", v.model)
-    private fun connection(v: JSONObject) = AiConnection(AiProtocol.valueOf(v.getString("protocol")), v.getString("url"), v.getString("key"), v.getString("model"))
+    private fun connection(v: AiConnection) = JSONObject().put("protocol", v.protocol.name).put("url", v.url).put("key", v.apiKey).put("model", v.model).put("thinkingMode", v.thinkingMode.name)
+    private fun connection(v: JSONObject) = AiConnection(AiProtocol.valueOf(v.getString("protocol")), v.getString("url"), v.getString("key"), v.getString("model"), ThinkingMode.valueOf(v.optString("thinkingMode", ThinkingMode.DISABLED.name)))
     fun settings(v: RecordingSettings): JSONObject = JSONObject().put("recording", v.recordingEnabled).put("automatic", v.automaticAnalysis)
         .put("analysis", connection(v.analysis)).put("transcription", connection(v.transcription)).put("mode", v.captureMode.name).put("folder", v.systemFolder)
         .put("conversation", JSONObject().put("version", 1).put("context", v.conversationBudget.context).put("output", v.conversationBudget.output).put("compatibility",v.conversationCompatibility.name))

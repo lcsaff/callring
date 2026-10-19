@@ -9,6 +9,7 @@ data class AiConnection(
     val url: String = "",
     val apiKey: String = "",
     val model: String = "",
+    val thinkingMode: ThinkingMode = ThinkingMode.DISABLED,
 ) {
     fun validate() {
         val parsed = URI(url.trim())
@@ -18,7 +19,7 @@ data class AiConnection(
         require(model.isNotBlank() && model.length <= 256) { "ai.invalid_model" }
     }
     fun endpoint(path: String): String = url.trim().trimEnd('/') + "/" + path
-    override fun toString() = "AiConnection(protocol=$protocol, url=$url, apiKey=[redacted], model=$model)"
+    override fun toString() = "AiConnection(protocol=$protocol, url=$url, apiKey=[redacted], model=$model, thinkingMode=$thinkingMode)"
 }
 
 enum class CaptureMode { SYSTEM_ONLY, MICROPHONE_EXPERIMENTAL }
@@ -36,6 +37,7 @@ data class RecordingSettings(
         conversationBudget.validate()
         resolveConversationProfile(analysis, conversationCompatibility)
         require(transcription.protocol == AiProtocol.OPENAI) { "ai.transcription_requires_openai" }
+        require(transcription.thinkingMode == ThinkingMode.DISABLED) { "ai.transcription_thinking_disabled" }
         if (analysis.url.isNotBlank() || analysis.apiKey.isNotBlank() || analysis.model.isNotBlank()) analysis.validate()
         if (transcription.url.isNotBlank() || transcription.apiKey.isNotBlank() || transcription.model.isNotBlank()) transcription.validate()
         if (automaticAnalysis) { analysis.validate(); transcription.validate() }

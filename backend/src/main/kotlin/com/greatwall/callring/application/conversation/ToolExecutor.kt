@@ -200,7 +200,7 @@ private fun AiJson.Obj.range(): DateRange = obj("range").let { DateRange(LocalDa
 private fun AiJson.Obj.windows(key: String): List<TimeWindow> = (get(key) as AiJson.Arr).values.map { val item = it as AiJson.Obj; TimeWindow(item.l("startMinute").exactInt(), item.l("endMinute").exactInt()) }
 private fun AiJson.Obj.weekly(key: String): Map<Int, List<TimeWindow>> = obj(key).let { values -> values.fields.keys.associate { it.toInt() to values.windows(it) } }
 private fun <T> AiJson.Obj.patch(key: String, read: (AiJson) -> T): PatchField<T> = if(has(key)) PatchField.Set(read(get(key))) else PatchField.Keep
-private fun AiJson.Obj.connectionPatch() = ConnectionPatch(patch("protocol") { AiProtocol.valueOf(it.string()) }, patch("url") { it.string() }, patch("model") { it.string() })
+private fun AiJson.Obj.connectionPatch() = ConnectionPatch(patch("protocol") { AiProtocol.valueOf(it.string()) }, patch("url") { it.string() }, patch("model") { it.string() }, patch("thinkingMode") { ThinkingMode.valueOf(it.string()) })
 private fun AiJson.Obj.aiPatch(base: ConversationBudget): AiSettingsPatch = AiSettingsPatch(optObj("analysis")?.connectionPatch() ?: ConnectionPatch(), optObj("transcription")?.connectionPatch() ?: ConnectionPatch(),
     if(has("context") || has("output")) PatchField.Set(ConversationBudget(optL("context") ?: base.context, optL("output") ?: base.output)) else PatchField.Keep,patch("compatibility"){ConversationCompatibility.valueOf(it.string())})
 private fun AiJson.Obj.recordingPatch() = RecordingSettingsPatch(patch("recordingEnabled") { it.boolean() }, patch("automaticAnalysis") { it.boolean() }, patch("captureMode") { CaptureMode.valueOf(it.string()) })

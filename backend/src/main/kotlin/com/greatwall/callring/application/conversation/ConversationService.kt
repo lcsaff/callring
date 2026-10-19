@@ -67,7 +67,7 @@ class ConversationService(
     }
     private fun matches(target:AiConnectionView,configuration:RecordingSettings):Boolean {
         val c=configuration.analysis
-        return target.protocol==c.protocol&&target.url==c.url&&target.model==c.model&&target.resolvedProfile==resolveConversationProfile(c,configuration.conversationCompatibility)
+        return target.protocol==c.protocol&&target.url==c.url&&target.model==c.model&&target.thinkingMode==c.thinkingMode&&target.resolvedProfile==resolveConversationProfile(c,configuration.conversationCompatibility)
     }
     private fun enqueue(expectedSessionId:String,text:String,target:AiConnectionView?,resuming:ToolBatchEngine?=null):ApiResult<Unit> {
         if(text.isBlank()||text.toByteArray(Charsets.UTF_8).size>32768)return failed(ErrorCode.VALIDATION,"ai.message_invalid")
@@ -212,5 +212,5 @@ class ConversationService(
     }
     override fun close(){generation.incrementAndGet();client?.cancel();foreground.invalidate();resources.reset();queries.reset();scope.cancel()}
     private fun failed(code:ErrorCode,message:String)=ApiResult.Failure(ApiError(code,message))
-    private fun connectionFingerprint(configuration:RecordingSettings):String {val c=configuration.analysis;return digest("${c.protocol}\n${c.url}\n${c.model}\n${c.apiKey}\n${configuration.conversationCompatibility}")}
+    private fun connectionFingerprint(configuration:RecordingSettings):String {val c=configuration.analysis;return digest("${c.protocol}\n${c.url}\n${c.model}\n${c.apiKey}\n${c.thinkingMode}\n${configuration.conversationCompatibility}")}
 }

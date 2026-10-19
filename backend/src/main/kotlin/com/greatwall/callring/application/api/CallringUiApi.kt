@@ -8,6 +8,7 @@ interface CallringUiApi {
     val edits: UiEditsApi get() = UnavailableUiEditsApi
     val conversation: ConversationApi get() = UnavailableConversationApi
     val aiSettings: AiSettingsApi get() = UnavailableAiSettingsApi
+    val update: AppUpdateApi get() = UnavailableAppUpdateApi
     val snapshots: AiSnapshotApi get() = UnavailableAiSnapshotApi
     fun commandApi(context: CommandContext): CallringUiApi = this
     suspend fun adoptIdentity(callId: Long, expectedGeneration: Long): ApiResult<CallerProfile> = aiUnavailable()

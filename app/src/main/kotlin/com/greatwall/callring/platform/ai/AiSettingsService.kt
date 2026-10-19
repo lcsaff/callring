@@ -17,7 +17,15 @@ class AiSettingsService(
     fun bound(command: CommandContext) = AiSettingsService(store, coordinator, microphoneGranted, testConnection, command, afterSave, folderView)
     private fun conflict(): Nothing = throw BackendFailure(ApiError(ErrorCode.CONFLICT, "settings.conflict", retryable = true))
     private fun revision(key: String) = coordinator.capture().values.getValue(key)
-    private fun AiConnection.view(compatibility: ConversationCompatibility = ConversationCompatibility.STANDARD) = AiConnectionView(protocol, url, model, apiKey.isNotEmpty(),resolveConversationProfile(this,compatibility))
+    private fun AiConnection.view(compatibility: ConversationCompatibility = ConversationCompatibility.STANDARD): AiConnectionView {
+        val policy = ThinkingPolicyResolver.resolve(protocol, url, model)
+        val notice = when (policy.support) {
+            ThinkingSupport.AVAILABLE -> ""
+            ThinkingSupport.CUSTOM_GATEWAY -> "thinking.custom_gateway"
+            else -> policy.reason
+        }
+        return AiConnectionView(protocol, url, model, apiKey.isNotEmpty(), resolveConversationProfile(this, compatibility), thinkingMode, policy.support, notice)
+    }
     private fun RecordingSettings.aiView() = AiSettingsView(analysis.view(conversationCompatibility), transcription.view(), conversationBudget, revision("aiConfig"), conversationCompatibility)
     private fun RecordingSettings.recordingView(version: Long = revision("recordingConfig")): RecordingSettingsView {
         val folder = folderView(systemFolder)
@@ -53,7 +61,9 @@ class AiSettingsService(
             LocalSecretChange.Keep -> current.apiKey
             else -> { val marker=coordinator.domainMarker("aiConfig",baseRevision)?:conflict();if(!coordinator.unchanged(setOf("ai:$slot:key"),marker))conflict(); if (secret is LocalSecretChange.Replace) secret.value else "" }
         }
-        return current.copy(protocol = field(base.protocol, current.protocol, patch.protocol), url = field(base.url, current.url, patch.url), model = field(base.model, current.model, patch.model), apiKey = key)
+        val mode = field(base.thinkingMode, current.thinkingMode, patch.thinkingMode)
+        if (slot == AiSlot.TRANSCRIPTION && mode != ThinkingMode.DISABLED) throw BackendFailure(ApiError(ErrorCode.VALIDATION, "ai.transcription_thinking_disabled"))
+        return current.copy(protocol = field(base.protocol, current.protocol, patch.protocol), url = field(base.url, current.url, patch.url), model = field(base.model, current.model, patch.model), apiKey = key, thinkingMode = mode)
     }
     override suspend fun patchAi(base: AiSettingsView, patch: AiSettingsPatch, analysisSecret: LocalSecretChange, transcriptionSecret: LocalSecretChange) = result {
         store.updateSettings(command) { old -> old.copy(
@@ -67,10 +77,10 @@ class AiSettingsService(
         require(from != to)
         store.updateSettings(command) { old ->
             val marker=coordinator.domainMarker("aiConfig",expectedRevision)?:conflict()
-            val keys=listOf(from,to).flatMap{slot->listOf("protocol","url","model","key").map{"ai:$slot:$it"}}.toSet()+if(to==AiSlot.ANALYSIS)setOf("ai:compatibility")else emptySet()
+            val keys=listOf(from,to).flatMap{slot->listOf("protocol","url","model","key","thinkingMode").map{"ai:$slot:$it"}}.toSet()+if(to==AiSlot.ANALYSIS)setOf("ai:compatibility")else emptySet()
             if(!coordinator.unchanged(keys,marker))conflict()
             val value = if (from == AiSlot.ANALYSIS) old.analysis else old.transcription
-            if (to == AiSlot.ANALYSIS) old.copy(analysis = value, conversationCompatibility = ConversationCompatibility.AUTO) else old.copy(transcription = value.copy(protocol = AiProtocol.OPENAI))
+            if (to == AiSlot.ANALYSIS) old.copy(analysis = value.copy(thinkingMode = ThinkingMode.DISABLED), conversationCompatibility = ConversationCompatibility.AUTO) else old.copy(transcription = value.copy(protocol = AiProtocol.OPENAI, thinkingMode = ThinkingMode.DISABLED))
         }.aiView()
     }
     override suspend fun testSlot(slot: AiSlot) = result { val current = coordinator.guard(command) { store.settings() }; testConnection(if (slot == AiSlot.ANALYSIS) current.analysis else current.transcription, slot == AiSlot.TRANSCRIPTION) }

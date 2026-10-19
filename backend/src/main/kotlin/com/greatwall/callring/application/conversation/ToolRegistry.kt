@@ -21,7 +21,7 @@ class ToolRegistry {
     private val windows = array(window)
     private val weekly = aiObject("type" to aiString("object"), "propertyNames" to aiObject("enum" to AiJson.Arr((1..7).map { aiString(it.toString()) })), "additionalProperties" to windows)
     private val slot = choice("ANALYSIS", "TRANSCRIPTION")
-    private val connection = shape("?protocol" to choice("OPENAI", "ANTHROPIC"), "?url" to string, "?model" to string)
+    private val connection = shape("?protocol" to choice("OPENAI", "ANTHROPIC"), "?url" to string, "?model" to string, "?thinkingMode" to choice("ENABLED", "DISABLED"))
     private val ai = shape("?analysis" to connection, "?transcription" to connection, "?context" to integer, "?output" to integer, "?compatibility" to choice("AUTO","STANDARD","QWEN_FAST"))
     private val recording = shape("?recordingEnabled" to boolean, "?automaticAnalysis" to boolean, "?captureMode" to choice("SYSTEM_ONLY", "MICROPHONE_EXPERIMENTAL"))
     private val range = shape("startDate" to string, "endDateInclusive" to string, "?zoneId" to string)
