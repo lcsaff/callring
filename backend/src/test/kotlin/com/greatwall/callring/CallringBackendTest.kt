@@ -1141,4 +1141,30 @@ class CallringBackendTest {
         values += cell.toString()
         return values
     }
+
+    @Test
+    fun numberDeletionImpactAndCoreDeleteRemoveProfileAndAllCallsAtomically() = runBlocking {
+        val fact = com.greatwall.callring.domain.WorkClassifier.classify(store.state, now)
+        store.state.profiles["30001"] = com.greatwall.callring.domain.ProfileRecord("30001", "张三", "研发", null, false)
+        store.state.profiles["40004"] = com.greatwall.callring.domain.ProfileRecord("40004", "李四", "市场", null, false)
+        listOf(1L, 2L).forEachIndexed { index, id ->
+            store.state.calls[id] = RawCallRecord(id, "30001", now + index, 0, CallResult.ANSWERED, CallDecision.NORMAL_RINGING, CallSource.SCREENING, null, null, true, fact, fact)
+        }
+        store.state.calls[3L] = RawCallRecord(3, "40004", now, 0, CallResult.ANSWERED, CallDecision.NORMAL_RINGING, CallSource.SCREENING, null, null, true, fact, fact)
+
+        val impact = api.callers.numberDataImpact("30001").value()
+        assertEquals("30001", impact.number)
+        assertTrue(impact.profileExists)
+        assertEquals(2, impact.callCount)
+
+        assertTrue(api.callers.deleteNumberCore("30001", 1) is ApiResult.Failure)
+        assertEquals(2, api.callers.numberDataImpact("30001").value().callCount)
+
+        api.callers.deleteNumberCore("30001", 2).value()
+        assertFalse(store.state.profiles.containsKey("30001"))
+        assertEquals(0, api.callers.numberDataImpact("30001").value().callCount)
+        assertTrue(store.state.profiles.containsKey("40004"))
+        assertTrue(store.state.calls.containsKey(3L))
+        assertTrue(api.callers.deleteNumberCore("30001", 0) is ApiResult.Failure)
+    }
 }

@@ -151,6 +151,8 @@ class BackendGraph(
         object : CallringUiApi by backend {
             override val recordings: RecordingApi get() = this@BackendGraph.recordings
             override val aiSettings: AiSettingsApi get() = this@BackendGraph.recordings.aiSettings
+            override val numberDeletion: NumberDeletionApi get() =
+                com.greatwall.callring.platform.callers.NumberDeletionService(backend.callers, this@BackendGraph.recordings, backend.widgets)
             override val snapshots: AiSnapshotApi get() = snapshotsDelegate.value
             override val conversation: ConversationApi get() = conversationDelegate.value
             override val update: AppUpdateApi get() = this@BackendGraph.update
@@ -161,6 +163,15 @@ class BackendGraph(
     private fun boundApi(command: CommandContext): CallringUiApi = object : CallringUiApi by backend.commandApi(command) {
         override val recordings: RecordingApi get() = this@BackendGraph.recordings.bound(command)
         override val aiSettings: AiSettingsApi get() = this@BackendGraph.recordings.aiSettings.bound(command)
+        override val numberDeletion: NumberDeletionApi
+            get() {
+                val boundBackend = backend.commandApi(command)
+                return com.greatwall.callring.platform.callers.NumberDeletionService(
+                    boundBackend.callers,
+                    this@BackendGraph.recordings.bound(command),
+                    boundBackend.widgets,
+                )
+            }
         override val snapshots: AiSnapshotApi get() = snapshotsDelegate.value
         override val conversation: ConversationApi get() = conversationDelegate.value
         override val update: AppUpdateApi get() = this@BackendGraph.update

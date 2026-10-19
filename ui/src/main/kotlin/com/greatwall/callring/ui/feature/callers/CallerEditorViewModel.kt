@@ -4,6 +4,7 @@ import androidx.lifecycle.SavedStateHandle
 import com.greatwall.callring.application.api.*
 import com.greatwall.callring.ui.state.*
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.*
 
 class CallerEditorViewModel(
@@ -13,6 +14,8 @@ class CallerEditorViewModel(
     private val savedState: SavedStateHandle,
     testScope: CoroutineScope? = null,
     private val saveWithBase: (suspend (CallerDraft, CallerDraft) -> ApiResult<CallerProfile>)? = null,
+    private val deletion: NumberDeletionApi? = null,
+    private val onDeleted: () -> Unit = {},
 ) : UiViewModel(testScope) {
     private val loader = RequestLoader<CallerEditorData>(scope)
     val state = loader.state
@@ -20,6 +23,11 @@ class CallerEditorViewModel(
     val mutation = writer.state
     private val mutableDraft = MutableStateFlow<CallerDraft?>(null)
     val draft = mutableDraft.asStateFlow()
+    val impact = MutableStateFlow<NumberDeletionImpact?>(null)
+    val impactLoading = MutableStateFlow(false)
+    val deletionError = MutableStateFlow<ApiError?>(null)
+    private val deleteWriter = MutationRunner(scope)
+    val deletionState = deleteWriter.state
     private var baseline: CallerDraft? = if (savedState.get<String>("baseNumber") != null) restoreBase() else null
 
     init {
@@ -56,6 +64,36 @@ class CallerEditorViewModel(
             setBaseline(mutableDraft.value!!)
             persist(mutableDraft.value!!)
             refresh()
+        }
+    }
+
+    fun requestDeletion() {
+        val target = mutableDraft.value?.number ?: return
+        val api = deletion ?: return
+        scope.launch {
+            impactLoading.value = true
+            when (val result = api.impact(target)) {
+                is ApiResult.Success -> { impact.value = result.value; deletionError.value = null }
+                is ApiResult.Failure -> deletionError.value = result.error
+            }
+            impactLoading.value = false
+        }
+    }
+
+    fun dismissDeletion() {
+        impact.value = null
+        deletionError.value = null
+    }
+
+    fun confirmDeletion() {
+        val target = impact.value ?: return
+        val api = deletion ?: return
+        deleteWriter.run(
+            { api.delete(DeleteNumberCommand(target.number, target.callCount, target.archiveCount, target.widgetBindingCount)) },
+            "号码及其关联数据已删除",
+        ) {
+            impact.value = null
+            onDeleted()
         }
     }
 

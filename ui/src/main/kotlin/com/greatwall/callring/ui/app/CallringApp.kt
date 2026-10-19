@@ -164,12 +164,18 @@ private fun AppScaffold(
             }
             composable("edit?number={number}", listOf(navArgument("number") { type = NavType.StringType; nullable = true; defaultValue = null })) { record ->
                 val number = record.arguments?.getString("number")?.takeIf { it.isNotEmpty() }
-                val model: CallerEditorViewModel = uiViewModel { CallerEditorViewModel(number, api.callers, api.changes, it, saveWithBase = api.edits::profile) }
+                val model: CallerEditorViewModel = uiViewModel { CallerEditorViewModel(number, api.callers, api.changes, it, saveWithBase = api.edits::profile, deletion = api.numberDeletion, onDeleted = back) }
                 val state by model.state.collectAsStateWithLifecycle()
                 val draft by model.draft.collectAsStateWithLifecycle()
                 val mutation by model.mutation.collectAsStateWithLifecycle()
+                val impact by model.impact.collectAsStateWithLifecycle()
+                val deletionState by model.deletionState.collectAsStateWithLifecycle()
+                val deletionError by model.deletionError.collectAsStateWithLifecycle()
                 ActiveRefresh(refreshSignal, refresh = model::refresh)
-                CallerEditorScreen(state, draft, mutation, number == null, back, model::refresh, { value -> model.edit { value } }, model::save)
+                CallerEditorScreen(state, draft, mutation, number == null, back, model::refresh, { value -> model.edit { value } }, model::save,
+                    onDeleteRequest = if (number != null) model::requestDeletion else null,
+                    impact = impact, deletionState = deletionState, deletionError = deletionError,
+                    onConfirmDelete = model::confirmDeletion, onDismissDelete = model::dismissDeletion)
             }
             composable("report/{number}", listOf(navArgument("number") { type = NavType.StringType })) { record ->
                 val number = requireNotNull(record.arguments?.getString("number"))

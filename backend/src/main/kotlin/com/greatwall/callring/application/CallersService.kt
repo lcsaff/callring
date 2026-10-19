@@ -117,5 +117,28 @@ internal fun createCallersApi(context: BackendContext): CallersApi =
                     profile(s, n)
                 }
             }
+
+            override suspend fun numberDataImpact(number: String): ApiResult<NumberCoreImpact> = io {
+                val n = number(number)
+                read { s ->
+                    NumberCoreImpact(
+                        n,
+                        s.profiles.containsKey(n),
+                        s.calls.values.count { checkNumber(it.number).normalized == n },
+                    )
+                }
+            }
+
+            override suspend fun deleteNumberCore(number: String, expectedCallCount: Int): ApiResult<Unit> =
+                write {
+                    val n = number(number)
+                    mutate { s ->
+                        val callIds = s.calls.entries.filter { checkNumber(it.value.number).normalized == n }.map { it.key }
+                        requireField(s.profiles.containsKey(n) || callIds.isNotEmpty(), "number", "number.not_found")
+                        requireField(callIds.size == expectedCallCount, "number", "number.delete_conflict")
+                        s.profiles.remove(n)
+                        callIds.forEach { s.calls.remove(it) }
+                    }
+                }
         }
     }

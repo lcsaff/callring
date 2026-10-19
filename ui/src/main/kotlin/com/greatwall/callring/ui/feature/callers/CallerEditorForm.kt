@@ -25,6 +25,7 @@ import com.greatwall.callring.ui.state.*
     state: LoadState<CallerEditorData>, draft: CallerDraft?, mutation: MutationState, numberEditable: Boolean,
     onRetry: () -> Unit, onChange: (CallerDraft) -> Unit, onSave: () -> Unit, modifier: Modifier = Modifier,
     showSuccess: Boolean = true,
+    onDeleteRequest: (() -> Unit)? = null,
 ) {
     val submit = rememberSubmit(onSave)
     Column(modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -63,7 +64,12 @@ import com.greatwall.callring.ui.state.*
                 "来电绕过应用免打扰", enabled = enabled)
             MutationFeedback(mutation, successMessage = "档案已保存", showSuccess = showSuccess)
             PrimaryAction(if (mutation.busy) "保存中…" else "保存档案", submit, enabled && draft.number.isNotBlank())
-        }
+
+            if (onDeleteRequest != null) {
+                HorizontalDivider(Modifier.padding(vertical = 8.dp))
+                TextButton(onClick = onDeleteRequest, enabled = enabled, modifier = Modifier.fillMaxWidth(),
+                    colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)) { Text("删除该号码及其全部数据") }
+            }        }
     }
 }
 
