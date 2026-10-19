@@ -10,10 +10,10 @@ import kotlinx.coroutines.CancellationException
 class ToolBatchEngine(
     private val api:()->CallringUiApi,private val executor:ToolExecutor,private val queries:QueryService,
     private val coordinator:BusinessRevisionCoordinator,private val session:String,private val turn:String,
-    private val generation:Long,private val active:()->Boolean,
-    private val awaitForeground:suspend()->Unit={},private val onReceipt:(ToolReceipt)->Unit={},
+    private var generation:Long,private var active:()->Boolean,
+    private var awaitForeground:suspend()->Unit={},private var onReceipt:(ToolReceipt)->Unit={},
 ) {
-    val budget=TurnBudget()
+    var budget=TurnBudget();private set
     val ledger=StepLedger{api().checkNumber(it).normalized}
     val planner=TaskPlanner()
     private val scopes=OperationScopePlanner(queries,coordinator)
@@ -21,6 +21,14 @@ class ToolBatchEngine(
     private val repairable=mutableListOf<LedgerStep>()
     private val allReceipts=mutableListOf<ToolReceipt>()
     val receipts:List<ToolReceipt> get()=allReceipts.toList()
+    fun pendingTasks()=planner.forUser(turn).filterNot{planner.satisfied(it,ledger.steps)}.map{it.id}
+    private var reconcile=false
+    fun resume(newGeneration:Long,newActive:()->Boolean,newAwaitForeground:suspend()->Unit=awaitForeground,newOnReceipt:(ToolReceipt)->Unit=onReceipt) {
+        if(ledger.steps.any{it.state==StepState.UNKNOWN})throw BackendFailure(ApiError(ErrorCode.SYSTEM_RESTRICTED,"ai.unknown_commit_requires_review"))
+        generation=newGeneration;active=newActive;awaitForeground=newAwaitForeground;onReceipt=newOnReceipt;budget=TurnBudget()
+        queries.clearObservations();scopes.resetForContinuation();reconcile=true
+        ledger.steps.filter{it.state in setOf(StepState.PREPARED,StepState.SKIPPED)}.forEach{it.state=StepState.PREPARED;it.receipt=null}
+    }
     val complete:Boolean get() {
         val plans=planner.forUser(turn)
         return plans.all{planner.satisfied(it,ledger.steps)}&&ledger.steps.none{it.state in setOf(StepState.UNKNOWN,StepState.STARTED,StepState.COMMITTED)}&&
@@ -33,12 +41,20 @@ class ToolBatchEngine(
     private fun target(call:ConversationToolCall):Map<String,AiJson> = call.arguments.fields.filterKeys{it in setOf("number","id","callId","widgetId","date","slot","from","to","taskId")}
     private fun isRepairable(error:ApiError?)=error?.code==ErrorCode.VALIDATION&&error.message !in setOf("ai.duplicate_call_mismatch","ai.repair_target_changed","ai.task_target_changed","ai.task_required","ai.profile_exists")
     private data class Prepared(val call:ConversationToolCall,val step:LedgerStep,val definition:ToolDefinition?,var expected:Map<String,Long> = emptyMap(),var error:ApiError?=null)
-    suspend fun execute(calls:List<ConversationToolCall>):List<ToolReceipt> {
+    suspend fun execute(calls:List<ConversationToolCall>,enabledNames:Set<String>?=null):List<ToolReceipt> {
+        if(reconcile){
+            reconcile=false
+            ledger.steps.filter{it.state==StepState.COMMITTED&&it.receipt?.status==ToolStatus.COMMITTED}.forEach{step->
+                val index=executor.registry.allDefinitions.single{it.name==step.call.name}.index
+                val receipt=metered{verifier.verify(index,step.call,step.receipt!!)}
+                ledger.finish(step,receipt);report(receipt)
+            }
+        }
         if(calls.isEmpty()||calls.size>32||calls.map{it.id}.distinct().size!=calls.size)throw BackendFailure(ApiError(ErrorCode.VALIDATION,"ai.invalid_tool_response"))
         val expanded=mutableListOf<ConversationToolCall>()
         val groups=linkedMapOf<String,List<String>>()
         for(call in calls) {
-            if(call.name!="callers_saveProfiles"){expanded+=call;continue}
+            if(call.name!="callers_saveProfiles"||(enabledNames!=null&&call.name !in enabledNames)){expanded+=call;continue}
             try {
                 executor.registry.validate(call)
                 val items=(call.arguments["items"] as AiJson.Arr).values
@@ -61,15 +77,16 @@ class ToolBatchEngine(
             val explicitTask=call.arguments.optS("taskId")
             val task=if(write&&explicitTask==null&&writes==1)planner.prepare(turn,if(definition?.index==37)TaskKind.SET_APPEARANCE else TaskKind.OPERATIONS,1)else null
             val taskId=explicitTask?:task?.id?:"read:$turn"
-            val old=repairable.lastOrNull{s->!s.started&&s.call.name==call.name&&target(s.call).all{(k,v)->call.arguments[k]==v}}
-            val step=if(old!=null&&ledger.signature(call)!=old.signature){
+            val old=repairable.lastOrNull{s->!s.started&&(s.call.name==call.name||executor.registry.allDefinitions.none{it.name==s.call.name})&&target(s.call).all{(k,v)->call.arguments[k]==v}}
+            val step=if(old!=null&&(ledger.signature(call)!=old.signature||old.call.id!=call.id)){
                 if(!budget.repair(old.id))throw BackendFailure(ApiError(ErrorCode.SYSTEM_RESTRICTED,"ai.repair_limit"))
-                repairable.remove(old);ledger.repair(old,call,write)
+                repairable.remove(old);ledger.repair(old,call,write,taskId)
             }else ledger.prepare(taskId,call,write)
             val p=Prepared(call,step,definition);pending+=p
             if(step.receipt!=null)continue
             try {
                 executor.registry.validate(call)
+                if(enabledNames!=null&&call.name !in enabledNames&&groups.values.none{call.id in it})throw BackendFailure(ApiError(ErrorCode.VALIDATION,"ai.tool_not_enabled",aiFailure=ConversationFailure(AiFailureKind.NOT_ENABLED,"NOT_ENABLED")))
                 if(write&&explicitTask==null&&writes>1)throw BackendFailure(ApiError(ErrorCode.VALIDATION,"ai.task_required"))
                 if(write&&explicitTask!=null)planner.get(explicitTask)
                 if(definition?.index in setOf(7,8)) {
@@ -140,9 +157,9 @@ class ToolBatchEngine(
                             receipt=metered{verifier.verify(index,step.call,receipt)}
                             if(receipt.commitRevision!=null)scopes.committed(command.operationId,p.expected.keys)
                         }
-                    } catch(e:CancellationException){
+                    } catch(e:Exception){
                         val committed=coordinator.committed(command.operationId)
-                        val cancelled=ToolReceipt(command.operationId,call.id,if(committed!=null)ToolStatus.COMMITTED else ToolStatus.CANCELLED,commitRevision=committed,verification=if(committed!=null)VerificationStatus.COMMITTED_UNVERIFIED else VerificationStatus.NOT_REQUIRED)
+                        val cancelled=ToolReceipt(command.operationId,call.id,if(committed!=null)ToolStatus.COMMITTED else if(e is CancellationException)ToolStatus.CANCELLED else ToolStatus.UNKNOWN,commitRevision=committed,verification=if(committed!=null)VerificationStatus.COMMITTED_UNVERIFIED else VerificationStatus.NOT_REQUIRED)
                         ledger.finish(step,cancelled);report(cancelled);throw e
                     }
                 }

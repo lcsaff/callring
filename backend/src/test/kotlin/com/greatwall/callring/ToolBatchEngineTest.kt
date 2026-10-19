@@ -77,4 +77,40 @@ class ToolBatchEngineTest {
         assertTrue(runCatching{t.engine.execute(listOf(a,b))}.exceptionOrNull() is BackendFailure)
         assertTrue(t.f.state.profiles.isEmpty())
     }
+    @Test fun discoveringDisabledToolAllowsOneUnstartedRetryWithNewId()=runBlocking {
+        val t=Fixture();val call=ConversationToolCall("disabled","settings_saveAppearance",aiObject("colorMode" to aiString("DARK")))
+        val bad=t.engine.execute(listOf(call),setOf("discover_tools")).single()
+        assertEquals("ai.tool_not_enabled",bad.error!!.message)
+        assertEquals(ColorMode.FOLLOW_SYSTEM,t.f.appearance.colorMode)
+        val good=t.engine.execute(listOf(call.copy(id="enabled")),setOf("settings_saveAppearance")).single()
+        assertEquals(VerificationStatus.VERIFIED,good.verification)
+        assertEquals(1,t.engine.budget.repairs)
+    }
+    @Test fun explicitContinuationKeepsOriginalTenPlanAndCommittedEight()=runBlocking {
+        val t=Fixture();val task=t.plan(10)
+        t.engine.execute((1..8).map{t.profile("p$it","31%03d".format(it),task)})
+        val committed=t.f.coordinator.marker()
+        t.engine.resume(2,{true})
+        assertEquals(committed,t.f.coordinator.marker())
+        t.engine.execute((9..10).map{t.profile("continued$it","31%03d".format(it),task)})
+        assertEquals(10,t.f.state.profiles.size);assertTrue(t.engine.complete)
+        assertEquals(10,t.engine.planner.get(task).expectedCount)
+    }
+    @Test fun thirdRepairOfSameStepIsRejectedBeforeAnyWrite()=runBlocking {
+        val t=Fixture()
+        listOf("dark","Dark","DARKK").forEachIndexed{i,value->t.engine.execute(listOf(ConversationToolCall("bad-$i","settings_saveAppearance",aiObject("colorMode" to aiString(value)))))}
+        val rejected=runCatching{t.engine.execute(listOf(ConversationToolCall("third-repair","settings_saveAppearance",aiObject("colorMode" to aiString("DARK")))))}
+        assertTrue(rejected.exceptionOrNull() is BackendFailure)
+        assertEquals(2,t.engine.budget.repairs);assertEquals(ColorMode.FOLLOW_SYSTEM,t.f.appearance.colorMode)
+    }
+    @Test fun fifthRepairAcrossDifferentStepsExhaustsTheTurnBudget()=runBlocking {
+        val t=Fixture()
+        val names=listOf("root_checkNumber","callers_search","settings_getQuietHours","runtime_getStatus","recordings_listArchives")
+        names.forEachIndexed{i,name->
+            t.engine.execute(listOf(ConversationToolCall("bad-$i",name,aiObject("unknown" to aiBool(true)))))
+            val result=runCatching{t.engine.execute(listOf(ConversationToolCall("fixed-$i",name,if(i==0)aiObject("raw" to aiString("31234"))else aiObject())))}
+            if(i==4)assertTrue(result.exceptionOrNull() is BackendFailure)else assertTrue(result.isSuccess)
+        }
+        assertEquals(4,t.engine.budget.repairs);assertTrue(t.f.state.profiles.isEmpty())
+    }
 }

@@ -11,6 +11,23 @@ import java.io.*
 import java.net.*
 
 class ConversationProtocolTest {
+    @Test fun connectionOpenFailureHasTransportMetricsAndNoRawException()=runBlocking {
+        val client=CompatibleConversationClient{throw IOException("sentinel-secret")}
+        val error=try{client.exchange(connection,byteArrayOf(1));error("expected failure")}catch(e:BackendFailure){e.error}
+        assertEquals("ai.transport_failed",error.message)
+        assertEquals(AiFailureKind.TRANSPORT,client.lastExchange?.failure)
+        assertEquals(1,client.lastExchange?.requestBytes)
+        assertFalse(error.toString().contains("sentinel-secret"))
+    }
+    @Test fun lazyRequestHasNoSnapshotAndRetainsMalformedArgumentsForPairing() {
+        val call=ConversationToolCall("bad","settings_saveAppearance",aiObject(),argumentError=ApiError(ErrorCode.VALIDATION,"ai.argument_json"),wireArguments="{bad-json")
+        val request=ConversationRequest(messages=listOf(ConversationMessage("user","hello"),ConversationMessage("assistant","",listOf(call)),ConversationMessage("tool","",receipts=listOf(ToolReceipt("op","bad",ToolStatus.FAILED,error=ApiError(ErrorCode.VALIDATION,"ai.argument_json"))))),tools=ToolRegistry().allDefinitions.filter{it.name=="discover_tools"},output=4096)
+        val body=JSONObject(String(CompatibleConversationClient().encode(connection,request)))
+        assertEquals(4,body.getJSONArray("messages").length())
+        assertFalse(body.toString().contains("Complete current business snapshot"))
+        assertTrue(body.getJSONArray("tools").getJSONObject(0).getJSONObject("function").getString("description").isNotBlank())
+        assertEquals("{bad-json",body.getJSONArray("messages").getJSONObject(2).getJSONArray("tool_calls").getJSONObject(0).getJSONObject("function").getString("arguments"))
+    }
     @Test fun httpErrorsRemainTypedAndGatewayBodiesNeverEnterErrors() = runBlocking {
         val cases = listOf(
             Triple(400, """{"error":{"code":"context_length_exceeded","message":"sentinel-secret"}}""", "ai.provider_context_rejected"),
@@ -65,12 +82,13 @@ class ConversationProtocolTest {
         assertEquals("[redacted]", block.getJSONObject("input").getString("raw"))
     }
     private val connection = AiConnection(url = "https://example.com/v1", model = "fixture", apiKey = "sentinel-secret")
-    @Test fun defaultBudgetFitsAll72ToolsAndCompleteEmptyDomainMetadata() {
-        val snapshot = AiBusinessSnapshot("snapshot", 1, "UTC", RevisionVector("fixture", mapOf("core" to 0)), (1..21).map { SnapshotDomain("D%02d".format(it), SnapshotDomainStatus.EMPTY, 0, 0, 1, "all_stored", digest("[]"), AiJson.Arr(emptyList())) })
-        val body = CompatibleConversationClient().encode(connection, ConversationRequest(snapshot.json(), listOf(ConversationMessage("user", "show settings")), ToolRegistry().definitions, 4096))
-        val estimate = ContextBudget.check(body, ConversationBudget())
-        println("DEFAULT_CONTEXT_PROOF bytes=${body.size} estimate=$estimate tools=72 domains=21")
-        assertEquals(72, JSONObject(String(body)).getJSONArray("tools").length())
+    @Test fun defaultBudgetFitsOnlyDiscoveryAndNoDomainSnapshot() {
+        val definitions=ToolRegistry().allDefinitions.filter{it.name=="discover_tools"}
+        val body=CompatibleConversationClient().encode(connection,ConversationRequest(messages=listOf(ConversationMessage("user","hello")),tools=definitions,output=4096))
+        val estimate=ContextBudget.check(body,ConversationBudget())
+        println("DEFAULT_CONTEXT_PROOF bytes=${body.size} estimate=$estimate tools=1 businessSnapshot=false")
+        assertEquals(1,JSONObject(String(body)).getJSONArray("tools").length())
+        assertEquals(2,JSONObject(String(body)).getJSONArray("messages").length())
         assertFalse(String(body).contains(connection.apiKey))
     }
     @Test fun rejectsWholeMalformedBatchAndTruncatedResponses() {

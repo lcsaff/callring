@@ -3,20 +3,21 @@ package com.greatwall.callring.application.api
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 
-enum class ConversationPhase { IDLE, CAPTURING, BUDGETING, REQUESTING, VALIDATING, EXECUTING, WAITING_FOREGROUND, COMPLETED, STOPPING, STOPPED, FAILED }
+enum class ConversationPhase { IDLE, PREPARING, DISCOVERING, READING, REPAIRING, PARTIAL, CAPTURING, BUDGETING, REQUESTING, VALIDATING, EXECUTING, WAITING_FOREGROUND, COMPLETED, STOPPING, STOPPED, FAILED }
 enum class ToolStatus { READ, COMMITTED, QUEUED, LAUNCHED, CANCELLED, DENIED, FAILED, UNKNOWN, SKIPPED }
 enum class VerificationStatus { NOT_REQUIRED, PENDING, VERIFIED, COMMITTED_UNVERIFIED, FAILED }
 data class ToolReceipt(val operationId: String, val toolCallId: String, val status: ToolStatus, val value: AiJson = AiJson.Null, val error: ApiError? = null, val commitRevision: RevisionVector? = null, val changedDomains: Set<DataDomain> = emptySet(), val observedAt: Long = System.currentTimeMillis(),val verification:VerificationStatus=VerificationStatus.NOT_REQUIRED,val noOp:Boolean=false,val verificationEvidence:AiJson=AiJson.Null)
 data class ConversationMessage(val role: String, val text: String, val toolCalls: List<ConversationToolCall> = emptyList(), val receipts: List<ToolReceipt> = emptyList(), val blocks: List<AiJson> = emptyList())
 data class ConversationToolCall(val id: String, val name: String, val arguments: AiJson.Obj, val argumentError: ApiError? = null, val wireArguments: String? = null)
-data class ConversationState(val sessionId: String, val phase: ConversationPhase = ConversationPhase.IDLE, val messages: List<ConversationMessage> = emptyList(), val receipts: List<ToolReceipt> = emptyList(), val error: ApiError? = null, val target: String = "", val budgetBytes: Long = 0) {
-    val busy get() = phase !in setOf(ConversationPhase.IDLE, ConversationPhase.COMPLETED, ConversationPhase.STOPPED, ConversationPhase.FAILED)
+data class ConversationState(val sessionId: String, val phase: ConversationPhase = ConversationPhase.IDLE, val messages: List<ConversationMessage> = emptyList(), val receipts: List<ToolReceipt> = emptyList(), val error: ApiError? = null, val target: String = "", val budgetBytes: Long = 0,val exchanges:List<ExchangeMetrics> = emptyList(),val sourceQueries:Long=0,val workCount:Int=0,val outcome:AiJson=AiJson.Null,val continuableTasks:List<String> = emptyList()) {
+    val busy get() = phase !in setOf(ConversationPhase.IDLE, ConversationPhase.COMPLETED, ConversationPhase.PARTIAL, ConversationPhase.STOPPED, ConversationPhase.FAILED)
 }
 interface ConversationApi {
     val state: StateFlow<ConversationState>
     val foreground: ForegroundActionApi
     suspend fun send(expectedSessionId: String, text: String): ApiResult<Unit>
     suspend fun sendTo(expectedSessionId: String, text: String, disclosedTarget: AiConnectionView): ApiResult<Unit> = aiUnavailable()
+    suspend fun continueTask(expectedSessionId:String,taskId:String,disclosedTarget:AiConnectionView):ApiResult<Unit> = aiUnavailable()
     suspend fun stop(expectedSessionId: String): ApiResult<Unit>
     suspend fun newSession(expectedSessionId: String): ApiResult<Unit>
 }

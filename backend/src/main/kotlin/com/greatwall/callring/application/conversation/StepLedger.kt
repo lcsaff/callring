@@ -5,7 +5,7 @@ import com.greatwall.callring.application.ports.BackendFailure
 import java.util.UUID
 
 enum class StepState { PREPARED, STARTED, COMMITTED, VERIFIED, FAILED, CANCELLED, DENIED, SKIPPED, UNKNOWN }
-class LedgerStep(val id:String,val taskId:String,var call:ConversationToolCall,var write:Boolean,var signature:String) {
+class LedgerStep(val id:String,var taskId:String,var call:ConversationToolCall,var write:Boolean,var signature:String) {
     var state=StepState.PREPARED
     var receipt:ToolReceipt?=null
     var repairs=0
@@ -48,14 +48,14 @@ class StepLedger(private val normalizeNumber:(String)->String={it}) {
             else->StepState.FAILED
         }
     }
-    fun repair(step:LedgerStep,call:ConversationToolCall,write:Boolean=step.write):LedgerStep {
+    fun repair(step:LedgerStep,call:ConversationToolCall,write:Boolean=step.write,taskId:String=step.taskId):LedgerStep {
         if(step.started||step.repairs>=2)fail("repair_limit")
         val identities=setOf("number","id","callId","widgetId","date","from","to","slot","taskId")
         if(identities.any{step.call.arguments[it]!=AiJson.Null&&step.call.arguments[it]!=call.arguments[it]})fail("repair_target_changed")
         val signature=signature(call)
         byId[call.id]?.let{if(it.first!=signature)fail("duplicate_call_mismatch")}
         byEffect.remove(step.taskId to step.signature)
-        step.call=call;step.signature=signature;step.write=write;step.repairs++;step.state=StepState.PREPARED;step.receipt=null
+        step.call=call;step.signature=signature;step.write=write;step.taskId=taskId;step.repairs++;step.state=StepState.PREPARED;step.receipt=null
         byId[call.id]=signature to step;if(step.write)byEffect[step.taskId to signature]=step
         return step
     }

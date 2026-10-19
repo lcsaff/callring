@@ -61,5 +61,5 @@ class ConversationViewModel(private val api: CallringUiApi, testScope: Coroutine
     } }
 }
 private fun phaseLabel(phase: ConversationPhase): String = when(phase) {
-    ConversationPhase.IDLE -> "准备就绪"; ConversationPhase.CAPTURING -> "完整读取数据中"; ConversationPhase.BUDGETING -> "检查完整上下文容量"; ConversationPhase.REQUESTING -> "等待 AI 回复"; ConversationPhase.VALIDATING -> "验证完整回复"; ConversationPhase.EXECUTING -> "执行并同步业务操作"; ConversationPhase.WAITING_FOREGROUND -> "等待前台系统界面或本地确认"; ConversationPhase.COMPLETED -> "本轮已结束，请核对实际操作结果"; ConversationPhase.STOPPING -> "正在停止，保留已提交操作"; ConversationPhase.STOPPED -> "已停止"; ConversationPhase.FAILED -> "本轮未完成，请查看错误和已提交结果"
+    ConversationPhase.PREPARING -> "准备会话"; ConversationPhase.DISCOVERING -> "查找所需功能"; ConversationPhase.READING -> "读取所需数据"; ConversationPhase.REPAIRING -> "修正未执行步骤"; ConversationPhase.PARTIAL -> "部分完成，请核对结果"; ConversationPhase.IDLE -> "准备就绪"; ConversationPhase.CAPTURING -> "完整读取数据中"; ConversationPhase.BUDGETING -> "检查完整上下文容量"; ConversationPhase.REQUESTING -> "等待 AI 回复"; ConversationPhase.VALIDATING -> "验证完整回复"; ConversationPhase.EXECUTING -> "执行并同步业务操作"; ConversationPhase.WAITING_FOREGROUND -> "等待前台系统界面或本地确认"; ConversationPhase.COMPLETED -> "本轮已结束，请核对实际操作结果"; ConversationPhase.STOPPING -> "正在停止，保留已提交操作"; ConversationPhase.STOPPED -> "已停止"; ConversationPhase.FAILED -> "本轮未完成，请查看错误和已提交结果"
 }

@@ -10,6 +10,7 @@ class OperationScopePlanner(private val queries:QueryService,private val coordin
         val writeOperations=setOf(7,8,10,12,13,15,16,17,19,20,21,23,24,26,27,28,29,31,32,34,35,37,39,40,41,42,43,46,48,49,52,53,55,56,57,58,59,60,63,65,66,67,68,69,70,71,72)
     }
     private val own=mutableMapOf<String,Long>()
+    fun resetForContinuation(){own.clear()}
     fun committed(operationId:String,keys:Set<String>){coordinator.committedMarker(operationId)?.let{at->keys.forEach{own[it]=at}}}
     fun afterOwnCommits(expected:Map<String,Long>)=expected.mapValues{(key,at)->maxOf(at,own[key]?:Long.MIN_VALUE)}
     suspend fun prepare(call:ConversationToolCall,index:Int):Map<String,Long> {

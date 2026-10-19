@@ -137,7 +137,7 @@ class BackendGraph(
     },configuration.clock)}
     val queries:QueryService get()=queriesDelegate.value
     private val snapshotsDelegate = lazy { ensureOpen(); completeSnapshotApi(backend, recordings, diagnostics, coordinator, resources, configuration.clock) }
-    private val conversationDelegate = lazy { ensureOpen(); ConversationService({ api }, snapshotsDelegate.value, { recordings.store.settings() }, coordinator, { CompatibleConversationClient() }, resources = resources) }
+    private val conversationDelegate = lazy { ensureOpen(); ConversationService({ api }, queries, { recordings.store.settings() }, coordinator, { CompatibleConversationClient() }, resources = resources) }
     private val apiDelegate by lazy {
         object : CallringUiApi by backend {
             override val recordings: RecordingApi get() = this@BackendGraph.recordings
