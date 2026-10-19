@@ -65,6 +65,7 @@ class RealAiConversationDeviceTest:InstrumentationTestCase() {
         check(view.analysis.protocol==AiProtocol.OPENAI&&view.analysis.model=="qwen3.8-flash"&&view.analysis.resolvedProfile==ProviderProfile.QWEN_FAST&&view.analysis.keyConfigured){"Configured Qwen FAST analysis connection required"}
         val report=JSONObject().put("package",context.packageName).put("model",view.analysis.model).put("protocol",view.analysis.protocol.name).put("resolvedProfile",view.analysis.resolvedProfile.name).put("startedAt",System.currentTimeMillis()).put("realClient",true)
         val activity=instrumentation.startActivitySync(CallringActivity.intent(context,UiDestination.Conversation).apply{flags=Intent.FLAG_ACTIVITY_NEW_TASK}).also{shownActivity=it}
+        instrumentation.runOnMainSync{activity.window.addFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)}
         val files=proofDirectory(context)
         try {
             instrumentation.waitForIdleSync()
