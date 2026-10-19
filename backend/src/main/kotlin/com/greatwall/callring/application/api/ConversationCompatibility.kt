@@ -24,4 +24,4 @@ enum class AiFailureKind { TRANSPORT, TIMEOUT, HTTP, AUTH, RATE, CONTEXT, PROTOC
 data class ConversationFailure(val kind: AiFailureKind, val code: String, val httpStatus: Int? = null, val providerCode: String? = null, val fieldPath: String? = null)
 data class ModelUsage(val input: Long?, val output: Long?, val total: Long?,val cachedInput:Long?=null,val reasoningOutput:Long?=null,val cacheWriteInput:Long?=null)
 data class ReplyDiagnostics(val finishReason: String = "", val usage: ModelUsage? = null)
-data class ExchangeMetrics(val requestBytes: Int, val responseBytes: Int, val httpStatus: Int?, val profile: ProviderProfile, val elapsedMillis: Long, val diagnostics: ReplyDiagnostics? = null, val failure: AiFailureKind? = null,val requestFlags:Map<String,Boolean> = emptyMap())
+data class ExchangeMetrics(val requestBytes: Int, val responseBytes: Int, val httpStatus: Int?, val profile: ProviderProfile, val elapsedMillis: Long, val diagnostics: ReplyDiagnostics? = null, val failure: AiFailureKind? = null,val requestFlags:Map<String,Boolean> = emptyMap(),val schemaCount:Int?=null,val contextMessages:Int?=null)

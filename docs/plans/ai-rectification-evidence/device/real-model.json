@@ -313,7 +313,6 @@
   "themeAfter": "DARK",
   "result": "passed",
   "endedAt": 1792391074452,
-  "schemaVersion": 2,
   "profileChecks": [
     {
       "step": 1,
@@ -386,5 +385,6 @@
       "verifiedFields": true
     }
   ],
-  "evidenceNote": "This run captured aggregate verified receipts; per-step receipt IDs and schema/history counts were not exported. Profile values remain only in the app-local restart journal and controlled UI screenshots."
+  "evidenceNote": "Original run captured aggregate verified receipts; per-step IDs and schema/history counts were not exported. Profile values remain in the app-local restart journal and controlled UI only.",
+  "schemaVersion": 2
 }

@@ -136,7 +136,10 @@ class CompatibleConversationClient(private val openConnection: (URL) -> HttpURLC
         checkActive(); connection.validate()
         if(encoded.size > ContextBudget.REQUEST_BYTES) fail("ai.context_budget_exceeded")
         var opened:HttpURLConnection?=null
-        val requestFlags=runCatching{val root=JSONObject(String(encoded,Charsets.UTF_8));listOf("enable_thinking","preserve_thinking").mapNotNull{key->(root.opt(key) as? Boolean)?.let{key to it}}.toMap()}.getOrDefault(emptyMap())
+        val requestRoot=runCatching{JSONObject(String(encoded,Charsets.UTF_8))}.getOrNull()
+        val schemaCount=requestRoot?.let{it.optJSONArray("tools")?.length()?:0}
+        val contextMessages=requestRoot?.optJSONArray("messages")?.length()
+        val requestFlags=runCatching{val root=requestRoot?:error("invalid request");listOf("enable_thinking","preserve_thinking").mapNotNull{key->(root.opt(key) as? Boolean)?.let{key to it}}.toMap()}.getOrDefault(emptyMap())
         val started = System.nanoTime()
         var status: Int? = null
         var responseSize = 0
@@ -175,7 +178,7 @@ class CompatibleConversationClient(private val openConnection: (URL) -> HttpURLC
         catch(e: BackendFailure) { failure=e.error.aiFailure?.kind; throw e }
         catch(_: java.net.SocketTimeoutException) { failure=AiFailureKind.TIMEOUT; checkActive(); fail("ai.timeout") }
         catch(_: Exception) { failure=AiFailureKind.TRANSPORT; checkActive(); fail("ai.transport_failed") }
-        finally { lastExchange=ExchangeMetrics(encoded.size,responseSize,status,profile,(System.nanoTime()-started)/1_000_000,diagnostics,failure,requestFlags); opened?.disconnect(); active = null }
+        finally { lastExchange=ExchangeMetrics(encoded.size,responseSize,status,profile,(System.nanoTime()-started)/1_000_000,diagnostics,failure,requestFlags,schemaCount,contextMessages); opened?.disconnect(); active = null }
     }
     private fun contextError(text: String): Boolean = runCatching {
         StrictJson.validate(text)

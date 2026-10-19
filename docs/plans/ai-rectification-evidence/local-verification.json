@@ -35,17 +35,17 @@
     {
       "path": "C:\\Users\\GreatWall\\.codex\\worktrees\\6b22\\callring\\app\\build\\outputs\\apk\\backendQa\\app-backendQa.apk",
       "bytes": 49080150,
-      "sha256": "b908cfba764ee9d8ed96083690649df100948e0de0dccdb41357ef37464573a6"
+      "sha256": "c746793afa72e7a84a3b898ce5be19eb3855593b621672d65826341de89e7d7e"
     },
     {
       "path": "C:\\Users\\GreatWall\\.codex\\worktrees\\6b22\\callring\\app\\build\\outputs\\apk\\debug\\app-debug.apk",
       "bytes": 49080134,
-      "sha256": "a4fc371b381a55df4849e66e603e6ccfa8986e8e88f4b6726095c6811ea67a84"
+      "sha256": "458956257afc7c89524fbc41680fff091da95a189f266f4c3c32cba5de485081"
     },
     {
       "path": "C:\\Users\\GreatWall\\.codex\\worktrees\\6b22\\callring\\app\\build\\outputs\\apk\\release\\app-release-unsigned.apk",
       "bytes": 36789029,
-      "sha256": "0da612cfe312438da3f518ef72be31e74348e01a33ac227fe2da9bb50972095c"
+      "sha256": "3e79d771c9ba89cb844256b147091770a728c5c8fe77d3bf2b0821c558841236"
     }
   ],
   "devicePreflight": {
@@ -63,5 +63,6 @@
     "Real formal-package model proof is separate from the JVM/isolated backendQa build results.",
     "No uninstall, clear-data, credential export or repeated number batch."
   ],
-  "signerCertificateSha256": "5a901cad57f5590483f362e4752ca8f4a56197340b71d2632ded0195bf8a24b4"
+  "signerCertificateSha256": "5a901cad57f5590483f362e4752ca8f4a56197340b71d2632ded0195bf8a24b4",
+  "finalDiagnosticRegression": "Actual encoded request schema/message counts verified; original paid-run historical fields remain unknown."
 }
