@@ -24,3 +24,6 @@ __pycache__/
 
 # Isolated development worktrees
 /.worktrees/
+
+# Release signing material (keystore path and passwords) must never be committed
+signing.properties

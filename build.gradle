@@ -6,6 +6,25 @@ plugins {
     id 'org.jetbrains.kotlin.plugin.compose' version '2.3.21' apply false
 }
 
+// version.properties is the single source of truth for versionCode/versionName.
+// The release tooling in tools/release/ reads the same file, so Gradle must not
+// carry its own copy of the version numbers.
+def callringVersionFile = rootProject.file('version.properties')
+if (!callringVersionFile.isFile()) {
+    throw new GradleException("Missing ${callringVersionFile}; it is the single source of truth for versionCode/versionName.")
+}
+def callringVersionProps = new Properties()
+callringVersionFile.withInputStream { callringVersionProps.load(it) }
+def callringVersionCode = (callringVersionProps.getProperty('versionCode') ?: '').trim()
+def callringVersionName = (callringVersionProps.getProperty('versionName') ?: '').trim()
+if (!(callringVersionCode ==~ /[1-9]\d*/)) {
+    throw new GradleException("version.properties: versionCode must be a positive integer, got '${callringVersionCode}'")
+}
+if (!(callringVersionName ==~ /\d+\.\d+\.\d+/)) {
+    throw new GradleException("version.properties: versionName must be MAJOR.MINOR.PATCH (e.g. 0.3.0), got '${callringVersionName}'")
+}
+ext.callringVersion = [code: callringVersionCode.toInteger(), name: callringVersionName]
+
 ext.callringVersions = [coroutines: '1.10.2', composeBom: '2025.12.01']
 
 allprojects {

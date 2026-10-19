@@ -12,6 +12,8 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
     <uses-permission android:name="android.permission.WAKE_LOCK" />
+    <!-- In-app self-update only (sideload distribution); Google Play would reject this. -->
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
     <uses-feature android:name="android.hardware.telephony" android:required="true" />
     <application android:name=".CallringApplication" android:allowBackup="false" android:dataExtractionRules="@xml/data_extraction_rules" android:label="规则来电铃声"
         android:icon="@drawable/ic_callring" android:theme="@android:style/Theme.Material.Light.NoActionBar">
@@ -43,5 +45,17 @@
         </service>
         <service android:name=".RingPlaybackService" android:exported="false"
             android:foregroundServiceType="mediaPlayback" />
+        <!-- Grants the system installer temporary read access to the downloaded
+             update APK; never exported. Authority must stay ${applicationId}.fileprovider
+             so the backendQa variant gets its own authorities automatically. -->
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.fileprovider"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/file_paths" />
+        </provider>
     </application>
 </manifest>

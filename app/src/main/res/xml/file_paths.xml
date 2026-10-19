@@ -1,0 +1,5 @@
+<paths xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Downloaded update APKs live under <external-files>/Download/update/
+         (DownloadManager destination set by the update installer). -->
+    <external-files-path name="update" path="Download/update/" />
+</paths>
