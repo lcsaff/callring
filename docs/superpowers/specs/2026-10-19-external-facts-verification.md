@@ -107,12 +107,15 @@ Release 说明原文摘录（API `body` 与页面文本一致）：
 
 ## 4. 关闭思考参数（已核实，2026-10-19）
 
+兼容范围（2026-10-19 产品决定，见 B §1）：本轮只需 **Qwen、DeepSeek、MiMo** 三家，接口协议为 **OpenAI 兼容与 Anthropic 兼容**两种；OpenAI 官方 GPT 与 Anthropic 官方 Claude 暂不在范围，其文档仅作为协议语义参考保留在 §4 表中。
+
 | 供应商 | 文档 | 关键原文 | 对本项目的约束 |
 | --- | --- | --- | --- |
 | Qwen | https://help.aliyun.com/zh/model-studio/deep-thinking | "百炼深度思考模型分为两种模式：混合思考模式：可按请求开启或关闭思考…设为 true：模型先思考再回复；设为 false：模型直接回复"；"`thinking_budget`…适用于 Qwen3.8、Qwen3.7…；其中 kimi-k3 不支持该参数" | 只有"混合思考模式"模型可关；`enable_thinking=false` 有效；另有 `thinking_budget` 但不在本期范围；SDK 用 `extra_body`，HTTP JSON 放顶层字段 |
 | DeepSeek | https://api-docs.deepseek.com/guides/thinking_mode/ | "Thinking Mode Toggle：OpenAI 格式 `{"thinking": {"type": "enabled/disabled"}}`；Responses 格式 `{"reasoning": {"effort": "none/low/high/max"}}`（none disables thinking mode）"；"Thinking mode does not support the temperature, presence_penalty, or frequency_penalty parameters" | 同一供应商**按协议不同字段不同**；Anthropic 兼容端点另有一套；不能只按供应商名硬编码一种字段 |
 | Anthropic | https://platform.claude.com/docs/en/build-with-claude/thinking | "thinking is on by default, you can turn it off: `thinking = {"type": "disabled"}`"；"Claude Opus 5 also has thinking on by default and accepts `thinking:{type:"disabled"}` at effort high or below. **At xhigh or max effort, thinking cannot be turned off: requests that combine… return a 400 error**" | 新版模型默认开思考，可显式 `disabled`；存在**参数组合限制**；旧模型是"省略参数即不思考"；隐藏 thinking 输出 ≠ 关闭 |
 | OpenAI | https://developers.openai.com/api/docs/guides/reasoning | "The `reasoning.effort` parameter… Supported values are model-dependent and can include none, minimal, low, medium, high, xhigh, and max"；"**GPT-6 Astra does not support none**…returns HTTP 400"；"**GPT-6.1 Sol does not support none or minimal** and defaults to medium" | `none` 才是关闭，`minimal`/`low` 不是；可用性按**精确模型**；Responses 用 `reasoning.effort`、Chat Completions 用 `reasoning_effort`，字段位置不能混用 |
+| MiMo | https://mimo.mi.com/docs/en-US/quick-start/usage-guide/text-generation/deep-thinking ；https://mimo.mi.com/docs/zh-CN/api/chat/anthropic-api | "Currently, the `mimo-v2.6-flash`、`mimo-v2.6-pro`、`mimo-v2.6-pro-ultraspeed`、`mimo-v2.5-pro` and `mimo-v2.5` models are supported"；"Set the `thinking.type` parameter… enabled / disabled"；"Enabled by default: mimo-v2.6-flash…"；"In deep thinking… `temperature` and `top_p`… forced to 1.0 and 0.95"；"When deep thinking is enabled… historical conversations contain tool calls, the assistant responses… must completely pass back the `reasoning_content` field, otherwise the API will return a 400 error"；Anthropic 兼容端点 `https://api.xiaomimimo.com/anthropic/v1/messages`，认证支持 `api-key: $MIMO_API_KEY` 或 Bearer | 开启/关闭都靠 `thinking.type`；OpenAI 兼容端走 JSON 顶层（SDK 用 `extra_body`），Anthropic 兼容端同样用 body 里的 `thinking` 对象；**现有 Anthropic 客户端发的是 `x-api-key`，与 MiMo 文档的 `api-key` 头不同，实现前必须核对**；开启态必须回传 `reasoning_content`，且不得发送 temperature/top_p |
 
 三条通用结论：
 
@@ -190,3 +193,4 @@ git ls-remote --tags origin
 变更记录：
 
 - 2026-10-19 初版：核对仓库、Release v0.2、四家厂商关闭思考参数、30 条代码事实；修正证书指纹采集错误；确认 `make_latest` 语义与 403 成因。
+- 2026-10-19 第 2 版：兼容范围收敛为 Qwen/DeepSeek/MiMo × OpenAI/Anthropic 协议；新增 MiMo 关闭思考参数、默认状态、temperature/top_p 强制值、`reasoning_content` 回传要求与 Anthropic 兼容端点/认证头事实；补充“设置页保存按钮与草稿态”代码事实。

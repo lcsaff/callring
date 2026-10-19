@@ -1,11 +1,11 @@
-# 主界面紧凑布局、档案入口与设置重组设计
+# 主界面紧凑布局、档案入口与设置即时生效设计
 
-状态：已评审并拆分，待实施；2026-10-19。本文是主界面与设置设计的唯一现行版本，取代本路径旧稿；旧稿的 AI 请求策略、应用更新与发布内容已迁出。本文只写方案与验收，不含实现代码，尚未实施。
+状态：已评审并拆分，待实施；2026-10-19（第 2 版：并入“设置即时生效、移除保存按钮”与“思考模式开关”需求）。本文是主界面与设置设计的唯一现行版本，取代本路径旧稿；旧稿的 AI 请求策略、应用更新与发布内容已迁出。本文只写方案与验收，不含实现代码，尚未实施。
 
 ## 0. 拆分说明
 本设计已拆为三份 spec 与一份证据，本文只覆盖 UI 布局与设置结构（原稿第 1–35、89–93、180–238 行范围，不含 AI 请求策略与更新发布实质内容）：
 
-- **A（本文）**：四个主页面公共布局、档案页入口、分页、设置首页、AI/录音表单结构、代码落点与测试同步。
+- **A（本文）**：四个主页面公共布局、档案页入口、分页、设置首页、**全部设置页即时生效（移除保存按钮）**、AI/录音表单结构、代码落点与测试同步。
 - **B**：[AI 请求策略](2026-10-19-ai-request-policy-design.md)：供应商/兼容合同语义与字段、关闭思考、请求策略快照与最低验收。本文不重复，只链接。
 - **C**：[应用更新与发布](2026-10-19-app-update-design.md)：更新页、当前版本读取、下载安装、发布与签名。本文只保留设置页“检查更新”入口位置，行为与验收详见 C。
 - **D**：[外部事实证据](2026-10-19-external-facts-verification.md)：代码事实与外部 API 核对记录；本文 §2 的事实与 D §5 一致，引用冲突时以本文决策为准并记录差异。
@@ -15,7 +15,7 @@
 行号与编号说明：本文所有 `文件:行` 为 2026-10-19 工作区快照，只用于定位，符号移动后以符号名/文件为准。本文阶段编号（阶段一–四）在本文件内独立：B 用阶段 0–3（0 为前置阻断项），C 沿用原文档全局编号（阶段三–四），三份文件编号不对应、不可互相引用。
 
 ## 1. 推荐方案
-保留首页、档案、沟通、设置四个主页面，只压缩公共布局并消除重复入口；档案页删除两个正文按钮但保留相关能力——新号码报表入口放到搜索框，录音归档收敛到报表逐次明细；设置首页拆卡；AI 表单按用途分三组并把预算折叠。相比全局压缩子页面，此方案改动集中、不破坏现有深链与测试标签；相比自动加载列表，保留现有分页可控制改动范围与加载行为。
+保留首页、档案、沟通、设置四个主页面，只压缩公共布局并消除重复入口；档案页删除两个正文按钮但保留相关能力——新号码报表入口放到搜索框，录音归档收敛到报表逐次明细；设置首页拆卡；**所有设置页取消“保存设置”，改为逐字段即时生效**；AI 表单按用途分三组、只保留一个“思考模式”开关、预算折叠。相比全局压缩子页面，此方案改动集中、不破坏现有深链与测试标签；相比自动加载列表，保留现有分页可控制改动范围与加载行为。
 
 ## 2. 现状与证据
 - 档案页正文有“按号码查看报表”“通话录音”两个按钮：`ui/.../feature/callers/CallerListScreen.kt:33`、`:34`；标题右侧是文字按钮“职位管理”“新增”：`:26-29`。
@@ -29,6 +29,7 @@
 - AI 页单列滚动、含重复长说明、预算在底部、高级兼容块默认折叠：`ui/.../feature/ai/AiSettingsScreen.kt:28`、`:33`、`:34-40`、`:44-50`（保存按钮 `enabled` 依赖预算可解析）。
 - AI 页 VM 只加载 AI 视图：`ui/.../feature/ai/AiSettingsViewModel.kt:8-52`（`:17`）；录音视图由另一 VM 加载：`:54-83`（`:65`、`:74`）；`patchCombined` 已存在但 UI 未使用：`backend/.../application/api/AiSettingsApi.kt:24`。
 - “录音就绪后自动分析”开关当前在录音设置页：`ui/.../feature/recording/RecordingScreens.kt:76-77`。
+- 设置页现状普遍是“草稿 + 保存按钮”：共用 `SaveAction`（`SettingsComponents.kt:70`）、`rememberFormBack` 的保存/放弃分支（`FormInteractions.kt`）；AI 与录音页各自有“保存 AI 设置/保存设置”按钮（`AiSettingsScreen.kt:50`、`RecordingScreens.kt:85`），并带 `dirty/baseline` 草稿态（`AiSettingsViewModel.kt:13-18`、`RecordingViewModels`）。记录类表单另有确认按钮（职位/请假对话框、密钥确认、连接测试、删除确认）。
 - 依赖：`build.gradle:9` 为 compose BOM `2025.12.01`，本机 Gradle 缓存解析为 **material3 1.4.0**；已核对 `AppBarKt`/`TopAppBarDefaults` 含 `expandedHeight`、`TopAppBarExpandedHeight` 及 `SingleRowTopAppBarOverrideScope`/`TwoRowsTopAppBarOverrideScope`。版本 `app/build.gradle:14-15` 为 `versionCode 2`/`versionName '0.2'`；backend 是 `java-library`（`backend/build.gradle:1`）。
 
 ## 3. 公共布局
@@ -96,35 +97,50 @@
 
 【验收】设置首页依次出现“录音”“AI”两张独立卡且各只含对应一行，不再存在“录音与 AI”合并卡；“系统与支持”内出现“检查更新”，副标题等于系统应用信息中的版本名（如 `0.2`，不得硬编码），点击进入更新页；`backendQa` 变体不出现该行；失败判据：仍是合并卡、副标题为空或与安装包不一致、点击无反应。
 
-## 7. AI 与录音表单
-### 7.1 三组结构
-【决策】AI 设置表单固定三组，自上而下为“内容分析与沟通”“录音转写”“高级设置”。前两组各自包含连接地址、模型、密钥状态与“本地编辑密钥”、连接测试、按方向的复制连接；录音转写组包含“录音就绪后自动分析”开关。删除 `AiSettingsScreen.kt:28`、`:33` 的重复长说明，同类信息只保留一处。保存、放弃草稿、冲突提示、密钥本地编辑与测试确认保留。
+## 7. 设置即时生效与 AI/录音表单
+### 7.1 移除“保存设置”：全部设置页即时生效
+【决策】设置首页可达的设置页（免打扰、职位、我的职位、工作时间、节假日、请假、评分、铃声、运行状态与权限、外观、录音设置、AI 设置）不再出现“保存设置”按钮，每个字段改动立即提交并生效。要删除的现有实现：`SaveAction`（`SettingsComponents.kt:70`）的按钮调用、`AiSettingsScreen.kt:50` 与 `RecordingScreens.kt:85` 的保存按钮、`rememberFormBack` 的“保存并返回/放弃修改”分支（`FormInteractions.kt`）以及各页的 `dirty/baseline` 草稿态。
 
-【验收】页面自上而下出现三个组标题且顺序正确；每组字段齐全可编辑；自动分析开关只出现在“录音转写”组；重复说明只剩一处；失败判据：组顺序错误、字段缺失、同一说明出现两次。
+范围例外（保留一次性确认按钮，它们提交的是一条记录或一次危险操作，不是设置项）：新增/编辑职位、新增/编辑请假、密钥编辑对话框的确认、连接测试确认、删除确认、导入音频文件。档案编辑、来电悬浮窗内的档案编辑、桌面小组件配置页、首页免打扰弹窗（`HomeQuietCard`）本轮不改造，列为后续统一项。
 
-### 7.2 高级设置折叠与错误可见
-【决策】“高级设置”默认折叠，容纳“上下文预算”“输出预留”两项（`AiSettingsScreen.kt:44-49`），并预留“供应商/兼容合同”控件位置（契约见 B）。折叠状态下若预算非法，必须在高级设置标题处显示红色汇总错误；点击保存时自动展开并定位到非法字段，展开后显示字段级错误。校验规则沿用 `ConversationBudget.validate`（`AiSettingsApi.kt:13-15`：上下文 8192–1048576、输出 1024–16384、输出小于上下文）。
+【理由】用户明确要求“修改直接生效、不再手动保存”；逐字段提交也让 AI 设置与录音设置的交叉字段（7.4、7.5）可以各写各的，不再需要整页事务，同时消除“改了没生效就返回”的丢改动问题。
 
-【理由】保存按钮当前依赖预算可解析（`AiSettingsScreen.kt:50`），折叠会把禁用原因藏起来，用户只看到按钮不可点。
+【验收】逐页检查：任一项改动后立即可观察到生效（不点任何按钮），返回再进入、切页再回来、杀进程重启后值都保持；页面底部与顶部都没有“保存设置”类按钮；例外清单中的对话框仍有确认按钮；失败判据：任一设置页仍出现保存按钮、改动需要二次确认、或返回后值回退。
 
-【验收】折叠状态清空或填入非法预算 → 保存不可点且标题处出现错误汇总；点击保存 → 自动展开；展开后对应预算字段有错误文案；恢复合法值 → 汇总消失、保存可用；失败判据：按钮禁用但页面无任何错误提示，或展开后仍无法定位错误字段。
+【提交与冲突】每次提交携带 `base` 修订号；冲突时刷新为服务端最新值并提示“已更新，请重新修改”，不覆盖他人写入；提交失败保留用户当前输入并显示原因，不静默回滚。
 
-### 7.3 “录音就绪后自动分析”迁移
-【决策】把该开关从 `RecordingScreens.kt:76-77` 移到 AI 设置“录音转写”组，录音设置页删除该开关及其说明，只保留录音开关、采集模式与目录授权。存储字段不迁移、不复制，仍为 `RecordingSettingsView.automaticAnalysis`（`AiSettingsApi.kt:19`）。
+【输入防抖】数值文本字段（上下文预算、输出预留、评分阈值）在停止输入 500ms 或失焦且解析合法时提交；非法中间值不提交、不落库，就地显示错误。
 
-【验收】录音设置页不再出现该开关；在 AI 页切换并保存后，重进 AI 页与录音页读到的值一致；旧配置读取值正确；失败判据：两页都出现或都消失、保存后另一页仍显示旧值。
+【返回与草稿】取消“放弃未保存修改”对话框与草稿保护；返回即离开，已生效改动不回滚（需要撤销时用户再次修改）。`FormDialog`/`UnsavedChangesDialog` 仅保留给例外清单中的记录表单。
 
-### 7.4 双快照加载与事务保存（新增工作）
-【决策】承认以下是本设计的**新增工作**：AI 页“同时加载 AI 配置与录音设置两份快照 + 用 `patchCombined` 在同一事务保存”当前不存在。现状 `AiSettingsViewModel.kt:8-52` 只加载 `AiSettingsView`（`:17`），录音快照由另一 VM 加载（`:65 getRecordingView`），`patchCombined` 虽已存在（`AiSettingsApi.kt:24`）但 UI 未使用。实现要求：AI 页持有两份 base 快照，保存时经 `patchCombined` 提交 AI 字段与 `automaticAnalysis`；录音页保存不得覆盖 `automaticAnalysis`（对 `RecordingSettingsPatch.automaticAnalysis` 发 `Keep` 或使该字段不参与录音页 patch，`AiSettingsApi.kt:22`）。
+### 7.2 三组结构
+【决策】AI 设置表单固定三组，自上而下为“内容分析与沟通”“录音转写”“高级设置”。第一组包含连接地址、协议、模型、密钥状态与“本地编辑密钥”、连接测试、按方向的复制连接，以及唯一的“思考模式”开关（7.6）；录音转写组包含连接地址、模型、密钥、测试/复制与“录音就绪后自动分析”开关；高级设置组只含预算两项。删除 `AiSettingsScreen.kt:28`、`:33` 的重复长说明，同类信息只保留一处。没有“保存 AI 设置”按钮，密钥本地编辑与测试确认仍保留。
 
-【理由】只加载 AI 视图无法在同一事务里保存两个页面的字段；若录音页继续提交整份 `automaticAnalysis`，会覆盖 AI 页刚保存的值。
+【验收】页面自上而下出现三个组标题且顺序正确；每组字段齐全可编辑；自动分析开关只在“录音转写”组、思考模式开关只在第一组；重复说明只剩一处；页面无任何保存按钮；失败判据：组顺序错误、字段缺失、同一说明出现两次、或出现保存按钮。
 
-【验收】保存 AI 页时 Fake API 收到 `patchCombined`，其中含 AI 字段与 `automaticAnalysis`，录音其余字段为 `Keep`；保存录音页时 `automaticAnalysis` 为 `Keep`（用 Fake 记录 patch 断言）；两页并发编辑不同字段均不丢失；失败判据：任一保存覆盖另一页刚改字段，或提交整份快照。
+### 7.3 高级设置折叠与错误可见
+【决策】“高级设置”默认折叠，容纳“上下文预算”“输出预留”两项（`AiSettingsScreen.kt:44-49`）。没有保存按钮后，校验规则不变（`ConversationBudget.validate`，`AiSettingsApi.kt:13-15`：上下文 8192–1048576、输出 1024–16384、输出小于上下文），但交互改为：**非法值不落库**；折叠时标题右侧显示红色汇总与非法字段数，用户点开即定位；展开后字段级错误就地显示；恢复合法值后汇总消失并立即提交。
 
-### 7.5 供应商/兼容合同控件位置（契约见 B）
-【决策】“供应商/兼容合同”选择器的语义、枚举、迁移与请求行为由 B 负责；A 只在“高级设置”组预留该控件位置并注明“契约见 B”，不定义枚举值、默认值或名称。现有高级兼容块（`AiSettingsScreen.kt:34-40`）的迁移随 B 执行。
+【理由】原设计靠“保存按钮禁用”暴露非法值，按钮移除后必须另给可见入口；自动展开会在逐字输入时抖动，因此用“标题汇总 + 点击展开 + 就地错误”。
 
-【验收】A 的实施变更不新增或修改该枚举；表单结构中有该控件占位，B 完成后按 B 的定义显示；失败判据：A 自行定义枚举或复制 B 的映射规则。
+【验收】折叠状态清空或填入非法预算 → 不触发任何 patch、标题出现红色汇总；点击标题 → 展开且非法字段有错误文案；恢复合法值 → 汇总消失并在防抖窗口后提交一次；失败判据：非法值被提交、折叠时无任何错误提示、或展开后无法定位错误字段。
+
+### 7.4 “录音就绪后自动分析”迁移
+【决策】把该开关从 `RecordingScreens.kt:76-77` 移到 AI 设置“录音转写”组，录音设置页删除该开关及其说明，只保留录音开关、采集模式与目录授权。存储字段不迁移、不复制，仍为 `RecordingSettingsView.automaticAnalysis`（`AiSettingsApi.kt:19`）。切换即生效（提交方式见 7.5），没有“保存并返回”。
+
+【验收】录音设置页不再出现该开关；在 AI 页切换后立即生效，退出重进 AI 页与录音页读到的值一致；旧配置读取值正确；失败判据：两页都出现或都消失、切换后需再点保存、切换后另一页仍显示旧值。
+
+### 7.5 双快照加载与即时提交（新增工作）
+【决策】承认以下是本设计的**新增工作**：AI 页“同时加载 AI 配置与录音设置两份快照”当前不存在（`AiSettingsViewModel.kt:8-52` 只加载 `AiSettingsView`（`:17`），录音快照由另一 VM 加载（`:65 getRecordingView`））。实现要求：AI 页持有两份 base 快照；**自动分析开关**提交时经 `patchCombined`（AI 侧全 `Keep`，录音侧只 `Set(automaticAnalysis)`）一次事务落库；其他 AI 字段走 `patchAi`；录音页任何提交对 `automaticAnalysis` 发 `Keep`（`AiSettingsApi.kt:22`）。取消“保存 AI 设置”整页提交。
+
+【理由】自动分析字段存在录音设置里，AI 页必须能写它又不覆盖录音其他字段；即时生效取代整页保存后，每次提交只能带本字段的 patch。
+
+【验收】切换自动分析后 Fake 收到一次 `patchCombined`（AI 全 Keep、录音仅 `automaticAnalysis=Set`）；切换思考模式/地址/模型/预算后分别收到 `patchAi` 且其他字段为 `Keep`；录音页提交中 `automaticAnalysis` 为 `Keep`；两页并发编辑不同字段均不丢失；失败判据：提交整份快照、或一次改动覆盖另一页刚改字段。
+
+### 7.6 思考模式控件（契约见 B）
+【决策】AI 设置“内容分析与沟通”组内只放一个“思考模式”开关（开/关，默认关），不出现供应商、兼容合同、参数名或字段位置；开关下方一行说明当前状态（可用 / 自定义网关可能不生效 / 当前模型不支持切换），原因文案由 B 的错误码派生。开关的枚举、厂商矩阵、参数构造、迁移与请求行为由 B 定义；A 只定义控件位置、无供应商选择器。现有“高级兼容”折叠块（`AiSettingsScreen.kt:34-40`）随 B 的迁移一并移除，不保留兼容选择。
+
+【验收】第一组内只有“思考模式”一个开关且默认关；界面无供应商/合同/参数名文案；自定义网关、未知模型、组合不支持三种情况都有一行可读原因；旧“高级兼容”块不再出现；失败判据：仍出现供应商或兼容方式选择、开关无状态说明、或未知模型仍可切换。
 
 ## 8. 代码落点
 | 文件 | 改动职责 | 决策 |
@@ -142,9 +158,13 @@
 | `ui/.../feature/settings/SettingsOverviewScreen.kt` | 拆录音/AI 卡；系统与支持加“检查更新”与版本副标题；设置总览传 `compactTitle` | 3.2、6 |
 | `ui/.../app/SettingsRoute.kt` | 承接“检查更新”入口到更新页的接线（页面实现见 C） | 6 |
 | `ui/.../feature/settings/components/SettingsComponents.kt` | `SettingsLayout` 透传 `compactTitle`，仅设置总览为 true | 3.2、6 |
-| `ui/.../feature/ai/AiSettingsScreen.kt` | 三组结构；高级折叠与错误汇总；删重复说明；预留合同控件位置 | 7.1、7.2、7.5 |
-| `ui/.../feature/ai/AiSettingsViewModel.kt` | 双快照加载 + `patchCombined` 保存；录音 VM 不再提交 `automaticAnalysis` | 7.3、7.4 |
-| `ui/.../feature/recording/RecordingScreens.kt` | 删除自动分析开关及说明；保留导入/回听/重试/删除 | 4.4、7.3 |
+| `ui/.../feature/ai/AiSettingsScreen.kt` | 三组结构；思考模式开关（不出现供应商）；高级折叠与错误汇总；删重复说明；删除保存按钮与草稿态 | 7.1–7.6 |
+| `ui/.../feature/ai/AiSettingsViewModel.kt` | 双快照加载；逐字段即时提交（自动分析走 `patchCombined`）；删除 save/dirty/baseline 草稿态 | 7.4、7.5 |
+| `ui/.../feature/recording/RecordingScreens.kt` | 删除自动分析开关及说明、保存按钮、保存并返回/放弃对话框；保留导入/回听/重试/删除 | 4.4、7.1、7.4 |
+| `ui/.../feature/settings/{QuietScreen,ScoreSettingsScreen,WorkScheduleScreen,AppearanceScreen}.kt` | 删除 `SaveAction` 按钮与 `rememberFormBack` 草稿分支，改为逐字段即时提交 | 7.1 |
+| `ui/.../feature/settings/components/SettingsComponents.kt` | 删除 `SaveAction` 或改为非保存语义的状态提示；`SettingsLayout` 同时透传 `compactTitle` | 3.2、7.1 |
+| `ui/.../designsystem/components/FormInteractions.kt` | `rememberFormBack`/`UnsavedChangesDialog` 仅保留给记录表单，设置页不再使用 dirty 分支 | 7.1 |
+| `ui/.../feature/settings/SettingsViewModels.kt`、`ui/.../feature/recording/RecordingViewModels.kt` | 删除整页 save 与草稿，改为单字段 patch + 冲突刷新；错误文案接 B 的新错误码 | 7.1、7.5 |
 | `ui/.../feature/home/HomeScreen.kt` | `ScreenFrame` 传 `compactTitle = true` | 3.2 |
 | `ui/.../feature/conversation/ConversationScreen.kt` | `ScreenFrame` 传 `compactTitle = true` | 3.2 |
 
@@ -159,7 +179,10 @@
 | `ui/src/test/.../feature/callers/CallerListViewModelTest.kt` | 加 | 同步 `NumberCheck` 派生、动作行显示条件；分页修正回归 |
 | `ui/src/test/.../feature/callers/NumberLookupViewModelTest.kt` | 加 | 有效/无效/规则匹配三态回归 |
 | `ui/src/test/.../feature/report/ReportViewModelTest.kt` | 加 | 单页/多页页码与首末页边界回归 |
-| `ui/src/test/.../feature/settings/SettingsScreensJvmTest.kt` | 改 | 拆卡与“检查更新”行；共享 `SettingsScreenCases` 同步影响 androidTest 的 `SettingsScreensTest` |
+| `ui/src/test/.../feature/settings/SettingsScreensJvmTest.kt` | 改 | 拆卡与“检查更新”行；删除保存按钮断言，改为逐字段即时提交断言；共享 `SettingsScreenCases` 同步影响 androidTest 的 `SettingsScreensTest` |
+| `ui/src/test/.../feature/settings/AppearanceViewModelTest.kt`、`WorkScheduleViewModelTest.kt`、`SettingsDraftCodecsTest.kt` | 改 | 删除草稿/save 用例，改为“改动即提交、冲突刷新”用例 |
+| `ui/src/test/.../feature/recording/RecordingViewModelsTest.kt`、`ui/src/test/.../feature/ai/`（AI 设置 VM 相关） | 改 | 删除 save/dirty 用例；补“单字段 patch + 防抖 + 冲突”用例 |
+| `ui/src/test/.../state/DraftEditorTest.kt` | 改 | 若 `DraftEditor` 仍服务于记录表单则保留，设置页相关用例删除 |
 | `ui/src/test/.../feature/recording/RecordingScreensTest.kt` | 改 | 删除 `callerListProvidesIndependentRecordingsEntry`；自动分析归属 |
 | `ui/src/test/.../feature/recording/RecordingArchiveListTest.kt` | 加 | 归档与通话关联回归 |
 | `ui/src/androidTest/.../AppNavigationTest.kt` | 改 | 底部导航高度、48dp 点击区、inset、四主页面切换 |
@@ -176,7 +199,7 @@
 ## 11. 分阶段实施与验收
 - **阶段一：公共布局**：替换窄窗口底部导航，`ScreenFrame` 增加 `compactTitle`，四个主页面启用；验收 48dp 标题与 56dp 导航实测、inset 只计一次、深浅色、长标题、滚动背景一致，子页面与宽窗口不受影响。
 - **阶段二：档案与分页**：删除两正文按钮、改图标、加有效号码动作行、单页隐藏分页；验收图标点击区与无障碍名称、动作行显示条件、Lookup 路由与深链回退、两页分页行为一致。
-- **阶段三：设置与 AI/录音表单**：拆卡、加“检查更新”入口、AI 三组与折叠错误、自动分析迁移、双快照与 `patchCombined` 保存；验收拆卡与版本副标题、折叠错误可见、自动分析两页一致、保存不互相覆盖、录音页不覆盖 `automaticAnalysis`。
+- **阶段三：设置即时生效与 AI/录音表单**：拆卡、加“检查更新”入口、移除全部设置页的保存按钮与草稿态、逐字段即时提交（含防抖与冲突刷新）、AI 三组与折叠错误汇总、思考模式开关、自动分析迁移与双快照 `patchCombined`；验收拆卡与版本副标题、任一改动立即生效且重启后保持、非法值不落库、折叠错误可见、自动分析两页一致、各字段互不覆盖。
 - **阶段四：测试与文档**：更新第 9 节测试，同步第 10 节文档，运行统一验证入口。
 
 ```powershell
@@ -189,7 +212,8 @@
 - 若实施中发现与本文决策冲突的代码事实，先按决策实现，并在实施记录的“冲突”一节列出，不静默改决策。
 
 ## 12. 不涉及范围
-- AI 请求策略、供应商/兼容合同语义、关闭思考与请求快照：见 B，本文不定义。
+- AI 请求策略、供应商/兼容合同语义、思考模式开关的参数与厂商矩阵、请求快照：见 B，本文只定义控件位置与“立即生效”交互，不定义枚举与参数。
+- “保存即生效”的范围只覆盖设置页；记录类表单（职位、请假、档案、密钥确认、连接测试确认、删除确认、导入音频）与首页免打扰弹窗、桌面小组件配置页本轮保持一次性确认，后续统一。
 - 应用更新、版本与签名、下载安装与发布流程：见 C，本文只保留“检查更新”入口。
 - 外部 API 与事实核对过程：见 D。
 - 业务数据模型、存储迁移、录音与通话的既有身份关联：不改；不做音频存储迁移。
