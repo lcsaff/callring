@@ -140,12 +140,20 @@ class BackendGraph(
     fun businessReadCounters():Map<String,Long> = mapOf("coreStateLoads" to store.stateLoadCount(),"completeCaptures" to store.completeCaptures.get(),"sourceQueries" to if(queriesDelegate.isInitialized())queries.sourceQueries.get()else 0L,"classifications" to com.greatwall.callring.domain.WorkClassifier.evaluations.get(),"runtimeProbes" to AndroidRuntimeProbe.observations.get())
     private val snapshotsDelegate = lazy { ensureOpen(); completeSnapshotApi(backend, recordings, diagnostics, coordinator, resources, configuration.clock) }
     private val conversationDelegate = lazy { ensureOpen(); ConversationService({ api }, queries, { recordings.store.settings() }, coordinator, { CompatibleConversationClient() }, resources = resources,documentWriteVerified={documents.verifyWrite(it)}) }
+    private val updateDelegate = lazy { ensureOpen(); com.greatwall.callring.platform.update.AndroidAppUpdate(application) }
+    /** 更新平台实现；构造不触网，首次访问才读取 PackageManager。 */
+    val update: AppUpdateApi
+        get() = synchronized(lifetime) {
+            ensureOpen()
+            updateDelegate.value
+        }
     private val apiDelegate by lazy {
         object : CallringUiApi by backend {
             override val recordings: RecordingApi get() = this@BackendGraph.recordings
             override val aiSettings: AiSettingsApi get() = this@BackendGraph.recordings.aiSettings
             override val snapshots: AiSnapshotApi get() = snapshotsDelegate.value
             override val conversation: ConversationApi get() = conversationDelegate.value
+            override val update: AppUpdateApi get() = this@BackendGraph.update
             override fun commandApi(context: CommandContext): CallringUiApi = boundApi(context)
             override suspend fun adoptIdentity(callId: Long, expectedGeneration: Long): ApiResult<CallerProfile> = boundApi(CommandContext(java.util.UUID.randomUUID().toString(), coordinator.capture(), 0) { !closed }).adoptIdentity(callId, expectedGeneration)
         }
@@ -155,6 +163,7 @@ class BackendGraph(
         override val aiSettings: AiSettingsApi get() = this@BackendGraph.recordings.aiSettings.bound(command)
         override val snapshots: AiSnapshotApi get() = snapshotsDelegate.value
         override val conversation: ConversationApi get() = conversationDelegate.value
+        override val update: AppUpdateApi get() = this@BackendGraph.update
         override suspend fun adoptIdentity(callId: Long, expectedGeneration: Long) = SharedBusinessCommands(this).adoptIdentity(callId, expectedGeneration)
     }
     val api: CallringUiApi get() = apiDelegate
@@ -218,6 +227,7 @@ class BackendGraph(
         // The coordinator drains persistence work. Its callbacks may need graph-owned diagnostics;
         // never wait for its executors while holding the graph's lifetime lock.
         if(conversationDelegate.isInitialized()) conversationDelegate.value.close()
+        if(updateDelegate.isInitialized()) updateDelegate.value.close()
         try {
             resources.first?.close()
         } finally {
