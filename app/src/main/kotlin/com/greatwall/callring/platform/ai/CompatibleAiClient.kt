@@ -75,10 +75,10 @@ class CompatibleAiClient(
     }
 
     override fun analyze(connection: AiConnection, transcript: String): CallAnalysis =
-        analyze(connection, transcript, ThinkingMode.DISABLED)
+        analyze(connection, transcript, connection.thinkingMode)
 
     /**
-     * TODO(S1-B): 思考开关状态由数据模型/策略快照传入（当前生产调用点全部固定 DISABLED）。
+     * 思考开关状态来自已保存的连接配置（`AiConnection.thinkingMode`）。
      */
     fun analyze(connection: AiConnection, transcript: String, thinkingMode: ThinkingMode): CallAnalysis = safe {
         validate(connection)
@@ -155,7 +155,7 @@ class CompatibleAiClient(
     }
 
     override fun test(connection: AiConnection, transcription: Boolean) {
-        test(connection, transcription, ThinkingMode.DISABLED)
+        test(connection, transcription, connection.thinkingMode)
     }
 
     /**

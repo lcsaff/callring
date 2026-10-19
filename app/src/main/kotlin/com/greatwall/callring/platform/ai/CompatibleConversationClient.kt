@@ -20,10 +20,10 @@ class CompatibleConversationClient(private val openConnection: (URL) -> HttpURLC
     override fun cancel() { cancelled.set(true); active?.disconnect() }
     private fun checkActive() { if(cancelled.get()) throw CancellationException("ai.cancelled") }
     override fun encode(connection: AiConnection, request: ConversationRequest): ByteArray =
-        encode(connection, request, ThinkingMode.DISABLED)
+        encode(connection, request, connection.thinkingMode)
 
     /**
-     * TODO(S1-B): 思考开关状态由数据模型/策略快照传入（当前生产调用点全部固定 DISABLED）。
+     * 思考开关状态来自已保存的连接配置（`AiConnection.thinkingMode`）。
      * 关闭/开启参数按 spec §3/§4 放在 HTTP JSON 顶层，不依赖服务端默认值。
      */
     fun encode(connection: AiConnection, request: ConversationRequest, thinkingMode: ThinkingMode): ByteArray {
