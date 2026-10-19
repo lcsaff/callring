@@ -1,0 +1,99 @@
+> Task :backend:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :backend:processResources NO-SOURCE
+> Task :backend:processTestResources NO-SOURCE
+> Task :app:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :app:preBuild UP-TO-DATE
+> Task :app:preDebugBuild UP-TO-DATE
+> Task :ui:preBuild UP-TO-DATE
+> Task :ui:preDebugBuild UP-TO-DATE
+> Task :ui:writeDebugAarMetadata UP-TO-DATE
+> Task :app:checkDebugAarMetadata UP-TO-DATE
+> Task :ui:processDebugNavigationResources UP-TO-DATE
+> Task :app:processDebugNavigationResources UP-TO-DATE
+> Task :app:compileDebugNavigationResources UP-TO-DATE
+> Task :app:generateDebugResValues UP-TO-DATE
+> Task :ui:generateDebugResValues UP-TO-DATE
+> Task :ui:generateDebugResources UP-TO-DATE
+> Task :ui:packageDebugResources UP-TO-DATE
+> Task :app:mapDebugSourceSetPaths UP-TO-DATE
+> Task :app:generateDebugResources UP-TO-DATE
+> Task :app:mergeDebugResources UP-TO-DATE
+> Task :app:packageDebugResources UP-TO-DATE
+> Task :app:parseDebugLocalResources UP-TO-DATE
+> Task :app:createDebugCompatibleScreenManifests UP-TO-DATE
+> Task :app:extractDeepLinksDebug UP-TO-DATE
+> Task :ui:extractDeepLinksDebug UP-TO-DATE
+> Task :ui:processDebugManifest UP-TO-DATE
+> Task :app:processDebugMainManifest UP-TO-DATE
+> Task :app:processDebugManifest UP-TO-DATE
+> Task :app:processDebugManifestForPackage UP-TO-DATE
+> Task :ui:compileDebugLibraryResources UP-TO-DATE
+> Task :ui:parseDebugLocalResources UP-TO-DATE
+> Task :ui:generateDebugRFile UP-TO-DATE
+> Task :app:processDebugResources UP-TO-DATE
+> Task :ui:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :ui:javaPreCompileDebug UP-TO-DATE
+> Task :app:javaPreCompileDebug UP-TO-DATE
+> Task :app:preDebugUnitTestBuild UP-TO-DATE
+> Task :app:javaPreCompileDebugUnitTest UP-TO-DATE
+> Task :app:mergeDebugShaders UP-TO-DATE
+> Task :app:compileDebugShaders NO-SOURCE
+> Task :app:generateDebugAssets UP-TO-DATE
+> Task :ui:mergeDebugShaders UP-TO-DATE
+> Task :ui:compileDebugShaders NO-SOURCE
+> Task :ui:generateDebugAssets UP-TO-DATE
+> Task :ui:mergeDebugAssets UP-TO-DATE
+> Task :app:mergeDebugAssets UP-TO-DATE
+> Task :app:packageDebugUnitTestForUnitTest UP-TO-DATE
+> Task :app:processDebugUnitTestManifest UP-TO-DATE
+> Task :app:generateDebugUnitTestConfig UP-TO-DATE
+> Task :ui:preDebugUnitTestBuild UP-TO-DATE
+> Task :ui:checkDebugUnitTestAarMetadata UP-TO-DATE
+> Task :ui:generateDebugUnitTestResValues UP-TO-DATE
+> Task :ui:mapDebugUnitTestSourceSetPaths UP-TO-DATE
+> Task :ui:generateDebugUnitTestResources UP-TO-DATE
+> Task :ui:mergeDebugUnitTestResources UP-TO-DATE
+> Task :ui:processDebugUnitTestManifest UP-TO-DATE
+> Task :ui:processDebugUnitTestResources UP-TO-DATE
+> Task :ui:javaPreCompileDebugUnitTest UP-TO-DATE
+> Task :ui:generateDebugUnitTestAssets UP-TO-DATE
+> Task :ui:mergeDebugUnitTestAssets UP-TO-DATE
+> Task :ui:packageDebugUnitTestForUnitTest UP-TO-DATE
+> Task :ui:generateDebugUnitTestConfig UP-TO-DATE
+> Task :backend:compileKotlin
+> Task :backend:compileJava NO-SOURCE
+> Task :backend:classes UP-TO-DATE
+> Task :backend:jar
+> Task :backend:compileTestKotlin
+> Task :backend:compileTestJava NO-SOURCE
+> Task :backend:testClasses UP-TO-DATE
+> Task :ui:compileDebugKotlin
+> Task :backend:test
+> Task :ui:compileDebugJavaWithJavac NO-SOURCE
+> Task :ui:processDebugJavaRes UP-TO-DATE
+> Task :ui:bundleLibCompileToJarDebug
+> Task :ui:bundleLibRuntimeToJarDebug
+> Task :ui:compileDebugUnitTestKotlin UP-TO-DATE
+> Task :ui:compileDebugUnitTestJavaWithJavac NO-SOURCE
+> Task :ui:processDebugUnitTestJavaRes UP-TO-DATE
+> Task :app:compileDebugKotlin
+> Task :ui:testDebugUnitTest
+> Task :app:compileDebugJavaWithJavac UP-TO-DATE
+> Task :app:processDebugJavaRes UP-TO-DATE
+> Task :app:bundleDebugClassesToRuntimeJar
+> Task :app:bundleDebugClassesToCompileJar
+> Task :app:compileDebugUnitTestKotlin UP-TO-DATE
+> Task :app:compileDebugUnitTestJavaWithJavac UP-TO-DATE
+> Task :app:processDebugUnitTestJavaRes UP-TO-DATE
+> Task :app:testDebugUnitTest
+
+[Incubating] Problems report is available at: file:///C:/Users/GreatWall/.codex/worktrees/6b22/callring/build/reports/problems/problems-report.html
+
+Deprecated Gradle features were used in this build, making it incompatible with Gradle 9.0.
+
+You can use '--warning-mode all' to show the individual deprecation warnings and determine if they come from your own scripts or plugins.
+
+For more on this, please refer to https://docs.gradle.org/8.13/userguide/command_line_interface.html#sec:command_line_warnings in the Gradle documentation.
+
+BUILD SUCCESSFUL in 21s
+66 actionable tasks: 12 executed, 54 up-to-date

@@ -1,0 +1,147 @@
+{
+  "schemaVersion": 2,
+  "diagnosticsComplete": true,
+  "phaseSpans": [
+    {
+      "phase": "PREPARING",
+      "startMillis": 0,
+      "endMillis": 0
+    },
+    {
+      "phase": "BUDGETING",
+      "startMillis": 0,
+      "endMillis": 1
+    },
+    {
+      "phase": "REQUESTING",
+      "startMillis": 1,
+      "endMillis": 3
+    },
+    {
+      "phase": "DISCOVERING",
+      "startMillis": 3,
+      "endMillis": 5
+    },
+    {
+      "phase": "EXECUTING",
+      "startMillis": 5,
+      "endMillis": 5
+    },
+    {
+      "phase": "BUDGETING",
+      "startMillis": 5,
+      "endMillis": 5
+    },
+    {
+      "phase": "REQUESTING",
+      "startMillis": 5,
+      "endMillis": 6
+    },
+    {
+      "phase": "READING",
+      "startMillis": 6,
+      "endMillis": 6
+    },
+    {
+      "phase": "EXECUTING",
+      "startMillis": 6,
+      "endMillis": 7
+    },
+    {
+      "phase": "BUDGETING",
+      "startMillis": 7,
+      "endMillis": 7
+    },
+    {
+      "phase": "REQUESTING",
+      "startMillis": 7,
+      "endMillis": 7
+    },
+    {
+      "phase": "COMPLETED",
+      "startMillis": 7,
+      "endMillis": 7
+    }
+  ],
+  "receipts": [
+    {
+      "stepId": "9df02572-d13e-4b0c-a2df-aa09f297e39a",
+      "status": "READ",
+      "verification": "NOT_REQUIRED",
+      "noOp": false
+    },
+    {
+      "stepId": "b6cd10c3-9c4c-4593-aaa6-27a94825c3bb",
+      "status": "READ",
+      "verification": "NOT_REQUIRED",
+      "noOp": false
+    }
+  ],
+  "prompt": "synthetic capture",
+  "phase": "COMPLETED",
+  "modelRequests": 3,
+  "sourceQueries": 0,
+  "work": 2,
+  "outcome": {
+    "verifiedWrites": 0,
+    "committedUnverified": 0,
+    "unknown": 0,
+    "complete": true,
+    "work": 2,
+    "plans": []
+  },
+  "error": null,
+  "errorKind": null,
+  "exchanges": [
+    {
+      "schemaCount": 1,
+      "contextMessages": 2,
+      "requestBytes": 4044,
+      "responseBytes": 226,
+      "httpStatus": 200,
+      "profile": "QWEN_FAST",
+      "elapsedMillis": 1,
+      "requestFlags": {
+        "enable_thinking": false,
+        "preserve_thinking": false
+      },
+      "finishReason": "tool_calls",
+      "usage": null,
+      "failure": null
+    },
+    {
+      "schemaCount": 2,
+      "contextMessages": 4,
+      "requestBytes": 5148,
+      "responseBytes": 208,
+      "httpStatus": 200,
+      "profile": "QWEN_FAST",
+      "elapsedMillis": 0,
+      "requestFlags": {
+        "enable_thinking": false,
+        "preserve_thinking": false
+      },
+      "finishReason": "tool_calls",
+      "usage": null,
+      "failure": null
+    },
+    {
+      "schemaCount": 2,
+      "contextMessages": 6,
+      "requestBytes": 5627,
+      "responseBytes": 86,
+      "httpStatus": 200,
+      "profile": "QWEN_FAST",
+      "elapsedMillis": 0,
+      "requestFlags": {
+        "enable_thinking": false,
+        "preserve_thinking": false
+      },
+      "finishReason": "stop",
+      "usage": null,
+      "failure": null
+    }
+  ],
+  "source": "synthetic HTTP boundary; production service\/codec; isolated local API fixture",
+  "actualProviderRun": false
+}

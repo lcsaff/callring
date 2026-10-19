@@ -7,7 +7,18 @@ import kotlinx.coroutines.CancellationException
 
 /** A committed command is never replayed merely because its readback failed. */
 class ReceiptVerifier(private val q:QueryService) {
-    suspend fun verify(index:Int,call:ConversationToolCall,receipt:ToolReceipt,before:AiJson?=null):ToolReceipt {
+    suspend fun prepareAdoption(call:ConversationToolCall):AdoptionExpectation {
+        val saved=q.snapshotObservations()
+        try{
+            val archive=q.get(AiDomain.D16,call.arguments.l("callId").toString()).requiredValue().value
+            val analysis=archive["analysis"] as? AiJson.Obj?:throw BackendFailure(ApiError(ErrorCode.NOT_FOUND,"recording.analysis_missing"))
+            val number=archive.s("number")
+            val profile=when(val value=q.get(AiDomain.D01,number)){is ApiResult.Success->value.value.value;is ApiResult.Failure->if(value.error.code==ErrorCode.NOT_FOUND)null else throw BackendFailure(value.error)}
+            suspend fun expected(field:String,target:String):ScopedTextFingerprint {val value=ScopedTextFingerprint.read(q,archive,"analysis.$field",analysis[field]);return if(value.blank)ScopedTextFingerprint.read(q,profile,target,profile?.get(target)?:AiJson.Null)else value}
+            return AdoptionExpectation(number,archive["generation"],expected("name","name"),expected("organization","department"))
+        }finally{q.restoreObservations(saved)}
+    }
+    suspend fun verify(index:Int,call:ConversationToolCall,receipt:ToolReceipt,before:AiJson?=null,adoption:AdoptionExpectation?=null):ToolReceipt {
         if(receipt.status in setOf(ToolStatus.QUEUED,ToolStatus.LAUNCHED))return receipt.copy(verification=VerificationStatus.PENDING)
         if(receipt.status!=ToolStatus.COMMITTED)return receipt
         val saved=q.snapshotObservations()
@@ -59,7 +70,16 @@ class ReceiptVerifier(private val q:QueryService) {
                 58->{val v=get(AiDomain.D19)["recordingPlayback"] as? AiJson.Obj;v!=null&&v["state"]==aiString("PLAYING")&&sameValue(v["callId"],a["callId"])}
                 59->{val v=get(AiDomain.D19)["recordingPlayback"] as? AiJson.Obj;v!=null&&v["mode"]==aiString("NONE")&&v["state"]==aiString("IDLE")&&v["callId"]==AiJson.Null}
                 60->sameValue(get(AiDomain.D13)["folderConfigured"],aiBool(true))
-                63->{val archive=get(AiDomain.D16,a.l("callId").toString());val analysis=archive["analysis"] as? AiJson.Obj;val n=archive.s("number");val profile=get(AiDomain.D01,n);analysis!=null&&compare(profile,aiObject("name" to analysis["name"],"department" to analysis["organization"]))}
+                63->{
+                    val archive=get(AiDomain.D16,a.l("callId").toString());val analysis=archive["analysis"] as? AiJson.Obj
+                    val n=archive.s("number");val profile=get(AiDomain.D01,n)
+                    suspend fun matches(field:String,target:String,expected:ScopedTextFingerprint?):Boolean {
+                        val wanted=expected?:analysis?.let{ScopedTextFingerprint.read(q,archive,"analysis.$field",it[field])}?:return false
+                        if(expected==null&&wanted.blank)return false
+                        return wanted.matches(ScopedTextFingerprint.read(q,profile,target,profile[target]))
+                    }
+                    analysis!=null&&(adoption==null||(adoption.number==n&&adoption.generation==archive["generation"]))&&matches("name","name",adoption?.name)&&matches("organization","department",adoption?.department)
+                }
                 65->compareAi(get(AiDomain.D14),a)
                 67->{val runtime=get(AiDomain.D19)["runtime"] as? AiJson.Obj;val capabilities=runtime?.get("capabilities") as? AiJson.Obj;capabilities?.get(a.s("capability")) in setOf(aiString("GRANTED"),aiString("NOT_REQUIRED"))}
                 66,72->{val value=get(AiDomain.D14);val expected=receiptObject();expected.fields.isNotEmpty()&&compare(value,expected)}

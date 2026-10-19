@@ -48,7 +48,7 @@ class ToolBatchEngine(
             reconcile=false
             ledger.steps.filter{it.state==StepState.COMMITTED&&it.receipt?.status==ToolStatus.COMMITTED}.forEach{step->
                 val index=executor.registry.allDefinitions.single{it.name==step.call.name}.index
-                val receipt=metered{verifier.verify(index,step.call,step.receipt!!)}
+                val receipt=metered{verifier.verify(index,step.call,step.receipt!!,adoption=step.adoption)}
                 ledger.finish(step,receipt);report(receipt)
             }
         }
@@ -99,6 +99,7 @@ class ToolBatchEngine(
                 if(write) {
                     if(definition?.index==79)throw BackendFailure(ApiError(ErrorCode.VALIDATION,"ai.invalid_profile_batch"))
                     p.expected=metered{scopes.prepare(call,definition!!.index)}
+                    if(definition.index==63)step.adoption=metered{verifier.prepareAdoption(call)}
                     step.effectScopes=p.expected.keys.filter{definition.index !in setOf(7,8)||it.startsWith("profile:")}.toSet()
                     if(ledger.steps.any{prior->prior!==step&&prior.effectScopes.any{it in step.effectScopes}&&
                         (prior.state==StepState.UNKNOWN||prior.receipt?.verification==VerificationStatus.COMMITTED_UNVERIFIED||
@@ -166,7 +167,7 @@ class ToolBatchEngine(
                     try {
                         receipt=metered{executor.execute(step.call,ToolExecutionContext(session,turn,generation,command))}
                         if(p.definition.write) {
-                            receipt=metered{verifier.verify(index,step.call,receipt)}
+                            receipt=metered{verifier.verify(index,step.call,receipt,adoption=step.adoption)}
                             if(receipt.commitRevision!=null)scopes.committed(command.operationId,p.expected.keys)
                         }
                     } catch(e:Exception){

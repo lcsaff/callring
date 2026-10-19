@@ -220,20 +220,66 @@ class AiConversationSyntheticUiDeviceTest:InstrumentationTestCase() {
             while(SystemClock.elapsedRealtime()<deadline){find(predicate)?.let{return it};SystemClock.sleep(100)}
             error("Synthetic UI value missing")
         }
-        fun capture(name:String){instrumentation.waitForIdleSync();val bitmap=instrumentation.uiAutomation.takeScreenshot()?:error("Screenshot required");File(proofDirectory(context),name).outputStream().use{check(bitmap.compress(Bitmap.CompressFormat.PNG,100,it))};bitmap.recycle()}
+        fun capture(activity:android.app.Activity,name:String){instrumentation.waitForIdleSync();val bitmap=proofWindowBitmap(activity);File(proofDirectory(context),name).outputStream().use{check(bitmap.compress(Bitmap.CompressFormat.PNG,100,it))};bitmap.recycle()}
         val list=launchProofActivity(instrumentation,UiDestination.Callers,"callers")
         try{
             val search=waitNode{it.isEditable&&it.isEnabled};check(search.performAction(AccessibilityNodeInfo.ACTION_SET_TEXT,Bundle().apply{putCharSequence(AccessibilityNodeInfo.ACTION_ARGUMENT_SET_TEXT_CHARSEQUENCE,name)}));search.recycle()
             waitNode{!it.isEditable&&it.text?.toString()?.contains(name)==true}.recycle()
-            SystemClock.sleep(750);capture("synthetic-list.png")
+            SystemClock.sleep(750);capture(list,"synthetic-list.png")
         }finally{instrumentation.runOnMainSync{list.finish()}}
         val editor=launchProofActivity(instrumentation,UiDestination.EditCaller(number),"edit",number)
         try{
             waitNode{it.text?.toString()==name}.recycle();waitNode{it.text?.toString()==number}.recycle()
-            SystemClock.sleep(750);capture("synthetic-editor.png")
+            SystemClock.sleep(750);capture(editor,"synthetic-editor.png")
         }finally{instrumentation.runOnMainSync{editor.finish()}}
         check((context as CallringApplication).backendGraph.api.settings.getAppearance().requiredValue().colorMode==ColorMode.DARK)
         File(proofDirectory(context),"synthetic-ui.json").writeText(JSONObject().put("schemaVersion",2).put("result","passed").put("filteredList",true).put("editorNumberAndName",true).put("businessWrites",0).toString(2))
+    }
+}
+
+/** Read-only presentation proof, no messages sent and no business values edited. */
+class AiConversationPresentationDeviceTest:InstrumentationTestCase() {
+    fun testCompactDisclosureAndDetailsUseActualConfiguredTarget()=runBlocking<Unit> {
+        val context=instrumentation.targetContext.applicationContext
+        check(context.packageName=="com.greatwall.callring"&&!context.getSystemService(KeyguardManager::class.java).isDeviceLocked)
+        val graph=(context as CallringApplication).backendGraph
+        val view=graph.api.aiSettings.getAiView().requiredValue().analysis
+        check(graph.api.conversation.state.value.messages.isEmpty())
+        instrumentation.uiAutomation.serviceInfo=instrumentation.uiAutomation.serviceInfo.apply{flags=flags or android.accessibilityservice.AccessibilityServiceInfo.FLAG_RETRIEVE_INTERACTIVE_WINDOWS}
+        fun node(predicate:(AccessibilityNodeInfo)->Boolean):AccessibilityNodeInfo? {
+            val nodes=ArrayDeque<AccessibilityNodeInfo>();nodes.addAll(instrumentation.uiAutomation.windows.mapNotNull{it.root})
+            while(nodes.isNotEmpty()){val n=nodes.removeFirst();if(n.packageName?.toString()==context.packageName&&predicate(n)){nodes.forEach{it.recycle()};return n};repeat(n.childCount){n.getChild(it)?.let(nodes::addLast)};n.recycle()};return null
+        }
+        fun waitNode(predicate:(AccessibilityNodeInfo)->Boolean):AccessibilityNodeInfo {
+            val deadline=SystemClock.elapsedRealtime()+10000
+            while(SystemClock.elapsedRealtime()<deadline){node(predicate)?.let{return it};SystemClock.sleep(100)};error("Presentation control missing")
+        }
+        fun touch(n:AccessibilityNodeInfo){val bounds=android.graphics.Rect();n.getBoundsInScreen(bounds);n.recycle();check(!bounds.isEmpty);val time=SystemClock.uptimeMillis()
+            for(action in intArrayOf(android.view.MotionEvent.ACTION_DOWN,android.view.MotionEvent.ACTION_UP)){val event=android.view.MotionEvent.obtain(time,SystemClock.uptimeMillis(),action,bounds.exactCenterX(),bounds.exactCenterY(),0);event.source=android.view.InputDevice.SOURCE_TOUCHSCREEN;try{check(instrumentation.uiAutomation.injectInputEvent(event,true))}finally{event.recycle()}}
+        }
+        val activity=launchProofActivity(instrumentation,UiDestination.Conversation,"conversation")
+        fun capture(name:String){instrumentation.waitForIdleSync();SystemClock.sleep(400);val bitmap=proofWindowBitmap(activity);File(proofDirectory(context),name).outputStream().use{check(bitmap.compress(Bitmap.CompressFormat.PNG,100,it))};bitmap.recycle()}
+        try{
+            val summary=waitNode{it.text?.toString()?.startsWith("服务：")==true}
+            check(summary.text.toString().contains(view.model)&&!summary.text.toString().contains("://"));summary.recycle()
+            capture("compact-default.png")
+            touch(waitNode{it.contentDescription?.toString()=="服务详情"})
+            val full="${view.protocol} · ${view.url} · ${view.model} · ${view.resolvedProfile}"
+            waitNode{it.text?.toString()==full}.recycle();capture("connection-details.png")
+            touch(waitNode{it.text?.toString()=="关闭"})
+            waitNode{it.text?.toString()?.startsWith("服务：")==true}.recycle()
+            touch(waitNode{it.isEditable&&it.isEnabled})
+            if(android.os.Build.VERSION.SDK_INT>=30){
+            val imeDeadline=SystemClock.elapsedRealtime()+10000
+            while(SystemClock.elapsedRealtime()<imeDeadline&&activity.window.decorView.rootWindowInsets?.isVisible(android.view.WindowInsets.Type.ime())!=true)SystemClock.sleep(100)
+            check(activity.window.decorView.rootWindowInsets?.isVisible(android.view.WindowInsets.Type.ime())==true){"Actual keyboard not visible"}
+            }else error("Presentation IME proof requires API 30 or later")
+            capture("compact-keyboard.png")
+            instrumentation.sendKeyDownUpSync(android.view.KeyEvent.KEYCODE_BACK)
+            check(graph.api.conversation.state.value.exchanges.isEmpty()&&graph.api.conversation.state.value.receipts.isEmpty())
+            check(graph.api.settings.getAppearance().requiredValue().colorMode==ColorMode.DARK)
+            File(proofDirectory(context),"presentation.json").writeText(JSONObject().put("schemaVersion",2).put("result","passed").put("compactTarget",true).put("fullDetailsMatchSafeView",true).put("actualImeVisible",true).put("modelRequests",0).put("businessWrites",0).toString(2))
+        }finally{instrumentation.runOnMainSync{activity.finish()}}
     }
 }
 
@@ -257,4 +303,11 @@ private suspend fun profiles(graph:BackendGraph):Map<String,AiJson.Obj> {
     do {val page=graph.queries.query(QuerySpec(AiDomain.D01,cursor=cursor,limit=200)).requiredValue();check(page.status in setOf(QueryStatus.COMPLETE,QueryStatus.EMPTY,QueryStatus.PARTIAL));page.items.filter{it["stored"]==aiNumber(1)}.forEach{row->rows[row["number"].string()]=row};check(rows.size<=4000){"Acceptance inventory exceeds bounded local capacity"};cursor=page.nextCursor;if(cursor==null)check(page.complete)}while(cursor!=null)
     return rows
 }
-private fun roundJson(prompt:String,state:ConversationState):JSONObject = JSONObject().put("schemaVersion",2).put("receipts",JSONArray(state.receipts.map{r->JSONObject().put("stepId",r.operationId).put("status",r.status.name).put("verification",r.verification.name).put("noOp",r.noOp)})).put("prompt",prompt).put("phase",state.phase.name).put("modelRequests",state.exchanges.size).put("sourceQueries",state.sourceQueries).put("work",state.workCount).put("outcome",JSONObject(state.outcome.encode())).put("error",state.error?.message?:JSONObject.NULL).put("errorKind",state.error?.aiFailure?.kind?.name?:JSONObject.NULL).put("exchanges",JSONArray(state.exchanges.map{m->JSONObject().put("schemaCount",m.schemaCount?:JSONObject.NULL).put("contextMessages",m.contextMessages?:JSONObject.NULL).put("requestBytes",m.requestBytes).put("responseBytes",m.responseBytes).put("httpStatus",m.httpStatus?:JSONObject.NULL).put("profile",m.profile.name).put("elapsedMillis",m.elapsedMillis).put("requestFlags",JSONObject(m.requestFlags)).put("finishReason",m.diagnostics?.finishReason?:JSONObject.NULL).put("usage",m.diagnostics?.usage?.let{u->JSONObject().put("input",u.input?:JSONObject.NULL).put("output",u.output?:JSONObject.NULL).put("total",u.total?:JSONObject.NULL).put("cachedInput",u.cachedInput?:JSONObject.NULL).put("cacheWriteInput",u.cacheWriteInput?:JSONObject.NULL).put("reasoningOutput",u.reasoningOutput?:JSONObject.NULL)}?:JSONObject.NULL).put("failure",m.failure?.name?:JSONObject.NULL)}))
+private fun roundJson(prompt:String,state:ConversationState):JSONObject = JSONObject().put("schemaVersion",2).put("diagnosticsComplete",state.diagnosticsComplete).put("phaseSpans",JSONArray(state.phaseSpans.map{p->JSONObject().put("phase",p.phase.name).put("startMillis",p.startMillis).put("endMillis",p.endMillis)})).put("receipts",JSONArray(state.receipts.map{r->JSONObject().put("stepId",r.operationId).put("status",r.status.name).put("verification",r.verification.name).put("noOp",r.noOp)})).put("prompt",prompt).put("phase",state.phase.name).put("modelRequests",state.exchanges.size).put("sourceQueries",state.sourceQueries).put("work",state.workCount).put("outcome",JSONObject(diagnosticOutcome(state.outcome).encode())).put("error",state.error?.message?:JSONObject.NULL).put("errorKind",state.error?.aiFailure?.kind?.name?:JSONObject.NULL).put("exchanges",JSONArray(state.exchanges.map{m->JSONObject().put("schemaCount",m.schemaCount?:JSONObject.NULL).put("contextMessages",m.contextMessages?:JSONObject.NULL).put("requestBytes",m.requestBytes).put("responseBytes",m.responseBytes).put("httpStatus",m.httpStatus?:JSONObject.NULL).put("profile",m.profile.name).put("elapsedMillis",m.elapsedMillis).put("requestFlags",JSONObject(m.requestFlags)).put("finishReason",m.diagnostics?.finishReason?:JSONObject.NULL).put("usage",m.diagnostics?.usage?.let{u->JSONObject().put("input",u.input?:JSONObject.NULL).put("output",u.output?:JSONObject.NULL).put("total",u.total?:JSONObject.NULL).put("cachedInput",u.cachedInput?:JSONObject.NULL).put("cacheWriteInput",u.cacheWriteInput?:JSONObject.NULL).put("reasoningOutput",u.reasoningOutput?:JSONObject.NULL)}?:JSONObject.NULL).put("failure",m.failure?.name?:JSONObject.NULL)}))
+
+private fun diagnosticOutcome(value:AiJson):AiJson.Obj {
+    val root=value as? AiJson.Obj?:return aiObject()
+    val counts=root.fields.filterKeys{it in setOf("verifiedWrites","committedUnverified","unknown","complete","work")}
+    val plans=(root["plans"] as? AiJson.Arr)?.values.orEmpty().filterIsInstance<AiJson.Obj>().map{p->AiJson.Obj(p.fields.filterKeys{it in setOf("taskId","kind","expectedCount","verifiedCount","satisfied")})}
+    return AiJson.Obj(counts+mapOf("plans" to AiJson.Arr(plans)))
+}

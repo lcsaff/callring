@@ -17,12 +17,12 @@ import org.json.JSONArray
 internal class SqliteScopedReadAdapter(private val db:SQLiteDatabase,private val versionProvider:()->Long,private val clock:()->Long=System::currentTimeMillis):ScopedReadPort {
     override val domains=(AiDomain.entries.take(10)+AiDomain.D21).toSet()
     override fun version(domain:AiDomain)=versionProvider()
-    private data class Table(val sql:String,val columns:List<String>,val texts:Set<String> = emptySet(),val structured:Set<String> = emptySet())
+    private data class Table(val sql:String,val columns:List<String>,val texts:Set<String> = emptySet(),val structured:Set<String> = emptySet(),val searchable:Set<String> = texts)
     private fun table(domain:AiDomain,projection:String):Table {
         val projections=when(domain){AiDomain.D02->setOf("default","current");AiDomain.D04->setOf("default","counted","visible");AiDomain.D05->setOf("default","intervals");AiDomain.D06->setOf("default","history","current","work");AiDomain.D07->setOf("default","years","days");else->setOf("default")}
         require(projection in projections)
         return when(domain){
-            AiDomain.D01 -> Table("SELECT n.number entity_key,n.number,CASE WHEN c.number IS NULL THEN 0 ELSE 1 END stored,coalesce(c.name,'') name,coalesce(c.department,'') department,c.position_id,coalesce(c.whitelist,0) whitelisted,p.name position_name,p.level position_level,p.active position_active FROM (SELECT number FROM callers UNION SELECT number FROM calls) n LEFT JOIN callers c ON n.number=c.number LEFT JOIN positions p ON p.id=c.position_id",listOf("number","stored","name","department","position_id","whitelisted","position_name","position_level","position_active"),setOf("name","department","position_name"))
+            AiDomain.D01 -> Table("SELECT n.number entity_key,n.number,CASE WHEN c.number IS NULL THEN 0 ELSE 1 END stored,coalesce(c.name,'') name,coalesce(c.department,'') department,c.position_id,coalesce(c.whitelist,0) whitelisted,p.name position_name,p.level position_level,p.active position_active FROM (SELECT number FROM callers UNION SELECT number FROM calls) n LEFT JOIN callers c ON n.number=c.number LEFT JOIN positions p ON p.id=c.position_id",listOf("number","stored","name","department","position_id","whitelisted","position_name","position_level","position_active"),setOf("name","department","position_name"),searchable=setOf("number","name","department"))
             AiDomain.D02 -> if(projection=="current") Table("SELECT 'current' entity_key,(SELECT position_id FROM settings WHERE key='my_position') myPositionId",listOf("myPositionId")) else Table("SELECT printf('%020d',id) entity_key,id,name,level,active,(SELECT position_id FROM settings WHERE key='my_position') myPositionId FROM positions",listOf("id","name","level","active","myPositionId"),setOf("name"))
             AiDomain.D03,AiDomain.D04 -> {
                 val columns=listOf("id","number","time","duration","result","decision","source","log_id","screening_key","counted","working","verified","reason","original_working","original_verified","original_reason","config_version","original_config_version","calendar_version","original_calendar_version","leave_version","original_leave_version","zone","original_zone","account","hidden","linked_screen_id")
@@ -60,7 +60,7 @@ internal class SqliteScopedReadAdapter(private val db:SQLiteDatabase,private val
         }else{add("status",f.status);add("kind",f.kind)}
         val time=when{ "time" in t.columns->"time";"start" in t.columns->"start";"created" in t.columns->"created";"effective" in t.columns->"effective";else->null}
         if(f.start!=null||f.end!=null){require(time!=null);add(time,f.start,">=");add(time,f.end,"<")}
-        f.text?.let{text->val fields=t.texts.toList();require(fields.isNotEmpty());clauses+="("+fields.joinToString(" OR "){"instr($it,?)>0"}+")";repeat(fields.size){args+=text}}
+        f.text?.trim()?.takeIf{it.isNotEmpty()}?.let{text->val fields=t.searchable.toList();require(fields.isNotEmpty());val pattern=UnicodeSearchPattern.contains(text);clauses+="("+fields.joinToString(" OR "){"$it GLOB ?"}+")";repeat(fields.size){args+=pattern}}
         require(f.zone==null||runCatching{ZoneId.of(f.zone)}.isSuccess)
         return (if(clauses.isEmpty())"1" else clauses.joinToString(" AND ")) to args
     }

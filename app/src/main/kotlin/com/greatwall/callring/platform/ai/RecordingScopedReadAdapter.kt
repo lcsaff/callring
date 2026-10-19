@@ -28,7 +28,8 @@ internal class RecordingScopedReadAdapter(private val db:SQLiteDatabase,private 
         require(f.year==null&&f.kind==null&&f.date==null&&f.zone==null)
         return (if(clauses.isEmpty())"1"else clauses.joinToString(" AND ")) to args
     }
-    private fun archiveRow(id:Long,generation:Long,metadata:String):SourceRow {
+    private fun archiveRow(id:Long,generation:Long,metadata:String?):SourceRow {
+        if(metadata==null)throw BackendFailure(ApiError(ErrorCode.SYSTEM_RESTRICTED,"ai.archive_metadata_capacity"))
         val fields=db.rawQuery("SELECT field,total FROM archive_text_fields WHERE call_id=? AND generation=? ORDER BY field",arrayOf(id.toString(),generation.toString())).use{c->buildMap{while(c.moveToNext())put(c.getString(0),c.getLong(1))}}
         return SourceRow(id.toString(),parseConversationJson(metadata) as AiJson.Obj,fields)
     }
@@ -45,7 +46,7 @@ internal class RecordingScopedReadAdapter(private val db:SQLiteDatabase,private 
             return read{
                 val (where,args)=filter(spec.filter,true);val key=after?.takeUnless{it.startsWith("index:")}
                 val total=DatabaseUtils.longForQuery(db,"SELECT count(*) FROM archive_projection WHERE $where",args.toTypedArray())
-                val rows=db.rawQuery("SELECT call_id,generation,metadata FROM archive_projection WHERE ($where)"+(if(key==null)""else" AND call_id>?")+" ORDER BY call_id LIMIT ?",(args+listOfNotNull(key)+(spec.limit+1).toString()).toTypedArray()).use{c->buildList{while(c.moveToNext())add(archiveRow(c.getLong(0),c.getLong(1),c.getString(2)))}}
+                val rows=db.rawQuery("SELECT call_id,generation,CASE WHEN length(CAST(metadata AS BLOB))<=131072 THEN metadata ELSE NULL END FROM archive_projection WHERE ($where)"+(if(key==null)""else" AND call_id>?")+" ORDER BY call_id LIMIT ?",(args+listOfNotNull(key)+(spec.limit+1).toString()).toTypedArray()).use{c->buildList{while(c.moveToNext())add(archiveRow(c.getLong(0),c.getLong(1),c.getString(2)))}}
                 val page=rows.take(spec.limit);SourcePage(page,total,if(rows.size>spec.limit)page.last().key else null)
             }
         }
@@ -58,11 +59,13 @@ internal class RecordingScopedReadAdapter(private val db:SQLiteDatabase,private 
         }
     }
     override fun get(domain:AiDomain,key:String,projection:String):SourceRow? {
-        val id=key.toLong()
+        val requested=key.toLong()
+        val id=if(domain==AiDomain.D16&&requested>0)db.rawQuery("SELECT -e.id FROM recording_events e JOIN recording_statistics_links l ON e.session_id=l.session_id WHERE l.statistics_id=?",arrayOf(key)).use{c->if(c.moveToFirst())c.getLong(0)else requested}else requested
+        val archiveKey=id.toString()
         if(domain==AiDomain.D16){
-            val generation=db.rawQuery("SELECT generation FROM archives WHERE call_id=?",arrayOf(key)).use{c->if(c.moveToFirst())c.getLong(0)else return null}
+            val generation=db.rawQuery("SELECT generation FROM archives WHERE call_id=?",arrayOf(archiveKey)).use{c->if(c.moveToFirst())c.getLong(0)else return null}
             if(!index.advance(id,generation,1024*1024).complete)throw BackendFailure(ApiError(ErrorCode.SYSTEM_RESTRICTED,"ai.index_incomplete",retryable=true))
-            return read{db.rawQuery("SELECT generation,metadata FROM archive_projection WHERE call_id=?",arrayOf(key)).use{c->if(c.moveToFirst())archiveRow(id,c.getLong(0),c.getString(1))else null}}
+            return read{db.rawQuery("SELECT generation,CASE WHEN length(CAST(metadata AS BLOB))<=131072 THEN metadata ELSE NULL END FROM archive_projection WHERE call_id=?",arrayOf(archiveKey)).use{c->if(c.moveToFirst())archiveRow(id,c.getLong(0),c.getString(1))else null}}
         }
         return read{db.rawQuery("SELECT * FROM (${eventSql(projection)}) WHERE entity_key=?",arrayOf(key)).use{c->if(c.moveToFirst())SourceRow(key,row(c))else null}}
     }

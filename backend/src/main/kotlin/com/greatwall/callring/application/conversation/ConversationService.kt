@@ -29,6 +29,19 @@ class ConversationService(
     @Volatile private var fingerprint=""
     private data class Continuation(val engine:ToolBatchEngine,val fingerprint:String,val session:String)
     private var continuation:Continuation?=null
+    private var phaseClock=0L
+    private val phaseSpans=mutableListOf<ConversationPhaseSpan>()
+    private var phaseTraceComplete=true
+    private fun phaseState(phase:ConversationPhase):ConversationState {
+        if(phaseClock==0L)return state.value.copy(phase=phase)
+        val now=((System.nanoTime()-phaseClock)/1_000_000).coerceAtLeast(0)
+        phaseSpans.lastOrNull()?.let{last->phaseSpans[phaseSpans.lastIndex]=last.copy(endMillis=now)}
+        if(phaseSpans.lastOrNull()?.phase!=phase){
+            if(phaseSpans.size>=256){phaseTraceComplete=false;phaseSpans.removeAt(phaseSpans.lastIndex)}
+            phaseSpans+=ConversationPhaseSpan(phase,now,now)
+        }
+        return state.value.copy(phase=phase,phaseSpans=phaseSpans.toList(),diagnosticsComplete=phaseTraceComplete)
+    }
     private val executor=ToolExecutor(api,coordinator,foreground,resources,queries=queries,documentWriteVerified=documentWriteVerified)
     private val monitor=scope.launch {
         coordinator.changes.collect {
@@ -37,7 +50,7 @@ class ConversationService(
             }
         }
     }
-    init {scope.launch{foreground.pending.collect{pending->synchronized(lock){if(state.value.busy&&state.value.phase in setOf(ConversationPhase.EXECUTING,ConversationPhase.WAITING_FOREGROUND))state.value=state.value.copy(phase=if(pending!=null)ConversationPhase.WAITING_FOREGROUND else ConversationPhase.EXECUTING)}}}}
+    init {scope.launch{foreground.pending.collect{pending->synchronized(lock){if(state.value.busy&&state.value.phase in setOf(ConversationPhase.EXECUTING,ConversationPhase.WAITING_FOREGROUND))state.value=phaseState(if(pending!=null)ConversationPhase.WAITING_FOREGROUND else ConversationPhase.EXECUTING)}}}}
     override suspend fun send(expectedSessionId:String,text:String)=enqueue(expectedSessionId,text,null)
     override suspend fun sendTo(expectedSessionId:String,text:String,disclosedTarget:AiConnectionView):ApiResult<Unit> {
         val current=runCatching{settings()}.getOrElse{return failed(ErrorCode.STORAGE_FAILURE,"ai.settings_storage_failed")}
@@ -63,13 +76,14 @@ class ConversationService(
             if(state.value.busy)return failed(ErrorCode.CONFLICT,"ai.busy")
             val token=generation.incrementAndGet();connectionChanged=false
             if(resuming==null)continuation=null
-            state.value=state.value.copy(phase=ConversationPhase.PREPARING,error=null,receipts=emptyList(),exchanges=emptyList(),sourceQueries=0,workCount=0,outcome=AiJson.Null)
+            phaseClock=System.nanoTime();phaseSpans.clear();phaseSpans+=ConversationPhaseSpan(ConversationPhase.PREPARING,0,0);phaseTraceComplete=true
+            state.value=state.value.copy(phase=ConversationPhase.PREPARING,error=null,receipts=emptyList(),exchanges=emptyList(),sourceQueries=0,workCount=0,outcome=AiJson.Null,phaseSpans=phaseSpans.toList(),diagnosticsComplete=true)
             turnJob=scope.launch(start=CoroutineStart.LAZY){runTurn(expectedSessionId,token,text,target,resuming)};turnJob!!.start()
         }
         return ApiResult.Success(Unit)
     }
     private fun publish(phase:ConversationPhase,error:ApiError?=null,receipts:List<ToolReceipt>?=null,estimate:Long?=null,engine:ToolBatchEngine?=null,sourceBase:Long=queries.sourceQueries.get())=synchronized(lock) {
-        state.value=state.value.copy(phase=phase,messages=context.uiMessages(),error=error,receipts=receipts?:state.value.receipts,budgetBytes=estimate?:state.value.budgetBytes,sourceQueries=queries.sourceQueries.get()-sourceBase,workCount=engine?.budget?.work?:state.value.workCount,outcome=engine?.summary()?:state.value.outcome,continuableTasks=if(phase in setOf(ConversationPhase.PARTIAL,ConversationPhase.FAILED,ConversationPhase.STOPPED))engine?.pendingTasks().orEmpty()else emptyList())
+        state.value=phaseState(phase).copy(messages=context.uiMessages(),error=error,receipts=receipts?:state.value.receipts,budgetBytes=estimate?:state.value.budgetBytes,sourceQueries=queries.sourceQueries.get()-sourceBase,workCount=engine?.budget?.work?:state.value.workCount,outcome=engine?.summary()?:state.value.outcome,continuableTasks=if(phase in setOf(ConversationPhase.PARTIAL,ConversationPhase.FAILED,ConversationPhase.STOPPED))engine?.pendingTasks().orEmpty()else emptyList())
     }
     private fun sanitize(receipt:ToolReceipt,r:SecretRedactor)=receipt.copy(value=r.redact(receipt.value),verificationEvidence=r.redact(receipt.verificationEvidence),error=receipt.error?.let{it.copy(message=r.text(it.message),fieldErrors=it.fieldErrors.mapValues{entry->r.text(entry.value)})})
     private suspend fun runTurn(session:String,token:Long,text:String,disclosedTarget:AiConnectionView?,resuming:ToolBatchEngine?) {
@@ -141,7 +155,7 @@ class ConversationService(
                 reply as ConversationReply.ToolBatch
                 activeBatch=reply.calls
                 if(activeBatch.isEmpty()||activeBatch.size>32||activeBatch.map{it.id}.distinct().size!=activeBatch.size)throw BackendFailure(ApiError(ErrorCode.VALIDATION,"ai.invalid_tool_response"))
-                context.append(ConversationMessage("assistant",sanitizer.text(reply.text),activeBatch.map{it.copy(arguments=sanitizer.redact(it.arguments) as AiJson.Obj,wireArguments=it.wireArguments?.let(sanitizer::text))},blocks=reply.blocks.map{redactAssistantBlock(it,sanitizer)}))
+                context.append(ConversationMessage("assistant",sanitizer.text(reply.text),activeBatch.map{redactToolCall(it,sanitizer)},blocks=reply.blocks.map{redactAssistantBlock(it,sanitizer)}))
                 paired=false
                 val writeItems=activeBatch.sumOf{call->if(call.name=="callers_saveProfiles")((call.arguments["items"] as? AiJson.Arr)?.values?.size?:1)else if(executor.registry.allDefinitions.any{it.name==call.name&&it.write})1 else 0}
                 previewBudget(activeBatch.map{ToolReceipt("pending",it.id,ToolStatus.SKIPPED)},writeItems.coerceAtMost(64)*1024)
@@ -165,7 +179,7 @@ class ConversationService(
                 connectionChanged->ApiError(ErrorCode.CONFLICT,"ai.connection_changed")
                 e is CancellationException->ApiError(ErrorCode.SYSTEM_RESTRICTED,"ai.cancelled")
                 e is BackendFailure->e.error
-                e is IllegalArgumentException->ApiError(ErrorCode.VALIDATION,"ai.invalid_tool_response")
+                e is IllegalArgumentException->if(e.message=="ai.profile_invalid")ApiError(ErrorCode.VALIDATION,"ai.profile_invalid",fieldErrors=mapOf("analysis.model" to "ai.fast_model_required"),aiFailure=ConversationFailure(AiFailureKind.PROVIDER_MODE,"PROFILE_INVALID"))else ApiError(ErrorCode.VALIDATION,"ai.invalid_tool_response")
                 else->ApiError(ErrorCode.IO_FAILURE,"ai.conversation_failed",retryable=true)
             }
             if(connectionChanged){context.clear();queries.reset();resources.reset();synchronized(lock){continuation=null}}
@@ -185,7 +199,7 @@ class ConversationService(
         val job=synchronized(lock){
             if(state.value.sessionId!=expectedSessionId)return failed(ErrorCode.CONFLICT,"ai.session_changed")
             generation.incrementAndGet();client?.cancel();foreground.invalidate()
-            if(state.value.busy)state.value=state.value.copy(phase=ConversationPhase.STOPPING)
+            if(state.value.busy)state.value=phaseState(ConversationPhase.STOPPING)
             turnJob
         }
         job?.cancelAndJoin();if(state.value.busy)publish(ConversationPhase.STOPPED)

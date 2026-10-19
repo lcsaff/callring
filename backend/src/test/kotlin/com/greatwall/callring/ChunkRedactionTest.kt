@@ -10,9 +10,10 @@ import org.junit.Test
 
 class ChunkRedactionTest {
     @Test fun keysSpanningChunkEdgesAreFullyRedactedIncludingEncodedForms()=runBlocking {
-        val key="key-SECRET-123"
+        val key="key-\"\\\t-SECRET-123"
         val encoded=key.map{"%%%02x".format(it.code)}.joinToString("")
-        val text="😀prefix$key/$encoded/tail"
+        val short=AiJson.quote(key).drop(1).dropLast(1)
+        val text="😀prefix$key/$encoded/$short/tail"
         val port=object:ScopedReadPort {
             override val domains=setOf(AiDomain.D16)
             override fun version(domain:AiDomain)=0L
@@ -28,5 +29,6 @@ class ChunkRedactionTest {
         var cursor:String?=null;val output=StringBuilder()
         do{val chunk=q.readText(ref,cursor,5).requiredValue();output.append(chunk.text);cursor=chunk.nextCursor}while(cursor!=null)
         assertFalse(output.contains("SECRET"));assertFalse(output.contains("%53"));assertTrue(output.contains("tail"));assertTrue(output.contains("[redacted]"))
+        assertEquals("😀prefix///tail",output.toString().replace("[redacted]",""))
     }
 }

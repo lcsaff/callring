@@ -12,7 +12,8 @@ class SecretRedactor(secrets: List<String>) {
             val chars = String(Character.toChars(point))
             val percent = chars.toByteArray(Charsets.UTF_8).joinToString("") { "(?i:%%%02x)".format(it.toInt() and 255) }
             val unicode = chars.map { "(?i:\\\\u%04x)".format(it.code) }.joinToString("")
-            "(?:${Regex.escape(chars)}|$percent|$unicode)"
+            val short=when(point){8->"\\b";12->"\\f";47->"\\/";else->AiJson.quote(chars).drop(1).dropLast(1)}
+            "(?:${Regex.escape(chars)}|$percent|$unicode|${Regex.escape(short)})"
         }
     }?.let { Regex("\\[redacted\\]|(?:$it)") }
     fun text(value: String): String = matcher?.replace(value) { if(it.value != "[redacted]") count++; "[redacted]" } ?: value
@@ -29,6 +30,11 @@ class SecretRedactor(secrets: List<String>) {
         else -> value
     }
 }
+
+fun redactToolCall(call:ConversationToolCall,redactor:SecretRedactor)=call.copy(
+    arguments=redactor.redact(call.arguments) as AiJson.Obj,
+    wireArguments=if(call.argumentError==null)null else call.wireArguments?.let(redactor::text),
+)
 
 /** Keep protocol identifiers intact; only application data is subject to credential redaction. */
 fun redactAssistantBlock(block: AiJson, redactor: SecretRedactor): AiJson {

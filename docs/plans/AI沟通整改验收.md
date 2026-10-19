@@ -81,3 +81,11 @@
 - [重启持久化](ai-rectification-evidence/device/persistence.json)、[只读 UI 检查](ai-rectification-evidence/device/synthetic-ui.json)
 - [合成档案筛选列表](ai-rectification-evidence/device/synthetic-list.png)、[合成档案详情](ai-rectification-evidence/device/synthetic-editor.png)
 - [实施历史](ai-rectification-evidence/implementation-progress.md)、[依赖裁决](ai-rectification-evidence/dependencies.md)
+
+## Epoch 8 独立审查整改
+
+PR001–PR009 的实现、逐项验证及限制见 [整改证据](ai-rectification-evidence/review-corrections/README.md)。原 epoch 7 真机运行和 APK 绑定不变；本轮只做不发模型请求、不写业务值的真机界面及持久化复验。
+
+PR009 的原始 step ID、schema/history 数量和完整阶段时序无法可靠恢复，见 [历史诊断与最小待决项](ai-rectification-evidence/review-corrections/historical-diagnostics.md)；新增采集的合成验证不能代替真实 provider 证据。A6 尚未实测项目保持原限制，等待负责人组织新的独立复验和验收。
+
+[模型兼容边界](ai-rectification-evidence/review-corrections/compatibility.md) 说明 FAST 更换模型的恢复提示及 STANDARD/DeepSeek 思考回放限制。

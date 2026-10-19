@@ -19,7 +19,7 @@ class ScopedToolReader(private val q:AiQueryApi) {
         suspend fun aggregate(d:AiDomain,metric:String="count",f:QueryFilter=QueryFilter(),group:String?=null)=q.aggregate(AggregateSpec(d,metric,f,group)).requiredValue().let{aiObject("value" to it.value,"stamp" to it.stamp.json(),"complete" to aiBool(it.complete))}
         return when(index) {
             2->aiObject("configuration" to get(AiDomain.D10,"configuration"),"work" to page(AiDomain.D06,"work",n=1),"runtime" to get(AiDomain.D19),"statistics" to aggregate(AiDomain.D05))
-            3->page(AiDomain.D01,f=QueryFilter(text=a.optS("text")?.takeIf{it.isNotEmpty()}))
+            3->page(AiDomain.D01,f=QueryFilter(text=a.optS("text")?.trim()?.takeIf{it.isNotEmpty()}))
             4->aiObject("profiles" to page(AiDomain.D01,f=QueryFilter(number=a.optS("number")),n=if(a.optS("number")==null)1 else 50),"positions" to page(AiDomain.D02),"myPosition" to page(AiDomain.D02,"current",n=1))
             5->{val f=QueryFilter(number=a.s("number"));aiObject("profiles" to page(AiDomain.D01,f=f),"totals" to aggregate(AiDomain.D05,"reportTotals",f),"work" to page(AiDomain.D06,"work",n=1),"latestCall" to page(AiDomain.D04,f=f,n=1))}
             6->page(AiDomain.D04,n=1)

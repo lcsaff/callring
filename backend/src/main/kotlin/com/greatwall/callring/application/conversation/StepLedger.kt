@@ -10,6 +10,7 @@ class LedgerStep(val id:String,var taskId:String,var call:ConversationToolCall,v
     var receipt:ToolReceipt?=null
     var repairs=0
     var effectScopes:Set<String> = emptySet()
+    var adoption:AdoptionExpectation?=null
     val dependencies=linkedSetOf<String>()
     val started get()=state in setOf(StepState.STARTED,StepState.COMMITTED,StepState.VERIFIED,StepState.UNKNOWN)
 }

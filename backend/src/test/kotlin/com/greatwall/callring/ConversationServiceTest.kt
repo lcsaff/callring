@@ -10,6 +10,38 @@ import org.junit.Assert.*
 import org.junit.Test
 
 class ConversationServiceTest {
+
+
+    @Test fun actualPhaseTransitionsHaveBoundedPerTurnMonotonicTimings()=runBlocking {
+        val f=ConversationFixtures();val client=Client(ArrayDeque(listOf(ConversationReply.Final("one"),ConversationReply.Final("two"))))
+        val service=ConversationService({f.backend},queries(f),::settings,f.coordinator,{client})
+        try{
+            repeat(2){
+                service.send(service.state.value.sessionId,"hello");withTimeout(5000){service.state.first{!it.busy}}
+                val spans=service.state.value.phaseSpans
+                assertEquals(listOf(ConversationPhase.PREPARING,ConversationPhase.BUDGETING,ConversationPhase.REQUESTING,ConversationPhase.COMPLETED),spans.map{it.phase})
+                assertEquals(0L,spans.first().startMillis);assertTrue(spans.all{it.endMillis>=it.startMillis});assertTrue(spans.zipWithNext().all{(a,b)->a.endMillis==b.startMillis});assertTrue(service.state.value.diagnosticsComplete)
+            }
+            service.newSession(service.state.value.sessionId);assertTrue(service.state.value.phaseSpans.isEmpty())
+        }finally{service.close()}
+    }
+    @Test fun serviceReplayUsesSanitizedStructureAndNeverReintroducesRawValidArguments()=runBlocking {
+        for(protocol in AiProtocol.entries) {
+            val f=ConversationFixtures();val key="synthetic-\"\\\t-secret"
+            val args=aiObject("raw" to aiString(key));val captured=mutableListOf<ConversationRequest>();var round=0
+            val client=object:ConversationClient {
+                override fun encode(connection:AiConnection,request:ConversationRequest):ByteArray {captured+=request;return byteArrayOf()}
+                override suspend fun exchange(connection:AiConnection,encoded:ByteArray):ConversationReply=if(round++==0)ConversationReply.ToolBatch("",listOf(ConversationToolCall("c","root_checkNumber",args,wireArguments=args.encode())))else ConversationReply.Final("done")
+                override fun cancel()=Unit
+            }
+            val service=ConversationService({f.backend},queries(f),{settings().copy(analysis=settings().analysis.copy(protocol=protocol,apiKey=key))},f.coordinator,{client})
+            try{
+                service.send(service.state.value.sessionId,"hello");withTimeout(5000){service.state.first{!it.busy}}
+                val replay=captured.flatMap{it.messages}.flatMap{it.toolCalls}.first()
+                assertEquals(aiString("[redacted]"),replay.arguments["raw"]);assertNull(replay.wireArguments)
+            }finally{service.close()}
+        }
+    }
     @Test fun undisclosedResolvedProfileCannotReceiveHistory() = runBlocking {
         val f=ConversationFixtures()
         val connection=AiConnection(url="https://dashscope.aliyuncs.com/compatible-mode/v1",model="qwen3.8-flash",apiKey="secret")

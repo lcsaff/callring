@@ -38,10 +38,10 @@ class CompatibleConversationClient(private val openConnection: (URL) -> HttpURLC
             if(snapshot!=null)messages.put(JSONObject().put("role", "user").put("content", snapshot))
             for(message in request.messages) {
                 if(message.role == "tool") {
-                    for(receipt in message.receipts) messages.put(JSONObject().put("role", "tool").put("tool_call_id", receipt.toolCallId).put("content", redactor.text(receiptJson(receipt).encode())))
+                    for(receipt in message.receipts) messages.put(JSONObject().put("role", "tool").put("tool_call_id", receipt.toolCallId).put("content", redactor.redact(receiptJson(receipt)).encode()))
                 } else {
                     val value = JSONObject().put("role", message.role).put("content", redactor.text(message.text))
-                    if(message.toolCalls.isNotEmpty()) value.put("tool_calls", JSONArray().also { calls -> message.toolCalls.forEach { call -> calls.put(JSONObject().put("id", call.id).put("type", "function").put("function", JSONObject().put("name", call.name).put("arguments", (call.wireArguments?.let(redactor::text)?:redactor.redact(call.arguments).encode())))) } })
+                    if(message.toolCalls.isNotEmpty()) value.put("tool_calls", JSONArray().also { calls -> message.toolCalls.forEach { call -> calls.put(JSONObject().put("id", call.id).put("type", "function").put("function", JSONObject().put("name", call.name).put("arguments", (if(call.argumentError!=null)call.wireArguments?.let(redactor::text)?:redactor.redact(call.arguments).encode() else redactor.redact(call.arguments).encode())))) } })
                     messages.put(value)
                 }
             }
@@ -58,11 +58,11 @@ class CompatibleConversationClient(private val openConnection: (URL) -> HttpURLC
             if(snapshot!=null)add("user", JSONArray().put(JSONObject().put("type", "text").put("text", snapshot)))
             request.messages.forEach { message ->
                 val blocks = JSONArray()
-                if(message.role == "tool") message.receipts.forEach { receipt -> blocks.put(JSONObject().put("type", "tool_result").put("tool_use_id", receipt.toolCallId).put("content", redactor.text(receiptJson(receipt).encode())).put("is_error", receipt.status in setOf(ToolStatus.FAILED, ToolStatus.DENIED, ToolStatus.CANCELLED, ToolStatus.UNKNOWN, ToolStatus.SKIPPED))) }
+                if(message.role == "tool") message.receipts.forEach { receipt -> blocks.put(JSONObject().put("type", "tool_result").put("tool_use_id", receipt.toolCallId).put("content", redactor.redact(receiptJson(receipt)).encode()).put("is_error", receipt.status in setOf(ToolStatus.FAILED, ToolStatus.DENIED, ToolStatus.CANCELLED, ToolStatus.UNKNOWN, ToolStatus.SKIPPED))) }
                 else if(message.blocks.isNotEmpty()) message.blocks.forEach { block -> blocks.put(JSONObject(redactAssistantBlock(block, redactor).encode())) }
                 else {
                     if(message.text.isNotEmpty()) blocks.put(JSONObject().put("type", "text").put("text", redactor.text(message.text)))
-                    message.toolCalls.forEach { call -> blocks.put(JSONObject().put("type", "tool_use").put("id", call.id).put("name", call.name).put("input", JSONObject((call.wireArguments?.let(redactor::text)?:redactor.redact(call.arguments).encode())))) }
+                    message.toolCalls.forEach { call -> blocks.put(JSONObject().put("type", "tool_use").put("id", call.id).put("name", call.name).put("input", JSONObject(redactor.redact(call.arguments).encode()))) }
                 }
                 if(blocks.length() > 0) add(if(message.role == "tool") "user" else message.role, blocks)
             }

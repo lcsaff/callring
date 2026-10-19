@@ -15,7 +15,10 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.ui.input.nestedscroll.*
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
@@ -44,37 +47,74 @@ class ConversationViewModel(private val api: CallringUiApi, testScope: Coroutine
 }
 @Composable fun ConversationScreen(state:ConversationState,input:String,target:String,localError:ApiError?,onInput:(String)->Unit,onSend:()->Unit,onStop:()->Unit,onNew:()->Unit,onContinue:(String)->Unit={}) {
     var confirmNew by remember{mutableStateOf(false)}
+    var details by remember(target){mutableStateOf(false)}
+    val listState=rememberLazyListState()
+    var readingHistory by remember(state.sessionId){mutableStateOf(false)}
+    val paired=state.messages.flatMap{it.receipts}.map{it.operationId}.toSet()
+    val additional=state.receipts.distinctBy{it.operationId}.filter{it.operationId !in paired&&(it.status!=ToolStatus.READ||it.error!=null)}
+    val latestIndex=state.messages.size+if(additional.isNotEmpty())1 else 0
+    val finalIndex=state.messages.lastIndex.takeIf{it>=0&&state.messages[it].role=="assistant"&&state.messages[it].toolCalls.isEmpty()}
+    val historyScroll=remember(state.sessionId) {object:NestedScrollConnection {
+        override fun onPreScroll(available:Offset,source:NestedScrollSource):Offset {if(source==NestedScrollSource.UserInput&&available.y>0)readingHistory=true;return Offset.Zero}
+    }}
+    LaunchedEffect(listState,state.sessionId){snapshotFlow{!listState.canScrollForward&&!listState.isScrollInProgress}.distinctUntilChanged().filter{it}.collect{readingHistory=false}}
+    // Markdown finishes parsing after first composition; follow subsequent measured size changes too.
+    LaunchedEffect(listState,state.sessionId){
+        snapshotFlow{val info=listState.layoutInfo;(if(readingHistory)-1 else info.totalItemsCount) to (listState.isScrollInProgress to info.visibleItemsInfo.map{it.index to (it.offset to it.size)})}
+            .collect{(count,_)->if(count>0&&!readingHistory&&!listState.isScrollInProgress&&listState.canScrollForward)listState.scrollToItem(count-1)}
+    }
+    LaunchedEffect(state.sessionId,state.messages,state.receipts,state.phase,readingHistory){if(!readingHistory){withFrameNanos{};listState.scrollToItem(latestIndex)}}
+    fun send(){readingHistory=false;onSend()}
     ScreenFrame("AI 沟通",actions={IconButton(onClick={confirmNew=true}){Icon(Icons.Filled.Add,contentDescription="新对话")}}) {
         Column(Modifier.fillMaxSize(),verticalArrangement=Arrangement.spacedBy(8.dp)) {
-            Text("服务：${target.ifBlank{"请先配置 AI 设置"}}",style=MaterialTheme.typography.bodySmall)
-            if(state.busy&&state.target.isNotBlank())Text("本轮已发送至：${state.target}",style=MaterialTheme.typography.bodySmall)
+            TextButton(onClick={details=true},modifier=Modifier.semantics{contentDescription="服务详情"}){Text("服务：${compactTarget(target).ifBlank{"请先配置 AI 设置"}}",style=MaterialTheme.typography.bodySmall)}
             Text(phaseLabel(state.phase),style=MaterialTheme.typography.labelLarge)
             (state.error?:localError)?.let{Text(aiErrorText(it),color=MaterialTheme.colorScheme.error)}
-            LazyColumn(Modifier.weight(1f).fillMaxWidth(),verticalArrangement=Arrangement.spacedBy(12.dp)) {
-                itemsIndexed(state.messages){index,message->
+            LazyColumn(Modifier.weight(1f).fillMaxWidth().testTag("conversation-messages").nestedScroll(historyScroll),state=listState,verticalArrangement=Arrangement.spacedBy(12.dp)) {
+                state.messages.forEachIndexed{index,message->
+                    if(index==finalIndex&&additional.isNotEmpty())item(key="current-results"){ReceiptGroup(additional){readingHistory=true}}
+                    item(key="message-$index") {
                     val body=when(message.presentationKey){"conversation.continue"->"继续未完成任务";"conversation.partial"->"任务尚未完成。请查看已核验、待核验及失败步骤；不会重复执行已提交操作。";else->message.text}
                     if(body.isNotEmpty()&&message.toolCalls.isEmpty()&&message.role in setOf("user","assistant")) {
                         if(message.role=="user")Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.End) {
                             Surface(Modifier.widthIn(max=560.dp).testTag("message-user-$index"),shape=RoundedCornerShape(18.dp),color=MaterialTheme.colorScheme.primaryContainer,contentColor=MaterialTheme.colorScheme.onPrimaryContainer){Text(body,Modifier.padding(horizontal=14.dp,vertical=10.dp))}
                         }else Column(Modifier.fillMaxWidth().testTag("message-assistant-$index")){Markdown(body)}
                     }
-                    message.receipts.distinctBy{it.operationId}.filter{it.status!=ToolStatus.READ||it.error!=null}.forEach{ReceiptCard(it)}
+                    ReceiptGroup(message.receipts.distinctBy{it.operationId}.filter{it.status!=ToolStatus.READ||it.error!=null}){readingHistory=true}
+                    }
                 }
-                val paired=state.messages.flatMap{it.receipts}.map{it.operationId}.toSet()
-                state.receipts.distinctBy{it.operationId}.filter{it.operationId !in paired&&(it.status!=ToolStatus.READ||it.error!=null)}.forEach{receipt->item{ReceiptCard(receipt)}}
+                if(finalIndex==null&&additional.isNotEmpty())item(key="current-results"){ReceiptGroup(additional){readingHistory=true}}
+                item(key="latest"){Spacer(Modifier.height(1.dp))}
             }
+            if(readingHistory&&listState.canScrollForward)TextButton(onClick={readingHistory=false}){Text("回到最新")}
             if(state.busy)Row(verticalAlignment=Alignment.CenterVertically){LinearProgressIndicator(Modifier.weight(1f));TextButton(onClick=onStop){Text("停止")}}
             if(!state.busy)state.continuableTasks.firstOrNull()?.let{task->OutlinedButton(onClick={onContinue(task)},enabled=target.isNotBlank()){Text("继续未完成任务")}}
             val canSend=!state.busy&&input.isNotBlank()&&target.isNotBlank()
             Surface(Modifier.fillMaxWidth().testTag("conversation-input"),shape=RoundedCornerShape(20.dp),border=BorderStroke(1.dp,MaterialTheme.colorScheme.outline),color=MaterialTheme.colorScheme.surface) {
                 Box(Modifier.fillMaxWidth().heightIn(min=112.dp)) {
-                    BasicTextField(value=input,onValueChange=onInput,enabled=!state.busy,maxLines=4,textStyle=MaterialTheme.typography.bodyLarge.copy(color=MaterialTheme.colorScheme.onSurface),keyboardOptions=KeyboardOptions(imeAction=ImeAction.Send),keyboardActions=KeyboardActions(onSend={if(canSend)onSend()}),modifier=Modifier.fillMaxWidth().heightIn(min=100.dp,max=220.dp).padding(start=16.dp,end=16.dp,top=14.dp,bottom=52.dp),decorationBox={inner->if(input.isEmpty())Text("说说你想了解或处理什么",color=MaterialTheme.colorScheme.onSurfaceVariant);inner()})
-                    IconButton(onClick=onSend,enabled=canSend,modifier=Modifier.align(Alignment.BottomEnd).padding(4.dp).size(48.dp).semantics{contentDescription="发送消息"}){Icon(Icons.AutoMirrored.Filled.Send,null,Modifier.size(18.dp).testTag("send-glyph"))}
+                    BasicTextField(value=input,onValueChange=onInput,enabled=!state.busy,maxLines=4,textStyle=MaterialTheme.typography.bodyLarge.copy(color=MaterialTheme.colorScheme.onSurface),keyboardOptions=KeyboardOptions(imeAction=ImeAction.Send),keyboardActions=KeyboardActions(onSend={if(canSend)send()}),modifier=Modifier.fillMaxWidth().heightIn(min=100.dp,max=220.dp).padding(start=16.dp,end=16.dp,top=14.dp,bottom=52.dp),decorationBox={inner->if(input.isEmpty())Text("说说你想了解或处理什么",color=MaterialTheme.colorScheme.onSurfaceVariant);inner()})
+                    IconButton(onClick=::send,enabled=canSend,modifier=Modifier.align(Alignment.BottomEnd).padding(4.dp).size(48.dp).semantics{contentDescription="发送消息"}){Icon(Icons.AutoMirrored.Filled.Send,null,Modifier.size(18.dp).testTag("send-glyph"))}
                 }
             }
         }
     }
+    if(details)AlertDialog(onDismissRequest={details=false},title={Text("服务详情")},text={Column{Text(target);if(state.target.isNotBlank())Text("本轮已发送至：${state.target}")}},confirmButton={TextButton(onClick={details=false}){Text("关闭")}})
     if(confirmNew)AlertDialog(onDismissRequest={confirmNew=false},title={Text("开始新对话？")},text={Text("将停止当前请求并清空本进程对话。已提交的修改仍保留；退出应用后不会自动恢复任务。")},confirmButton={TextButton(onClick={confirmNew=false;onNew()}){Text("开始新对话")}},dismissButton={TextButton(onClick={confirmNew=false}){Text("取消")}})
+}
+private fun compactTarget(target:String):String {
+    val parts=target.split(" · ");val endpoint=parts.indexOfFirst{it.startsWith("https://")||it.startsWith("http://")}
+    if(endpoint<0)return target
+    val host=runCatching{java.net.URI(parts[endpoint]).authority}.getOrNull()?:return target
+    return listOfNotNull(parts.getOrNull(endpoint+1),host).joinToString(" · ")
+}
+@Composable private fun ReceiptGroup(receipts:List<ToolReceipt>,onExpand:()->Unit={}) {
+    val verified=receipts.filter{it.verification==VerificationStatus.VERIFIED&&it.error==null}
+    var expanded by remember(verified.map{it.operationId}){mutableStateOf(false)}
+    if(verified.isNotEmpty()){
+        TextButton(onClick={if(!expanded)onExpand();expanded=!expanded}){Text(if(expanded)"收起已核验操作"else"查看 ${verified.size} 项已核验操作")}
+        if(expanded)verified.forEach{ReceiptCard(it)}
+    }
+    receipts.filter{it !in verified}.forEach{ReceiptCard(it)}
 }
 @Composable private fun ReceiptCard(receipt:ToolReceipt) {
     val label=when {

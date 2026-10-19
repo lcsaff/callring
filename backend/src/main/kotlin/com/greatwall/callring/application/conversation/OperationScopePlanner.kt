@@ -20,7 +20,7 @@ class OperationScopePlanner(private val queries:QueryService,private val coordin
         suspend fun observe(domain:AiDomain,key:String?,keys:Set<String>,projection:String="default",filter:QueryFilter=QueryFilter()) {
             require(keys.isNotEmpty())
             val normalized=if(domain==AiDomain.D01)key?:"*" else key?.toLongOrNull()?.toString()?:key?:"*"
-            val old=queries.observedRevision(domain,normalized)
+            val old=disclosed[domain to normalized]
             val at=if(key==null)queries.query(QuerySpec(domain,projection,filter,limit=1)).requiredValue().stamp.scopeRevision else {
                 when(val result=queries.get(domain,key,projection)) {
                     is ApiResult.Success->result.value.stamp.scopeRevision
@@ -65,7 +65,15 @@ class OperationScopePlanner(private val queries:QueryService,private val coordin
                 48,49->{val id=a.l("widgetId");observe(AiDomain.D18,"binding:$id",setOf("widget:$id"),"bindings",QueryFilter(id=id))}
                 52->{val r=a.optObj("recording");if(r!=null)observe(AiDomain.D13,"current",r.fields.keys.mapTo(linkedSetOf()){ "recordingConfig:$it" }.ifEmpty{setOf("recordingConfig")});a.optObj("ai")?.let{observe(AiDomain.D14,"current",aiKeys(it))};if(scopes.isEmpty())observe(AiDomain.D13,"current",setOf("recordingConfig"))}
                 53,66->{val slot=a.s("slot");observe(AiDomain.D14,"current",setOf("ai:$slot:protocol","ai:$slot:url","ai:$slot:model","ai:$slot:key"))}
-                55,56,57,58,63,71->{val id=a.l("callId");observe(AiDomain.D16,id.toString(),setOf("archive:$id"),filter=QueryFilter(id=id));if(index==63){val row=queries.get(AiDomain.D03,id.toString()).requiredValue();val n=row.value.s("number");observe(AiDomain.D01,n,setOf("profile:$n:exists","profile:$n:name","profile:$n:department"),filter=QueryFilter(number=n))}}
+                55,56,57,58,63,71->{
+                    val id=a.l("callId")
+                    if(index==63){
+                        val archive=queries.get(AiDomain.D16,id.toString()).requiredValue().value;val native=archive.l("callId");val n=archive.s("number")
+                        observe(AiDomain.D16,native.toString(),setOf("archive:$native"),filter=QueryFilter(id=native))
+                        if(native!=id)observe(AiDomain.D16,id.toString(),setOf("recordingLink:$id"),filter=QueryFilter(id=native))
+                        observe(AiDomain.D01,n,setOf("profile:$n:exists","profile:$n:name","profile:$n:department"),filter=QueryFilter(number=n))
+                    }else observe(AiDomain.D16,id.toString(),setOf("archive:$id"),filter=QueryFilter(id=id))
+                }
                 59->observe(AiDomain.D19,"current",setOf("runtime:recordingPlayback"))
                 60->observe(AiDomain.D13,"current",setOf("recordingConfig:systemFolder"))
                 65->observe(AiDomain.D14,"current",aiKeys(a))

@@ -120,6 +120,94 @@ class ToolBusinessIntegrationTest {
         ShadowContentResolver.registerProviderInternal("tool-fixture",provider)
         ShadowMediaPlayer.setMediaInfoProvider { ShadowMediaPlayer.MediaInfo(1000,0) }
     }
+
+    @Test fun adoptionThroughProductionSourcesAndBatchEngineHandlesNativeIdsTextRefsAndPreservedFields()=runBlocking {
+        provider()
+        val cases=listOf("short","blank-name","blank-department","long-unicode","legacy-unindexed","linked-positive","statistics-off","mismatch","generation-change","unrelated-change","deleted","changed-native-after-disclosure","changed-linked-after-disclosure")
+        for((offset,kind) in cases.withIndex())Fixture(800+offset).use{f->
+            f.seed()
+            if(kind=="statistics-off")f.backend.settings.setStatisticsEnabled(false).requiredValue()
+            val name=when(kind){"blank-name"->"   ";"long-unicode"->"😀合成".repeat(1500);else->" Synthetic "}
+            val department=if(kind=="blank-department")" \t "else" Unit "
+            val old=f.recordingStore.get(f.recordingId)!!
+            f.recordingStore.compareAndSet(old.callId,old.generation,old.copy(generation=old.generation+1,analysis=CallAnalysis(name=name,organization=department)))
+            if(kind=="legacy-unindexed")android.database.sqlite.SQLiteDatabase.openDatabase(context.getDatabasePath("${f.namespace}_recording.db").path,null,android.database.sqlite.SQLiteDatabase.OPEN_READWRITE).use{db->listOf("archive_projection","archive_text_fields","archive_text_chunks").forEach{db.delete(it,null,null)}}
+            val requested=if(kind in setOf("linked-positive","changed-linked-after-disclosure")){f.recordingStore.linkStatistics(1,"session");1L}else f.recordingId
+            if(kind=="deleted")f.runtime.delete(f.recordingId).requiredValue()
+            val root=f.api()
+            val wrapped=object:CallringUiApi by root {
+                override fun commandApi(command:CommandContext):CallringUiApi {
+                    val bound=root.commandApi(command)
+                    return object:CallringUiApi by bound {
+                        override suspend fun adoptIdentity(callId:Long,expectedGeneration:Long):ApiResult<CallerProfile> {
+                            val result=bound.adoptIdentity(callId,expectedGeneration)
+                            if(kind=="mismatch")f.backend.callers.saveProfile(SaveCallerProfile("31234","incorrect","incorrect",1,true)).requiredValue()
+                            return result
+                        }
+                    }
+                }
+            }
+            val queries=QueryService(listOf(f.store.scopedReads(f.coordinator),f.recordingStore.scopedReads()),revision=f.coordinator::marker)
+            if(kind.endsWith("after-disclosure")){
+                queries.get(AiDomain.D16,requested.toString()).requiredValue()
+                val disclosed=f.recordingStore.get(f.recordingId)!!
+                f.recordingStore.compareAndSet(disclosed.callId,disclosed.generation,disclosed.copy(generation=disclosed.generation+1))
+            }
+            val executor=ToolExecutor({wrapped},f.coordinator,f.foreground,f.resources,queries=queries)
+            val engine=ToolBatchEngine({wrapped},executor,queries,f.coordinator,"s","t",1,{true})
+            val host=launch {f.foreground.pending.filterNotNull().collect{ticket->
+                val token=f.foreground.attachHost()
+                if(f.foreground.beginLaunch(ticket.requestId,token)){
+                    if(kind=="generation-change"){val archive=f.recordingStore.get(f.recordingId)!!;f.recordingStore.compareAndSet(archive.callId,archive.generation,archive.copy(generation=archive.generation+1))}
+                    if(kind=="unrelated-change")f.backend.callers.saveProfile(SaveCallerProfile("99999","unrelated","",null)).requiredValue()
+                    f.foreground.deliver(ticket.requestId,ForegroundHostResult(ForegroundResultStatus.VERIFIED))
+                }
+            }}
+            try{
+                val receipt=withTimeout(10000){engine.execute(listOf(ConversationToolCall("adopt","recordings_adoptIdentity",aiObject("callId" to aiNumber(requested)))))}.single()
+                val actual=f.backend.callers.getEditor("31234").requiredValue().draft
+                when(kind){
+                    "deleted","generation-change","changed-native-after-disclosure","changed-linked-after-disclosure"->{assertEquals(kind,ToolStatus.FAILED,receipt.status);assertEquals("old",actual.name)}
+                    "mismatch"->{assertEquals(ToolStatus.COMMITTED,receipt.status);assertEquals(VerificationStatus.COMMITTED_UNVERIFIED,receipt.verification);assertFalse(engine.complete)}
+                    else->{assertEquals(kind,VerificationStatus.VERIFIED,receipt.verification);assertTrue(kind,engine.complete);assertEquals(name.ifBlank{"old"}.trim(),actual.name);assertEquals(department.ifBlank{"old unit"}.trim(),actual.department);assertEquals(1L,actual.positionId);assertTrue(actual.whitelisted)}
+                }
+            }finally{host.cancelAndJoin()}
+        }
+    }
+
+    @Test fun diagnosticsCaptureRealServiceAndCodecMetricsWithoutBusinessPayloads()=runBlocking<Unit> {
+        provider();Fixture(999).use{f->
+            f.seed();var round=0;val sent=mutableListOf<org.json.JSONObject>()
+            fun response(name:String?,arguments:AiJson.Obj=aiObject()):String {
+                val message=org.json.JSONObject().put("role","assistant").put("content",if(name==null)"done"else org.json.JSONObject.NULL)
+                if(name!=null)message.put("tool_calls",org.json.JSONArray().put(org.json.JSONObject().put("id","c$round").put("type","function").put("function",org.json.JSONObject().put("name",name).put("arguments",arguments.encode()))))
+                return org.json.JSONObject().put("choices",org.json.JSONArray().put(org.json.JSONObject().put("finish_reason",if(name==null)"stop"else"tool_calls").put("message",message))).toString()
+            }
+            val client=CompatibleConversationClient{url->object:java.net.HttpURLConnection(url){
+                val output=java.io.ByteArrayOutputStream()
+                override fun connect()=Unit;override fun disconnect()=Unit;override fun usingProxy()=false
+                override fun getOutputStream()=output;override fun getResponseCode():Int{sent+=org.json.JSONObject(output.toString("UTF-8"));return 200}
+                override fun getInputStream():java.io.InputStream=java.io.ByteArrayInputStream(when(round++){0->response("discover_tools",aiObject("exactNames" to AiJson.Arr(listOf(aiString("root_checkNumber")))));1->response("root_checkNumber",aiObject("raw" to aiString("31234")));else->response(null)}.toByteArray())
+            }}
+            val queries=QueryService(listOf(f.store.scopedReads(f.coordinator)),revision=f.coordinator::marker)
+            val configured=f.recordingStore.settings().copy(analysis=f.recordingStore.settings().analysis.copy(model="qwen3.8-flash"),conversationCompatibility=ConversationCompatibility.QWEN_FAST)
+            val service=ConversationService({f.api()},queries,{configured},f.coordinator,{client})
+            try{
+                service.send(service.state.value.sessionId,"synthetic diagnostic capture");withTimeout(10000){service.state.first{!it.busy}}
+                val state=service.state.value;assertEquals(ConversationPhase.COMPLETED,state.phase);assertEquals(3,sent.size);assertEquals(3,state.exchanges.size)
+                state.exchanges.zip(sent).forEach{(m,wire)->assertEquals(wire.getJSONArray("tools").length(),m.schemaCount);assertEquals(wire.getJSONArray("messages").length(),m.contextMessages);assertEquals(mapOf("enable_thinking" to false,"preserve_thinking" to false),m.requestFlags);assertEquals(200,m.httpStatus)}
+                assertTrue(state.receipts.isNotEmpty());assertTrue(state.phaseSpans.isNotEmpty());assertTrue(state.diagnosticsComplete)
+                val serialize=Class.forName("com.greatwall.callring.RealAiConversationDeviceTestKt").getDeclaredMethod("roundJson",String::class.java,ConversationState::class.java).apply{isAccessible=true}
+                val sentinel="SYNTHETIC-PRIVATE-BUSINESS"
+                val diagnostic=serialize.invoke(null,"synthetic capture",state.copy(receipts=state.receipts.map{it.copy(value=aiString(sentinel))},outcome=aiObject("complete" to aiBool(true),"plans" to AiJson.Arr(listOf(aiObject("expectedCount" to aiNumber(1),"targets" to AiJson.Arr(listOf(aiString(sentinel))))))))) as org.json.JSONObject
+                assertFalse(diagnostic.toString().contains(sentinel));assertFalse(diagnostic.toString().contains("fixture-secret"))
+                assertEquals(state.receipts.map{it.operationId},(0 until diagnostic.getJSONArray("receipts").length()).map{diagnostic.getJSONArray("receipts").getJSONObject(it).getString("stepId")})
+                val proof=serialize.invoke(null,"synthetic capture",state) as org.json.JSONObject
+                proof.put("source","synthetic HTTP boundary; production service/codec; isolated local API fixture").put("actualProviderRun",false)
+                java.io.File("build/qa/review-diagnostics.json").apply{parentFile.mkdirs();writeText(proof.toString(2))}
+            }finally{service.close()}
+        }
+    }
     @Test fun all72ToolsInvokeProductionBusinessApisAndInvalidSchemaNeverMutates() = runBlocking {
         provider()
         val registry = ToolRegistry()

@@ -55,14 +55,14 @@ class AndroidRecordingStore(context: Context, namespace: String,
     val coordinator: BusinessRevisionCoordinator = BusinessRevisionCoordinator(),
 ) : RecordingStore, AutoCloseable {
     private val preferences = context.getSharedPreferences(namespace + "_recording", Context.MODE_PRIVATE)
-    private val helper = object : SQLiteOpenHelper(context, namespace + "_recording.db", null, 3) {
+    private val helper = object : SQLiteOpenHelper(context, namespace + "_recording.db", null, 4) {
         override fun onCreate(db: SQLiteDatabase) {
             db.execSQL("CREATE TABLE archives (call_id INTEGER PRIMARY KEY, generation INTEGER NOT NULL, payload TEXT NOT NULL)")
             db.execSQL("CREATE TABLE deleted_archives (call_id INTEGER PRIMARY KEY)")
             createEvents(db)
             ArchiveProjectionIndex.create(db)
         }
-        override fun onUpgrade(db: SQLiteDatabase, oldVersion: Int, newVersion: Int) { if (oldVersion < 2) createEvents(db);if(oldVersion<3)ArchiveProjectionIndex.create(db) }
+        override fun onUpgrade(db: SQLiteDatabase, oldVersion: Int, newVersion: Int) { if (oldVersion < 2) createEvents(db);if(oldVersion<3)ArchiveProjectionIndex.create(db);if(oldVersion<4)ArchiveProjectionIndex.createProgress(db) }
         private fun createEvents(db: SQLiteDatabase) {
             db.execSQL("CREATE TABLE recording_events (id INTEGER PRIMARY KEY AUTOINCREMENT, session_id TEXT NOT NULL UNIQUE, number TEXT NOT NULL, started INTEGER NOT NULL, account TEXT)")
             db.execSQL("CREATE TABLE recording_statistics_links (statistics_id INTEGER PRIMARY KEY, session_id TEXT NOT NULL)")
@@ -101,7 +101,7 @@ class AndroidRecordingStore(context: Context, namespace: String,
         }
     }
     fun linkStatistics(statisticsId: Long, sessionId: String) = coordinator.guard {
-        if (linkStatisticsInternal(statisticsId, sessionId)) {coordinator.publishScopes(setOf("recordingLinks"));coordinator.changed("recording")}
+        if (linkStatisticsInternal(statisticsId, sessionId)) {coordinator.publishScopes(setOf("recordingLinks","recordingLink:$statisticsId"));coordinator.changed("recording")}
     }
     @Synchronized private fun linkStatisticsInternal(statisticsId: Long, sessionId: String): Boolean {
         require(statisticsId > 0 && sessionId.isNotBlank())

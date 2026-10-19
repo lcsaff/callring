@@ -77,6 +77,7 @@ class QueryService(sources:List<ScopedReadPort>,private val clock:()->Long=Syste
         val value=project(row,domain,before)
         if(value.encode().toByteArray(Charsets.UTF_8).size>131072)fail("item_too_large",ErrorCode.SYSTEM_RESTRICTED)
         observe(domain,key,observed)
+        if(row.key!=key)observe(domain,row.key,observed)
         ScopedValue(value,stamp(domain,before,s,observed).copy(projection=projection))
     }
     override suspend fun aggregate(spec:AggregateSpec)=result {

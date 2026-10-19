@@ -16,6 +16,22 @@ import org.robolectric.annotation.Config
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk=[33],manifest=Config.NONE)
 class SqliteScopedReadTest {
+
+    @Test @Config(sdk=[29]) fun searchMatchesUiNumberNameDepartmentCaseAndTrimAcrossPages()=runBlocking {
+        SqliteBackendStore(RuntimeEnvironment.getApplication(),"search-ui-equivalence.db").use{store->
+            val records=listOf(ProfileRecord("+31234",name="Synthetic",department="UNIT"),ProfileRecord("91234",name="Συνθετικό",department="Kelvin K"),ProfileRecord("56789",name="x*y[z]?",department="unit"))
+            store.transaction{s->records.forEach{s.profiles[it.number]=it}}
+            val q=QueryService(listOf(store.scopedReads(BusinessRevisionCoordinator())))
+            for(text in listOf("123","+312"," syNTHETIC ","uNiT","kelvin k","συνθετικό","*y[z]?","absent","   ")) {
+                val expected=records.filter{p->listOf(p.number,p.name,p.department).any{it.contains(text.trim(),true)}}.map{it.number}.sorted()
+                val actual=mutableListOf<String>();var cursor:String?=null
+                do{val page=q.query(QuerySpec(AiDomain.D01,filter=QueryFilter(text=text),limit=1,cursor=cursor)).requiredValue();assertEquals(expected.size.toLong(),page.matchedTotal);actual+=page.items.map{it["number"].string()};cursor=page.nextCursor;if(cursor==null)assertTrue(page.complete)}while(cursor!=null)
+                assertEquals(expected,actual)
+                val legacy=com.greatwall.callring.application.conversation.ScopedToolReader(q).read(3,aiObject("text" to aiString(text))) as AiJson.Obj
+                assertEquals(expected.size.toLong(),legacy["matchedTotal"].long())
+            }
+        }
+    }
     @Test @Config(sdk=[29]) fun minimumApiUsesDomainProjectionContractsAndNativeCallFilters()=runBlocking {
         SqliteBackendStore(RuntimeEnvironment.getApplication(),"scoped_minimum.db").use{store->
             val original=ClassificationFact(false,WorkReason.OUTSIDE_WORK_HOURS,null,true,"UTC",1,null,0)

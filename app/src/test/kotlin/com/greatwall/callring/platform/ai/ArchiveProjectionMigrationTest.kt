@@ -73,10 +73,10 @@ class ArchiveProjectionMigrationTest {
         AndroidRecordingStore(RuntimeEnvironment.getApplication(),namespace,cipher).use{it.scopedReads()}
         SQLiteDatabase.openDatabase(path.path,null,SQLiteDatabase.OPEN_READWRITE).use{db->
             val index=ArchiveProjectionIndex(db);assertFalse(index.advance(-1,1,32768).complete)
-            val before=android.database.DatabaseUtils.longForQuery(db,"SELECT raw_offset FROM archive_index_progress",null)
+            val before=android.database.DatabaseUtils.longForQuery(db,"SELECT source_offset FROM archive_parse_progress",null)
             Thread.currentThread().interrupt()
             try{index.advance(-1,1,32768);fail("interruption must stop migration")}catch(_:java.util.concurrent.CancellationException){}finally{Thread.interrupted()}
-            assertEquals(before,android.database.DatabaseUtils.longForQuery(db,"SELECT raw_offset FROM archive_index_progress",null))
+            assertEquals(before,android.database.DatabaseUtils.longForQuery(db,"SELECT source_offset FROM archive_parse_progress",null))
             assertEquals(0L,android.database.DatabaseUtils.longForQuery(db,"SELECT count(*) FROM archive_projection",null))
             assertEquals(payload,android.database.DatabaseUtils.stringForQuery(db,"SELECT payload FROM archives",null))
         }

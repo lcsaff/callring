@@ -27,29 +27,86 @@ def declarations(source):
     return re.sub(r',(?=\))', '', re.sub(r'\s+', '', without_comments(source)))
 
 
+STRING = re.compile(r'""".*?"""|"(?:\\.|[^"\\])*"', re.S)
+
+
+def arguments(text, opening):
+    """Return exact top-level argument spans, excluding strings and nested expressions."""
+    masked = STRING.sub(lambda m: ' ' * len(m.group()), text)
+    stack = ['(']
+    start = opening + 1
+    spans = []
+    pairs = {')': '(', ']': '[', '}': '{', '>': '<'}
+    for i in range(start, len(text)):
+        c = masked[i]
+        if c in '([{<':
+            stack.append(c)
+        elif c in ')]}>':
+            if not stack or stack[-1] != pairs[c]:
+                return None
+            stack.pop()
+            if not stack:
+                if text[start:i].strip():
+                    spans.append((start, i))
+                return spans, i
+        elif c == ',' and len(stack) == 1:
+            spans.append((start, i))
+            start = i + 1
+    return None
+
+
+def constructor(text, name):
+    match = re.search(r'\bdata\s+class\s+' + re.escape(name) + r'\s*\(', text)
+    if not match:
+        return None
+    opening = match.end() - 1
+    parts = arguments(text, opening)
+    return (opening, *parts) if parts else None
+
+
 def compatible_v1(actual, contract):
-    # Approved nullable/default-only additions; all original declarations still compare exactly.
-    normalized = declarations(actual)
-    for addition in ("valaiFailure:ConversationFailure?=null,",
-                     "valbaseline:CallerDraft?=null,", "valdirtyFields:Set<String>?=null,"):
-        normalized = normalized.replace(addition.rstrip(','), '').replace(',,', ',')
-    normalized = re.sub(r',(?=\))', '', normalized)
-    return normalized == declarations(contract)
+    actual, contract = without_comments(actual), without_comments(contract)
+    approved = {'ApiError': ['valaiFailure:ConversationFailure?=null'],
+                'SaveCallerProfile': ['valbaseline:CallerDraft?=null', 'valdirtyFields:Set<String>?=null']}
+    for name, allowed in approved.items():
+        found, original = constructor(actual, name), constructor(contract, name)
+        if found is None or original is None:
+            return False
+        opening, spans, closing = found
+        old_opening, old_spans, old_closing = original
+        old = [declarations(contract[a:b]) for a, b in old_spans]
+        fields = [declarations(actual[a:b]) for a, b in spans]
+        suffix = fields[len(old):]
+        if fields[:len(old)] != old or len(suffix) != len(set(suffix)):
+            return False
+        if suffix != [value for value in allowed if value in suffix]:
+            return False
+        actual = actual[:opening+1] + contract[old_opening+1:old_closing] + actual[closing:]
+    return declarations(actual) == declarations(contract)
 
 
 def has_presentation_literal(path, source):
     text = without_comments(source)
-    metadata_start = text.find("private val purposes=listOf(") if path.name == "CapabilityCatalog.kt" else -1
-    metadata_end = text.find("fun toolPurpose", metadata_start) if metadata_start >= 0 else -1
-    for literal in re.finditer(r'"(?:\\.|[^"\\])*"', text):
-        if not re.search(r'[\u3400-\u9fff]', literal.group()):
-            continue
-        if metadata_start <= literal.start() < metadata_end and metadata_start >= 0:
-            continue
-        line = text[text.rfind('\n', 0, literal.start()) + 1:text.find('\n', literal.end()) if '\n' in text[literal.end():] else len(text)]
-        if path.name == "ToolRegistry.kt" and re.match(r'\s*ToolDefinition\(\d+,', line):
-            continue  # Model-facing schema metadata, not a UI message.
-        return True
+    allowed = []
+    if path.name == 'CapabilityCatalog.kt':
+        match = re.search(r'private\s+val\s+purposes\s*=\s*listOf\s*\(', text)
+        parts = arguments(text, match.end()-1) if match else None
+        if parts and all(STRING.fullmatch(text[a:b].strip()) for a, b in parts[0]):
+            allowed.extend(parts[0])
+    if path.name == 'ToolRegistry.kt':
+        for match in re.finditer(r'\bToolDefinition\s*\(', text):
+            parts = arguments(text, match.end()-1)
+            if not parts:
+                continue
+            spans = parts[0]
+            if len(spans) != 5 or not re.fullmatch(r'\d+', text[slice(*spans[0])].strip()):
+                continue
+            start, end = spans[4]
+            if STRING.fullmatch(text[start:end].strip()):
+                allowed.append((start, end))
+    for literal in STRING.finditer(text):
+        if re.search(r'[\u3400-\u9fff]', literal.group()) and not any(a <= literal.start() and literal.end() <= b for a, b in allowed):
+            return True
     return False
 
 

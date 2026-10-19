@@ -27,7 +27,7 @@ class AiSettingsService(
         try { ApiResult.Success(block()) }
         catch (e: CancellationException) { throw e }
         catch (e: BackendFailure) { ApiResult.Failure(e.error) }
-        catch (_: IllegalArgumentException) { ApiResult.Failure(ApiError(ErrorCode.VALIDATION, "ai.invalid_settings")) }
+        catch (error: IllegalArgumentException) { ApiResult.Failure(if(error.message=="ai.profile_invalid")ApiError(ErrorCode.VALIDATION,"ai.profile_invalid",fieldErrors=mapOf("analysis.model" to "ai.fast_model_required"))else ApiError(ErrorCode.VALIDATION, "ai.invalid_settings")) }
         catch (_: Exception) { ApiResult.Failure(ApiError(ErrorCode.STORAGE_FAILURE, "ai.settings_storage_failed")) }
     }
     override suspend fun getRecordingView() = result {
