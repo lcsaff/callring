@@ -26,7 +26,7 @@ class QueryService(sources:List<ScopedReadPort>,private val clock:()->Long=Syste
         return c.after
     }
     private suspend fun <T> result(block:()->T):ApiResult<T> = withContext(Dispatchers.IO){
-        try { ApiResult.Success(block()) }
+        try { runInterruptible { ApiResult.Success(block()) } }
         catch(e:CancellationException){throw e}
         catch(e:BackendFailure){ApiResult.Failure(e.error)}
         catch(_:IllegalArgumentException){ApiResult.Failure(ApiError(ErrorCode.VALIDATION,"ai.query_invalid"))}

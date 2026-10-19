@@ -55,18 +55,20 @@ class AndroidRecordingStore(context: Context, namespace: String,
     val coordinator: BusinessRevisionCoordinator = BusinessRevisionCoordinator(),
 ) : RecordingStore, AutoCloseable {
     private val preferences = context.getSharedPreferences(namespace + "_recording", Context.MODE_PRIVATE)
-    private val helper = object : SQLiteOpenHelper(context, namespace + "_recording.db", null, 2) {
+    private val helper = object : SQLiteOpenHelper(context, namespace + "_recording.db", null, 3) {
         override fun onCreate(db: SQLiteDatabase) {
             db.execSQL("CREATE TABLE archives (call_id INTEGER PRIMARY KEY, generation INTEGER NOT NULL, payload TEXT NOT NULL)")
             db.execSQL("CREATE TABLE deleted_archives (call_id INTEGER PRIMARY KEY)")
             createEvents(db)
+            ArchiveProjectionIndex.create(db)
         }
-        override fun onUpgrade(db: SQLiteDatabase, oldVersion: Int, newVersion: Int) { if (oldVersion < 2) createEvents(db) }
+        override fun onUpgrade(db: SQLiteDatabase, oldVersion: Int, newVersion: Int) { if (oldVersion < 2) createEvents(db);if(oldVersion<3)ArchiveProjectionIndex.create(db) }
         private fun createEvents(db: SQLiteDatabase) {
             db.execSQL("CREATE TABLE recording_events (id INTEGER PRIMARY KEY AUTOINCREMENT, session_id TEXT NOT NULL UNIQUE, number TEXT NOT NULL, started INTEGER NOT NULL, account TEXT)")
             db.execSQL("CREATE TABLE recording_statistics_links (statistics_id INTEGER PRIMARY KEY, session_id TEXT NOT NULL)")
         }
     }
+    fun scopedReads():com.greatwall.callring.application.ports.ScopedReadPort = RecordingScopedReadAdapter(helper.writableDatabase,{coordinator.capture().values.getValue("recording")})
     /** Event identities are owned here, including when the statistics database contains no call. */
     fun registerIncoming(sessionId: String, number: String, at: Long, account: String?): RecordingCall = coordinator.guard {
         val existed = hasSession(sessionId)
@@ -86,7 +88,7 @@ class AndroidRecordingStore(context: Context, namespace: String,
             if (!isDeleted(call.id)) {
                 val archive = CallArchive(call.id, number, at, generation = System.currentTimeMillis() * 1000)
                 val initial = ContentValues().apply { put("call_id", call.id); put("generation", archive.generation); put("payload", RecordingJson.archive(archive).toString()) }
-                db.insertWithOnConflict("archives", null, initial, SQLiteDatabase.CONFLICT_IGNORE)
+                if(db.insertWithOnConflict("archives", null, initial, SQLiteDatabase.CONFLICT_IGNORE)!=-1L) ArchiveProjectionIndex(db).write(archive)
             }
             db.setTransactionSuccessful()
             return call
@@ -170,7 +172,7 @@ class AndroidRecordingStore(context: Context, namespace: String,
                 DatabaseUtils.longForQuery(db, "SELECT changes()", null) == 1L
             }
             else db.update("archives", row, "call_id=? AND generation=?", arrayOf(callId.toString(), expectedGeneration.toString())) == 1
-            if (success) db.delete("deleted_archives", "call_id=?", arrayOf(callId.toString()))
+            if (success) {db.delete("deleted_archives", "call_id=?", arrayOf(callId.toString()));ArchiveProjectionIndex(db).write(value)}
             db.setTransactionSuccessful()
             return success
         } finally { db.endTransaction() }
@@ -185,6 +187,7 @@ class AndroidRecordingStore(context: Context, namespace: String,
         try {
             val value = get(callId)
             db.delete("archives", "call_id=?", arrayOf(callId.toString()))
+            ArchiveProjectionIndex(db).remove(callId)
             db.execSQL("INSERT OR IGNORE INTO deleted_archives(call_id) VALUES (?)", arrayOf(callId))
             db.setTransactionSuccessful()
             return value
