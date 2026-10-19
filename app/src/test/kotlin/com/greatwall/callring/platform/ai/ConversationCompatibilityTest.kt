@@ -22,6 +22,12 @@ class ConversationCompatibilityTest {
         val root = JSONObject(reply()); root.getJSONArray("choices").getJSONObject(0).getJSONObject("message").put("tool_calls", JSONArray())
         assertTrue(client.decode(AiProtocol.OPENAI, root.toString()) is ConversationReply.Final)
     }
+    @Test fun providerCacheUsageIsRetainedOnlyWhenProvided() {
+        val root=JSONObject(reply()).put("usage",JSONObject("""{"prompt_tokens":100,"completion_tokens":20,"total_tokens":120,"prompt_tokens_details":{"cached_tokens":10},"completion_tokens_details":{"reasoning_tokens":0}}"""))
+        val usage=(client.decode(AiProtocol.OPENAI,root.toString()) as ConversationReply.Final).diagnostics.usage!!
+        assertEquals(10L,usage.cachedInput);assertEquals(0L,usage.reasoningOutput)
+        assertNull((client.decode(AiProtocol.OPENAI,JSONObject(reply()).put("usage",JSONObject("""{"prompt_tokens":100}""")).toString()) as ConversationReply.Final).diagnostics.usage!!.cachedInput)
+    }
     @Test fun completeTenCallsAndNullLegacyFieldReachOrchestrator() {
         assertEquals(10, (client.decode(AiProtocol.OPENAI, reply("tool_calls", calls(10))) as ConversationReply.ToolBatch).calls.size)
     }

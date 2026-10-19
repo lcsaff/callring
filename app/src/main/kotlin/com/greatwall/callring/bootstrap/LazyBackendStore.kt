@@ -12,6 +12,8 @@ import java.io.Closeable
 internal class LazyBackendStore(private val factory: () -> BackendStore) : BackendStore, Closeable {
     private var instance: BackendStore? = null
     private var closed = false
+    val completeCaptures=java.util.concurrent.atomic.AtomicLong()
+    @Synchronized fun stateLoadCount()=(instance as? com.greatwall.callring.data.SqliteBackendStore)?.stateLoads?.get()?:0L
     fun scopedReads(coordinator:com.greatwall.callring.application.BusinessRevisionCoordinator):ScopedReadPort = object:ScopedReadPort {
         override val domains=(AiDomain.entries.take(10)+AiDomain.D21).toSet()
         override fun version(domain:AiDomain)=coordinator.capture().values.getValue("core")
@@ -29,7 +31,7 @@ internal class LazyBackendStore(private val factory: () -> BackendStore) : Backe
     }
 
     @Synchronized override fun <T> read(block: (BackendState) -> T): T = get().read(block)
-    @Synchronized override fun <T> captureFull(block: (BackendState, List<com.greatwall.callring.domain.AuditRecord>) -> T): T = get().captureFull(block)
+    @Synchronized override fun <T> captureFull(block: (BackendState, List<com.greatwall.callring.domain.AuditRecord>) -> T): T {completeCaptures.incrementAndGet();return get().captureFull(block)}
 
     @Synchronized
     override fun <T> transaction(block: (BackendState) -> T): T = get().transaction(block)

@@ -11,10 +11,11 @@ import org.junit.Test
 class ToolBatchEngineTest {
     private class Fixture {
         val f=ConversationFixtures()
+        var mismatchProfileReadback=false
         val source=object:ScopedReadPort {
             override val domains=AiDomain.entries.toSet()
             override fun version(domain:AiDomain)=f.coordinator.capture().values.getValue(if(domain==AiDomain.D11)"preferences"else"core")
-            override fun get(domain:AiDomain,key:String,projection:String):SourceRow? = if(domain==AiDomain.D11)SourceRow("current",safeValue(f.appearance) as AiJson.Obj)else f.state.profiles[key]?.let{SourceRow(key,aiObject("number" to aiString(key),"stored" to aiNumber(1),"name" to aiString(it.name),"department" to aiString(it.department),"position_id" to aiNumber(it.positionId),"whitelisted" to aiBool(it.whitelisted)))}
+            override fun get(domain:AiDomain,key:String,projection:String):SourceRow? = if(domain==AiDomain.D11)SourceRow("current",safeValue(f.appearance) as AiJson.Obj)else f.state.profiles[key]?.let{SourceRow(key,aiObject("number" to aiString(key),"stored" to aiNumber(1),"name" to aiString(if(mismatchProfileReadback)"wrong"else it.name),"department" to aiString(it.department),"position_id" to aiNumber(it.positionId),"whitelisted" to aiBool(it.whitelisted)))}
             override fun query(spec:QuerySpec,after:String?)=SourcePage(spec.filter.number?.let{get(spec.domain,it,spec.projection)}?.let{listOf(it)}?:emptyList(),if(spec.filter.number in f.state.profiles)1 else 0)
         }
         val q=QueryService(listOf(source),revision=f.coordinator::marker)
@@ -140,5 +141,33 @@ class ToolBatchEngineTest {
         val engine=ToolBatchEngine({api()},executor,t.q,t.f.coordinator,"s","t",1,{true})
         val result=engine.execute(listOf(ConversationToolCall("write","settings_saveAppearance",aiObject("colorMode" to aiString("DARK"))))).single()
         assertEquals(ToolStatus.FAILED,result.status);assertEquals(ColorMode.FOLLOW_SYSTEM,t.f.appearance.colorMode)
+    }
+    @Test fun alreadyAppliedAppearanceIsVerifiedWithoutInventingACommit()=runBlocking {
+        val t=Fixture();t.f.backend.settings.saveAppearance(t.f.appearance.copy(colorMode=ColorMode.DARK)).requiredValue()
+        val revision=t.f.coordinator.marker()
+        val result=t.engine.execute(listOf(ConversationToolCall("same","settings_saveAppearance",aiObject("colorMode" to aiString("DARK"))))).single()
+        assertEquals(VerificationStatus.VERIFIED,result.verification);assertTrue(result.noOp);assertNull(result.commitRevision)
+        assertEquals(revision,t.f.coordinator.marker())
+    }
+    @Test fun committedUnverifiedTargetCannotBeRewrittenUnderNewIdAndArguments()=runBlocking {
+        val t=Fixture();t.mismatchProfileReadback=true
+        val first=ConversationToolCall("one","callers_saveProfile",aiObject("number" to aiString("31234"),"name" to aiString("first")))
+        assertEquals(VerificationStatus.COMMITTED_UNVERIFIED,t.engine.execute(listOf(first)).single().verification)
+        val revision=t.f.coordinator.marker()
+        val second=t.engine.execute(listOf(first.copy(id="new",arguments=aiObject("number" to aiString("31234"),"name" to aiString("second"))))).single()
+        assertEquals(ToolStatus.FAILED,second.status);assertEquals("first",t.f.state.profiles.getValue("31234").name);assertEquals(revision,t.f.coordinator.marker())
+    }
+    @Test fun aDependencyMayUseARegeneratedIdForACachedCompletedStep()=runBlocking {
+        val t=Fixture()
+        val first=ConversationToolCall("one","settings_saveAppearance",aiObject("colorMode" to aiString("DARK")))
+        t.engine.execute(listOf(first));t.engine.execute(listOf(first.copy(id="alias")))
+        val read=ConversationToolCall("read","root_checkNumber",aiObject("raw" to aiString("31234"),"dependsOn" to AiJson.Arr(listOf(aiString("alias")))))
+        assertEquals(ToolStatus.READ,t.engine.execute(listOf(read)).single().status)
+    }
+    @Test fun aPlanCannotWriteMoreTargetsThanItsOriginalCount()=runBlocking {
+        val t=Fixture();val task=t.plan(1)
+        t.engine.execute(listOf(t.profile("one","31234",task)))
+        val extra=t.engine.execute(listOf(t.profile("extra","35678",task))).single()
+        assertEquals(ToolStatus.FAILED,extra.status);assertEquals(1,t.f.state.profiles.size)
     }
 }

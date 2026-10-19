@@ -19,7 +19,7 @@ class OperationScopePlanner(private val queries:QueryService,private val coordin
         val disclosed=queries.snapshotObservations()
         suspend fun observe(domain:AiDomain,key:String?,keys:Set<String>,projection:String="default",filter:QueryFilter=QueryFilter()) {
             require(keys.isNotEmpty())
-            val normalized=key?.toLongOrNull()?.toString()?:key?:"*"
+            val normalized=if(domain==AiDomain.D01)key?:"*" else key?.toLongOrNull()?.toString()?:key?:"*"
             val old=queries.observedRevision(domain,normalized)
             val at=if(key==null)queries.query(QuerySpec(domain,projection,filter,limit=1)).requiredValue().stamp.scopeRevision else {
                 when(val result=queries.get(domain,key,projection)) {

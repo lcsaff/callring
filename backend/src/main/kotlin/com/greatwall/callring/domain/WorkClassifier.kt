@@ -10,6 +10,7 @@ import java.time.ZoneId
  * facts.
  */
 object WorkClassifier {
+    val evaluations=java.util.concurrent.atomic.AtomicLong()
     fun schedule(state: BackendState, at: Long): WorkScheduleSettings =
         state.schedules
             .filter { it.effectiveFromEpochMillis <= at }
@@ -21,6 +22,7 @@ object WorkClassifier {
             ?: defaultWorkSchedule()
 
     fun classify(state: BackendState, at: Long): ClassificationFact {
+        evaluations.incrementAndGet()
         val config = schedule(state, at)
         val local = Instant.ofEpochMilli(at).atZone(ZoneId.of(config.zoneId))
         val date = local.toLocalDate()

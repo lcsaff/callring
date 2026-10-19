@@ -121,7 +121,8 @@ class CompatibleConversationClient(private val openConnection: (URL) -> HttpURLC
             }
             val usage = root.optJSONObject("usage")?.let { u ->
                 fun number(key: String): Long? = (u.opt(key) as? Number)?.toLong()?.takeIf { it >= 0 }
-                ModelUsage(number(if(protocol == AiProtocol.OPENAI) "prompt_tokens" else "input_tokens"), number(if(protocol == AiProtocol.OPENAI) "completion_tokens" else "output_tokens"), number("total_tokens"))
+                fun detail(key:String,field:String)=(u.optJSONObject(key)?.opt(field) as? Number)?.toLong()?.takeIf{it>=0}
+                ModelUsage(number(if(protocol == AiProtocol.OPENAI) "prompt_tokens" else "input_tokens"), number(if(protocol == AiProtocol.OPENAI) "completion_tokens" else "output_tokens"), number("total_tokens"),if(protocol==AiProtocol.OPENAI)detail("prompt_tokens_details","cached_tokens")else number("cache_read_input_tokens"),detail("completion_tokens_details","reasoning_tokens"),number("cache_creation_input_tokens"))
             }
             val diagnostics = ReplyDiagnostics(stop,usage)
             if(calls.isEmpty()) { require(content.isNotBlank()); return ConversationReply.Final(content,diagnostics) }
@@ -135,6 +136,7 @@ class CompatibleConversationClient(private val openConnection: (URL) -> HttpURLC
         checkActive(); connection.validate()
         if(encoded.size > ContextBudget.REQUEST_BYTES) fail("ai.context_budget_exceeded")
         var opened:HttpURLConnection?=null
+        val requestFlags=runCatching{val root=JSONObject(String(encoded,Charsets.UTF_8));listOf("enable_thinking","preserve_thinking").mapNotNull{key->(root.opt(key) as? Boolean)?.let{key to it}}.toMap()}.getOrDefault(emptyMap())
         val started = System.nanoTime()
         var status: Int? = null
         var responseSize = 0
@@ -173,7 +175,7 @@ class CompatibleConversationClient(private val openConnection: (URL) -> HttpURLC
         catch(e: BackendFailure) { failure=e.error.aiFailure?.kind; throw e }
         catch(_: java.net.SocketTimeoutException) { failure=AiFailureKind.TIMEOUT; checkActive(); fail("ai.timeout") }
         catch(_: Exception) { failure=AiFailureKind.TRANSPORT; checkActive(); fail("ai.transport_failed") }
-        finally { lastExchange=ExchangeMetrics(encoded.size,responseSize,status,profile,(System.nanoTime()-started)/1_000_000,diagnostics,failure); opened?.disconnect(); active = null }
+        finally { lastExchange=ExchangeMetrics(encoded.size,responseSize,status,profile,(System.nanoTime()-started)/1_000_000,diagnostics,failure,requestFlags); opened?.disconnect(); active = null }
     }
     private fun contextError(text: String): Boolean = runCatching {
         StrictJson.validate(text)

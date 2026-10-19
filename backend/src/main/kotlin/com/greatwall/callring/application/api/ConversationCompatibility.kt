@@ -22,6 +22,6 @@ fun resolveConversationProfile(connection: AiConnection, compatibility: Conversa
 
 enum class AiFailureKind { TRANSPORT, TIMEOUT, HTTP, AUTH, RATE, CONTEXT, PROTOCOL_JSON, PROTOCOL_SHAPE, PROTOCOL_STOP, OUTPUT_TRUNCATED, RESPONSE_TOO_LARGE, TOOL_COUNT, TOOL_ID, UNKNOWN_TOOL, NOT_ENABLED, ARGUMENT_JSON, SCHEMA, DOMAIN_VALIDATION, CONFLICT, CAPACITY, PROVIDER_MODE, COMMITTED_UNVERIFIED, UNKNOWN }
 data class ConversationFailure(val kind: AiFailureKind, val code: String, val httpStatus: Int? = null, val providerCode: String? = null, val fieldPath: String? = null)
-data class ModelUsage(val input: Long?, val output: Long?, val total: Long?)
+data class ModelUsage(val input: Long?, val output: Long?, val total: Long?,val cachedInput:Long?=null,val reasoningOutput:Long?=null,val cacheWriteInput:Long?=null)
 data class ReplyDiagnostics(val finishReason: String = "", val usage: ModelUsage? = null)
-data class ExchangeMetrics(val requestBytes: Int, val responseBytes: Int, val httpStatus: Int?, val profile: ProviderProfile, val elapsedMillis: Long, val diagnostics: ReplyDiagnostics? = null, val failure: AiFailureKind? = null)
+data class ExchangeMetrics(val requestBytes: Int, val responseBytes: Int, val httpStatus: Int?, val profile: ProviderProfile, val elapsedMillis: Long, val diagnostics: ReplyDiagnostics? = null, val failure: AiFailureKind? = null,val requestFlags:Map<String,Boolean> = emptyMap())

@@ -136,6 +136,8 @@ class BackendGraph(
         if(scheduler==null) aiObject("available" to aiBool(false)) else aiObject("available" to aiBool(true),"pending" to AiJson.Arr(scheduler.allPendingJobs.filter{it.service.packageName==application.packageName}.map{aiObject("service" to aiString(it.service.className),"jobId" to aiNumber(it.id.toLong()))}))
     },configuration.clock)}
     val queries:QueryService get()=queriesDelegate.value
+    /** Safe aggregate counters; reading them neither opens a store nor probes platform state. */
+    fun businessReadCounters():Map<String,Long> = mapOf("coreStateLoads" to store.stateLoadCount(),"completeCaptures" to store.completeCaptures.get(),"sourceQueries" to if(queriesDelegate.isInitialized())queries.sourceQueries.get()else 0L,"classifications" to com.greatwall.callring.domain.WorkClassifier.evaluations.get(),"runtimeProbes" to AndroidRuntimeProbe.observations.get())
     private val snapshotsDelegate = lazy { ensureOpen(); completeSnapshotApi(backend, recordings, diagnostics, coordinator, resources, configuration.clock) }
     private val conversationDelegate = lazy { ensureOpen(); ConversationService({ api }, queries, { recordings.store.settings() }, coordinator, { CompatibleConversationClient() }, resources = resources) }
     private val apiDelegate by lazy {

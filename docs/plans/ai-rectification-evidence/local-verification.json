@@ -5,13 +5,13 @@
   "result": "passed",
   "tests": {
     "backend": {
-      "tests": 170,
+      "tests": 179,
       "failures": 0,
       "errors": 0,
       "skipped": 0
     },
     "app": {
-      "tests": 155,
+      "tests": 157,
       "failures": 0,
       "errors": 0,
       "skipped": 0
@@ -34,18 +34,18 @@
     },
     {
       "path": "C:\\Users\\GreatWall\\.codex\\worktrees\\6b22\\callring\\app\\build\\outputs\\apk\\backendQa\\app-backendQa.apk",
-      "bytes": 47798356,
-      "sha256": "4ed390a67bee4c5259b3f1bbf01c0fef4c7f672681adcfd6ae07b2a1ed52b661"
+      "bytes": 48167478,
+      "sha256": "89004831a7c830b9e54850c995eabe232a3705434a0d20965708802ab155d47d"
     },
     {
       "path": "C:\\Users\\GreatWall\\.codex\\worktrees\\6b22\\callring\\app\\build\\outputs\\apk\\debug\\app-debug.apk",
-      "bytes": 47798340,
-      "sha256": "56fb0084444dfb738344b464e6e0c4e155763a4e106f26db53499cfb57488c80"
+      "bytes": 49056362,
+      "sha256": "d8d37a2658c08982461bb9af49146a157cc3dc0fc3943ebc52a3c289474263b0"
     },
     {
       "path": "C:\\Users\\GreatWall\\.codex\\worktrees\\6b22\\callring\\app\\build\\outputs\\apk\\release\\app-release-unsigned.apk",
-      "bytes": 36756261,
-      "sha256": "46215cd4e0f495ea1538c25be9921567b11909ac3f00956ba20f0e4e69b90aa4"
+      "bytes": 36772645,
+      "sha256": "8b27f19c6b6f4801aba33469f07e9d64d082f4b832c4e7df36f64bc383d17e7e"
     }
   ],
   "devicePreflight": {
@@ -55,11 +55,12 @@
     "installedPackage": "com.greatwall.callring",
     "versionName": "0.2",
     "versionCode": 2,
-    "locked": true,
+    "locked": false,
     "realModelRun": "not_run"
   },
   "notes": [
-    "Fixed mixed C:/D: junction build roots; rebuilt module outputs using C: workspace spelling.",
-    "No uninstall, data clear, key export, or paid model request performed."
+    "C: workspace spelling retained for all Gradle tasks.",
+    "179 backend, 157 app, 207 UI tests pass; Lint, Debug/Release, AndroidTest and backendQa APK builds pass.",
+    "Real device unlocked by user; model run pending at this checkpoint."
   ]
 }

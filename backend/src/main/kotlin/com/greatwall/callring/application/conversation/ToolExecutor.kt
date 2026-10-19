@@ -30,9 +30,11 @@ class ToolExecutor(
             val bound = api().commandApi(scope.command)
             var status = if(definition.write) ToolStatus.COMMITTED else ToolStatus.READ
             var noOp=false
+            val actionEvidence=mutableListOf<AiJson>()
             suspend fun action(kind: ForegroundActionKind, parameters: AiJson.Obj = call.arguments, confirmation: ConfirmationTarget? = null): ForegroundHostResult {
                 val result = foreground.request(scope.sessionId, scope.turnId, call.id, scope.generation, kind, parameters, scope.command, confirmation, scope.command.active)
                 result.error?.let { throw BackendFailure(it) }
+                actionEvidence+=aiObject("foregroundAction" to aiString(kind.name),"result" to aiString(result.status.name))
                 when (result.status) {
                     ForegroundResultStatus.CANCELLED -> throw BackendFailure(ApiError(ErrorCode.SYSTEM_RESTRICTED, "action.cancelled"))
                     ForegroundResultStatus.DENIED -> throw BackendFailure(ApiError(ErrorCode.PERMISSION_REQUIRED, "action.denied"))
@@ -125,6 +127,7 @@ class ToolExecutor(
                     val old = bound.settings.getAppearance().requiredValue()
                     val updated=AppearanceSettings(a.optS("selection")?.let(ThemeSelection::valueOf) ?: old.selection,a.optS("presetId") ?: old.presetId,if(a.has("customSeedRgb")) a.optL("customSeedRgb")?.exactInt() else old.customSeedRgb,a.optS("colorMode")?.let(ColorMode::valueOf) ?: old.colorMode)
                     noOp=old==updated
+                    if(noOp){coordinator.guard(scope.command){};return ToolReceipt(scope.command.operationId,call.id,ToolStatus.COMMITTED,safeValue(old),noOp=true)}
                     bound.edits.appearance(old,updated).requiredValue()
                 }
                 38 -> bound.ringtone.getSettings().requiredValue()
@@ -170,7 +173,7 @@ class ToolExecutor(
                 else -> error("ai.unknown_tool")
             }
             val after = coordinator.capture()
-            return ToolReceipt(scope.command.operationId, call.id, status, safeValue(value), commitRevision = coordinator.committed(scope.command.operationId), changedDomains = if(before != after) DataDomain.values().toSet() else emptySet(),noOp=noOp)
+            return ToolReceipt(scope.command.operationId, call.id, status, safeValue(value), commitRevision = coordinator.committed(scope.command.operationId), changedDomains = if(before != after) DataDomain.values().toSet() else emptySet(),noOp=noOp,verificationEvidence=AiJson.Arr(actionEvidence))
         } catch(e: CancellationException) { throw e }
         catch(e: BackendFailure) { return failure(call, scope, e.error) }
         catch(_: IllegalArgumentException) { return failure(call, scope, ApiError(ErrorCode.VALIDATION, "ai.invalid_tool_arguments")) }

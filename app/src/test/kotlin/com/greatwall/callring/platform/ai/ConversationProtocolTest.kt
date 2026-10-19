@@ -19,6 +19,11 @@ class ConversationProtocolTest {
         assertEquals(1,client.lastExchange?.requestBytes)
         assertFalse(error.toString().contains("sentinel-secret"))
     }
+    @Test fun safeMetricsRecordFlagsFromTheActualExchangedBytes()=runBlocking {
+        val client=CompatibleConversationClient{url->object:HttpURLConnection(url){override fun connect()=Unit;override fun disconnect()=Unit;override fun usingProxy()=false;override fun getOutputStream()=ByteArrayOutputStream();override fun getResponseCode()=200;override fun getInputStream()=ByteArrayInputStream("""{"choices":[{"finish_reason":"stop","message":{"role":"assistant","content":"done"}}]}""".toByteArray())}}
+        client.exchange(connection,"""{"enable_thinking":false,"preserve_thinking":false}""".toByteArray())
+        assertEquals(mapOf("enable_thinking" to false,"preserve_thinking" to false),client.lastExchange?.requestFlags)
+    }
     @Test fun lazyRequestHasNoSnapshotAndRetainsMalformedArgumentsForPairing() {
         val call=ConversationToolCall("bad","settings_saveAppearance",aiObject(),argumentError=ApiError(ErrorCode.VALIDATION,"ai.argument_json"),wireArguments="{bad-json")
         val request=ConversationRequest(messages=listOf(ConversationMessage("user","hello"),ConversationMessage("assistant","",listOf(call)),ConversationMessage("tool","",receipts=listOf(ToolReceipt("op","bad",ToolStatus.FAILED,error=ApiError(ErrorCode.VALIDATION,"ai.argument_json"))))),tools=ToolRegistry().allDefinitions.filter{it.name=="discover_tools"},output=4096)

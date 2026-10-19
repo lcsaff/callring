@@ -9,6 +9,7 @@ class LedgerStep(val id:String,var taskId:String,var call:ConversationToolCall,v
     var state=StepState.PREPARED
     var receipt:ToolReceipt?=null
     var repairs=0
+    var effectScopes:Set<String> = emptySet()
     val dependencies=linkedSetOf<String>()
     val started get()=state in setOf(StepState.STARTED,StepState.COMMITTED,StepState.VERIFIED,StepState.UNKNOWN)
 }
@@ -17,6 +18,7 @@ class StepLedger(private val normalizeNumber:(String)->String={it}) {
     val steps:List<LedgerStep> get()=mutableSteps.toList()
     private val byId=mutableMapOf<String,Pair<String,LedgerStep>>()
     private val byEffect=mutableMapOf<Pair<String,String>,LedgerStep>()
+    fun byCall(id:String):LedgerStep?=byId[id]?.second
     fun signature(call:ConversationToolCall):String {
         fun canonical(v:AiJson,key:String=""):AiJson=when(v){
             is AiJson.Obj->AiJson.Obj(v.fields.filterKeys{it !in setOf("taskId","dependsOn")}.toSortedMap().mapValues{(name,value)->canonical(value,name)})

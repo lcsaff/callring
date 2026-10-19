@@ -99,6 +99,11 @@ class ToolBatchEngine(
                 if(write) {
                     if(definition?.index==79)throw BackendFailure(ApiError(ErrorCode.VALIDATION,"ai.invalid_profile_batch"))
                     p.expected=metered{scopes.prepare(call,definition!!.index)}
+                    step.effectScopes=p.expected.keys.filter{definition.index !in setOf(7,8)||it.startsWith("profile:")}.toSet()
+                    if(ledger.steps.any{prior->prior!==step&&prior.effectScopes.any{it in step.effectScopes}&&
+                        (prior.state==StepState.UNKNOWN||prior.receipt?.verification==VerificationStatus.COMMITTED_UNVERIFIED||
+                            prior.receipt?.status in setOf(ToolStatus.DENIED,ToolStatus.CANCELLED)||prior.receipt?.error?.code==ErrorCode.CONFLICT)})
+                        throw BackendFailure(ApiError(ErrorCode.SYSTEM_RESTRICTED,"ai.commit_requires_review"))
                     if(explicitTask!=null&&planner.get(explicitTask).kind==TaskKind.CREATE_PROFILES) {
                         if(definition?.index!=7)throw BackendFailure(ApiError(ErrorCode.VALIDATION,"ai.task_operation_mismatch"))
                         val disclosed=queries.snapshotObservations()
@@ -114,7 +119,7 @@ class ToolBatchEngine(
         val byCall=pending.associateBy{it.call.id}
         pending.forEach{p->
             val deps=(p.call.arguments["dependsOn"] as? AiJson.Arr)?.values?.map{it.string()}?:emptyList()
-            if(deps.any{it !in byCall&&ledger.steps.none{s->s.call.id==it}})p.error=ApiError(ErrorCode.VALIDATION,"ai.unknown_dependency")
+            if(deps.any{it !in byCall&&ledger.byCall(it)==null})p.error=ApiError(ErrorCode.VALIDATION,"ai.unknown_dependency")
             p.step.dependencies+=deps
         }
         pending.forEachIndexed{i,p->pending.take(i).filter{prior->prior.step!==p.step&&prior.definition?.write==true&&p.expected.keys.any{it in prior.expected}}.forEach{p.step.dependencies+=it.call.id}}
@@ -125,6 +130,11 @@ class ToolBatchEngine(
             visiting.remove(id);done+=id;return false
         }
         if(pending.any{cycle(it.call.id,mutableSetOf(),mutableSetOf())})throw BackendFailure(ApiError(ErrorCode.VALIDATION,"ai.dependency_cycle"))
+        planner.forUser(turn).forEach{plan->
+            val possible=ledger.steps.count{it.taskId==plan.id&&it.write&&it.started}
+            val proposed=pending.filter{it.step.taskId==plan.id&&it.definition?.write==true&&it.step.receipt==null&&it.error==null}.distinctBy{it.step.id}
+            if(possible+proposed.size>plan.expectedCount)proposed.forEach{it.error=ApiError(ErrorCode.SYSTEM_RESTRICTED,"ai.task_count_exceeded")}
+        }
         // A malformed item may only be bypassed when its resource target is demonstrably different.
         val invalid=pending.filter{it.error!=null}
         val validWrites=pending.count{it.definition?.write==true&&it.error==null&&it.step.receipt==null}
@@ -137,7 +147,7 @@ class ToolBatchEngine(
             val call=p.call;val step=p.step
             val cached=step.receipt
             if(cached!=null){results[call.id]=report(cached.copy(toolCallId=call.id));continue}
-            val blocked=step.dependencies.any{id->val receipt=results[id]?:ledger.steps.firstOrNull{it.call.id==id}?.receipt;receipt==null||receipt.error!=null||receipt.status in setOf(ToolStatus.FAILED,ToolStatus.SKIPPED,ToolStatus.UNKNOWN,ToolStatus.DENIED,ToolStatus.CANCELLED)}
+            val blocked=step.dependencies.any{id->val receipt=results[id]?:ledger.byCall(id)?.receipt;receipt==null||receipt.error!=null||receipt.status in setOf(ToolStatus.FAILED,ToolStatus.SKIPPED,ToolStatus.UNKNOWN,ToolStatus.DENIED,ToolStatus.CANCELLED)}
             val uncertain=invalid.any{bad->bad!==p&&(target(bad.call).isEmpty()||target(p.call).isEmpty()||target(bad.call)==target(p.call))}
             var receipt:ToolReceipt
             if(p.error!=null)receipt=failure(call,p.error!!)

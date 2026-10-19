@@ -22,6 +22,7 @@ class AndroidRuntimeProbe(
     private val clock: Clock,
     private val installedWidgets: () -> WidgetInstallState = { WidgetInstallState(emptyList(), AccessState.UNKNOWN) },
 ) : RuntimeProbe {
+    companion object {val observations=java.util.concurrent.atomic.AtomicLong()}
     override fun getInstalledWidgets(): WidgetInstallState = installedWidgets()
     private fun permission(name: String): AccessState =
         if (context.checkSelfPermission(name) == PackageManager.PERMISSION_GRANTED)
@@ -36,6 +37,7 @@ class AndroidRuntimeProbe(
         }
 
     override fun getStatus(): RuntimeStatus {
+        observations.incrementAndGet()
         val capabilities =
             linkedMapOf(
                 Capability.PHONE_STATE to

@@ -14,12 +14,12 @@ class QueryService(sources:List<ScopedReadPort>,private val clock:()->Long=Syste
     private val cursors=ConcurrentHashMap<String,Cursor>()
     private val refs=ConcurrentHashMap<String,Ref>()
     private val observations=ConcurrentHashMap<Pair<AiDomain,String>,Long>()
-    private fun canonical(key:String)=key.toLongOrNull()?.toString()?:key
-    fun observedRevision(domain:AiDomain,key:String)=observations[domain to canonical(key)]
+    private fun canonical(domain:AiDomain,key:String)=if(domain==AiDomain.D01)key else key.toLongOrNull()?.toString()?:key
+    fun observedRevision(domain:AiDomain,key:String)=observations[domain to canonical(domain,key)]
     fun clearObservations(){observations.clear()}
     internal fun snapshotObservations()=observations.toMap()
     internal fun restoreObservations(values:Map<Pair<AiDomain,String>,Long>){observations.clear();observations.putAll(values)}
-    private fun observe(domain:AiDomain,key:String,at:Long){if(observations.size>=4096&&!observations.containsKey(domain to canonical(key)))fail("capacity_exceeded",ErrorCode.SYSTEM_RESTRICTED);observations[domain to canonical(key)]=at}
+    private fun observe(domain:AiDomain,key:String,at:Long){if(observations.size>=4096&&!observations.containsKey(domain to canonical(domain,key)))fail("capacity_exceeded",ErrorCode.SYSTEM_RESTRICTED);observations[domain to canonical(domain,key)]=at}
     val sourceQueries=AtomicLong()
     val returnedRows=AtomicLong()
     override fun reset(){cursors.clear();refs.clear();observations.clear();sources.values.distinct().forEach{it.reset()}}
