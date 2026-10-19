@@ -17,6 +17,24 @@ import org.robolectric.annotation.Config
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [33], manifest = Config.NONE)
 class AiSettingsServiceTest {
+    @Test fun compatibilityIsPersistentSafeAndResetOnlyWhenCopyingIntoAnalysis() = runBlocking {
+        val coordinator=BusinessRevisionCoordinator()
+        val store=AndroidRecordingStore(RuntimeEnvironment.getApplication(),"profile_copy_matrix",cipher,coordinator)
+        val qwen=AiConnection(url="https://dashscope.aliyuncs.com/compatible-mode/v1",model="qwen3.8-flash",apiKey="fixture-private")
+        store.saveSettings(RecordingSettings(analysis=qwen,transcription=qwen,conversationCompatibility=ConversationCompatibility.STANDARD))
+        assertEquals(ConversationCompatibility.STANDARD,store.settings().conversationCompatibility)
+        val api=AiSettingsService(store,coordinator,{true},{_,_->})
+        assertEquals(ProviderProfile.STANDARD,api.getAiView().ok().analysis.resolvedProfile)
+        api.copyConnection(AiSlot.ANALYSIS,AiSlot.TRANSCRIPTION,api.getAiView().ok().revision).ok()
+        assertEquals(ConversationCompatibility.STANDARD,store.settings().conversationCompatibility)
+        val result=api.copyConnection(AiSlot.TRANSCRIPTION,AiSlot.ANALYSIS,api.getAiView().ok().revision).ok()
+        assertEquals(ConversationCompatibility.AUTO,store.settings().conversationCompatibility)
+        assertEquals(ProviderProfile.QWEN_FAST,result.analysis.resolvedProfile)
+        assertEquals("fixture-private",store.settings().analysis.apiKey)
+        assertFalse(result.toString().contains("fixture-private"))
+        assertEquals(ConversationCompatibility.AUTO,RecordingJson.settings(RecordingJson.settings(store.settings()).apply {getJSONObject("conversation").remove("compatibility")}).conversationCompatibility)
+        store.close()
+    }
     @Test fun coldStartPageDraftCreatesEitherSlotAtomicallyAndPreservesOtherPage() = runBlocking {
         for(slot in AiSlot.entries) {
             val coordinator = BusinessRevisionCoordinator()

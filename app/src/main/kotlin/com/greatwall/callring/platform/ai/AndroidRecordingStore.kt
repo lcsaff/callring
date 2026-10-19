@@ -124,7 +124,7 @@ class AndroidRecordingStore(context: Context, namespace: String,
             if (next != old) {
                 updatePreferences(preferences, mapOf("config" to cipher.encrypt(RecordingJson.settings(next).toString())))
                 if (old.recordingEnabled != next.recordingEnabled || old.automaticAnalysis != next.automaticAnalysis || old.captureMode != next.captureMode || old.systemFolder != next.systemFolder) coordinator.changed("recordingConfig")
-                if (old.analysis != next.analysis || old.transcription != next.transcription || old.conversationBudget != next.conversationBudget) coordinator.changed("aiConfig")
+                if (old.analysis != next.analysis || old.transcription != next.transcription || old.conversationBudget != next.conversationBudget || old.conversationCompatibility != next.conversationCompatibility) coordinator.changed("aiConfig")
                 coordinator.record(command)
             }
             next
@@ -198,10 +198,11 @@ internal object RecordingJson {
     private fun connection(v: JSONObject) = AiConnection(AiProtocol.valueOf(v.getString("protocol")), v.getString("url"), v.getString("key"), v.getString("model"))
     fun settings(v: RecordingSettings): JSONObject = JSONObject().put("recording", v.recordingEnabled).put("automatic", v.automaticAnalysis)
         .put("analysis", connection(v.analysis)).put("transcription", connection(v.transcription)).put("mode", v.captureMode.name).put("folder", v.systemFolder)
-        .put("conversation", JSONObject().put("version", 1).put("context", v.conversationBudget.context).put("output", v.conversationBudget.output))
+        .put("conversation", JSONObject().put("version", 1).put("context", v.conversationBudget.context).put("output", v.conversationBudget.output).put("compatibility",v.conversationCompatibility.name))
     fun settings(v: JSONObject) = RecordingSettings(v.getBoolean("recording"), v.getBoolean("automatic"), connection(v.getJSONObject("analysis")),
         connection(v.getJSONObject("transcription")), CaptureMode.valueOf(v.getString("mode")), v.nullableString("folder"),
-        v.optJSONObject("conversation")?.let { require(it.getInt("version") == 1); ConversationBudget(it.getLong("context"), it.getLong("output")).also { b -> b.validate() } } ?: ConversationBudget())
+        v.optJSONObject("conversation")?.let { require(it.getInt("version") == 1); ConversationBudget(it.getLong("context"), it.getLong("output")).also { b -> b.validate() } } ?: ConversationBudget(),
+        v.optJSONObject("conversation")?.optString("compatibility", "AUTO")?.let(ConversationCompatibility::valueOf) ?: ConversationCompatibility.AUTO)
     private fun analysis(v: CallAnalysis) = JSONObject().put("name", v.name).put("organization", v.organization).put("position", v.position)
         .put("purpose", v.purpose).put("evidence", v.evidence).put("identity", v.inferredIdentity).put("summary", v.summary).put("actions", JSONArray(v.actionItems))
     private fun analysis(v: JSONObject) = CallAnalysis(v.getString("name"), v.getString("organization"), v.getString("position"), v.getString("purpose"),

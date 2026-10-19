@@ -14,7 +14,7 @@ class ConversationProtocolTest {
     @Test fun httpErrorsRemainTypedAndGatewayBodiesNeverEnterErrors() = runBlocking {
         val cases = listOf(
             Triple(400, """{"error":{"code":"context_length_exceeded","message":"sentinel-secret"}}""", "ai.provider_context_rejected"),
-            Triple(400, """{"error":{"code":"other","message":"context_length_exceeded sentinel-secret"}}""", "ai.protocol_unsupported"),
+            Triple(400, """{"error":{"code":"other","message":"context_length_exceeded sentinel-secret"}}""", "ai.http_rejected"),
             Triple(413, "sentinel-secret", "ai.provider_context_rejected"),
             Triple(401, "sentinel-secret", "ai.authentication_failed"),
             Triple(302, "sentinel-secret", "ai.redirect_rejected"))
@@ -79,7 +79,7 @@ class ConversationProtocolTest {
         assertTrue(client.decode(AiProtocol.OPENAI, good) is ConversationReply.ToolBatch)
         assertTrue(runCatching { client.decode(AiProtocol.OPENAI, good.replace("tool_calls\",\"message", "length\",\"message")) }.isFailure)
         assertTrue(runCatching { client.decode(AiProtocol.OPENAI, good.dropLast(2)) }.isFailure)
-        assertTrue(runCatching { client.decode(AiProtocol.OPENAI, good.replace("root_checkNumber", "run_sql")) }.isFailure)
+        assertTrue(client.decode(AiProtocol.OPENAI, good.replace("root_checkNumber", "run_sql")) is ConversationReply.ToolBatch)
     }
     @Test fun anthropicToolResultsAreFirstAndPairedBeforeUserText() {
         val call = ConversationToolCall("one", "root_checkNumber", aiObject("raw" to aiString("31234")))

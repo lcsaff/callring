@@ -10,6 +10,32 @@ import org.junit.Assert.*
 import org.junit.Test
 
 class ConversationServiceTest {
+    @Test fun undisclosedResolvedProfileCannotReceiveHistory() = runBlocking {
+        val f=ConversationFixtures()
+        val connection=AiConnection(url="https://dashscope.aliyuncs.com/compatible-mode/v1",model="qwen3.8-flash",apiKey="secret")
+        val client=Client(ArrayDeque(listOf(ConversationReply.Final("done"))))
+        val service=ConversationService({f.backend},snapshots(f),{RecordingSettings(analysis=connection)},f.coordinator,{client})
+        try {
+            assertTrue(service.sendTo(service.state.value.sessionId,"next",AiConnectionView(connection.protocol,connection.url,connection.model,true,ProviderProfile.STANDARD)) is ApiResult.Failure)
+            assertEquals(0,client.requests)
+        } finally { service.close() }
+    }
+    @Test fun profileChangeCancelsAnActiveTurn() = runBlocking {
+        val f=ConversationFixtures(); var config=settings().copy(analysis=AiConnection(url="https://dashscope.aliyuncs.com/compatible-mode/v1",model="qwen3.8-flash",apiKey="secret"))
+        val entered=CompletableDeferred<Unit>(); var cancelled=false
+        val client=object:ConversationClient {
+            override fun encode(connection:AiConnection,request:ConversationRequest)=byteArrayOf()
+            override suspend fun exchange(connection:AiConnection,encoded:ByteArray):ConversationReply { entered.complete(Unit);awaitCancellation() }
+            override fun cancel() {cancelled=true}
+        }
+        val service=ConversationService({f.backend},snapshots(f),{config},f.coordinator,{client})
+        try {
+            service.send(service.state.value.sessionId,"hello"); withTimeout(5000){entered.await()}
+            config=config.copy(conversationCompatibility=ConversationCompatibility.STANDARD);f.coordinator.changed("aiConfig")
+            withTimeout(1500){service.state.first{!it.busy}}
+            assertTrue(cancelled);assertTrue(service.state.value.messages.isEmpty())
+        } finally {service.close()}
+    }
     @Test fun sendRejectsUndisclosedUrlModelOrProtocolBeforeAnyRequest() = runBlocking {
         val f = ConversationFixtures()
         var config = settings()

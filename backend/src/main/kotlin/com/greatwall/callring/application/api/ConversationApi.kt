@@ -7,7 +7,7 @@ enum class ConversationPhase { IDLE, CAPTURING, BUDGETING, REQUESTING, VALIDATIN
 enum class ToolStatus { READ, COMMITTED, QUEUED, LAUNCHED, CANCELLED, DENIED, FAILED, UNKNOWN, SKIPPED }
 data class ToolReceipt(val operationId: String, val toolCallId: String, val status: ToolStatus, val value: AiJson = AiJson.Null, val error: ApiError? = null, val commitRevision: RevisionVector? = null, val changedDomains: Set<DataDomain> = emptySet(), val observedAt: Long = System.currentTimeMillis())
 data class ConversationMessage(val role: String, val text: String, val toolCalls: List<ConversationToolCall> = emptyList(), val receipts: List<ToolReceipt> = emptyList(), val blocks: List<AiJson> = emptyList())
-data class ConversationToolCall(val id: String, val name: String, val arguments: AiJson.Obj)
+data class ConversationToolCall(val id: String, val name: String, val arguments: AiJson.Obj, val argumentError: ApiError? = null, val wireArguments: String? = null)
 data class ConversationState(val sessionId: String, val phase: ConversationPhase = ConversationPhase.IDLE, val messages: List<ConversationMessage> = emptyList(), val receipts: List<ToolReceipt> = emptyList(), val error: ApiError? = null, val target: String = "", val budgetBytes: Long = 0) {
     val busy get() = phase !in setOf(ConversationPhase.IDLE, ConversationPhase.COMPLETED, ConversationPhase.STOPPED, ConversationPhase.FAILED)
 }

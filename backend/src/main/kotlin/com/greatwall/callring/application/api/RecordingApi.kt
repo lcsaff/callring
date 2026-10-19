@@ -30,9 +30,11 @@ data class RecordingSettings(
     val captureMode: CaptureMode = CaptureMode.SYSTEM_ONLY,
     val systemFolder: String? = null,
     val conversationBudget: ConversationBudget = ConversationBudget(),
+    val conversationCompatibility: ConversationCompatibility = ConversationCompatibility.AUTO,
 ) {
     fun validate() {
         conversationBudget.validate()
+        resolveConversationProfile(analysis, conversationCompatibility)
         require(transcription.protocol == AiProtocol.OPENAI) { "ai.transcription_requires_openai" }
         if (analysis.url.isNotBlank() || analysis.apiKey.isNotBlank() || analysis.model.isNotBlank()) analysis.validate()
         if (transcription.url.isNotBlank() || transcription.apiKey.isNotBlank() || transcription.model.isNotBlank()) transcription.validate()

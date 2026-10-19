@@ -30,7 +30,7 @@ class ConversationService(
     private val monitor = scope.launch {
         coordinator.changes.collect {
             if(state.value.busy && fingerprint.isNotEmpty()) {
-                val changed = runCatching { connectionFingerprint(settings().analysis) != fingerprint }.getOrDefault(true)
+                val changed = runCatching { connectionFingerprint(settings()) != fingerprint }.getOrDefault(true)
                 if(changed) { connectionChanged = true; client?.cancel(); foreground.invalidate(); turnJob?.cancel() }
             }
         }
@@ -43,11 +43,14 @@ class ConversationService(
     }
     override suspend fun send(expectedSessionId: String, text: String) = enqueue(expectedSessionId,text,null)
     override suspend fun sendTo(expectedSessionId: String, text: String, disclosedTarget: AiConnectionView): ApiResult<Unit> {
-        val current = runCatching { settings().analysis }.getOrElse { return failed(ErrorCode.STORAGE_FAILURE,"ai.settings_storage_failed") }
+        val current = runCatching { settings() }.getOrElse { return failed(ErrorCode.STORAGE_FAILURE,"ai.settings_storage_failed") }
         if(!matches(disclosedTarget,current)) return failed(ErrorCode.CONFLICT,"ai.connection_changed")
         return enqueue(expectedSessionId,text,disclosedTarget)
     }
-    private fun matches(target: AiConnectionView, connection: AiConnection) = target.protocol == connection.protocol && target.url == connection.url && target.model == connection.model
+    private fun matches(target: AiConnectionView, configuration: RecordingSettings): Boolean {
+        val connection=configuration.analysis
+        return target.protocol == connection.protocol && target.url == connection.url && target.model == connection.model && target.resolvedProfile == resolveConversationProfile(connection,configuration.conversationCompatibility)
+    }
     private fun enqueue(expectedSessionId: String, text: String, disclosedTarget: AiConnectionView?): ApiResult<Unit> {
         if(text.isBlank() || text.toByteArray(Charsets.UTF_8).size > 32768) return failed(ErrorCode.VALIDATION, "ai.message_invalid")
         synchronized(lock) {
@@ -75,9 +78,9 @@ class ConversationService(
         var activeRedactor: SecretRedactor? = null
         try {
             val configuration = settings()
-            if(disclosedTarget != null && !matches(disclosedTarget,configuration.analysis)) throw BackendFailure(ApiError(ErrorCode.CONFLICT,"ai.connection_changed"))
+            if(disclosedTarget != null && !matches(disclosedTarget,configuration)) throw BackendFailure(ApiError(ErrorCode.CONFLICT,"ai.connection_changed"))
             configuration.analysis.validate()
-            val currentFingerprint = connectionFingerprint(configuration.analysis)
+            val currentFingerprint = connectionFingerprint(configuration)
             if(fingerprint.isNotEmpty() && fingerprint != currentFingerprint) synchronized(lock) { history.clear() }
             fingerprint = currentFingerprint
             val redactor = SecretRedactor(listOf(configuration.analysis.apiKey, configuration.transcription.apiKey))
@@ -89,7 +92,7 @@ class ConversationService(
             for(requestIndex in 1..16) {
                 ensureActive(session, token)
                 publish(ConversationPhase.BUDGETING)
-                val request = ConversationRequest(snapshot.json(), synchronized(lock) { history.toList() }, executor.registry.definitions, settings().conversationBudget.output)
+                val request = ConversationRequest(snapshot.json(), synchronized(lock) { history.toList() }, executor.registry.definitions, configuration.conversationBudget.output,configuration.conversationCompatibility)
                 val encoded = operationClient.encode(connection, request)
                 val estimate = ContextBudget.check(encoded, settings().conversationBudget)
                 publish(ConversationPhase.REQUESTING, estimate = estimate)
@@ -141,7 +144,7 @@ class ConversationService(
                     snapshot = capture()
                     if(cached == null && snapshot.revision != expected) throw BackendFailure(ApiError(ErrorCode.CONFLICT, "business.changed"))
                     val postHistory = synchronized(lock) { history.toList() } + ConversationMessage("tool", "", receipts = results + batch.drop(index+1).map { ToolReceipt("pending", it.id, ToolStatus.SKIPPED) })
-                    ContextBudget.check(operationClient.encode(connection, ConversationRequest(snapshot.json(), postHistory, executor.registry.definitions, settings().conversationBudget.output)), settings().conversationBudget)
+                    ContextBudget.check(operationClient.encode(connection, ConversationRequest(snapshot.json(), postHistory, executor.registry.definitions, configuration.conversationBudget.output,configuration.conversationCompatibility)), settings().conversationBudget)
                 }
                 synchronized(lock) { history += ConversationMessage("tool", "", receipts = results) }
                 paired = true
@@ -179,7 +182,7 @@ class ConversationService(
         while(!foreground.hasHost) { ensureActive(session, token); publish(ConversationPhase.WAITING_FOREGROUND); delay(100) }
     }
     private fun ensureActive(session: String, token: Long) {
-        if (fingerprint.isNotEmpty() && connectionFingerprint(settings().analysis) != fingerprint) connectionChanged = true
+        if (fingerprint.isNotEmpty() && connectionFingerprint(settings()) != fingerprint) connectionChanged = true
         if(generation.get() != token || state.value.sessionId != session || connectionChanged) throw CancellationException("ai.cancelled")
     }
     override suspend fun stop(expectedSessionId: String): ApiResult<Unit> {
@@ -202,5 +205,8 @@ class ConversationService(
     override fun close() { generation.incrementAndGet(); client?.cancel(); foreground.invalidate(); resources.reset(); scope.cancel() }
     private fun failed(code: ErrorCode, key: String) = ApiResult.Failure(ApiError(code, key))
     private fun argumentDigest(call: ConversationToolCall) = digest(call.name + ":" + call.arguments.encode())
-    private fun connectionFingerprint(value: AiConnection) = digest("${value.protocol}\n${value.url}\n${value.model}\n${value.apiKey}")
+    private fun connectionFingerprint(configuration: RecordingSettings): String {
+        val value=configuration.analysis
+        return digest("${value.protocol}\n${value.url}\n${value.model}\n${value.apiKey}\n${configuration.conversationCompatibility}")
+    }
 }

@@ -17,8 +17,8 @@ class AiSettingsService(
     fun bound(command: CommandContext) = AiSettingsService(store, coordinator, microphoneGranted, testConnection, command, afterSave, folderView)
     private fun conflict(): Nothing = throw BackendFailure(ApiError(ErrorCode.CONFLICT, "settings.conflict", retryable = true))
     private fun revision(key: String) = coordinator.capture().values.getValue(key)
-    private fun AiConnection.view() = AiConnectionView(protocol, url, model, apiKey.isNotEmpty())
-    private fun RecordingSettings.aiView() = AiSettingsView(analysis.view(), transcription.view(), conversationBudget, revision("aiConfig"))
+    private fun AiConnection.view(compatibility: ConversationCompatibility = ConversationCompatibility.STANDARD) = AiConnectionView(protocol, url, model, apiKey.isNotEmpty(),resolveConversationProfile(this,compatibility))
+    private fun RecordingSettings.aiView() = AiSettingsView(analysis.view(conversationCompatibility), transcription.view(), conversationBudget, revision("aiConfig"), conversationCompatibility)
     private fun RecordingSettings.recordingView(version: Long = revision("recordingConfig")): RecordingSettingsView {
         val folder = folderView(systemFolder)
         return RecordingSettingsView(recordingEnabled, automaticAnalysis, captureMode, systemFolder != null, version,folder.displayName,folder.access)
@@ -60,6 +60,7 @@ class AiSettingsService(
             analysis = connection(base.analysis, old.analysis, patch.analysis, analysisSecret, base.revision),
             transcription = connection(base.transcription, old.transcription, patch.transcription, transcriptionSecret, base.revision),
             conversationBudget = field(base.budget, old.conversationBudget, patch.budget),
+            conversationCompatibility = field(base.compatibility,old.conversationCompatibility,patch.compatibility),
         ) }.aiView()
     }
     override suspend fun copyConnection(from: AiSlot, to: AiSlot, expectedRevision: Long) = result {
@@ -67,7 +68,7 @@ class AiSettingsService(
         store.updateSettings(command) { old ->
             if (revision("aiConfig") != expectedRevision) conflict()
             val value = if (from == AiSlot.ANALYSIS) old.analysis else old.transcription
-            if (to == AiSlot.ANALYSIS) old.copy(analysis = value) else old.copy(transcription = value.copy(protocol = AiProtocol.OPENAI))
+            if (to == AiSlot.ANALYSIS) old.copy(analysis = value, conversationCompatibility = ConversationCompatibility.AUTO) else old.copy(transcription = value.copy(protocol = AiProtocol.OPENAI))
         }.aiView()
     }
     override suspend fun testSlot(slot: AiSlot) = result { val current = coordinator.guard(command) { store.settings() }; testConnection(if (slot == AiSlot.ANALYSIS) current.analysis else current.transcription, slot == AiSlot.TRANSCRIPTION) }
@@ -85,7 +86,8 @@ class AiSettingsService(
             old.copy(recordingEnabled = field(recordingBase.recordingEnabled, old.recordingEnabled, recording.recordingEnabled), automaticAnalysis = field(recordingBase.automaticAnalysis, old.automaticAnalysis, recording.automaticAnalysis), captureMode = mode,
                 analysis = connection(aiBase.analysis, old.analysis, ai.analysis, analysisSecret, aiBase.revision),
                 transcription = connection(aiBase.transcription, old.transcription, ai.transcription, transcriptionSecret, aiBase.revision),
-                conversationBudget = field(aiBase.budget, old.conversationBudget, ai.budget))
+                conversationBudget = field(aiBase.budget, old.conversationBudget, ai.budget),
+                conversationCompatibility = field(aiBase.compatibility,old.conversationCompatibility,ai.compatibility))
         }
         runCatching { afterSave(saved) }
         Unit

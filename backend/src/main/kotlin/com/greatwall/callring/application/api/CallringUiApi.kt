@@ -122,7 +122,8 @@ data class ApiError(
     val message: String,
     val fieldErrors: Map<String, String> = emptyMap(),
     val requiredCapabilities: Set<Capability> = emptySet(),
-    val retryable: Boolean = false
+    val retryable: Boolean = false,
+    val aiFailure: ConversationFailure? = null,
 )
 
 enum class ErrorCode {
