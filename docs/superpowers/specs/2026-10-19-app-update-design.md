@@ -169,7 +169,7 @@
 | 版本来源 | 根 `version.properties`、`app/build.gradle` | 单一版本来源，Gradle 读取 |
 | 发布工具 | `tools/` 新增版本准备、签名校验、元数据生成、发布校验脚本 | 失败即停的本地校验链 |
 | CI | 新增 `.github/workflows/` | Secrets 驱动的签名构建与草稿上传 |
-| 设置入口 | `ui/.../feature/settings/SettingsOverviewScreen.kt`、`ui/.../app/SettingsRoute.kt` | “系统与支持”增加“检查更新”行，副标题显示当前安装版本；版本必须从 `PackageManager` 读取（`SettingsSummary` 无版本字段，见 A §2 证据），不得由后端摘要提供 |
+| 设置入口 | `ui/.../feature/settings/SettingsOverviewScreen.kt`、`ui/.../app/SettingsRoute.kt` | “系统与支持”增加“检查更新”行，副标题显示当前安装版本；版本必须从 `PackageManager` 读取（`SettingsSummary` 无版本字段，见 A §2 证据），不得由后端摘要提供；更新页作为新增的 `SettingsPage.UPDATE` 子页（枚举在 `SettingsOverviewScreen.kt`，`SettingsPage.entries` 自动生成路由），在 `SettingsRoute.kt` 加 UPDATE 分支组装；设置总览在 `CallringApp.kt` 的 `composable("settings")` 内直接组合，无需新增 `UiDestination` |
 
 ## 九、分阶段验收
 

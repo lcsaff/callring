@@ -91,7 +91,7 @@
 【验收】0 条或 `pageSize` 条数据时列表底部无“上一页/下一页/第 1 页/共 N 条”任何文字；`pageSize + 1` 条时出现控件，首页“上一页”禁用、末页“下一页”禁用、页码从 1 开始、总数正确、loading 中两按钮禁用；档案页与报表页分别验证；失败判据：单页仍显示页码/按钮，或报表页与档案页行为不一致。
 
 ## 6. 设置首页
-【决策】把 `SettingsOverviewScreen.kt:37-40` 的“录音与 AI”卡拆成两张卡：“录音”卡 →“录音设置”→“录音设置页”；“AI”卡 →“AI 设置”→“AI 设置页”。在“系统与支持”卡（`:44-46`）的“运行状态与权限”之后增加“检查更新”行，副标题显示当前安装版本名（读取来源见 C），点击进入更新页（页面与状态由 C 定义）。`backendQa` 变体不显示该入口（见 C）。入口接线点在 `SettingsRoute.kt`。
+【决策】把 `SettingsOverviewScreen.kt:37-40` 的“录音与 AI”卡拆成两张卡：“录音”卡 →“录音设置”→“录音设置页”；“AI”卡 →“AI 设置”→“AI 设置页”。在“系统与支持”卡（`:44-46`）的“运行状态与权限”之后增加“检查更新”行，副标题显示当前安装版本名（读取来源见 C，必须来自 `PackageManager`），点击进入更新页（页面与状态由 C 定义）。`backendQa` 变体不显示该入口（见 C）。接线方式：设置总览在 `CallringApp.kt` 的 `composable("settings")` 内直接组合（现状 `:156-160`），`SettingsRoute.kt` 只按 `SettingsPage` 分发子页；因此更新页作为**新的 `SettingsPage.UPDATE` 子页**接入——`SettingsPage` 枚举加一项（枚举在 `SettingsOverviewScreen.kt`），`SettingsPage.entries` 自动生成路由，`SettingsRoute.kt` 增 UPDATE 分支组装更新页，`SettingsOverviewScreen` 的导航回调复用既有 `onNavigate`。
 
 【理由】录音设置与 AI 设置职责不同、页面独立，合并卡片让用户多点一层；版本副标题让用户在入口处即可核对当前版本，避免更新页才能看到。
 
@@ -156,7 +156,7 @@
 | `ui/.../app/CallringActivity.kt` | 深链映射与 `report`→Lookup 回退保持不变 | 4.2 |
 | `ui/.../app/UiDestination.kt` | Lookup/Report 路由定义不变 | 4.2 |
 | `ui/.../feature/settings/SettingsOverviewScreen.kt` | 拆录音/AI 卡；系统与支持加“检查更新”与版本副标题；设置总览传 `compactTitle` | 3.2、6 |
-| `ui/.../app/SettingsRoute.kt` | 承接“检查更新”入口到更新页的接线（页面实现见 C） | 6 |
+| `ui/.../app/SettingsRoute.kt` | 新增 `SettingsPage.UPDATE` 分支，组装更新页（页面实现见 C） | 6 |
 | `ui/.../feature/settings/components/SettingsComponents.kt` | `SettingsLayout` 透传 `compactTitle`，仅设置总览为 true | 3.2、6 |
 | `ui/.../feature/ai/AiSettingsScreen.kt` | 三组结构；思考模式开关（不出现供应商）；高级折叠与错误汇总；删重复说明；删除保存按钮与草稿态 | 7.1–7.6 |
 | `ui/.../feature/ai/AiSettingsViewModel.kt` | 双快照加载；逐字段即时提交（自动分析走 `patchCombined`）；删除 save/dirty/baseline 草稿态 | 7.4、7.5 |

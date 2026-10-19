@@ -128,7 +128,7 @@
 
 - `AiConnection`（分析连接）新增 `thinkingMode: ENABLED | DISABLED`，默认 `DISABLED`；转录连接不参与思考（ASR 恒定不注入），保存时忽略该字段。
 - 旧 `conversationCompatibility`：不再持久化、不再参与解析；读取旧值只用于迁移判断——`QWEN_FAST` 且模型为 Qwen 族 → `thinkingMode=DISABLED`（等价于原来关闭）；`AUTO`/`STANDARD` → `thinkingMode=DISABLED`（新默认）。迁移不阻塞保存、不清空地址/模型/密钥。
-- `ProviderProfile`/`resolvedProfile` 与 `ConversationCompatibility` 的运行时语义废止；保留枚举只为迁移读取，下一版本随投影与 UI 一并删除。
+- `ProviderProfile`/`resolvedProfile` 与 `ConversationCompatibility` 的运行时语义废止（不再参与思考判定）；但**本轮不删除字段**：`AiRoutes.kt:25` 与 `app/src/debug/.../RealAiConversationDeviceTest.kt` 仍引用 `resolvedProfile`/`compatibility`/`requestFlags`，删除动作推迟到 M1 收口后单独变更；`testDraft` 同样保留到 M1，届时改用 `testSlot` 并删除契约。
 - 持久化：连接 JSON 增 `thinkingMode`；`conversation` 块版本升为 2，读取 1 时按上表补默认值。
 
 ## 10. 错误语义
@@ -161,7 +161,7 @@
 | 11 | 脱敏与预算 | 摘要有参数无密钥；思考内容计入输出预算 |
 | 12 | ASR 不受影响 | 转写请求体与现状一致，不注入思考字段 |
 
-真实请求（发布前，最多两次）：Qwen 关闭态只读聊天 + 连接测试，核对请求参数与官方能力。其余厂商维持"已核实（文档+日期）、未实测"，MiMo/DeepSeek 的开启态各需一条真实请求后才可标"已实测"。
+真实请求（发布前）口径明确：**必做两次 Qwen**（关闭态只读聊天 + 连接测试）作为基线；MiMo、DeepSeek 若要标"已实测"，各自开启态再各做一条（合计最多 4 条）。未做真实验证的组合一律标"已核实（文档+日期）、未实测"，不得据文档写成已实测。
 
 ## 12. 代码落点
 
@@ -182,7 +182,7 @@
 | 装饰器 | `app/.../platform/ai/AndroidAudioTranscriber.kt:14-17` | 透传新签名，转写不读开关 |
 | 批次执行 | `backend/.../application/RecordingWorkflow.kt:40,42,73,88-100,104-114` | 批次开头取一次快照；被禁用时不发送并落固定错误 |
 | UI | `ui/.../feature/ai/AiSettingsScreen.kt`、`AiSettingsViewModel.kt`、`ui/.../feature/recording/RecordingScreens.kt` | 只放"思考模式"开关与原因说明；删除保存按钮与草稿态；错误文案接新码 |
-| 测试 | `app/src/test/.../platform/ai/`（`CompatibleAiClientTest`、`CompatibleConversationClientTest`、`AiSettingsServiceTest`、`AndroidRecordingStoreTest`、`ConversationProtocolTest`、`ConversationCompatibilityTest`、`ProviderProfileTest`）；`backend/src/test/.../`（`ConversationServiceTest`、`RecordingWorkflowTest`、`ToolRegistryTest`、`ToolOperationCoverageTest`、`DraftMergeTest`、`OperationScopePlannerTest`） | 按 §11 矩阵扩展；新增 `ThinkingPolicyMatrixTest`、`ThinkingPolicyResolverTest` |
+| 测试 | `app/src/test/.../platform/ai/`（实际存在：`CompatibleAiClientTest`、`AiSettingsServiceTest`、`AndroidRecordingStoreTest`、`ConversationProtocolTest`、`ConversationCompatibilityTest`、`ProviderProfileTest`、`ToolBusinessIntegrationTest`、`RecordingSnapshotSourceTest`）；`app/src/debug/.../RealAiConversationDeviceTest.kt`（引用 compatibility/resolvedProfile/requestFlags，需同步改）；`backend/src/test/.../`（`ConversationServiceTest`、`RecordingWorkflowTest`、`ToolRegistryTest`、`ToolOperationCoverageTest`、`DraftMergeTest`、`OperationScopePlannerTest`） | 按 §11 矩阵扩展；新增 `ThinkingPolicyMatrixTest`、`ThinkingPolicyResolverTest`；不存在的 `CompatibleConversationClientTest` 不写入计划 |
 
 `...` 代表各模块现有的 `src/main/kotlin/com/greatwall/callring` 包路径。
 
