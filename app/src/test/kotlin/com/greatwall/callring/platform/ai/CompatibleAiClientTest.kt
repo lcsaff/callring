@@ -192,4 +192,58 @@ class CompatibleAiClientTest {
             assertTrue(response.disconnected)
         } finally { audio.delete() }
     }
+    private val qwen = AiConnection(AiProtocol.OPENAI, "https://dashscope.aliyuncs.com/compatible-mode/v1", "secret-key", "qwen3.8-flash")
+    private val deepseekOpenAi = AiConnection(AiProtocol.OPENAI, "https://api.deepseek.com/v1", "secret-key", "deepseek-chat")
+    private val deepseekAnthropic = AiConnection(AiProtocol.ANTHROPIC, "https://api.deepseek.com/anthropic", "secret-key", "deepseek-chat")
+    private val mimoOpenAi = AiConnection(AiProtocol.OPENAI, "https://api.xiaomimimo.com/v1", "secret-key", "mimo-v2.6-flash")
+    private val mimoAnthropic = AiConnection(AiProtocol.ANTHROPIC, "https://api.xiaomimimo.com/anthropic/v1", "secret-key", "mimo-v2.6-pro")
+    private fun anthropicBody() = JSONObject().put("content", org.json.JSONArray().put(JSONObject().put("type", "text").put("text", analysis))).toString()
+
+    @Test fun analysisDisablesThinkingForEverySupportedComboAtHttpTopLevel() {
+        val unsupportedKeys = listOf("temperature", "top_p", "presence_penalty", "frequency_penalty")
+        listOf(qwen, deepseekOpenAi, deepseekAnthropic, mimoOpenAi, mimoAnthropic).forEach { connection ->
+            val response = Response(if (connection.protocol == AiProtocol.OPENAI) openAi(analysis) else anthropicBody())
+            CompatibleAiClient(openConnection = { response }).analyze(connection, "hello")
+            val request = JSONObject(response.sent.toString("UTF-8"))
+            if (connection == qwen) {
+                assertFalse(request.getBoolean("enable_thinking")); assertFalse(request.getBoolean("preserve_thinking"))
+            } else {
+                assertEquals("disabled", request.getJSONObject("thinking").getString("type"))
+                assertFalse(request.has("enable_thinking")); assertFalse(request.has("preserve_thinking"))
+            }
+            unsupportedKeys.forEach { assertFalse("unexpected $it in $request", request.has(it)) }
+        }
+    }
+
+    @Test fun analysisExplicitEnableOnUnrecognizedModelFailsWithoutNetwork() {
+        var opened = 0
+        val result = failure { CompatibleAiClient(openConnection = { opened++; Response(openAi(analysis)) }).analyze(config, "hello", ThinkingMode.ENABLED) }
+        assertEquals("ai.model_unrecognized", result.reason)
+        assertFalse(result.retryable)
+        assertEquals(0, opened)
+    }
+
+    @Test fun transcriptionRequestNeverContainsThinkingParameters() {
+        val file = File.createTempFile("speech", ".wav").apply { writeBytes(byteArrayOf(1, 2, 3)) }
+        try {
+            val response = Response("""{"text":"hello world"}""")
+            CompatibleAiClient(openConnection = { response }).transcribe(qwen, file)
+            val sent = response.sent.toString("UTF-8")
+            assertFalse(sent.contains("enable_thinking")); assertFalse(sent.contains("thinking")); assertFalse(sent.contains("preserve_thinking"))
+            assertTrue(sent.contains("name=\"model\"")); assertTrue(sent.contains("qwen3.8-flash"))
+            assertTrue(sent.contains("filename=\"recording.wav\""))
+        } finally { file.delete() }
+    }
+
+    @Test fun anthropicAnalysisAuthHeaderDependsOnVendorContract() {
+        val mimo = Response(anthropicBody())
+        CompatibleAiClient(openConnection = { mimo }).analyze(mimoAnthropic, "hello")
+        assertEquals("secret-key", mimo.getRequestProperty("api-key"))
+        assertNull(mimo.getRequestProperty("x-api-key"))
+
+        val deepseek = Response(anthropicBody())
+        CompatibleAiClient(openConnection = { deepseek }).analyze(deepseekAnthropic, "hello")
+        assertEquals("secret-key", deepseek.getRequestProperty("x-api-key"))
+        assertNull(deepseek.getRequestProperty("api-key"))
+    }
 }

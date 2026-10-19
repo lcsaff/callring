@@ -15,9 +15,14 @@ class ProviderProfileTest {
         assertFalse(json.getBoolean("enable_thinking")); assertFalse(json.getBoolean("preserve_thinking"))
         assertEquals(4096,json.getInt("max_tokens"))
     }
-    @Test fun arbitraryOpenAiAndSpoofedHostsNeverGetQwenExtensions() {
+    @Test fun spoofedAndProxyHostsAreNotOfficialButKeepTheDocumentedCloseParameters() {
         listOf("https://dashscope.aliyuncs.com.attacker.invalid/v1","https://proxy.example/v1").forEach { url ->
-            assertFalse(body(official.copy(url=url)).has("enable_thinking"))
+            val policy = ThinkingPolicyResolver.resolve(AiProtocol.OPENAI, url, official.model)
+            assertFalse(policy.officialHost)
+            assertEquals(ThinkingSupport.CUSTOM_GATEWAY, policy.support)
+            val json=body(official.copy(url=url))
+            assertTrue(json.has("enable_thinking"))
+            assertFalse(json.getBoolean("enable_thinking")); assertFalse(json.getBoolean("preserve_thinking"))
         }
         assertFalse(body(official.copy(model="another-model")).has("preserve_thinking"))
     }

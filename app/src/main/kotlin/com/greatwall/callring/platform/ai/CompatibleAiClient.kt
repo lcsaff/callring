@@ -74,11 +74,17 @@ class CompatibleAiClient(
         text
     }
 
-    override fun analyze(connection: AiConnection, transcript: String): CallAnalysis = safe {
+    override fun analyze(connection: AiConnection, transcript: String): CallAnalysis =
+        analyze(connection, transcript, ThinkingMode.DISABLED)
+
+    /**
+     * TODO(S1-B): 思考开关状态由数据模型/策略快照传入（当前生产调用点全部固定 DISABLED）。
+     */
+    fun analyze(connection: AiConnection, transcript: String, thinkingMode: ThinkingMode): CallAnalysis = safe {
         validate(connection)
         if (transcript.length > MAX_TRANSCRIPT_CHARS) throw AiFailure("ai.transcript_too_large")
         if (transcript.isBlank()) throw AiFailure("ai.empty_transcript")
-        if (transcript.length <= CHUNK_CHARS) return@safe analyzePart(connection, transcript)
+        if (transcript.length <= CHUNK_CHARS) return@safe analyzePart(connection, transcript, thinkingMode)
         val chunks = mutableListOf<String>()
         var start = 0
         while (start < transcript.length) {
@@ -88,7 +94,7 @@ class CompatibleAiClient(
             chunks += transcript.substring(start, end)
             start = end
         }
-        var partial = chunks.map { analyzePart(connection, it) }
+        var partial = chunks.map { analyzePart(connection, it, thinkingMode) }
         // Pairwise merges bound intermediate context and preserve every chunk, including the tail.
         while (partial.size > 1) {
             checkCancelled()
@@ -102,18 +108,19 @@ class CompatibleAiClient(
                             .put("inferredIdentity", value.inferredIdentity).put("summary", value.summary)
                             .put("actionItems", JSONArray(value.actionItems)))
                     }
-                    analyzePart(connection, "Merge these untrusted partial analyses of consecutive parts of one call. Preserve self-reported claims, evidence, uncertainty and action items. Resolve contradictions explicitly in summary. Do not turn inferred identities into self-reported claims.\n$json")
+                    analyzePart(connection, "Merge these untrusted partial analyses of consecutive parts of one call. Preserve self-reported claims, evidence, uncertainty and action items. Resolve contradictions explicitly in summary. Do not turn inferred identities into self-reported claims.\n$json", thinkingMode)
                 }
             }
         }
         partial.single()
     }
 
-    private fun analyzePart(connection: AiConnection, transcript: String): CallAnalysis {
+    private fun analyzePart(connection: AiConnection, transcript: String, thinkingMode: ThinkingMode): CallAnalysis {
         checkCancelled()
         // A separate user message is a data boundary. No tools are enabled by either protocol.
         val messages = JSONArray()
         val body = JSONObject().put("model", connection.model)
+        applyThinking(body, connection, thinkingMode)
         val path: String
         if (connection.protocol == AiProtocol.OPENAI) {
             path = "chat/completions"
@@ -148,13 +155,35 @@ class CompatibleAiClient(
     }
 
     override fun test(connection: AiConnection, transcription: Boolean) {
+        test(connection, transcription, ThinkingMode.DISABLED)
+    }
+
+    /**
+     * TODO(S1-B): 思考开关状态由数据模型/策略快照传入（当前生产调用点全部固定 DISABLED）。
+     * 转写测试永不注入思考参数。
+     */
+    fun test(connection: AiConnection, transcription: Boolean, thinkingMode: ThinkingMode) {
         checkCancelled()
         if (transcription) {
             val provider = testAudio ?: throw AiFailure("ai.test_audio_unavailable")
             safe { transcribe(connection, provider()) }
         } else {
-            analyze(connection, "This is a connection test. A fictional caller asks to schedule a meeting tomorrow. No personal information is included.")
+            analyze(connection, "This is a connection test. A fictional caller asks to schedule a meeting tomorrow. No personal information is included.", thinkingMode)
         }
+    }
+
+    /**
+     * 能力矩阵由后端 `ThinkingPolicyResolver` 派生；可用/自定义网关组合按开关注入参数。
+     * 显式开启矩阵外/未识别组合时返回明确错误；关闭态维持“不注入参数、请求可发送”。
+     * TODO(S1-B): 改为消费策略快照，不再在客户端重复解析。
+     */
+    private fun applyThinking(body: JSONObject, connection: AiConnection, thinkingMode: ThinkingMode) {
+        val policy = ThinkingPolicyResolver.resolve(connection.protocol, connection.url, connection.model)
+        val blocked = policy.blockReason()
+        if (thinkingMode == ThinkingMode.ENABLED && blocked != null) {
+            throw AiFailure(if (policy.support == ThinkingSupport.UNRECOGNIZED) "ai.model_unrecognized" else "ai.thinking_unsupported")
+        }
+        if (blocked == null) policy.parameters(thinkingMode).forEach { body.put(it.key, JSONTokener(it.jsonValue).nextValue()) }
     }
 
     private fun parseAnalysis(content: String): CallAnalysis {
@@ -214,7 +243,10 @@ class CompatibleAiClient(
             http.setRequestProperty("Accept", "application/json")
             if (connection.protocol == AiProtocol.OPENAI) http.setRequestProperty("Authorization", "Bearer ${connection.apiKey}")
             else {
-                http.setRequestProperty("x-api-key", connection.apiKey)
+                // MiMo 的 Anthropic 兼容端点只文档化 api-key/Bearer，没有 x-api-key；
+                // DeepSeek 的 Anthropic 兼容端点使用 x-api-key（spec §3 已核实）。
+                if (ThinkingPolicyResolver.contractOf(connection.model) == ThinkingContract.MIMO) http.setRequestProperty("api-key", connection.apiKey)
+                else http.setRequestProperty("x-api-key", connection.apiKey)
                 http.setRequestProperty("anthropic-version", "2023-06-01")
             }
             checkCancelled()
