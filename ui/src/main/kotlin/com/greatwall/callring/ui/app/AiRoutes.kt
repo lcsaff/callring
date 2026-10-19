@@ -23,8 +23,9 @@ import com.greatwall.callring.ui.feature.conversation.*
     val model: ConversationViewModel = uiViewModel { ConversationViewModel(api) }
     val state by model.state.collectAsStateWithLifecycle(); val input by model.input.collectAsStateWithLifecycle()
     val error by model.localError.collectAsStateWithLifecycle(); val displayed by model.destination.collectAsStateWithLifecycle()
+    val connected by model.connected.collectAsStateWithLifecycle()
     val renderedTarget = displayed
     val target = renderedTarget?.let { "${it.protocol} · ${it.url} · ${it.model} · ${it.resolvedProfile}" }.orEmpty()
     // Capture the same view used by this composition, never a newer unrendered VM value.
-    ConversationScreen(state,input,target,error,{ model.input.value = it },{ model.send(renderedTarget) },model::stop,model::newSession,{task->model.continueTask(task,renderedTarget)},onOpenSettings)
+    ConversationScreen(state,input,target,error,{ model.input.value = it },{ model.send(renderedTarget) },model::stop,model::newSession,{task->model.continueTask(task,renderedTarget)},onOpenSettings,connected)
 }

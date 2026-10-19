@@ -31,10 +31,10 @@ class ConversationProgressReviewTest {
         val state=mutableStateOf(ConversationState("s",messages=(1..35).map{ConversationMessage("assistant","Older result $it\n\nBody $it")}))
         compose.setContent{MaterialTheme{ConversationScreen(state.value,"","configured",null,{},{},{},{})}}
         repeat(3){compose.onNodeWithTag("conversation-messages").performTouchInput{swipeDown()}}
-        compose.onNodeWithText("回到最新").assertIsDisplayed()
+        compose.onNodeWithContentDescription("回到最新").assertIsDisplayed()
         compose.runOnIdle{state.value=state.value.copy(messages=state.value.messages+ConversationMessage("assistant","NEWEST-WHILE-READING"),phase=ConversationPhase.STOPPED)}
         compose.onNodeWithText("NEWEST-WHILE-READING").assertIsNotDisplayed()
-        compose.onNodeWithText("回到最新").performClick()
+        compose.onNodeWithContentDescription("回到最新").performClick()
         compose.onNodeWithText("NEWEST-WHILE-READING").assertIsDisplayed()
     }
     @Test fun conversationShowsNoServiceLabelAndNeverLeaksFullTarget(){
@@ -43,7 +43,7 @@ class ConversationProgressReviewTest {
         compose.onNodeWithText(target.value).assertDoesNotExist()
         compose.onNodeWithText("服务：").assertDoesNotExist()
         compose.onNodeWithContentDescription("AI 设置").assertExists()
-        compose.onNodeWithTag("ai-ready-dot").assertContentDescriptionEquals("就绪")
+        compose.onNodeWithTag("ai-ready-dot").assertContentDescriptionEquals("已连接")
         compose.runOnIdle{target.value="OPENAI · https://two.example/other · second · STANDARD"}
         compose.onNodeWithText(target.value).assertDoesNotExist()
         compose.onNodeWithContentDescription("发送消息").assertIsEnabled()

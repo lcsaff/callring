@@ -10,6 +10,7 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.ui.Alignment
@@ -41,16 +42,27 @@ class ConversationViewModel(private val api: CallringUiApi, testScope: Coroutine
     val input = MutableStateFlow("")
     val localError = MutableStateFlow<ApiError?>(null)
     val destination = MutableStateFlow<AiConnectionView?>(null)
-    init { scope.launch { api.changes.observe().collect { when(val result = api.aiSettings.getAiView()) {
-        is ApiResult.Success -> destination.value = result.value.analysis
-        is ApiResult.Failure -> { destination.value = null; localError.value = result.error }
-    } } } }
-    fun send(disclosed: AiConnectionView?) { val text = input.value; disclosed ?: return; scope.launch { when(val result = api.conversation.sendTo(state.value.sessionId,text,disclosed)) { is ApiResult.Success -> { input.value = ""; localError.value = null }; is ApiResult.Failure -> localError.value = result.error } } }
+    /** 最近一次连接校验结果；true=绿点，false=红点，直到下次状态变化重新校验。 */
+    val connected = MutableStateFlow(false)
+    init {
+        scope.launch { verifyConnection() }
+        scope.launch { api.changes.observe().collect { change ->
+            when(val result = api.aiSettings.getAiView()) {
+                is ApiResult.Success -> destination.value = result.value.analysis
+                is ApiResult.Failure -> { destination.value = null; localError.value = result.error }
+            }
+            if (change.affects(setOf(DataDomain.AI_SETTINGS), null)) verifyConnection()
+        } }
+    }
+    private suspend fun verifyConnection() {
+        connected.value = api.aiSettings.testSlot(AiSlot.ANALYSIS) is ApiResult.Success
+    }
+    fun send(disclosed: AiConnectionView?) { val text = input.value; disclosed ?: return; scope.launch { when(val result = api.conversation.sendTo(state.value.sessionId,text,disclosed)) { is ApiResult.Success -> { input.value = ""; localError.value = null; connected.value = true }; is ApiResult.Failure -> localError.value = result.error } } }
     fun continueTask(taskId:String,disclosed:AiConnectionView?) { disclosed?:return;scope.launch { when(val result=api.conversation.continueTask(state.value.sessionId,taskId,disclosed)){is ApiResult.Success->localError.value=null;is ApiResult.Failure->localError.value=result.error} } }
     fun stop() { scope.launch { api.conversation.stop(state.value.sessionId) } }
     fun newSession() { scope.launch { api.conversation.newSession(state.value.sessionId) } }
 }
-@Composable fun ConversationScreen(state:ConversationState,input:String,target:String,localError:ApiError?,onInput:(String)->Unit,onSend:()->Unit,onStop:()->Unit,onNew:()->Unit,onContinue:(String)->Unit={},onOpenSettings:()->Unit={}) {
+@Composable fun ConversationScreen(state:ConversationState,input:String,target:String,localError:ApiError?,onInput:(String)->Unit,onSend:()->Unit,onStop:()->Unit,onNew:()->Unit,onContinue:(String)->Unit={},onOpenSettings:()->Unit={},connected:Boolean=true) {
     var confirmNew by remember{mutableStateOf(false)}
     val listState=rememberLazyListState()
     var readingHistory by remember(state.sessionId){mutableStateOf(false)}
@@ -69,18 +81,17 @@ class ConversationViewModel(private val api: CallringUiApi, testScope: Coroutine
     }
     LaunchedEffect(state.sessionId,state.messages,state.receipts,state.phase,readingHistory){if(!readingHistory){withFrameNanos{};listState.scrollToItem(latestIndex)}}
     fun send(){readingHistory=false;onSend()}
-    val ready = state.phase==ConversationPhase.IDLE && target.isNotBlank()
+    val ready = connected
     ScreenFrame("AI 沟通", compactTitle = true, actions = {
         IconButton(onClick={confirmNew=true}){Icon(Icons.Filled.Add,contentDescription="新对话")}
         Box {
             IconButton(onClick=onOpenSettings,modifier=Modifier.semantics{contentDescription="AI 设置"}){Icon(Icons.Filled.Settings,contentDescription=null)}
-            // 就绪即绿点、未就绪即红点，与设置图标合并显示。
+            // 连接校验通过即绿点、失败即红点，直到下次校验状态改变。
             Box(Modifier.align(Alignment.TopEnd).padding(top=10.dp,end=10.dp).size(9.dp).clip(CircleShape).background(if(ready) Color(0xFF2E7D32) else MaterialTheme.colorScheme.error)
-                .testTag("ai-ready-dot").semantics{contentDescription=if(ready)"就绪" else "未就绪"})
+                .testTag("ai-ready-dot").semantics{contentDescription=if(ready)"已连接" else "未连接"})
         }
     }) {
         Column(Modifier.fillMaxSize(),verticalArrangement=Arrangement.spacedBy(8.dp)) {
-            if(state.phase!=ConversationPhase.IDLE) Text(phaseLabel(state.phase),style=MaterialTheme.typography.labelLarge)
             (state.error?:localError)?.let{Text(aiErrorText(it),color=MaterialTheme.colorScheme.error)}
             LazyColumn(Modifier.weight(1f).fillMaxWidth().testTag("conversation-messages").nestedScroll(historyScroll),state=listState,verticalArrangement=Arrangement.spacedBy(12.dp)) {
                 state.messages.forEachIndexed{index,message->
@@ -98,14 +109,20 @@ class ConversationViewModel(private val api: CallringUiApi, testScope: Coroutine
                 if(finalIndex==null&&additional.isNotEmpty())item(key="current-results"){ReceiptGroup(additional){readingHistory=true}}
                 item(key="latest"){Spacer(Modifier.height(1.dp))}
             }
-            if(readingHistory&&listState.canScrollForward)TextButton(onClick={readingHistory=false}){Text("回到最新")}
-            if(state.busy)Row(verticalAlignment=Alignment.CenterVertically){LinearProgressIndicator(Modifier.weight(1f));TextButton(onClick=onStop){Text("停止")}}
+            if(readingHistory&&listState.canScrollForward)IconButton(onClick={readingHistory=false},modifier=Modifier.align(Alignment.CenterHorizontally).testTag("jump-to-latest").semantics{contentDescription="回到最新"}){Icon(Icons.Filled.KeyboardArrowDown,null,Modifier.size(24.dp))}
             if(!state.busy)state.continuableTasks.firstOrNull()?.let{task->OutlinedButton(onClick={onContinue(task)},enabled=target.isNotBlank()){Text("继续未完成任务")}}
             val canSend=!state.busy&&input.isNotBlank()&&target.isNotBlank()
             Surface(Modifier.fillMaxWidth().testTag("conversation-input"),shape=RoundedCornerShape(20.dp),border=BorderStroke(1.dp,MaterialTheme.colorScheme.outline),color=MaterialTheme.colorScheme.surface) {
-                Box(Modifier.fillMaxWidth().heightIn(min=112.dp)) {
-                    BasicTextField(value=input,onValueChange=onInput,enabled=!state.busy,maxLines=4,textStyle=MaterialTheme.typography.bodyLarge.copy(color=MaterialTheme.colorScheme.onSurface),keyboardOptions=KeyboardOptions(imeAction=ImeAction.Send),keyboardActions=KeyboardActions(onSend={if(canSend)send()}),modifier=Modifier.fillMaxWidth().heightIn(min=100.dp,max=220.dp).padding(start=16.dp,end=16.dp,top=14.dp,bottom=52.dp),decorationBox={inner->if(input.isEmpty())Text("说说你想了解或处理什么",color=MaterialTheme.colorScheme.onSurfaceVariant);inner()})
-                    IconButton(onClick=::send,enabled=canSend,modifier=Modifier.align(Alignment.BottomEnd).padding(4.dp).size(48.dp).semantics{contentDescription="发送消息"}){Icon(Icons.AutoMirrored.Filled.Send,null,Modifier.size(18.dp).testTag("send-glyph"))}
+                Column(Modifier.fillMaxWidth()) {
+                    // 回复状态只显示在回复框内；回复出现后（busy=false）状态消失。
+                    if(state.busy)Row(Modifier.fillMaxWidth().padding(start=16.dp,end=8.dp,top=6.dp),verticalAlignment=Alignment.CenterVertically) {
+                        Text(phaseLabel(state.phase),style=MaterialTheme.typography.labelSmall,color=MaterialTheme.colorScheme.onSurfaceVariant,modifier=Modifier.weight(1f))
+                        TextButton(onClick=onStop,contentPadding=PaddingValues(horizontal=8.dp,vertical=0.dp),modifier=Modifier.heightIn(min=32.dp)){Text("停止",style=MaterialTheme.typography.labelMedium)}
+                    }
+                    Box(Modifier.fillMaxWidth().heightIn(min=if(state.busy)84.dp else 112.dp)) {
+                        BasicTextField(value=input,onValueChange=onInput,enabled=!state.busy,maxLines=4,textStyle=MaterialTheme.typography.bodyLarge.copy(color=MaterialTheme.colorScheme.onSurface),keyboardOptions=KeyboardOptions(imeAction=ImeAction.Send),keyboardActions=KeyboardActions(onSend={if(canSend)send()}),modifier=Modifier.fillMaxWidth().heightIn(min=if(state.busy)72.dp else 100.dp,max=220.dp).padding(start=16.dp,end=16.dp,top=14.dp,bottom=52.dp),decorationBox={inner->if(input.isEmpty())Text("说说你想了解或处理什么",color=MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha=0.55f));inner()})
+                        IconButton(onClick=::send,enabled=canSend,modifier=Modifier.align(Alignment.BottomEnd).padding(4.dp).size(48.dp).semantics{contentDescription="发送消息"}){Icon(Icons.AutoMirrored.Filled.Send,null,Modifier.size(18.dp).testTag("send-glyph"))}
+                    }
                 }
             }
         }
@@ -116,7 +133,7 @@ class ConversationViewModel(private val api: CallringUiApi, testScope: Coroutine
     val verified=receipts.filter{it.verification==VerificationStatus.VERIFIED&&it.error==null}
     var expanded by remember(verified.map{it.operationId}){mutableStateOf(false)}
     if(verified.isNotEmpty()){
-        TextButton(onClick={if(!expanded)onExpand();expanded=!expanded}){Text(if(expanded)"收起已核验操作"else"查看 ${verified.size} 项已核验操作")}
+        TextButton(onClick={if(!expanded)onExpand();expanded=!expanded},contentPadding=PaddingValues(horizontal=8.dp,vertical=0.dp),modifier=Modifier.heightIn(min=32.dp)){Text(if(expanded)"收起已核验操作"else"查看 ${verified.size} 项已核验操作",style=MaterialTheme.typography.labelLarge)}
         if(expanded)verified.forEach{ReceiptCard(it)}
     }
     receipts.filter{it !in verified}.forEach{ReceiptCard(it)}

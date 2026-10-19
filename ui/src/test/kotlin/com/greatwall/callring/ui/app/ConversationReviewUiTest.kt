@@ -15,23 +15,16 @@ import org.robolectric.annotation.Config
 @Config(sdk = [35])
 class ConversationReviewUiTest {
     @get:Rule val compose = createComposeRule()
-    @Test fun conversationHasNoServiceLabelAndReadyDotTracksPhase() {
-        val state = mutableStateOf(ConversationState("s",ConversationPhase.STOPPED,target = "old-host · old-model"))
-        val target = mutableStateOf("new-host · new-model")
-        compose.setContent { ConversationScreen(state.value,"next",target.value,null,{},{},{},{}) }
+    @Test fun conversationHasNoServiceLabelAndDotTracksConnection() {
+        val connected = mutableStateOf(true)
+        compose.setContent { ConversationScreen(ConversationState("s"),"next","new-host · new-model",null,{},{},{},{},connected = connected.value) }
         compose.onNodeWithText("服务：new-host · new-model").assertDoesNotExist()
         compose.onNodeWithText("服务：old-host · old-model").assertDoesNotExist()
         compose.onNodeWithContentDescription("AI 设置").assertExists()
-        listOf(ConversationPhase.STOPPED,ConversationPhase.COMPLETED,ConversationPhase.FAILED).forEach { phase ->
-            compose.runOnIdle { state.value = state.value.copy(phase = phase) }
-            compose.onNodeWithTag("ai-ready-dot").assertExists().assertContentDescriptionEquals("未就绪")
-        }
-        compose.runOnIdle { state.value = state.value.copy(phase = ConversationPhase.IDLE) }
-        compose.onNodeWithTag("ai-ready-dot").assertContentDescriptionEquals("就绪")
-        compose.onNodeWithText("准备就绪").assertDoesNotExist()
-        compose.runOnIdle { target.value = "" }
-        compose.onNodeWithTag("ai-ready-dot").assertContentDescriptionEquals("未就绪")
-        compose.onNodeWithContentDescription("发送消息").assertIsNotEnabled()
+        compose.onNodeWithTag("ai-ready-dot").assertContentDescriptionEquals("已连接")
+        compose.runOnIdle { connected.value = false }
+        compose.onNodeWithTag("ai-ready-dot").assertContentDescriptionEquals("未连接")
+        compose.onNodeWithTag("ai-ready-dot").assertExists()
     }
     @Test fun toolBatchNarrationCannotMasqueradeAsVerifiedFinalText() {
         val state = mutableStateOf(ConversationState("s"))
