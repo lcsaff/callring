@@ -27,8 +27,8 @@ interface ConversationApi {
     val state: StateFlow<ConversationState>
     val foreground: ForegroundActionApi
     suspend fun send(expectedSessionId: String, text: String): ApiResult<Unit>
-    suspend fun sendTo(expectedSessionId: String, text: String, disclosedTarget: AiConnectionView): ApiResult<Unit> = aiUnavailable()
-    suspend fun continueTask(expectedSessionId:String,taskId:String,disclosedTarget:AiConnectionView):ApiResult<Unit> = aiUnavailable()
+    suspend fun sendTo(expectedSessionId: String, text: String, disclosedTarget: AiConnectionView): ApiResult<Unit>
+    suspend fun continueTask(expectedSessionId:String,taskId:String,disclosedTarget:AiConnectionView):ApiResult<Unit>
     suspend fun stop(expectedSessionId: String): ApiResult<Unit>
     suspend fun newSession(expectedSessionId: String): ApiResult<Unit>
 }

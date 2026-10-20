@@ -1,5 +1,13 @@
 package com.greatwall.callring.ui.feature.callers
 
+import com.greatwall.callring.contracts.ai.*
+import com.greatwall.callring.contracts.callers.*
+import com.greatwall.callring.contracts.command.*
+import com.greatwall.callring.contracts.common.*
+import com.greatwall.callring.contracts.settings.*
+import com.greatwall.callring.contracts.widget.*
+import com.greatwall.callring.contracts.recording.*
+
 import androidx.lifecycle.SavedStateHandle
 import com.greatwall.callring.contracts.callers.*
 import com.greatwall.callring.contracts.change.*
@@ -13,6 +21,10 @@ import org.junit.Test
 @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
 class CallerEditorViewModelTest {
     private class CallersFake : CallersApi {
+    override suspend fun getCallDetail(callId: Long): ApiResult<CallDetail> = throw AssertionError("Unexpected fixture operation: getCallDetail")
+    override suspend fun numberDataImpact(number: String): ApiResult<NumberCoreImpact> = throw AssertionError("Unexpected fixture operation: numberDataImpact")
+    override suspend fun deleteNumberCore(number: String, expectedCallCount: Int): ApiResult<Unit> = throw AssertionError("Unexpected fixture operation: deleteNumberCore")
+
         var editor =
             CallerEditorData(CallerDraft("100", "已保存", "研发", null, false), emptyList(), null)
         var gate: kotlinx.coroutines.CompletableDeferred<CallerProfile>? = null

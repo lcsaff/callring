@@ -21,7 +21,7 @@ class ForegroundActionHostTest {
         val bridge = object : ForegroundActionApi by foreground {
             override fun beginLaunch(requestId: String, token: String) = foreground.beginLaunch(requestId,token).also { if(it) launches++ }
         }
-        val api = object : UiFakeApi() { override val conversation = object : ConversationApi by UnavailableConversationApi { override val foreground = bridge } }
+        val api = object : UiFakeApi() { override val conversation = object : ConversationApi by FixtureConversationApi { override val foreground = bridge } }
         val result = async { foreground.request() }
         yield()
         val first = Robolectric.buildActivity(ComponentActivity::class.java).setup()

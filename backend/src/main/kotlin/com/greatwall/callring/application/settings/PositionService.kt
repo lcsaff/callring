@@ -1,5 +1,7 @@
 package com.greatwall.callring.application.settings
 
+import com.greatwall.callring.application.coordination.requireOperationActive
+
 import com.greatwall.callring.application.BusinessRevisionCoordinator
 import com.greatwall.callring.application.frozenList
 import com.greatwall.callring.application.coordination.*
@@ -13,10 +15,12 @@ import kotlinx.coroutines.*
 
 internal class PositionService(private val transactions: PositionTransactions,
     private val coordinator: BusinessRevisionCoordinator, dispatcher: CoroutineDispatcher,
-    private val command: CommandContext? = null) {
+    private val command: CommandContext? = null,
+    private val operationActive: () -> Boolean,
+) {
     private val runner = UseCaseRunner(dispatcher)
-    private val committer = CommandCommitter(coordinator)
-    suspend fun get() = runner.io { transactions.readPositions { settings(it) } }
+    private val committer = CommandCommitter(coordinator, operationActive)
+    suspend fun get() = runner.io { requireOperationActive(operationActive); transactions.readPositions { settings(it) } }
     suspend fun save(value: SavePosition): ApiResult<PositionOption> {
         currentCoroutineContext().ensureActive()
         if (value.name.trim().isEmpty()) return ApiResult.Failure(ApiError(ErrorCode.VALIDATION, "name.required", mapOf("name" to "name.required")))
@@ -24,7 +28,7 @@ internal class PositionService(private val transactions: PositionTransactions,
         return saveMerged(null, value, false)
     }
     suspend fun edit(base: SavePosition?, value: SavePosition) = saveMerged(base, value, true)
-    private suspend fun saveMerged(base: SavePosition?, value: SavePosition, draft: Boolean) = runner.write {
+    private suspend fun saveMerged(base: SavePosition?, value: SavePosition, draft: Boolean) = runner.write { requireOperationActive(operationActive);
         committer.commit(command, {
             transactions.writePositions { writer ->
                 if (draft && base == null && value.id != null) settingFailure(ErrorCode.VALIDATION, "draft.baseline_required", "id")
@@ -54,7 +58,7 @@ internal class PositionService(private val transactions: PositionTransactions,
             }
         }) {}
     }
-    suspend fun delete(id: Long) = runner.write {
+    suspend fun delete(id: Long) = runner.write { requireOperationActive(operationActive);
         committer.commit(command, {
             transactions.writePositions { writer ->
                 if (writer.position(id) == null) settingFailure(ErrorCode.NOT_FOUND, "position.not_found")
@@ -64,7 +68,7 @@ internal class PositionService(private val transactions: PositionTransactions,
             }
         }) {}
     }
-    suspend fun mine(id: Long?) = runner.write {
+    suspend fun mine(id: Long?) = runner.write { requireOperationActive(operationActive);
         committer.commit(command, {
             transactions.writePositions { writer ->
                 val old = writer.myPositionId()

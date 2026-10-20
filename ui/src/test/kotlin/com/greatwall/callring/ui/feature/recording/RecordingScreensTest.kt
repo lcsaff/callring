@@ -26,7 +26,7 @@ class RecordingScreensTest {
         val api = object : com.greatwall.callring.ui.testing.UiFakeApi() {
             override val callers: CallersApi get() = error("Archive list must not access caller statistics")
             override val reports: ReportsApi get() = error("Archive list must not access reports")
-            override val recordings = object : RecordingApi by UnavailableRecordingApi {
+            override val recordings = object : RecordingApi by FixtureRecordingApi {
                 override suspend fun listArchives() = ApiResult.Success(listOf(archive))
             }
         }
@@ -59,7 +59,7 @@ class RecordingScreensTest {
         var requestedId: Long? = null
         val api = object : com.greatwall.callring.ui.testing.UiFakeApi() {
             override val reports: ReportsApi get() = error("Recording navigation must not access reports")
-            override val recordings = object : RecordingApi by UnavailableRecordingApi {
+            override val recordings = object : RecordingApi by FixtureRecordingApi {
                 override suspend fun listArchives() = ApiResult.Success(listOf(archive))
                 override suspend fun getArchive(callId: Long): ApiResult<CallArchive?> {
                     requestedId = callId

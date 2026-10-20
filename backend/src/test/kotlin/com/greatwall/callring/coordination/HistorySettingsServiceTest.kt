@@ -31,7 +31,7 @@ class HistorySettingsServiceTest {
             })
         }
     }
-    /** These services instantiate with work-only facts: no BackendContext/BackendState or general store. */
+    /** These services instantiate with work-only facts: no broad application context, full state or general store. */
     private class History : CalendarTransactions, LeaveTransactions {
         var state=WorkHistory(listOf(defaultWorkSchedule()),emptyMap(),emptyMap(),emptySet(),emptyMap(),emptyMap(),0)
         var audits=listOf<AuditRecord>()
@@ -76,7 +76,7 @@ class HistorySettingsServiceTest {
     private fun imported(version: String="v1", published: String="2026-01-01")=CalendarImport(com.greatwall.callring.domain.model.CalendarYear(2026,"feed",published,version),mapOf(LocalDate.of(2026,1,1) to "holiday"),emptySet())
     private fun calendar(tx: History, coordinator: BusinessRevisionCoordinator, source: CalendarSource=CalendarSource { imported() },
         docs: CalendarDocumentReader=CalendarDocumentReader { imported() }, command: CommandContext?=null, after: (WorkHistory)->Unit={})=
-        CalendarService(tx,coordinator,Dispatchers.Unconfined,clock,source,docs,after,command)
+        CalendarService(tx,coordinator,Dispatchers.Unconfined,clock,source,docs,after,command, operationActive = { true })
     private fun <T> ApiResult<T>.value()=(this as ApiResult.Success).value
     @Test fun sameSourceVersionIgnoresFetchedPublicationDateBeforeValidatingFinalMetadata()=runBlocking {
         val tx=History(); val c=BusinessRevisionCoordinator(); var fetched=imported()
@@ -89,7 +89,7 @@ class HistorySettingsServiceTest {
     }
     @Test fun workEmptyHistoryKeepsZeroEffectiveAndDirtyMergeUsesFinalCurrentFields()=runBlocking {
         val tx=Work(); val c=BusinessRevisionCoordinator()
-        val service=WorkScheduleService(tx,c,Dispatchers.Unconfined,Clock.fixed(Instant.ofEpochMilli(-1),ZoneOffset.UTC),{})
+        val service=WorkScheduleService(tx,c,Dispatchers.Unconfined,Clock.fixed(Instant.ofEpochMilli(-1),ZoneOffset.UTC),{}, operationActive = { true })
         val base=service.get().value()
         val first=service.save(SaveWorkSchedule("UTC",emptyMap(),base.makeup)).value()
         assertEquals(0,first.effectiveFromEpochMillis)
@@ -137,7 +137,7 @@ class HistorySettingsServiceTest {
     }
     @Test fun leaveDirtyMergePreservesConcurrentPeriodDeletedDraftFailsAndOnlyNoteChangesVersion()=runBlocking {
         val tx=History(); val c=BusinessRevisionCoordinator(); var patches=0
-        val service=LeaveService(tx,c,Dispatchers.Unconfined,clock,{ patches++ })
+        val service=LeaveService(tx,c,Dispatchers.Unconfined,clock,{ patches++ }, operationActive = { true })
         val saved=service.save(SaveLeave(period=LeavePeriod.Timed(1,2),note="a")).value()
         val base=SaveLeave(saved.id,LeavePeriod.Timed(1,2),"a")
         service.save(base.copy(period=LeavePeriod.Timed(3,4))).value()

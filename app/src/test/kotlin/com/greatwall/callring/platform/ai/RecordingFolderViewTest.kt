@@ -44,7 +44,7 @@ class RecordingFolderViewTest {
         val coordinator = BusinessRevisionCoordinator()
         val cipher = object : RecordingCipher { override fun encrypt(value: String) = value; override fun decrypt(value: String) = value }
         val store = AndroidRecordingStore(context,"folder_view",cipher, recordingVersion = { coordinator.capture().values.getValue("recording") })
-        val service = AiSettingsService(store,coordinator,{ true },{ _,_ -> },folderView = source::describe)
+        val service = AiSettingsService(store,coordinator,{ true },{ _,_ -> },folderView = source::describe, operationActive = { true })
         fun <T> ApiResult<T>.value() = (this as ApiResult.Success).value
         assertEquals(AccessState.NOT_REQUIRED,service.getRecordingView().value().folderAccess)
         store.persistSettings(RecordingSettings(systemFolder = "content://folder-fixture/tree/first"))

@@ -37,7 +37,7 @@ class SmallServiceCapabilitiesTest {
             }
             override fun removeBinding(widgetId: Int) { rows.remove(widgetId) }
         }
-        val service = WidgetBindingsService(store, { installedReads++; WidgetInstallState(listOf(7), AccessState.GRANTED) }, coordinator, Dispatchers.Unconfined)
+        val service = WidgetBindingsService(store, { installedReads++; WidgetInstallState(listOf(7), AccessState.GRANTED) }, coordinator, Dispatchers.Unconfined, operationActive = { true })
         service.saveBinding(7, "30001").ok()
         service.saveBinding(7, "30001").ok()
         service.removeBinding(8).ok()
@@ -63,7 +63,7 @@ class SmallServiceCapabilitiesTest {
                 order += "schedule"
                 assertEquals(42L, atEpochMillis)
                 return SyncRequestReceipt(SyncRequestState.QUEUED, atEpochMillis)
-            } }, Clock.fixed(Instant.ofEpochMilli(42), ZoneOffset.UTC), Dispatchers.Unconfined, coordinator)
+            } }, Clock.fixed(Instant.ofEpochMilli(42), ZoneOffset.UTC), Dispatchers.Unconfined, coordinator, operationActive = { true })
         val stopped = CommandContext("stopped", coordinator.capture(), 1) { order += "guard"; false }
         assertEquals(ErrorCode.CONFLICT, service.bound(stopped).requestCallLogSync().error().code)
         assertEquals(listOf("guard"), order)
@@ -112,7 +112,7 @@ class SmallServiceCapabilitiesTest {
         val coordinator = BusinessRevisionCoordinator()
         val audio = Audio()
         audio.duringPrepare = { assertFalse(Thread.holdsLock(coordinator.fence)) }
-        val service = RingtoneService(audio, { status() }, coordinator, Dispatchers.Unconfined)
+        val service = RingtoneService(audio, { status() }, coordinator, Dispatchers.Unconfined, operationActive = { true })
         service.importAudio(DocumentRef("fixture")).ok()
         service.importAudio(DocumentRef("fixture")).ok()
         assertEquals(2L, coordinator.marker())
@@ -133,21 +133,60 @@ class SmallServiceCapabilitiesTest {
         val coordinator = BusinessRevisionCoordinator()
         val audio = Audio()
         var active = true
-        val service = RingtoneService(audio, { status() }, coordinator, Dispatchers.Unconfined)
+        val service = RingtoneService(audio, { status() }, coordinator, Dispatchers.Unconfined, operationActive = { true })
         val command = CommandContext("import", coordinator.capture(), 1) { active }
         audio.duringPrepare = { active = false }
         assertEquals(ErrorCode.CONFLICT, service.bound(command).importAudio(DocumentRef("fixture")).error().code)
         assertEquals(0, audio.commits)
         assertEquals(1, audio.closes)
         assertEquals(0L, coordinator.marker())
-        val denied = RingtoneService(audio, { status(AccessState.DENIED) }, coordinator, Dispatchers.Unconfined)
+        val denied = RingtoneService(audio, { status(AccessState.DENIED) }, coordinator, Dispatchers.Unconfined, operationActive = { true })
         assertEquals(ErrorCode.PERMISSION_REQUIRED, denied.startPreview().error().code)
-        val phone = RingtoneService(audio, { status(phone = PhoneActivity.RINGING) }, coordinator, Dispatchers.Unconfined)
+        val phone = RingtoneService(audio, { status(phone = PhoneActivity.RINGING) }, coordinator, Dispatchers.Unconfined, operationActive = { true })
         assertEquals("audio.phone_active", phone.startPreview().error().message)
-        val inaudible = RingtoneService(audio, { status(audible = Audibility.SILENT) }, coordinator, Dispatchers.Unconfined)
+        val inaudible = RingtoneService(audio, { status(audible = Audibility.SILENT) }, coordinator, Dispatchers.Unconfined, operationActive = { true })
         assertEquals("audio.system_inaudible", inaudible.startPreview().error().message)
         service.startPreview().ok()
         service.stopPlayback().ok()
         assertEquals(0L, coordinator.marker())
     }
+    @Test fun closingOwnerOrCancellingCommandDuringRuntimeProbeCannotSchedule() = runBlocking {
+        for (change in listOf("owner", "cancelled", "foreground", "scope")) {
+            val coordinator = BusinessRevisionCoordinator()
+            var ownerActive = true
+            var commandActive = true
+            var foreground = true
+            var schedules = 0
+            val entered = java.util.concurrent.CountDownLatch(1)
+            val release = java.util.concurrent.CountDownLatch(1)
+            val command = com.greatwall.callring.contracts.command.CommandContext("runtime-probe", coordinator.capture(), 0,
+                mayCommit = { foreground }, expectedScopes = coordinator.expect(setOf("runtime")), active = { commandActive })
+            val runtime = RuntimeService({
+                assertFalse(Thread.holdsLock(coordinator.fence))
+                entered.countDown()
+                check(release.await(5, java.util.concurrent.TimeUnit.SECONDS))
+                RuntimeStatus(Capability.entries.associateWith { AccessState.GRANTED }, Audibility.AUDIBLE,
+                    PhoneActivity.IDLE, PlaybackStatus(PlaybackMode.NONE, PlaybackState.IDLE), true, 0)
+            }, { emptyList() }, object : SyncScheduler {
+                override fun requestSync(atEpochMillis: Long): SyncRequestReceipt {
+                    schedules++
+                    return SyncRequestReceipt(SyncRequestState.QUEUED, atEpochMillis)
+                }
+            }, Clock.systemUTC(), Dispatchers.IO, coordinator, command, operationActive = { ownerActive })
+            val result = async(Dispatchers.Default) { runtime.requestCallLogSync() }
+            try {
+                assertTrue(entered.await(5, java.util.concurrent.TimeUnit.SECONDS))
+                when (change) {
+                    "owner" -> ownerActive = false
+                    "cancelled" -> commandActive = false
+                    "foreground" -> foreground = false
+                    else -> coordinator.publishRuntime(setOf("runtime"))
+                }
+                release.countDown()
+                assertTrue(result.await() is ApiResult.Failure)
+                assertEquals(0, schedules)
+            } finally { release.countDown() }
+        }
+    }
+
 }

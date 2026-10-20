@@ -1,5 +1,13 @@
 package com.greatwall.callring.platform.ai
 
+import com.greatwall.callring.contracts.ai.*
+import com.greatwall.callring.contracts.callers.*
+import com.greatwall.callring.contracts.command.*
+import com.greatwall.callring.contracts.common.*
+import com.greatwall.callring.contracts.settings.*
+import com.greatwall.callring.contracts.widget.*
+import com.greatwall.callring.contracts.recording.*
+
 import com.greatwall.callring.bootstrap.RecordingAssembly
 import com.greatwall.callring.data.codec.parseAiJson
 
@@ -9,15 +17,8 @@ import android.database.*
 import android.net.Uri
 import android.os.ParcelFileDescriptor
 import com.greatwall.callring.application.*
-import com.greatwall.callring.contracts.common.*
-import com.greatwall.callring.contracts.callers.*
-import com.greatwall.callring.contracts.settings.*
 import com.greatwall.callring.contracts.report.*
 import com.greatwall.callring.contracts.runtime.*
-import com.greatwall.callring.contracts.widget.*
-import com.greatwall.callring.contracts.recording.*
-import com.greatwall.callring.contracts.ai.*
-import com.greatwall.callring.contracts.command.*
 import com.greatwall.callring.contracts.*
 import com.greatwall.callring.application.recording.model.*
 import com.greatwall.callring.application.recording.policy.*
@@ -62,16 +63,16 @@ class ToolBusinessIntegrationTest {
         val preferences = AndroidPreferences(context.getSharedPreferences("${namespace}_appearance",0),context.getSharedPreferences("${namespace}_widgets",0),AppearanceSettings(ThemeSelection.PRESET,"default",null,ColorMode.FOLLOW_SYSTEM))
         val client = Client()
         val calls = ConcurrentLinkedQueue<String>()
-        val backend = CallringBackend(store,preferences,docs,object : RuntimeProbe {
+        val backend = CallringBackend(preferences,docs,object : RuntimeProbe {
             override fun getStatus() = RuntimeStatus(Capability.values().associateWith { AccessState.GRANTED },Audibility.AUDIBLE,PhoneActivity.IDLE,PlaybackStatus(PlaybackMode.NONE,PlaybackState.IDLE),true,now)
             override fun getDiagnostics() = listOf(DiagnosticEntry(now,null,"fixture"))
             override fun getInstalledWidgets() = WidgetInstallState(listOf(1),AccessState.GRANTED)
         },audio,object : SyncScheduler { override fun requestSync(atEpochMillis: Long) = SyncRequestReceipt(SyncRequestState.QUEUED,atEpochMillis) },Clock.fixed(Instant.ofEpochMilli(now),ZoneOffset.UTC),calendarSource = CalendarSource { year -> CalendarImport(CalendarYear(year,"fixture","2026-01-01","v1").toDomain(),mapOf(LocalDate.of(year,1,1) to "fixture holiday"),emptySet()) },coordinator = coordinator, coreTransactions = store.sessions, numberRecordings = object : com.greatwall.callring.application.callers.NumberDeletionRecordings {
             override suspend fun archives(number: String) = runtime.service.numberArchives(number)
             override suspend fun delete(callId: Long, expectedGeneration: Long, command: CommandContext) = runtime.service.delete(callId, expectedGeneration, command)
-        }, identityArchive = { runtime.service.getArchive(it) }, operationActive = { true })
+        }, identityArchive = { runtime.service.getArchive(it) }, operationActive = { true }, conversationProvider = { com.greatwall.callring.testing.FixtureConversationApi }, aiSettingsProvider = { com.greatwall.callring.testing.FixtureAiSettingsApi }, updateProvider = { com.greatwall.callring.testing.FixtureAppUpdateApi }, snapshotsProvider = { com.greatwall.callring.testing.FixtureAiSnapshotApi }, recordingsProvider = { com.greatwall.callring.testing.FixtureRecordingApi }, persistenceActive = { true })
         val recordingStore = AndroidRecordingStore(context,namespace,object : RecordingCipher { override fun encrypt(value: String) = java.util.Base64.getEncoder().encodeToString(value.toByteArray()); override fun decrypt(value: String) = String(java.util.Base64.getDecoder().decode(value)) }, recordingVersion = { coordinator.capture().values.getValue("recording") })
-        val runtime = RecordingAssembly(context,namespace,{ null },{ null },{}, { recordingStore },metadataReader = { 1000L to "wav" },coordinator = coordinator,clientFactory = { client })
+        val runtime = RecordingAssembly(context,namespace,{ null },{ null },{}, { recordingStore },metadataReader = { 1000L to "wav" },coordinator = coordinator,clientFactory = { client }, operationActive = { true })
         var recordingId = -1L
         val resources = ForegroundResourceRegistry()
         val foreground = ForegroundActionService(checkCommand = { cmd -> cmd == null || coordinator.committed(cmd.operationId) != null || runCatching { coordinator.guard(cmd.copy(mayCommit = { true })) {} }.isSuccess })
@@ -157,6 +158,7 @@ class ToolBusinessIntegrationTest {
             val root=f.api()
             val wrapped=object:CallringUiApi by root {
                 override fun commandApi(command:CommandContext):CallringUiApi {
+
                     val bound=root.commandApi(command)
                     return object:CallringUiApi by bound {
                         override suspend fun adoptIdentity(callId:Long,expectedGeneration:Long):ApiResult<CallerProfile> {

@@ -1,5 +1,7 @@
 package com.greatwall.callring.application.ringtone
 
+import com.greatwall.callring.application.coordination.requireOperationActive
+
 import com.greatwall.callring.application.BusinessRevisionCoordinator
 import com.greatwall.callring.application.completeRuntimeStatus
 import com.greatwall.callring.application.coordination.ChangeImpact
@@ -19,17 +21,19 @@ class RingtoneService(
     private val coordinator: BusinessRevisionCoordinator,
     private val dispatcher: CoroutineDispatcher,
     private val command: CommandContext? = null,
+    private val operationActive: () -> Boolean,
 ) : RingtoneApi {
     private val runner = UseCaseRunner(dispatcher)
-    fun bound(command: CommandContext) = RingtoneService(audio, status, coordinator, dispatcher, command)
-    override suspend fun getSettings() = runner.io { audio.getSettings() }
+    fun bound(command: CommandContext) = RingtoneService(audio, status, coordinator, dispatcher, command, operationActive = operationActive)
+    override suspend fun getSettings() = runner.io { requireOperationActive(operationActive); audio.getSettings() }
     private fun publish() = coordinator.publishResource("ringtone", setOf("ringtone"), ChangeImpact.wide(setOf(DataDomain.RINGTONE)))
-    override suspend fun setEnabled(enabled: Boolean) = runner.write {
+    override suspend fun setEnabled(enabled: Boolean) = runner.write { requireOperationActive(operationActive);
         if (enabled) {
             requireCapability(completeRuntimeStatus(status()), Capability.CALL_SCREENING_ROLE, true)
             requireCapability(completeRuntimeStatus(status()), Capability.PHONE_STATE)
         }
         val saved = coordinator.guard(command) {
+            requireOperationActive(operationActive)
             val before = audio.getSettings()
             val result = if (before.enabled == enabled) before else audio.setEnabled(enabled)
             if (before != result) publish()
@@ -41,9 +45,10 @@ class RingtoneService(
     }
     override suspend fun importAudio(source: DocumentRef): ApiResult<RingtoneSettings> {
         val caller = currentCoroutineContext()
-        return runner.io {
+        return runner.io { requireOperationActive(operationActive);
             audio.prepareAudio(source) { caller.ensureActive() }.use { prepared ->
                 coordinator.guard(command) {
+                    requireOperationActive(operationActive)
                     val saved = prepared.commit { caller.ensureActive() }
                     // A new audio file is an actual change even when its public metadata is equal.
                     publish()
@@ -53,8 +58,9 @@ class RingtoneService(
             }
         }
     }
-    override suspend fun restoreBuiltIn() = runner.write {
+    override suspend fun restoreBuiltIn() = runner.write { requireOperationActive(operationActive);
         val saved = coordinator.guard(command) {
+            requireOperationActive(operationActive)
             val before = audio.getSettings()
             val result = audio.restoreBuiltIn()
             if (before != result) publish()
@@ -64,18 +70,21 @@ class RingtoneService(
         runCatching { audio.stopPlayback() }
         saved
     }
-    override suspend fun startPreview() = runner.io {
+    override suspend fun startPreview() = runner.io { requireOperationActive(operationActive);
         requireCapability(completeRuntimeStatus(status()), Capability.PHONE_STATE)
         val current = completeRuntimeStatus(status())
         if (current.phoneActivity != PhoneActivity.IDLE) throw BackendFailure(ApiError(ErrorCode.SYSTEM_RESTRICTED, "audio.phone_active"))
         if (current.audibility != Audibility.AUDIBLE) throw BackendFailure(ApiError(ErrorCode.SYSTEM_RESTRICTED, "audio.system_inaudible"))
         launchPlayback(audio::startPreview)
     }
-    override suspend fun stopPlayback() = runner.io { launchPlayback(audio::stopPlayback) }
+    override suspend fun stopPlayback() = runner.io { requireOperationActive(operationActive); launchPlayback(audio::stopPlayback) }
     private fun launchPlayback(launch: () -> Unit) {
-        coordinator.guard(command) {}
+        coordinator.guard(command) {
+            requireOperationActive(operationActive)
+        }
         launch()
-        try { coordinator.guard(command) { coordinator.record(command) } }
+        try { coordinator.guard(command) {
+            requireOperationActive(operationActive); coordinator.record(command) } }
         catch (_: BackendFailure) { throw BackendFailure(ApiError(ErrorCode.SYSTEM_RESTRICTED, "audio.launch_state_changed")) }
     }
 }

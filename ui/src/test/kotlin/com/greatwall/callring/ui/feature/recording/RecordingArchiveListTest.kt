@@ -15,7 +15,7 @@ class RecordingArchiveListTest {
         val older = CallArchive(-7, "10086", 10)
         val newer = CallArchive(-8, "10010", 20, status = ArchiveStatus.COMPLETE)
         var loads = 0
-        val api = object : RecordingApi by UnavailableRecordingApi {
+        val api = object : RecordingApi by FixtureRecordingApi {
             override suspend fun listArchives(): ApiResult<List<CallArchive>> {
                 loads++
                 return ApiResult.Success(listOf(older, newer))
@@ -32,7 +32,7 @@ class RecordingArchiveListTest {
 
     @Test fun refreshShowsFailureAndCanRecoverToEmptyList() = runTest {
         var fail = true
-        val api = object : RecordingApi by UnavailableRecordingApi {
+        val api = object : RecordingApi by FixtureRecordingApi {
             override suspend fun listArchives(): ApiResult<List<CallArchive>> = if (fail)
                 ApiResult.Failure(ApiError(ErrorCode.STORAGE_FAILURE, "recording.storage_or_network"))
             else ApiResult.Success(emptyList())

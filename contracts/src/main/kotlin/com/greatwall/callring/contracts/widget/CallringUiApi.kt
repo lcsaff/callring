@@ -5,7 +5,7 @@ import com.greatwall.callring.contracts.runtime.*
 import com.greatwall.callring.contracts.ai.*
 
 interface WidgetBindingsApi {
-    suspend fun listBindings(): ApiResult<WidgetBindingsListing> = aiUnavailable()
+    suspend fun listBindings(): ApiResult<WidgetBindingsListing>
     suspend fun getBinding(widgetId: Int): ApiResult<WidgetBinding?>
     suspend fun saveBinding(widgetId: Int, number: String): ApiResult<WidgetBinding>
     suspend fun removeBinding(widgetId: Int): ApiResult<Unit>

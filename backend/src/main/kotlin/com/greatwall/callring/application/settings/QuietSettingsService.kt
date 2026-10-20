@@ -1,5 +1,7 @@
 package com.greatwall.callring.application.settings
 
+import com.greatwall.callring.application.coordination.requireOperationActive
+
 import com.greatwall.callring.application.BusinessRevisionCoordinator
 import com.greatwall.callring.application.coordination.*
 import com.greatwall.callring.application.mapping.*
@@ -16,10 +18,12 @@ import kotlinx.coroutines.*
 internal class QuietSettingsService(private val transactions: QuietTransactions,
     private val coordinator: BusinessRevisionCoordinator, dispatcher: CoroutineDispatcher,
     private val afterQuietCommit: (com.greatwall.callring.domain.model.QuietSettings) -> Unit,
-    private val command: CommandContext? = null) {
+    private val command: CommandContext? = null,
+    private val operationActive: () -> Boolean,
+) {
     private val runner = UseCaseRunner(dispatcher)
-    private val committer = CommandCommitter(coordinator)
-    suspend fun get(): ApiResult<QuietSettings> = runner.io {
+    private val committer = CommandCommitter(coordinator, operationActive)
+    suspend fun get(): ApiResult<QuietSettings> = runner.io { requireOperationActive(operationActive);
         repeat(3) {
             val before = coordinator.marker()
             val value = transactions.readQuiet { it.quiet().settings.toContract() }
@@ -53,7 +57,7 @@ internal class QuietSettingsService(private val transactions: QuietTransactions,
         }
         QuietSettings(merge("mode", base.mode, value.mode, current.mode), merge("allNumbers", base.allNumbers, value.allNumbers, current.allNumbers), merge("weeklyWindows", base.weeklyWindows, value.weeklyWindows, current.weeklyWindows))
     }
-    private suspend fun update(desired: (QuietConfiguration) -> QuietSettings): ApiResult<QuietSettings> = runner.write {
+    private suspend fun update(desired: (QuietConfiguration) -> QuietSettings): ApiResult<QuietSettings> = runner.write { requireOperationActive(operationActive);
         committer.commit(command, {
             transactions.writeQuiet { writer ->
                 val old = writer.quiet()

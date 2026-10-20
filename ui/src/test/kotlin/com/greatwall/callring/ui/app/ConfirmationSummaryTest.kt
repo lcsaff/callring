@@ -20,11 +20,11 @@ class ConfirmationSummaryTest {
     @Test fun everyConfirmationShowsItsLocalTargetAndMissingEvidenceCannotConfirm() {
         val pending = MutableStateFlow<ForegroundTicket?>(null)
         val delivered = mutableListOf<ForegroundHostResult>()
-        val bridge = object : ForegroundActionApi by UnavailableForegroundActionApi {
+        val bridge = object : ForegroundActionApi by FixtureForegroundActionApi {
             override val pending = pending
             override fun deliver(requestId: String, result: ForegroundHostResult): Boolean { delivered += result; pending.value = null; return true }
         }
-        val api = object : UiFakeApi() { override val conversation = object : ConversationApi by UnavailableConversationApi { override val foreground = bridge } }
+        val api = object : UiFakeApi() { override val conversation = object : ConversationApi by FixtureConversationApi { override val foreground = bridge } }
         compose.setContent { ForegroundActionDialogs(api) }
         val cases = listOf(
             Triple("settings_deletePosition",ConfirmationTarget.Position(37,"actual-role",3,true),"职位 #37：actual-role"),

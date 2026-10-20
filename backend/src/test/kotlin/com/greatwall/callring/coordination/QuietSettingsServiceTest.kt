@@ -32,12 +32,12 @@ class QuietSettingsServiceTest {
     }
     @Test fun commitAdvancesOnceNoOpRecordsCompletionAndHiddenModeChangeIsReal() = runBlocking {
         val transactions = Transactions(); val coordinator = BusinessRevisionCoordinator(); var decisionUpdates = 0
-        val service = QuietSettingsService(transactions, coordinator, Dispatchers.Unconfined, { decisionUpdates++ })
+        val service = QuietSettingsService(transactions, coordinator, Dispatchers.Unconfined, { decisionUpdates++ }, operationActive = { true })
         assertTrue(service.enabled(true) is ApiResult.Success)
         assertEquals(1L, coordinator.marker()); assertEquals(1L, coordinator.capture().values["core"])
         val beforeNoOp = coordinator.invalidations.snapshots.value
         val command = CommandContext("noop", coordinator.capture(), 0, expectedScopes = coordinator.expect(setOf("quiet"))) { true }
-        val bound = QuietSettingsService(transactions, coordinator, Dispatchers.Unconfined, { decisionUpdates++ }, command)
+        val bound = QuietSettingsService(transactions, coordinator, Dispatchers.Unconfined, { decisionUpdates++ }, command, operationActive = { true })
         bound.enabled(true)
         assertEquals(1L, coordinator.marker()); assertSame(beforeNoOp, coordinator.invalidations.snapshots.value)
         assertNotNull(coordinator.committed("noop"))
@@ -49,7 +49,7 @@ class QuietSettingsServiceTest {
     }
     @Test fun threeFieldMergeUsesFinalTransactionTruthAndRejectsOnlyDirtyConflicts() = runBlocking {
         val transactions = Transactions(); val coordinator = BusinessRevisionCoordinator()
-        val service = QuietSettingsService(transactions, coordinator, Dispatchers.Unconfined, {})
+        val service = QuietSettingsService(transactions, coordinator, Dispatchers.Unconfined, {}, operationActive = { true })
         val base = transactions.current.settings.toContract()
         service.enabled(true)
         val merged = service.edit(base, base.copy(allNumbers = true)) as ApiResult.Success
@@ -64,7 +64,7 @@ class QuietSettingsServiceTest {
     }
     @Test fun cancellationAfterWriteCannotLosePublicationAndStaleScopesCannotWrite() = runBlocking {
         val transactions = Transactions(); val coordinator = BusinessRevisionCoordinator()
-        val service = QuietSettingsService(transactions, coordinator, Dispatchers.Unconfined, {})
+        val service = QuietSettingsService(transactions, coordinator, Dispatchers.Unconfined, {}, operationActive = { true })
         val stale = CommandContext("stale", coordinator.capture(), 0, expectedScopes = coordinator.expect(setOf("quiet"))) { true }
         val scope = CoroutineScope(SupervisorJob() + Dispatchers.Unconfined)
         lateinit var job: Job
@@ -73,7 +73,7 @@ class QuietSettingsServiceTest {
         job.start(); job.join()
         assertEquals(1L, coordinator.marker())
         assertEquals(1L, coordinator.invalidations.snapshots.value.revision)
-        val bound = QuietSettingsService(transactions, coordinator, Dispatchers.Unconfined, {}, stale)
+        val bound = QuietSettingsService(transactions, coordinator, Dispatchers.Unconfined, {}, stale, operationActive = { true })
         assertEquals(ErrorCode.CONFLICT, (bound.enabled(false) as ApiResult.Failure).error.code)
         assertEquals(1L, coordinator.marker())
         scope.cancel()

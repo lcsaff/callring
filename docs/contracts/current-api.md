@@ -30,13 +30,15 @@ UI host rotation tests use a shared-test ticket driver to verify host UI attachm
 
 T03 architecture guards cover dependency direction in every source set, including test dependencies, contracts isolation, UI imports, backend JVM isolation, and localized text. Backend domain-to-application rules remain transitional until T04; no blanket bootstrap allowlist is introduced. T04 native-domain cleanup, T05 storage redesign, and BackendContext/scoped SQL behavior are pending and unchanged by this extraction.
 
+T10c removes only missing-capability method bodies: `UiEditsApi`'s seven edits, `CallersApi.getCallDetail/numberDataImpact/deleteNumberCore`, `WidgetBindingsApi.listBindings`, `RecordingApi.inspectSystemRecording`, `AiSettingsApi.patchCombined/testDraft`, `ConversationApi.sendTo/continueTask`, and `CallringUiApi.commandApi/adoptIdentity` now require explicit overrides. `RecordingApi.getIdentity/listArchives`, `SettingsApi.setQuietEnabled/synchronizeCalendar`, and `AiQueryApi.reset` also require explicit implementations, removing the second archive-derived identity path and missing-capability/no-op defaults. The unused `aiUnavailable` helper is deleted. All real method signatures, parameter defaults (including `LocalSecretChange.Keep`), errors and wire protocols are unchanged. Production assembly explicitly supplies every capability; omitted capabilities are no longer silently accepted. Test-only fixtures explicitly implement the required declarations. The historical T02 v1 snapshots and pinned AI operation golden are unchanged.
+
 ## Reviewed current contract inventory
 
 <!-- contract-inventory -->
 ```json
 {
   "CallringApi.kt": {
-    "sha256": "e138e7bf8dad25280e20273b69a926f3096d51c9972cf23d59dd7ec23f786e9e",
+    "sha256": "6e89ff3b315350d6efded784279ae4dd3d932be1135346df0a11fb5eee8f5588",
     "declarations": [
       "CallringUiApi"
     ]
@@ -61,7 +63,7 @@ T03 architecture guards cover dependency direction in every source set, includin
     ]
   },
   "ai/AiQueryApi.kt": {
-    "sha256": "4e9bb679fc929416475b8d04d2d0f214887db4113da2aa8688cceec77053ba4e",
+    "sha256": "8baad4fe2cf6aec8e2b41742f53f4fbc2cf8610c96ae19b8e4abcbd24934ea2a",
     "declarations": [
       "AiDomain",
       "QueryStatus",
@@ -77,7 +79,7 @@ T03 architecture guards cover dependency direction in every source set, includin
     ]
   },
   "ai/AiSettingsApi.kt": {
-    "sha256": "db225b56f88594fac2344ffc7b8175bd2be32cf70d134004d2e2d1bc6e3538c3",
+    "sha256": "91ee4435d4cbdc9973d270bd5ed97268e5979593f6f3fb28ee7ff3db44d4f8b8",
     "declarations": [
       "PatchField",
       "LocalSecretChange",
@@ -87,8 +89,7 @@ T03 architecture guards cover dependency direction in every source set, includin
       "AiSettingsView",
       "ConnectionPatch",
       "AiSettingsPatch",
-      "AiSettingsApi",
-      "aiUnavailable"
+      "AiSettingsApi"
     ]
   },
   "ai/AiSnapshotApi.kt": {
@@ -101,7 +102,7 @@ T03 architecture guards cover dependency direction in every source set, includin
     ]
   },
   "ai/ConversationApi.kt": {
-    "sha256": "ae106f6bb8bf41dde5692d634298e7f6caabc0e390bf0a072a96cbe03b940e5e",
+    "sha256": "e8c8e13bd5a890dc7292a474b559a2dac3cfa8bac6fd84b521a0fbc35d865980",
     "declarations": [
       "ConversationPhase",
       "ToolStatus",
@@ -140,7 +141,7 @@ T03 architecture guards cover dependency direction in every source set, includin
     ]
   },
   "callers/CallringUiApi.kt": {
-    "sha256": "a1def73b5ebb605c5a4badfdd1cfe13db00f688871566a81bce12105ba95ff89",
+    "sha256": "87155410e1b49edf19774ebecdf0c8ab62e50461abef5fcad1230f3ce8e4ca6c",
     "declarations": [
       "HomeApi",
       "CallersApi",
@@ -199,7 +200,7 @@ T03 architecture guards cover dependency direction in every source set, includin
     ]
   },
   "command/UiEditsApi.kt": {
-    "sha256": "393421c1ea6d16c79ba92b7fcd47565a67ca821e8284e154c8240af6e4599978",
+    "sha256": "31cffda6f07996b2fc61fae459941ed8a013c071d48c44b26599f03c14af8b77",
     "declarations": [
       "UiEditsApi"
     ]
@@ -219,7 +220,7 @@ T03 architecture guards cover dependency direction in every source set, includin
     ]
   },
   "recording/RecordingApi.kt": {
-    "sha256": "5e4d41d968a113338a8563f15dd3f64cc5edc5efc9216447cb09055d4c69ea9a",
+    "sha256": "26c950ce370fcaa83827b35a5c71d77be97a9fcb7747f47cf336b48e673d7751",
     "declarations": [
       "CaptureMode",
       "ArchiveStatus",
@@ -282,7 +283,7 @@ T03 architecture guards cover dependency direction in every source set, includin
     ]
   },
   "settings/CallringUiApi.kt": {
-    "sha256": "7c9a36405b9709482150f9dab30a20d66420b2e8eb752c7494c9a66621debafc",
+    "sha256": "ccd044c69dd63a0cc063feb2057199aa72c02df460a7cd71351d87f91aa5f219",
     "declarations": [
       "SettingsApi",
       "RingtoneApi",
@@ -313,7 +314,7 @@ T03 architecture guards cover dependency direction in every source set, includin
     ]
   },
   "widget/CallringUiApi.kt": {
-    "sha256": "457a360530eb659a100b683c80ce7751873d87e072a464a0bef9e01612da33bb",
+    "sha256": "11a687bc2e90ad62c99d3f02d50d2132a84108428c0fc9f90452d1c5f1d1a663",
     "declarations": [
       "WidgetBindingsApi",
       "WidgetBinding",

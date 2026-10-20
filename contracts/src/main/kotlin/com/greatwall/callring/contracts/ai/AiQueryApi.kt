@@ -30,5 +30,5 @@ interface AiQueryApi {
     suspend fun get(domain:AiDomain,key:String,projection:String="default"):ApiResult<ScopedValue>
     suspend fun aggregate(spec:AggregateSpec):ApiResult<ScopedAggregate>
     suspend fun readText(reference:String,cursor:String?=null,maxChars:Int=4096):ApiResult<TextChunk>
-    fun reset()=Unit
+    fun reset()
 }

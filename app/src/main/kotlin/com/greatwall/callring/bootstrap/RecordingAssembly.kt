@@ -19,6 +19,7 @@ class RecordingAssembly(
     metadataReader: ((File) -> Pair<Long, String>)? = null,
     private val coordinator: BusinessRevisionCoordinator = BusinessRevisionCoordinator(),
     clientFactory: (() -> AiClient)? = null,
+    private val operationActive: () -> Boolean,
 ) : AutoCloseable {
     private val storeDelegate = lazy { storeFactory?.invoke() ?: AndroidRecordingStore(context, namespace, recordingVersion = { coordinator.capture().values.getValue("recording") }) }
     val store get() = storeDelegate.value
@@ -34,7 +35,7 @@ class RecordingAssembly(
     val aiSettings by lazy { AiSettingsService(store, coordinator,
         { context.checkSelfPermission(android.Manifest.permission.RECORD_AUDIO) == android.content.pm.PackageManager.PERMISSION_GRANTED },
         { connection, transcription -> client.test(connection, transcription) },
-        afterSave = { if (!it.recordingEnabled) context.stopService(android.content.Intent(context, com.greatwall.callring.CallCaptureService::class.java)) }, folderView = sources::describe) }
+        afterSave = { if (!it.recordingEnabled) context.stopService(android.content.Intent(context, com.greatwall.callring.CallCaptureService::class.java)) }, folderView = sources::describe, operationActive = operationActive) }
     val archiveCommands by lazy { RecordingArchiveCommands(store, store, coordinator) }
     val registrations by lazy { RecordingRegistrationService(store, coordinator) }
     val workflow by lazy { RecordingWorkflow(store, archiveCommands, AndroidAudioTranscriber(client, File(context.cacheDir, namespace + "_ai_audio"))) }
@@ -46,7 +47,7 @@ class RecordingAssembly(
             override fun authorize(document: DocumentRef) = sources.authorize(document.uri)
             override fun list(folder: String) = sources.list(folder)
             override fun inspect(folder: String, document: DocumentRef) = sources.inspect(folder, document)
-        }, findCall, activeCallId, schedule, coordinator) }
+        }, findCall, activeCallId, schedule, coordinator, operationActive = operationActive) }
     fun folderAccess(): AccessState {
         val folder = store.settings().systemFolder ?: return AccessState.NOT_REQUIRED
         return if (context.contentResolver.persistedUriPermissions.any { it.uri.toString() == folder && it.isReadPermission }) AccessState.GRANTED else AccessState.DENIED

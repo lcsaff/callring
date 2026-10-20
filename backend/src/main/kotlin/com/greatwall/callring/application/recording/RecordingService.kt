@@ -1,5 +1,7 @@
 package com.greatwall.callring.application.recording
 
+import com.greatwall.callring.application.coordination.requireOperationActive
+
 import com.greatwall.callring.application.*
 import com.greatwall.callring.application.ports.BackendFailure
 import com.greatwall.callring.contracts.command.*
@@ -23,10 +25,11 @@ class RecordingService(
     private val activeCallId: () -> Long?,
     private val schedule: (Long) -> Unit,
     private val coordinator: BusinessRevisionCoordinator,
+    private val operationActive: () -> Boolean,
 ) : RecordingApi, com.greatwall.callring.application.callers.NumberDeletionRecordings {
     private val playbackGeneration = AtomicLong()
     private suspend fun <T> result(block: suspend () -> T): ApiResult<T> = withContext(Dispatchers.IO) {
-        try { ApiResult.Success(block()) }
+        try { requireOperationActive(operationActive); ApiResult.Success(block()) }
         catch (cancelled: CancellationException) { throw cancelled }
         catch (failure: com.greatwall.callring.application.ports.BackendFailure) { ApiResult.Failure(failure.error) }
         catch (failure: AiFailure) { ApiResult.Failure(ApiError(ErrorCode.IO_FAILURE, failure.reason, retryable = failure.retryable)) }
@@ -71,11 +74,13 @@ class RecordingService(
         require(request.number == number && request.startedAt == startedAt)
         val call = requireNotNull(recordingCall(callId))
         val initialGeneration = state.generation(call.id)
-        coordinator.guard(command) { check(!automatic || !state.isDeleted(call.id)) { "recording.deleted" } }
+        coordinator.guard(command) {
+            requireOperationActive(operationActive); check(!automatic || !state.isDeleted(call.id)) { "recording.deleted" } }
         fun checkCaller() { if (!callerActive()) throw CancellationException("recording.cancelled") }
         checkCaller()
         audio.prepareImport(document) { !callerActive() || (command != null && !command.active()) }.use { prepared ->
             val archive = coordinator.guard(command) {
+                requireOperationActive(operationActive)
                 checkCaller()
                 check(state.generation(call.id) == initialGeneration && (!automatic || !state.isDeleted(call.id))) { "recording.changed" }
                 attach(call, prepared, source, command)
@@ -143,11 +148,13 @@ class RecordingService(
     }
     override suspend fun retry(callId: Long) = retryWith(callId, null)
     private suspend fun retryWith(callId: Long, command: CommandContext?) = result {
-        coordinator.guard(command) { workflow().retry(archiveId(callId), command) }
+        coordinator.guard(command) {
+            requireOperationActive(operationActive); workflow().retry(archiveId(callId), command) }
         runCatching { schedule(0) }; Unit
     }
     override suspend fun delete(callId: Long) = deleteWith(callId, null)
     private suspend fun deleteWith(callId: Long, command: CommandContext?, expectedGeneration: Long? = null) = result { coordinator.guard(command) {
+        requireOperationActive(operationActive)
         if (expectedGeneration != null && state.generation(callId) != expectedGeneration)
             throw BackendFailure(ApiError(ErrorCode.CONFLICT, "recording.changed", retryable = true))
         playbackGeneration.incrementAndGet()
@@ -174,6 +181,7 @@ class RecordingService(
             var activated = false
             try {
                 coordinator.guard(command) {
+                    requireOperationActive(operationActive)
                     caller.ensureActive()
                     check(ticket == playbackGeneration.get() && state.generation(archive.callId) == archive.generation) { "recording.changed" }
                     val stopped = playback.stop()
@@ -188,6 +196,7 @@ class RecordingService(
     fun playbackFinished() { coordinator.publishRuntime(setOf("runtime:recordingPlayback")) }
     override suspend fun stop(): ApiResult<Unit> = stopWith(null)
     private suspend fun stopWith(command: CommandContext?) = result { coordinator.guard(command) {
+        requireOperationActive(operationActive)
         playbackGeneration.incrementAndGet()
         if (playback.stop()) playbackFinished()
         coordinator.record(command)

@@ -12,8 +12,9 @@ internal class IncomingCallService(
     private val transactions: CallingTransactions,
     coordinator: BusinessRevisionCoordinator,
     private val command: CommandContext? = null,
+    private val operationActive: () -> Boolean,
 ) {
-    private val committer = CommandCommitter(coordinator)
+    private val committer = CommandCommitter(coordinator, operationActive)
 
     fun record(
         number: String,

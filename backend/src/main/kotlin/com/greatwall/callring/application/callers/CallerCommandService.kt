@@ -1,5 +1,7 @@
 package com.greatwall.callring.application.callers
 
+import com.greatwall.callring.application.coordination.requireOperationActive
+
 import com.greatwall.callring.application.BusinessRevisionCoordinator
 import com.greatwall.callring.application.coordination.*
 import com.greatwall.callring.application.ports.store.*
@@ -16,9 +18,10 @@ internal class CallerCommandService(
     dispatcher: CoroutineDispatcher,
     private val patchWhitelist: (String, Boolean) -> Unit,
     private val command: CommandContext? = null,
+    private val operationActive: () -> Boolean,
 ) {
     private val runner = UseCaseRunner(dispatcher)
-    private val committer = CommandCommitter(coordinator)
+    private val committer = CommandCommitter(coordinator, operationActive)
 
     suspend fun save(value: SaveCallerProfile) = saveMerged(value, false)
 
@@ -39,7 +42,7 @@ internal class CallerCommandService(
     private suspend fun saveMerged(
         value: SaveCallerProfile,
         draft: Boolean,
-    ): ApiResult<CallerProfile> = runner.write {
+    ): ApiResult<CallerProfile> = runner.write { requireOperationActive(operationActive);
         val directNumber = if (draft) null else callerNumber(value.number)
         committer.commit(
             command,
@@ -129,7 +132,7 @@ internal class CallerCommandService(
     }
 
     suspend fun whitelist(number: String, enabled: Boolean): ApiResult<CallerProfile> =
-        runner.write {
+        runner.write { requireOperationActive(operationActive);
             val n = callerNumber(number)
             committer.commit(
                 command,
@@ -153,7 +156,7 @@ internal class CallerCommandService(
             }
         }
 
-    suspend fun impact(number: String): ApiResult<NumberCoreImpact> = runner.io {
+    suspend fun impact(number: String): ApiResult<NumberCoreImpact> = runner.io { requireOperationActive(operationActive);
         val n = callerNumber(number)
         transactions.readCaller { reader ->
             NumberCoreImpact(
@@ -164,7 +167,7 @@ internal class CallerCommandService(
         }
     }
 
-    suspend fun delete(number: String, expected: Int): ApiResult<Unit> = runner.write {
+    suspend fun delete(number: String, expected: Int): ApiResult<Unit> = runner.write { requireOperationActive(operationActive);
         val n = callerNumber(number)
         committer.commit(
             command,

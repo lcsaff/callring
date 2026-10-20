@@ -1,11 +1,14 @@
 package com.greatwall.callring
 
-import com.greatwall.callring.contracts.command.*
-import com.greatwall.callring.application.*
-import com.greatwall.callring.contracts.common.*
-import com.greatwall.callring.contracts.callers.*
-import com.greatwall.callring.contracts.settings.*
 import com.greatwall.callring.contracts.ai.*
+import com.greatwall.callring.contracts.callers.*
+import com.greatwall.callring.contracts.command.*
+import com.greatwall.callring.contracts.common.*
+import com.greatwall.callring.contracts.settings.*
+import com.greatwall.callring.contracts.widget.*
+import com.greatwall.callring.contracts.recording.*
+
+import com.greatwall.callring.application.*
 import com.greatwall.callring.contracts.*
 import com.greatwall.callring.application.conversation.*
 import com.greatwall.callring.application.ports.*
@@ -134,6 +137,7 @@ class ToolBatchEngineTest {
     @Test fun losingForegroundDuringPreparationPreventsActualPublication()=runBlocking {
         val t=Fixture();val host=ForegroundActionService();val token=host.attachHost()
         fun api(command:CommandContext?=null):CallringUiApi {
+
             val base=command?.let(t.f.backend::commandApi)?:t.f.backend
             return object:CallringUiApi by base {
                 override val settings=object:SettingsApi by base.settings {

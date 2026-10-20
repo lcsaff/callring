@@ -8,7 +8,7 @@ import com.greatwall.callring.contracts.settings.*
 import com.greatwall.callring.contracts.recording.*
 import com.greatwall.callring.contracts.ai.*
 import com.greatwall.callring.contracts.*
-import com.greatwall.callring.application.capability.*
+import com.greatwall.callring.testing.*
 import com.greatwall.callring.application.conversation.*
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.first
@@ -24,12 +24,12 @@ class ConfirmationTargetTest {
             f.backend.callers.saveProfile(SaveCallerProfile("31234","old","old-org",null,false))
             var effects = 0
             val archive = CallArchive(1,"31234",123,generation = 7,analysis = CallAnalysis(name = "self",organization = "unit"))
-            val recording = object : RecordingApi by UnavailableRecordingApi {
+            val recording = object : RecordingApi by FixtureRecordingApi {
                 override suspend fun getArchive(callId: Long) = ApiResult.Success(archive.takeIf { callId == 1L })
                 override suspend fun delete(callId: Long): ApiResult<Unit> { effects++; return ApiResult.Success(Unit) }
             }
             val safe = AiConnectionView(AiProtocol.OPENAI,"https://actual.example/v1","actual-model",true)
-            val settings = object : AiSettingsApi by UnavailableAiSettingsApi {
+            val settings = object : AiSettingsApi by FixtureAiSettingsApi {
                 override suspend fun getAiView() = ApiResult.Success(AiSettingsView(safe,safe,ConversationBudget(),0))
                 override suspend fun testSlot(slot: AiSlot): ApiResult<Unit> { effects++; return ApiResult.Success(Unit) }
             }

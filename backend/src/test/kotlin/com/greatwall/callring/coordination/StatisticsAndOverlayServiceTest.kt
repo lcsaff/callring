@@ -40,7 +40,7 @@ class StatisticsAndOverlayServiceTest {
                 override fun requestSync(atEpochMillis: Long): SyncRequestReceipt {
                     assertFalse(Thread.holdsLock(coordinator.fence)); schedules++; error("scheduler.unavailable")
                 }
-            }, { patch -> assertTrue(Thread.holdsLock(coordinator.fence)); patches += patch })
+            }, { patch -> assertTrue(Thread.holdsLock(coordinator.fence)); patches += patch }, operationActive = { true })
         assertTrue(service.set(true) is ApiResult.Success)
         assertEquals(listOf(StatisticsInterval(10, 200), StatisticsInterval(200, null)), tx.intervals)
         assertEquals(1, schedules); assertEquals(1L, coordinator.marker())
@@ -62,7 +62,7 @@ class StatisticsAndOverlayServiceTest {
                     assertFalse(Thread.holdsLock(coordinator.fence)); schedules++
                     return SyncRequestReceipt(SyncRequestState.QUEUED, atEpochMillis)
                 }
-            }, {})
+            }, {}, operationActive = { true })
         val scope = CoroutineScope(SupervisorJob() + Dispatchers.Unconfined)
         lateinit var job: Job
         job = scope.launch(start = CoroutineStart.LAZY) { service.set(true) }
@@ -83,7 +83,7 @@ class StatisticsAndOverlayServiceTest {
         val tx = Overlay(); val coordinator = BusinessRevisionCoordinator(); var observations = 0; var patches = 0
         var access = AccessState.DENIED
         val service = OverlaySettingsService(tx, { assertFalse(Thread.holdsLock(coordinator.fence)); observations++; access },
-            coordinator, Dispatchers.Unconfined, { patches++ })
+            coordinator, Dispatchers.Unconfined, { patches++ }, operationActive = { true })
         assertTrue(service.set(false) is ApiResult.Success)
         assertEquals(0, observations); assertEquals(0L, coordinator.marker())
         val denied = (service.set(true) as ApiResult.Failure).error
@@ -93,7 +93,7 @@ class StatisticsAndOverlayServiceTest {
         assertEquals(1, tx.writes); assertEquals(1, patches); assertEquals(1L, coordinator.marker())
         var active = true
         val command = CommandContext("cancelled", coordinator.capture(), 0) { active }
-        val bound = OverlaySettingsService(tx, { active = false; AccessState.GRANTED }, coordinator, Dispatchers.Unconfined, { patches++ }, command)
+        val bound = OverlaySettingsService(tx, { active = false; AccessState.GRANTED }, coordinator, Dispatchers.Unconfined, { patches++ }, command, operationActive = { true })
         assertEquals("ai.cancelled", (bound.set(true) as ApiResult.Failure).error.message)
         assertEquals(1, tx.writes); assertEquals(1L, coordinator.marker())
         access = AccessState.DENIED

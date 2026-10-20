@@ -30,12 +30,8 @@ data class CallArchive(
 data class RecordingFile(val uri: String, val name: String, val modifiedAt: Long, val size: Long? = null, val modifiedKnown: Boolean = true)
 
 interface RecordingApi {
-    suspend fun getIdentity(callId: Long): ApiResult<RecordingIdentity> = when(val result = getArchive(callId)) {
-        is ApiResult.Failure -> result
-        is ApiResult.Success -> result.value?.let { ApiResult.Success(RecordingIdentity(it.callId, it.number, it.startedAtEpochMillis)) } ?: ApiResult.Failure(ApiError(ErrorCode.NOT_FOUND, "recording.not_found"))
-    }
-    suspend fun listArchives(): ApiResult<List<CallArchive>> =
-        ApiResult.Failure(ApiError(ErrorCode.SYSTEM_UNAVAILABLE, "recording.unavailable"))
+    suspend fun getIdentity(callId: Long): ApiResult<RecordingIdentity>
+    suspend fun listArchives(): ApiResult<List<CallArchive>>
     suspend fun getArchive(callId: Long): ApiResult<CallArchive?>
     suspend fun importRecording(callId: Long, number: String, startedAt: Long, document: DocumentRef, source: RecordingSource = RecordingSource.IMPORTED): ApiResult<CallArchive>
     suspend fun retry(callId: Long): ApiResult<Unit>
@@ -44,7 +40,7 @@ interface RecordingApi {
     suspend fun stop(): ApiResult<Unit>
     suspend fun setSystemFolder(document: DocumentRef): ApiResult<Unit>
     suspend fun systemRecordings(): ApiResult<List<RecordingFile>>
-    suspend fun inspectSystemRecording(document:DocumentRef):ApiResult<RecordingFile> = aiUnavailable()
+    suspend fun inspectSystemRecording(document:DocumentRef):ApiResult<RecordingFile>
 }
 
 data class RecordingIdentity(val callId: Long, val number: String, val startedAtEpochMillis: Long)

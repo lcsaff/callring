@@ -21,7 +21,7 @@ class RecordingViewModelsTest {
                 error("UI must delegate to shared adoption, not save the profile itself")
             }
         }
-        val recordings = object : RecordingApi by UnavailableRecordingApi {
+        val recordings = object : RecordingApi by FixtureRecordingApi {
             override suspend fun getArchive(callId: Long): ApiResult<CallArchive?> = ApiResult.Success(CallArchive(
                 callId, "100", 0, analysis = CallAnalysis(name = "self reported", organization = "new unit", position = "CEO", inferredIdentity = "inferred")))
         }
@@ -38,7 +38,7 @@ class RecordingViewModelsTest {
         val stopPending = CompletableDeferred<Unit>()
         var stopStarted = false
         var stopFinished = false
-        val api = object : RecordingApi by UnavailableRecordingApi {
+        val api = object : RecordingApi by FixtureRecordingApi {
             override suspend fun play(callId: Long): ApiResult<Unit> {
                 playPending.await(); return ApiResult.Success(Unit)
             }

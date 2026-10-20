@@ -1,5 +1,7 @@
 package com.greatwall.callring.application.settings
 
+import com.greatwall.callring.application.coordination.requireOperationActive
+
 import com.greatwall.callring.application.BusinessRevisionCoordinator
 import com.greatwall.callring.application.coordination.*
 import com.greatwall.callring.application.mapping.*
@@ -14,10 +16,12 @@ import kotlinx.coroutines.*
 
 internal class ScoreSettingsService(private val transactions: ScoreTransactions,
     private val coordinator: BusinessRevisionCoordinator, dispatcher: CoroutineDispatcher,
-    private val command: CommandContext? = null) {
+    private val command: CommandContext? = null,
+    private val operationActive: () -> Boolean,
+) {
     private val runner = UseCaseRunner(dispatcher)
-    private val committer = CommandCommitter(coordinator)
-    suspend fun get() = runner.io { transactions.readScore { it.score().toContract() } }
+    private val committer = CommandCommitter(coordinator, operationActive)
+    suspend fun get() = runner.io { requireOperationActive(operationActive); transactions.readScore { it.score().toContract() } }
     suspend fun save(value: ScoreSettings): ApiResult<ScoreSettings> {
         currentCoroutineContext().ensureActive()
         SettingsRules.score(value.toDomain()).firstOrNull()?.let {
@@ -32,7 +36,7 @@ internal class ScoreSettingsService(private val transactions: ScoreTransactions,
             mergeSetting("repeatMinutes", base.repeatMinutes, value.repeatMinutes, current.repeatMinutes),
             mergeSetting("observationDays", base.observationDays, value.observationDays, current.observationDays))
     }
-    private suspend fun update(desired: (ScoreSettings) -> ScoreSettings) = runner.write {
+    private suspend fun update(desired: (ScoreSettings) -> ScoreSettings) = runner.write { requireOperationActive(operationActive);
         committer.commit(command, {
             transactions.writeScore { writer ->
                 val value = desired(writer.score().toContract())

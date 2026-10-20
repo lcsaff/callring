@@ -22,7 +22,7 @@ class CredentialDialogTest {
     @get:Rule val compose = createComposeRule()
     @Test fun plaintextIsNotRestoredAfterCompositionRecreation() {
         val connection = AiConnectionView(AiProtocol.OPENAI, "https://example.com", "model", true)
-        val api = object : AiSettingsApi by UnavailableAiSettingsApi {
+        val api = object : AiSettingsApi by FixtureAiSettingsApi {
             override suspend fun getAiView() = ApiResult.Success(AiSettingsView(connection, connection, ConversationBudget(), 1))
             override suspend fun getRecordingView() = ApiResult.Success(RecordingSettingsView(false, false, CaptureMode.MICROPHONE_EXPERIMENTAL, false, 1))
         }

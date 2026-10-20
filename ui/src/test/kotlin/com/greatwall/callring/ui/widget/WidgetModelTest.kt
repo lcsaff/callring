@@ -14,7 +14,7 @@ import java.time.*
 
 @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
 class WidgetModelTest {
-    @Test fun productionResumeDecisionOverridesStaleWidgetPreference() = runTest {
+    @Test fun widgetUsesBackendResumeDecision() = runTest {
         val api = object : ControlsApi() {
             override suspend fun setQuietEnabled(enabled: Boolean): ApiResult<QuietSettings> {
                 quiet = quiet.copy(mode = if (enabled) QuietMode.NON_WORK else QuietMode.OFF)
@@ -23,7 +23,7 @@ class WidgetModelTest {
             override suspend fun setQuietMode(mode: QuietMode): ApiResult<QuietSettings> = error("legacy restore must not override backend decision")
         }
         api.quiet = api.quiet.copy(mode = QuietMode.OFF)
-        assertTrue(WidgetModel(api).setQuietEnabled(true, { QuietMode.CUSTOM }) is ApiResult.Success)
+        assertTrue(WidgetModel(api).setQuietEnabled(true) is ApiResult.Success)
         assertEquals(QuietMode.NON_WORK, api.quiet.mode)
     }
     private val zone = ZoneId.of("Asia/Shanghai")
@@ -32,6 +32,12 @@ class WidgetModelTest {
 
     private open class ControlsApi : UiFakeApi() {
         var quiet = QuietSettings(QuietMode.CUSTOM, true, mapOf(1 to listOf(TimeWindow(60, 120))))
+        private var lastMode = QuietMode.CUSTOM
+        override suspend fun setQuietEnabled(enabled: Boolean): ApiResult<QuietSettings> {
+            if (quiet.mode != QuietMode.OFF) lastMode = quiet.mode
+            quiet = quiet.copy(mode = if (enabled) lastMode else QuietMode.OFF)
+            return ApiResult.Success(quiet)
+        }
         val leaves = mutableListOf<LeaveEntry>()
         val commands = mutableListOf<SaveLeave>()
         override suspend fun getQuietHours() = ApiResult.Success(quiet)
@@ -86,9 +92,9 @@ class WidgetModelTest {
         val api = ControlsApi()
         val model = WidgetModel(api, { noon }, { zone })
         val original = api.quiet
-        model.setQuietEnabled(false, { QuietMode.CUSTOM })
+        model.setQuietEnabled(false)
         assertEquals(original.copy(mode = QuietMode.OFF), api.quiet)
-        model.setQuietEnabled(true, { QuietMode.CUSTOM })
+        model.setQuietEnabled(true)
         assertEquals(original, api.quiet)
     }
 
@@ -104,21 +110,20 @@ class WidgetModelTest {
         assertTrue(api.commands.isEmpty())
     }
 
-    @Test fun queuedOnActionReadsRememberedModeOnlyAfterOffActionFinishes() = runTest {
+    @Test fun queuedOnActionUsesBackendRestorationOnlyAfterOffActionFinishes() = runTest {
         val entered = CompletableDeferred<Unit>()
         val release = CompletableDeferred<Unit>()
         var first = true
-        var remembered = QuietMode.NON_WORK
         val api = object : ControlsApi() {
-            override suspend fun getQuietHours(): ApiResult.Success<QuietSettings> {
+            override suspend fun setQuietEnabled(enabled: Boolean): ApiResult<QuietSettings> {
                 if (first) { first = false; entered.complete(Unit); release.await() }
-                return super.getQuietHours()
+                return super.setQuietEnabled(enabled)
             }
         }
         val model = WidgetModel(api)
-        val off = async { model.setQuietEnabled(false, { remembered }) { remembered = it } }
+        val off = async { model.setQuietEnabled(false) }
         entered.await()
-        val on = async { model.setQuietEnabled(true, { remembered }) { remembered = it } }
+        val on = async { model.setQuietEnabled(true) }
         runCurrent()
         release.complete(Unit)
         off.await(); on.await()
@@ -130,13 +135,13 @@ class WidgetModelTest {
         val release = CompletableDeferred<Unit>()
         var time = noon
         val api = object : ControlsApi() {
-            override suspend fun getQuietHours(): ApiResult.Success<QuietSettings> {
+            override suspend fun setQuietEnabled(enabled: Boolean): ApiResult<QuietSettings> {
                 entered.complete(Unit); release.await()
-                return super.getQuietHours()
+                return super.setQuietEnabled(enabled)
             }
         }
         val model = WidgetModel(api, { time }, { zone })
-        val quiet = async { model.setQuietEnabled(false, { QuietMode.CUSTOM }) }
+        val quiet = async { model.setQuietEnabled(false) }
         entered.await()
         val leave = async { model.requestTodayLeave() }
         runCurrent()

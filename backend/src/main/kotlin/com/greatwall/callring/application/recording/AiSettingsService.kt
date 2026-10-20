@@ -1,5 +1,7 @@
 package com.greatwall.callring.application.recording
 
+import com.greatwall.callring.application.coordination.requireOperationActive
+
 import com.greatwall.callring.application.recording.policy.*
 import com.greatwall.callring.contracts.command.*
 import com.greatwall.callring.application.BusinessRevisionCoordinator
@@ -21,13 +23,15 @@ class AiSettingsService(
     private val command: CommandContext? = null,
     private val afterSave: (RecordingSettings) -> Unit = {},
     private val folderView: (String?) -> RecordingFolderView,
+    private val operationActive: () -> Boolean,
 ) : AiSettingsApi {
-    fun bound(command: CommandContext) = AiSettingsService(store, coordinator, microphoneGranted, testConnection, command, afterSave, folderView)
+    fun bound(command: CommandContext) = AiSettingsService(store, coordinator, microphoneGranted, testConnection, command, afterSave, folderView, operationActive = operationActive)
     private data class CommittedSettings(val settings: RecordingSettings, val recordingRevision: Long, val aiRevision: Long)
 
     private suspend fun updateSettings(transform: (RecordingSettings) -> RecordingSettings): CommittedSettings {
         val caller = currentCoroutineContext()
         return coordinator.guard(command) {
+            requireOperationActive(operationActive)
             caller.ensureActive()
             val old = store.settings()
             val next = transform(old).also { it.validate() }
@@ -71,7 +75,7 @@ class AiSettingsService(
         return RecordingSettingsView(recordingEnabled, automaticAnalysis, captureMode, systemFolder != null, version,folder.displayName,folder.access)
     }
     private suspend fun <T> result(block: suspend () -> T): ApiResult<T> = withContext(Dispatchers.IO) {
-        try { ApiResult.Success(block()) }
+        try { requireOperationActive(operationActive); ApiResult.Success(block()) }
         catch (e: CancellationException) { throw e }
         catch (e: BackendFailure) { ApiResult.Failure(e.error) }
         catch (error: IllegalArgumentException) { ApiResult.Failure(ApiError(ErrorCode.VALIDATION, "ai.invalid_settings")) }
@@ -122,9 +126,11 @@ class AiSettingsService(
             if (to == AiSlot.ANALYSIS) old.copy(analysis = value.copy(thinkingMode = ThinkingMode.DISABLED), conversationCompatibility = ConversationCompatibility.AUTO) else old.copy(transcription = value.copy(protocol = AiProtocol.OPENAI, thinkingMode = ThinkingMode.DISABLED))
         }.let { it.settings.aiView(it.aiRevision) }
     }
-    override suspend fun testSlot(slot: AiSlot) = result { val current = coordinator.guard(command) { store.settings() }; testConnection(if (slot == AiSlot.ANALYSIS) current.analysis else current.transcription, slot == AiSlot.TRANSCRIPTION) }
+    override suspend fun testSlot(slot: AiSlot) = result { val current = coordinator.guard(command) {
+            requireOperationActive(operationActive); store.settings() }; testConnection(if (slot == AiSlot.ANALYSIS) current.analysis else current.transcription, slot == AiSlot.TRANSCRIPTION) }
     override suspend fun testDraft(base: AiSettingsView, patch: AiSettingsPatch, slot: AiSlot) = result {
-        val value = coordinator.guard(command) { val current = store.settings();
+        val value = coordinator.guard(command) {
+            requireOperationActive(operationActive); val current = store.settings();
             if(slot == AiSlot.ANALYSIS) connection(base.analysis,current.analysis,patch.analysis,LocalSecretChange.Keep,base.revision,AiSlot.ANALYSIS).also{resolveConversationProfile(it,field(base.compatibility,current.conversationCompatibility,patch.compatibility))}
             else connection(base.transcription,current.transcription,patch.transcription,LocalSecretChange.Keep,base.revision,AiSlot.TRANSCRIPTION)
         }

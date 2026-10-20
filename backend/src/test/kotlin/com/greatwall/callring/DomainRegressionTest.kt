@@ -1,8 +1,7 @@
 package com.greatwall.callring
 
-import com.greatwall.callring.application.BackendContext
+import com.greatwall.callring.application.CallringBackend
 import com.greatwall.callring.application.callers.callerProfile
-import com.greatwall.callring.application.createSettingsApi
 import com.greatwall.callring.application.report.csvCell
 import com.greatwall.callring.application.mapping.*
 import com.greatwall.callring.application.recording.policy.*
@@ -136,7 +135,7 @@ class DomainRegressionTest {
 
     @Test
     fun invalidWindowMatrixIsRejectedByTheProductionApiBeforeStorageAccess() = runBlocking {
-        val api = createSettingsApi(calculations)
+        val api = calculations.settings
         for ((start, end) in listOf(-1 to 60, 60 to -1, 1440 to 60, 60 to 1440, 60 to 60)) {
             val window = TimeWindow(start, end)
             val failures =
@@ -158,7 +157,7 @@ class DomainRegressionTest {
 
     @Test
     fun nonpositivePositionLevelsAreRejectedBeforeStorageAccess() = runBlocking {
-        val api = createSettingsApi(calculations)
+        val api = calculations.settings
         for (level in listOf(0, -1)) {
             val result =
                 api.savePosition(SavePosition(name = "invalid", level = level, active = true))
@@ -223,8 +222,7 @@ class DomainRegressionTest {
 
     // These helpers are pure: any accidental access to an external port fails immediately.
     private val calculations by lazy {
-        BackendContext(
-            unusedPort(),
+        CallringBackend(
             unusedPort(),
             unusedPort(),
             unusedPort(),
@@ -233,7 +231,12 @@ class DomainRegressionTest {
             Clock.fixed(Instant.parse("2026-10-14T02:00:00Z"), ZoneOffset.UTC),
             Dispatchers.Unconfined,
             coreTransactions = unusedPort(),
-        )
+            calendarSource = unusedPort(),
+            numberRecordings = com.greatwall.callring.EmptyNumberRecordings,
+            identityArchive = { com.greatwall.callring.contracts.common.ApiResult.Success(null) },
+            operationActive = { true },
+            conversationProvider = { unusedPort() }, aiSettingsProvider = { unusedPort() },
+            updateProvider = { unusedPort() }, snapshotsProvider = { unusedPort() }, recordingsProvider = { unusedPort() }, persistenceActive = { true })
     }
 
     @Suppress("UNCHECKED_CAST")
@@ -590,7 +593,7 @@ class DomainRegressionTest {
 
     @Test
     fun invalidScoreWeightsAndIntervalsAreRejectedBeforeAnyStorageAccess() = runBlocking {
-        val settings = createSettingsApi(calculations)
+        val settings = calculations.settings
         val cases =
             listOf(
                 ScoreSettings(-1, 2, 3, 30) to "offHoursWeight",

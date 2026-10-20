@@ -39,31 +39,8 @@ class WidgetModel(
         )
     }
 
-    suspend fun setQuietEnabled(
-        enabled: Boolean,
-        preferredMode: () -> QuietMode,
-        rememberMode: (QuietMode) -> Unit = {},
-    ): ApiResult<QuietSettings> = controlsMutex.withLock {
-        attempt {
-            when (val result = api.settings.getQuietHours()) {
-                is ApiResult.Failure -> result
-                is ApiResult.Success -> {
-                    val current = result.value
-                    if (current.mode != QuietMode.OFF) rememberMode(current.mode)
-                    if ((current.mode != QuietMode.OFF) == enabled) return@attempt result
-                    val shared = api.settings.setQuietEnabled(enabled)
-                    if (shared !is ApiResult.Failure || shared.error.code != ErrorCode.SYSTEM_UNAVAILABLE ||
-                        shared.error.message != "quiet.enable_unavailable") return@attempt shared
-                    val target = when {
-                        !enabled -> QuietMode.OFF
-                        current.mode != QuietMode.OFF -> current.mode
-                        preferredMode() == QuietMode.CUSTOM && current.weeklyWindows.values.any { it.isNotEmpty() } -> QuietMode.CUSTOM
-                        else -> QuietMode.NON_WORK
-                    }
-                    if (current.mode == target) result else api.settings.setQuietMode(target)
-                }
-            }
-        }
+    suspend fun setQuietEnabled(enabled: Boolean): ApiResult<QuietSettings> = controlsMutex.withLock {
+        attempt { api.settings.setQuietEnabled(enabled) }
     }
 
     /** Resolve the device date at the click, and serialize all widget instances against duplicates. */

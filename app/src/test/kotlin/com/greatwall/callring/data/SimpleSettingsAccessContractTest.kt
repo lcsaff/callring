@@ -163,7 +163,7 @@ class SimpleSettingsAccessContractTest {
                 }, recordingVersion = { graph.coordinator.capture().values.getValue("recording") })
             recordingStore.use {
                 val settings = com.greatwall.callring.application.recording.AiSettingsService(recordingStore, graph.coordinator, { true }, { _, _ -> },
-                    folderView = { com.greatwall.callring.contracts.recording.RecordingFolderView(null, com.greatwall.callring.contracts.runtime.AccessState.NOT_REQUIRED) })
+                    folderView = { com.greatwall.callring.contracts.recording.RecordingFolderView(null, com.greatwall.callring.contracts.runtime.AccessState.NOT_REQUIRED) }, operationActive = { true })
                 measure("recordingConfigRead") { settings.getRecordingView().requiredValue() }
                 measure("recordingConfigWrite") { settings.patchRecording(settings.getRecordingView().requiredValue(),
                     com.greatwall.callring.contracts.recording.RecordingSettingsPatch(recordingEnabled = com.greatwall.callring.contracts.ai.PatchField.Set(true))).requiredValue() }

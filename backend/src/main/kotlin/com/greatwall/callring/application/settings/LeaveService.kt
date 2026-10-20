@@ -1,5 +1,7 @@
 package com.greatwall.callring.application.settings
 
+import com.greatwall.callring.application.coordination.requireOperationActive
+
 import com.greatwall.callring.application.BusinessRevisionCoordinator
 import com.greatwall.callring.application.frozenList
 import com.greatwall.callring.application.coordination.*
@@ -14,13 +16,15 @@ import kotlinx.coroutines.CoroutineDispatcher
 
 internal class LeaveService(private val transactions: LeaveTransactions, coordinator: BusinessRevisionCoordinator,
     dispatcher: CoroutineDispatcher, private val clock: Clock, private val afterCommit: (WorkHistory) -> Unit,
-    private val command: CommandContext? = null) {
+    private val command: CommandContext? = null,
+    private val operationActive: () -> Boolean,
+) {
     private val runner = UseCaseRunner(dispatcher)
-    private val committer = CommandCommitter(coordinator)
-    suspend fun get() = runner.io { transactions.readLeaves { frozenList(it.leaves().map(::entry)) } }
+    private val committer = CommandCommitter(coordinator, operationActive)
+    suspend fun get() = runner.io { requireOperationActive(operationActive); transactions.readLeaves { frozenList(it.leaves().map(::entry)) } }
     suspend fun save(value: SaveLeave) = saveMerged(null, value, false)
     suspend fun edit(base: SaveLeave?, value: SaveLeave) = saveMerged(base, value, true)
-    private suspend fun saveMerged(base: SaveLeave?, value: SaveLeave, draft: Boolean) = runner.write {
+    private suspend fun saveMerged(base: SaveLeave?, value: SaveLeave, draft: Boolean) = runner.write { requireOperationActive(operationActive);
         // Direct validation precedes storage, as it did at the original public boundary.
         if (!draft) bounds(value.period)
         var committed: WorkHistory? = null
@@ -46,7 +50,7 @@ internal class LeaveService(private val transactions: LeaveTransactions, coordin
             }
         }) { committed?.let(afterCommit) }
     }
-    suspend fun delete(id: Long) = runner.write {
+    suspend fun delete(id: Long) = runner.write { requireOperationActive(operationActive);
         var committed: WorkHistory? = null
         committer.commit(command, {
             transactions.writeLeaves { writer ->

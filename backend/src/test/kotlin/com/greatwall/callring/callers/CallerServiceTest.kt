@@ -116,7 +116,7 @@ class CallerServiceTest {
         val p = Profiles()
         val c = BusinessRevisionCoordinator()
         val cmd = CommandContext("blocked", c.capture(), 1, active = { false })
-        val service = CallerCommandService(p, c, Dispatchers.Unconfined, { _, _ -> }, cmd)
+        val service = CallerCommandService(p, c, Dispatchers.Unconfined, { _, _ -> }, cmd, operationActive = { true })
         val result = service.save(SaveCallerProfile("invalid", "", "", null)) as ApiResult.Failure
         assertEquals("number.invalid", result.error.message)
         assertEquals(0, p.writes)
@@ -128,7 +128,7 @@ class CallerServiceTest {
         val c = BusinessRevisionCoordinator()
         val patches = mutableListOf<Pair<String, Boolean>>()
         val service =
-            CallerCommandService(p, c, Dispatchers.Unconfined, { n, b -> patches.add(n to b) })
+            CallerCommandService(p, c, Dispatchers.Unconfined, { n, b -> patches.add(n to b) }, operationActive = { true })
         val base = CallerDraft("31234", "A", "D", null, false)
         p.rows["31234"] =
             p.rows.getValue("31234").copy(department = "concurrent", whitelisted = true)
@@ -170,7 +170,7 @@ class CallerServiceTest {
             ) {
                 true
             }
-        val service = CallerCommandService(p, c, Dispatchers.Unconfined, { _, _ -> })
+        val service = CallerCommandService(p, c, Dispatchers.Unconfined, { _, _ -> }, operationActive = { true })
         val base = CallerDraft("31234", "", "", null, false)
         service.edit(base, base).requiredValue()
         assertEquals(1, p.puts)
@@ -184,8 +184,7 @@ class CallerServiceTest {
                 command.copy(
                     expectedVersions = c.capture(),
                     expectedScopes = c.expect(setOf("profile:31234")),
-                ),
-            )
+                ), operationActive = { true })
         noop.edit(base, base).requiredValue()
         assertEquals(1, p.puts)
         assertEquals(1L, c.marker())
@@ -196,7 +195,7 @@ class CallerServiceTest {
     fun baselineWhitelistAndRetainedInactiveValidationStayInFinalTransaction() = runBlocking {
         val p = Profiles()
         val c = BusinessRevisionCoordinator()
-        val service = CallerCommandService(p, c, Dispatchers.Unconfined, { _, _ -> })
+        val service = CallerCommandService(p, c, Dispatchers.Unconfined, { _, _ -> }, operationActive = { true })
         p.roles[4] = PositionRecord(4, "retained", 2, false)
         p.roles[5] = PositionRecord(5, "other", 3, false)
         p.rows["31234"] = p.rows.getValue("31234").copy(positionId = 4)
@@ -232,7 +231,7 @@ class CallerServiceTest {
         val p = Profiles()
         val c = BusinessRevisionCoordinator()
         val blocked = CommandContext("denied", c.capture(), 0, mayCommit = { false }) { true }
-        val service = CallerCommandService(p, c, Dispatchers.Unconfined, { _, _ -> }, blocked)
+        val service = CallerCommandService(p, c, Dispatchers.Unconfined, { _, _ -> }, blocked, operationActive = { true })
         assertEquals(
             "action.foreground_required",
             (service.save(SaveCallerProfile("31234", "", "", null)) as ApiResult.Failure)
@@ -289,8 +288,7 @@ class CallerServiceTest {
                     p,
                     BusinessRevisionCoordinator(),
                     Dispatchers.Unconfined,
-                    { _, _ -> },
-                )
+                    { _, _ -> }, operationActive = { true })
             val base = CallerDraft("3-1234", "old", "D", null, false)
             val conflict = service.edit(base, base.copy(name = "wanted")) as ApiResult.Failure
             assertEquals(ErrorCode.CONFLICT, conflict.error.code)

@@ -43,7 +43,7 @@ class RingtonePreparationTest {
         val documents = Documents()
         documents.beforeRead = { assertFalse(Thread.holdsLock(coordinator.fence)) }
         AndroidAudioController(context, preferences, { directory }, documents).use { audio ->
-            val service = RingtoneService(audio, ::status, coordinator, Dispatchers.IO)
+            val service = RingtoneService(audio, ::status, coordinator, Dispatchers.IO, operationActive = { true })
             val first = service.importAudio(DocumentRef("first")).ok()
             val second = service.importAudio(DocumentRef("second")).ok()
             assertEquals(first, second)
@@ -64,6 +64,30 @@ class RingtonePreparationTest {
         }
     }
 
+    @Test fun closingOwnerDuringPreparationRejectsFinalFileCommitAndPublication() = runBlocking {
+        ShadowMediaPlayer.setMediaInfoProvider { ShadowMediaPlayer.MediaInfo(1000, 0) }
+        val context = RuntimeEnvironment.getApplication()
+        val directory = File(context.cacheDir, "ring-owner-close-${System.nanoTime()}")
+        val coordinator = BusinessRevisionCoordinator()
+        val documents = Documents()
+        var active = true
+        AndroidAudioController(context, MemoryPreferences(), { directory }, documents).use { audio ->
+            val service = RingtoneService(audio, ::status, coordinator, Dispatchers.IO, operationActive = { active })
+            val initial = service.importAudio(DocumentRef("initial")).ok()
+            val marker = coordinator.marker()
+            documents.beforeRead = {
+                assertFalse(Thread.holdsLock(coordinator.fence))
+                active = false
+            }
+            val result = service.importAudio(DocumentRef("after-close"))
+            assertTrue(result is ApiResult.Failure)
+            assertEquals("initial", File(directory, "selected_audio").readText())
+            assertEquals(initial, audio.getSettings())
+            assertEquals(marker, coordinator.marker())
+            assertFalse(directory.listFiles()!!.any { it.name.startsWith("audio-backup-") || it.name.startsWith("audio-import-") })
+        }
+    }
+
     @Test fun newerImportOrRestoreWhileOlderPreparationRunsPreventsOldRollbackOverwritingNewSelection() = runBlocking {
         ShadowMediaPlayer.setMediaInfoProvider { ShadowMediaPlayer.MediaInfo(1000, 0) }
         for (restore in listOf(false, true)) {
@@ -73,7 +97,7 @@ class RingtonePreparationTest {
             val documents = Documents()
             val coordinator = BusinessRevisionCoordinator()
             AndroidAudioController(context, preferences, { directory }, documents).use { audio ->
-                val service = RingtoneService(audio, ::status, coordinator, Dispatchers.IO)
+                val service = RingtoneService(audio, ::status, coordinator, Dispatchers.IO, operationActive = { true })
                 service.importAudio(DocumentRef("initial")).ok()
                 val entered = CountDownLatch(1)
                 val release = CountDownLatch(1)

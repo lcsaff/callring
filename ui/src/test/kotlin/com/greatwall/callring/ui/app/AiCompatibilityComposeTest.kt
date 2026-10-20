@@ -21,7 +21,7 @@ class AiCompatibilityComposeTest {
         val connection=AiConnectionView(AiProtocol.OPENAI,"https://dashscope.aliyuncs.com/compatible-mode/v1","qwen3.8-flash",true,copyToAnalysisProfile=ProviderProfile.QWEN_FAST)
         val base=AiSettingsView(connection.copy(model="other"),connection,ConversationBudget(),9,ConversationCompatibility.STANDARD)
         var copied=false;var finished=false
-        val api=object:AiSettingsApi by UnavailableAiSettingsApi {
+        val api=object:AiSettingsApi by FixtureAiSettingsApi {
             override suspend fun getAiView()=ApiResult.Success(base)
             override suspend fun copyConnection(from:AiSlot,to:AiSlot,expectedRevision:Long):ApiResult<AiSettingsView>{assertEquals(AiSlot.TRANSCRIPTION,from);assertEquals(AiSlot.ANALYSIS,to);assertEquals(9L,expectedRevision);copied=true;return ApiResult.Success(base.copy(analysis=connection.copy(resolvedProfile=ProviderProfile.QWEN_FAST),compatibility=ConversationCompatibility.AUTO))}
         }

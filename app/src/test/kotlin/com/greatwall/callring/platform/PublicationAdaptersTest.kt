@@ -22,7 +22,7 @@ class PublicationAdaptersTest {
         val initial = AppearanceSettings(ThemeSelection.PRESET, "default", null, ColorMode.FOLLOW_SYSTEM)
         val preferences = AndroidPreferences(appearance, widgets, initial)
         val service = com.greatwall.callring.application.widget.WidgetBindingsService(preferences,
-            { WidgetInstallState(emptyList(), com.greatwall.callring.contracts.runtime.AccessState.GRANTED) }, coordinator, kotlinx.coroutines.Dispatchers.Unconfined)
+            { WidgetInstallState(emptyList(), com.greatwall.callring.contracts.runtime.AccessState.GRANTED) }, coordinator, kotlinx.coroutines.Dispatchers.Unconfined, operationActive = { true })
         assertTrue(service.saveBinding(7, "31234") is com.greatwall.callring.contracts.common.ApiResult.Success)
         assertEquals(1L, coordinator.marker())
         service.saveBinding(7, "31234")

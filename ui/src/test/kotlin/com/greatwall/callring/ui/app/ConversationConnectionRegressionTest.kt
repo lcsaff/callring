@@ -19,11 +19,11 @@ class ConversationConnectionRegressionTest {
         var probes = 0
         val feed = MutableStateFlow(DataChange(0, DataDomain.entries.toSet(), null, null))
         val conversationState = MutableStateFlow(ConversationState("session"))
-        val settings = object : AiSettingsApi by UnavailableAiSettingsApi {
+        val settings = object : AiSettingsApi by FixtureAiSettingsApi {
             override suspend fun getAiView() = ApiResult.Success(view)
             override suspend fun testSlot(slot: AiSlot): ApiResult<Unit> { probes++; return ApiResult.Success(Unit) }
         }
-        val conversation = object : ConversationApi by UnavailableConversationApi {
+        val conversation = object : ConversationApi by FixtureConversationApi {
             override val state = conversationState
             override suspend fun sendTo(expectedSessionId: String, text: String, disclosedTarget: AiConnectionView): ApiResult<Unit> {
                 conversationState.value = ConversationState("session", ConversationPhase.REQUESTING)

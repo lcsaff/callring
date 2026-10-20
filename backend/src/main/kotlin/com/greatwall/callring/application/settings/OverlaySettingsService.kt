@@ -1,5 +1,7 @@
 package com.greatwall.callring.application.settings
 
+import com.greatwall.callring.application.coordination.requireOperationActive
+
 import com.greatwall.callring.application.BusinessRevisionCoordinator
 import com.greatwall.callring.application.coordination.*
 import com.greatwall.callring.application.ports.store.OverlayTransactions
@@ -12,12 +14,14 @@ import kotlinx.coroutines.CoroutineDispatcher
 internal class OverlaySettingsService(private val transactions: OverlayTransactions,
     private val overlayAccess: () -> AccessState, coordinator: BusinessRevisionCoordinator,
     dispatcher: CoroutineDispatcher, private val afterCommit: (Boolean) -> Unit,
-    private val command: CommandContext? = null) {
+    private val command: CommandContext? = null,
+    private val operationActive: () -> Boolean,
+) {
     private val runner = UseCaseRunner(dispatcher)
-    private val committer = CommandCommitter(coordinator)
+    private val committer = CommandCommitter(coordinator, operationActive)
     suspend fun set(enabled: Boolean): ApiResult<Unit> {
         if (enabled) {
-            val access = runner.io {
+            val access = runner.io { requireOperationActive(operationActive);
                 val state = overlayAccess()
                 if (state != AccessState.GRANTED && state != AccessState.NOT_REQUIRED)
                     throw com.greatwall.callring.application.ports.BackendFailure(ApiError(ErrorCode.PERMISSION_REQUIRED,
@@ -25,7 +29,7 @@ internal class OverlaySettingsService(private val transactions: OverlayTransacti
             }
             if (access is ApiResult.Failure) return access
         }
-        return runner.write {
+        return runner.write { requireOperationActive(operationActive);
             committer.commit(command, {
                 transactions.writeOverlay { writer ->
                     val old = writer.overlay()

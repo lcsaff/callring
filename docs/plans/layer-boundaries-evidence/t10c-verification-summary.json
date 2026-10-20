@@ -1,0 +1,140 @@
+{
+  "baseline": "9aca4c4c7f2966f4f63d670396d6c4ecb196d35e",
+  "sourceCandidate": {
+    "path": "build/qa/layer-boundaries/t10c-source-candidate.json",
+    "sha256": "34c7b0c86d0a6df0f15a432cb4a287b67fbdea000b005b9c9cfb1fd545fb59b3",
+    "paths": 94,
+    "manifestSha256": "258a6e974f2ad755f2124292d357f015a94407b8f47a1a55773aae58a011b307"
+  },
+  "gate": {
+    "command": ".\\gradlew.bat :contracts:test :backend:test :ui:testDebugUnitTest :app:testDebugUnitTest :app:assembleDebug :ui:lintDebug :app:lintDebug :app:compileBackendQaKotlin :ui:compileDebugAndroidTestKotlin :app:compileDebugAndroidTestKotlin --console=plain",
+    "exit": 0,
+    "log": "build/qa/layer-boundaries/t10c-full-gate-2.log",
+    "sha256": "5e49adef8c9e8cbd5824efdb5c74c7acaf0a63dd763bbcc8b3910443460210f4",
+    "summary": [
+      "BUILD SUCCESSFUL in 2m 34s",
+      "155 actionable tasks: 32 executed, 123 up-to-date"
+    ]
+  },
+  "tests": {
+    "backend": {
+      "taskState": "EXECUTED",
+      "xmlGlob": "backend/build/test-results/test/TEST-*.xml",
+      "xmlFiles": 66,
+      "aggregateXmlSha256": "4845ea55675c1052ff69e531fd7dd8c57f645137b0c6fdbc42ecc953fdabf710",
+      "timestampMin": "2026-10-20T21:56:36.263Z",
+      "timestampMax": "2026-10-20T21:56:38.256Z",
+      "tests": 344,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "ui": {
+      "taskState": "EXECUTED",
+      "xmlGlob": "ui/build/test-results/testDebugUnitTest/TEST-*.xml",
+      "xmlFiles": 70,
+      "aggregateXmlSha256": "e38c224fa019fa90245b7b8a1da3d5951e64eace14ed4eea373bb1738fa5113a",
+      "timestampMin": "2026-10-20T21:56:41.320Z",
+      "timestampMax": "2026-10-20T21:57:14.810Z",
+      "tests": 298,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "app": {
+      "taskState": "EXECUTED",
+      "xmlGlob": "app/build/test-results/testDebugUnitTest/TEST-*.xml",
+      "xmlFiles": 64,
+      "aggregateXmlSha256": "4aade5013e8c798096d5046aee92545cfe9318f6283b769164d17e721af2a6e2",
+      "timestampMin": "2026-10-20T21:57:17.832Z",
+      "timestampMax": "2026-10-20T21:58:11.296Z",
+      "tests": 327,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "contracts": {
+      "taskState": "NO-SOURCE"
+    }
+  },
+  "lint": {
+    "app": {
+      "path": "app/build/reports/lint-results-debug.xml",
+      "sha256": "870f75067afdbd0613d441d5411e734123f76480f1f3cf8b5a91c11e1e5e993a",
+      "severities": {
+        "Warning": 6
+      },
+      "analyzeTaskState": "EXECUTED",
+      "reportTaskState": "EXECUTED"
+    },
+    "ui": {
+      "path": "ui/build/reports/lint-results-debug.xml",
+      "sha256": "61094a8dcd24ddb283ce063ded1fd7e83d26b9903c9a7d6a4190cbc16df7b045",
+      "severities": {
+        "Warning": 30,
+        "Hint": 3
+      },
+      "analyzeTaskState": "EXECUTED",
+      "reportTaskState": "EXECUTED"
+    }
+  },
+  "architecture": {
+    "log": "build/qa/layer-boundaries/t10c-architecture-final.log",
+    "sha256": "77d1d033dcba0d9dc684ff6084ac49247ba0d2bca7bba77fc71fe44e3f22b193",
+    "negativeTests": [
+      17,
+      4
+    ],
+    "jvmSources": 114
+  },
+  "device": "not run",
+  "compilation": {
+    ":app:compileBackendQaKotlin": "EXECUTED",
+    ":ui:compileDebugAndroidTestKotlin": "EXECUTED",
+    ":app:compileDebugAndroidTestKotlin": "NO-SOURCE",
+    ":app:assembleDebug": "EXECUTED"
+  },
+  "numberAccess": {
+    "1000": {
+      "source": "app/build/qa/layer-boundaries/t10b3-number-access-1000.json",
+      "copy": "build/qa/layer-boundaries/t10c-number-access-1000.json",
+      "sha256": "d46aa6ba115767101c6e5f5af934095b681dc093a10d510b4c4b738ca21b658f",
+      "data": {
+        "sourceChunkQueries": 343,
+        "metadataCharacters": 233,
+        "payloadMetadataRows": 1,
+        "maxSourceChunkBytes": 4096,
+        "warmNumberRows": 1001,
+        "targetMetadataRows": 1,
+        "sourceBytes": 1400475,
+        "storedBindingEntriesPerEnumeration": 1002,
+        "previewBindingEnumerations": 1,
+        "installedWidgetReads": 0,
+        "returnedBindings": 1
+      }
+    },
+    "10000": {
+      "source": "app/build/qa/layer-boundaries/t10b3-number-access-10000.json",
+      "copy": "build/qa/layer-boundaries/t10c-number-access-10000.json",
+      "sha256": "edba6d72e7b666d1346a21cd648e594ca315f6b70d90bd862e6535ad9dce581f",
+      "data": {
+        "sourceChunkQueries": 343,
+        "metadataCharacters": 234,
+        "payloadMetadataRows": 1,
+        "maxSourceChunkBytes": 4096,
+        "warmNumberRows": 10001,
+        "targetMetadataRows": 1,
+        "sourceBytes": 1400476,
+        "storedBindingEntriesPerEnumeration": 10002,
+        "previewBindingEnumerations": 1,
+        "installedWidgetReads": 0,
+        "returnedBindings": 1
+      }
+    }
+  },
+  "verification": {
+    "path": "build/qa/layer-boundaries/t10c-verification.json",
+    "sha256": "675779e8da9a69e20f1e6f9218bc15272a99800cc5cbff2a5a9ef9269a84e228"
+  },
+  "rawFixtureOutputCount": 32
+}

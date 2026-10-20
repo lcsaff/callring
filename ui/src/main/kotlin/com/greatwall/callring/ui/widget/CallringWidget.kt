@@ -110,13 +110,7 @@ class WidgetRetryAction : ActionCallback {
 class WidgetQuietAction : ActionCallback {
     override suspend fun onAction(context: Context, glanceId: GlanceId, parameters: ActionParameters) {
         val enabled = parameters[ToggleableStateKey] ?: return
-        val preferences = context.applicationContext.getSharedPreferences("callring_widget_controls", Context.MODE_PRIVATE)
-        runWidgetAction(context, glanceId) { model ->
-            model.setQuietEnabled(enabled, {
-                runCatching { QuietMode.valueOf(preferences.getString("last_quiet_mode", QuietMode.NON_WORK.name)!!) }
-                    .getOrDefault(QuietMode.NON_WORK)
-            }) { mode -> preferences.edit().putString("last_quiet_mode", mode.name).apply() }
-        }
+        runWidgetAction(context, glanceId) { model -> model.setQuietEnabled(enabled) }
     }
 }
 

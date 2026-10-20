@@ -28,8 +28,8 @@ class RenderedDestinationTest {
         var reads = 0
         val api = object : UiFakeApi() {
             override val changes = object : ChangeFeed { override fun observe() = config.map { DataChange(it.revision,setOf(DataDomain.AI_SETTINGS),null,null) } }
-            override val aiSettings = object : AiSettingsApi by UnavailableAiSettingsApi { override suspend fun getAiView(): ApiResult<AiSettingsView> { reads++; return ApiResult.Success(config.value) } }
-            override val conversation = object : ConversationApi by UnavailableConversationApi {
+            override val aiSettings = object : AiSettingsApi by FixtureAiSettingsApi { override suspend fun getAiView(): ApiResult<AiSettingsView> { reads++; return ApiResult.Success(config.value) } }
+            override val conversation = object : ConversationApi by FixtureConversationApi {
                 override val state = MutableStateFlow(ConversationState("s"))
                 override suspend fun sendTo(expectedSessionId: String, text: String, disclosedTarget: AiConnectionView): ApiResult<Unit> {
                     attempts += disclosedTarget

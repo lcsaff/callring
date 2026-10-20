@@ -197,7 +197,7 @@ class NumberDeletionIntegrationTest {
             } as android.content.SharedPreferences
             val preferences = com.greatwall.callring.platform.AndroidPreferences(stored, measured, graph.configuration.defaultAppearance)
             val widgets = com.greatwall.callring.application.widget.WidgetBindingsService(preferences,
-                { error("installed widgets are not a deletion dependency") }, graph.coordinator, kotlinx.coroutines.Dispatchers.Unconfined)
+                { error("installed widgets are not a deletion dependency") }, graph.coordinator, kotlinx.coroutines.Dispatchers.Unconfined, operationActive = { true })
             val service = NumberDeletionService(graph.backend.callers::numberDataImpact,
                 { _, _, _ -> error("preview cannot write core") }, graph.recordings.service,
                 widgets::bindingsForNumber, { _, _ -> error("preview cannot write widgets") }, graph.coordinator, active = { true })

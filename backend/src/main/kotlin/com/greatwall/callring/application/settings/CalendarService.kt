@@ -1,5 +1,7 @@
 package com.greatwall.callring.application.settings
 
+import com.greatwall.callring.application.coordination.requireOperationActive
+
 import com.greatwall.callring.application.BusinessRevisionCoordinator
 import com.greatwall.callring.application.frozenList
 import com.greatwall.callring.application.coordination.*
@@ -18,12 +20,14 @@ import kotlinx.coroutines.*
 internal class CalendarService(private val transactions: CalendarTransactions, coordinator: BusinessRevisionCoordinator,
     dispatcher: CoroutineDispatcher, private val clock: Clock, private val source: CalendarSource,
     private val documents: CalendarDocumentReader, private val afterCommit: (WorkHistory) -> Unit,
-    private val command: CommandContext? = null) {
+    private val command: CommandContext? = null,
+    private val operationActive: () -> Boolean,
+) {
     private val runner = UseCaseRunner(dispatcher)
-    private val committer = CommandCommitter(coordinator)
-    suspend fun get() = runner.io { transactions.readCalendar { overview(it) } }
+    private val committer = CommandCommitter(coordinator, operationActive)
+    suspend fun get() = runner.io { requireOperationActive(operationActive); transactions.readCalendar { overview(it) } }
     suspend fun synchronize(year: Int): ApiResult<CalendarInfo> {
-        val prepared = runner.io {
+        val prepared = runner.io { requireOperationActive(operationActive);
             requireCalendar(year in 2008..9998, "year", "calendar.year.invalid")
             runInterruptible { source.fetch(year) }.also {
                 requireCalendar(it.metadata.year == year, "year", "calendar.year.mismatch")
@@ -32,11 +36,11 @@ internal class CalendarService(private val transactions: CalendarTransactions, c
         }
         return when (prepared) { is ApiResult.Failure -> prepared; is ApiResult.Success -> { currentCoroutineContext().ensureActive(); replace(prepared.value, true) } }
     }
-    suspend fun import(source: DocumentRef): ApiResult<CalendarInfo> = when (val prepared = runner.io { runInterruptible { documents.readCalendar(source) } }) {
+    suspend fun import(source: DocumentRef): ApiResult<CalendarInfo> = when (val prepared = runner.io { requireOperationActive(operationActive); runInterruptible { documents.readCalendar(source) } }) {
         is ApiResult.Failure -> prepared
         is ApiResult.Success -> { currentCoroutineContext().ensureActive(); replace(prepared.value, false) }
     }
-    private suspend fun replace(imported: CalendarImport, preservePublished: Boolean) = runner.write {
+    private suspend fun replace(imported: CalendarImport, preservePublished: Boolean) = runner.write { requireOperationActive(operationActive);
         validate(imported, !preservePublished)
         var committed: WorkHistory? = null
         committer.commit(command, {
@@ -56,7 +60,7 @@ internal class CalendarService(private val transactions: CalendarTransactions, c
             }
         }) { committed?.let(afterCommit) }
     }
-    suspend fun saveOverride(value: DateOverride) = runner.write {
+    suspend fun saveOverride(value: DateOverride) = runner.write { requireOperationActive(operationActive);
         SettingsRules.overrideWindows(value.toDomain()).firstOrNull()?.let { settingFailure(ErrorCode.VALIDATION, it.message, it.path) }
         var committed: WorkHistory? = null
         committer.commit(command, {
@@ -72,7 +76,7 @@ internal class CalendarService(private val transactions: CalendarTransactions, c
             }
         }) { committed?.let(afterCommit) }
     }
-    suspend fun deleteOverride(date: LocalDate) = runner.write {
+    suspend fun deleteOverride(date: LocalDate) = runner.write { requireOperationActive(operationActive);
         var committed: WorkHistory? = null
         committer.commit(command, {
             transactions.writeCalendar { writer ->

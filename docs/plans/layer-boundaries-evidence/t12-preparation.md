@@ -38,3 +38,5 @@ ConversationService 生产始终提供 QueryService，nullable queries 旧模式
 负例覆盖重复id/name/code/legacyIndex/displayOrder、缺81定义/执行/读回声明、写缺scope/确认、读缺source/纯计算声明。覆盖从72扩到81，业务测试按OperationId组织；baseline从生产目录导出，不在测试按数字重新计算策略掩盖遗漏。
 
 最终无nullable queries、numeric overload、purposes[index-1]、definitionsMutable.size+1或双读取执行路径；架构负例禁止executor/planner/verifier/reader用legacyIndex/ordinal/数字范围选择行为，允许schema固定数值/容量/D/O/X协议数据。
+
+现行 `check_backend_boundaries.has_presentation_literal` 仅精确允许 CapabilityCatalog 的 purposes 字符串列表、ToolRegistry 五参数数字 ToolDefinition 的描述。具名元数据迁走时，应同步改为实际唯一目录描述字段的精确解析与正反例；不要为了过门而把描述留在按索引取值的旧表，也不要整文件豁免中文字符串。该守卫更新可随T12进行，T14仍复核最终硬规则闭包。

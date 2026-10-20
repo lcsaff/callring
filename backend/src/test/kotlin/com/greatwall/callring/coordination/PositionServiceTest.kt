@@ -33,7 +33,7 @@ class PositionServiceTest {
         }
     }
     @Test fun inactiveMineCanBeRetainedButOtherInactiveCannotBeSelectedAndReferencesPreventDelete() = runBlocking {
-        val tx = Positions(); val coordinator = BusinessRevisionCoordinator(); val service = PositionService(tx, coordinator, Dispatchers.Unconfined)
+        val tx = Positions(); val coordinator = BusinessRevisionCoordinator(); val service = PositionService(tx, coordinator, Dispatchers.Unconfined, operationActive = { true })
         assertTrue(service.mine(1) is ApiResult.Success); assertEquals(0L, coordinator.marker())
         assertEquals("position.inactive", (service.mine(2) as ApiResult.Failure).error.fieldErrors["positionId"])
         assertEquals(ErrorCode.IN_USE, (service.delete(1) as ApiResult.Failure).error.code)
@@ -43,7 +43,7 @@ class PositionServiceTest {
         assertEquals(0L, coordinator.marker())
     }
     @Test fun draftMergesOnlyDirtyFieldsInTransactionAndRetainsIdentityDeletedAndFieldConflictShapes() = runBlocking {
-        val tx = Positions(); val coordinator = BusinessRevisionCoordinator(); val service = PositionService(tx, coordinator, Dispatchers.Unconfined)
+        val tx = Positions(); val coordinator = BusinessRevisionCoordinator(); val service = PositionService(tx, coordinator, Dispatchers.Unconfined, operationActive = { true })
         val base = SavePosition(2, "Other", 3, false)
         service.save(base.copy(level = 4))
         val merged = (service.edit(base, base.copy(name = " Changed ")) as ApiResult.Success).value

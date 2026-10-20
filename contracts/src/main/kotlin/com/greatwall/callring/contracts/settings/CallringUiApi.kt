@@ -11,8 +11,7 @@ interface SettingsApi {
     suspend fun getQuietHours(): ApiResult<QuietSettings>
     suspend fun saveQuietHours(settings: QuietSettings): ApiResult<QuietSettings>
     suspend fun setQuietMode(mode: QuietMode): ApiResult<QuietSettings>
-    suspend fun setQuietEnabled(enabled: Boolean): ApiResult<QuietSettings> =
-        ApiResult.Failure(ApiError(ErrorCode.SYSTEM_UNAVAILABLE, "quiet.enable_unavailable"))
+    suspend fun setQuietEnabled(enabled: Boolean): ApiResult<QuietSettings>
 
     suspend fun getPositions(): ApiResult<PositionSettings>
     suspend fun savePosition(command: SavePosition): ApiResult<PositionOption>
@@ -24,8 +23,7 @@ interface SettingsApi {
     suspend fun resetWorkSchedule(): ApiResult<WorkScheduleSettings>
 
     suspend fun getCalendar(): ApiResult<CalendarInfo>
-    suspend fun synchronizeCalendar(year: Int): ApiResult<CalendarInfo> =
-        ApiResult.Failure(ApiError(ErrorCode.SYSTEM_UNAVAILABLE, "calendar.sync_unavailable", retryable = true))
+    suspend fun synchronizeCalendar(year: Int): ApiResult<CalendarInfo>
     suspend fun importCalendar(source: DocumentRef): ApiResult<CalendarInfo>
     suspend fun saveDateOverride(command: DateOverride): ApiResult<CalendarInfo>
     suspend fun deleteDateOverride(date: LocalDate): ApiResult<CalendarInfo>

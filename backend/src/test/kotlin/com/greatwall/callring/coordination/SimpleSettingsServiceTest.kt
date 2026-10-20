@@ -55,9 +55,9 @@ class SimpleSettingsServiceTest {
             override fun <T> writePositions(block: (PositionWriter) -> T): T = error("unexpected.storage")
         }
         val saves: List<suspend () -> Any> = listOf(
-            { ScoreSettingsService(tx, coordinator, Dispatchers.Unconfined).save(ScoreSettings(-1, 2, 10, 30)) },
-            { QuietSettingsService(quiet, coordinator, Dispatchers.Unconfined, {}).save(QuietSettings(QuietMode.CUSTOM, false, mapOf(1 to listOf(TimeWindow(-1, 1))))) },
-            { PositionService(positions, coordinator, Dispatchers.Unconfined).save(SavePosition(null, "", 0, true)) }
+            { ScoreSettingsService(tx, coordinator, Dispatchers.Unconfined, operationActive = { true }).save(ScoreSettings(-1, 2, 10, 30)) },
+            { QuietSettingsService(quiet, coordinator, Dispatchers.Unconfined, {}, operationActive = { true }).save(QuietSettings(QuietMode.CUSTOM, false, mapOf(1 to listOf(TimeWindow(-1, 1))))) },
+            { PositionService(positions, coordinator, Dispatchers.Unconfined, operationActive = { true }).save(SavePosition(null, "", 0, true)) }
         )
         val failures = mutableListOf<Int>()
         saves.forEachIndexed { index, save ->
@@ -72,7 +72,7 @@ class SimpleSettingsServiceTest {
         assertEquals(0, tx.reads); assertEquals(0, tx.writes)
     }
     @Test fun invalidScoreRejectsFirstFieldBeforeOpeningStorage() = runBlocking {
-        val tx = Scores(); val service = ScoreSettingsService(tx, BusinessRevisionCoordinator(), Dispatchers.Unconfined)
+        val tx = Scores(); val service = ScoreSettingsService(tx, BusinessRevisionCoordinator(), Dispatchers.Unconfined, operationActive = { true })
         val error = (service.save(ScoreSettings(-1, -2, 0, 0)) as ApiResult.Failure).error
         assertEquals(ErrorCode.VALIDATION, error.code)
         assertEquals(setOf("offHoursWeight"), error.fieldErrors.keys)
@@ -81,7 +81,7 @@ class SimpleSettingsServiceTest {
     @Test fun scoreDirtyMergeNoopRollbackAndCommandContinuationUseFinalTruth() = runBlocking {
         val tx = Scores(); val coordinator = BusinessRevisionCoordinator()
         val command = CommandContext("score", coordinator.capture(), 0, continueOwnCommits = true, expectedScopes = coordinator.expect(setOf("score"))) { true }
-        val service = ScoreSettingsService(tx, coordinator, Dispatchers.Unconfined, command)
+        val service = ScoreSettingsService(tx, coordinator, Dispatchers.Unconfined, command, operationActive = { true })
         val base = tx.value.toContract()
         assertTrue(service.save(base.copy(repeatWeight = 3)) is ApiResult.Success)
         val merged = (service.edit(base, base.copy(offHoursWeight = 6)) as ApiResult.Success).value
@@ -100,13 +100,13 @@ class SimpleSettingsServiceTest {
     @Test fun scoreRejectsStaleInactiveAndForegroundCommandsAndPublishesAfterCancellation() = runBlocking {
         val tx = Scores(); val coordinator = BusinessRevisionCoordinator()
         val stale = CommandContext("stale", coordinator.capture(), 0, expectedScopes = coordinator.expect(setOf("core"))) { true }
-        val service = ScoreSettingsService(tx, coordinator, Dispatchers.Unconfined)
+        val service = ScoreSettingsService(tx, coordinator, Dispatchers.Unconfined, operationActive = { true })
         service.save(tx.value.toContract().copy(repeatWeight = 3))
-        assertEquals("business.changed", (ScoreSettingsService(tx, coordinator, Dispatchers.Unconfined, stale).reset() as ApiResult.Failure).error.message)
+        assertEquals("business.changed", (ScoreSettingsService(tx, coordinator, Dispatchers.Unconfined, stale, operationActive = { true }).reset() as ApiResult.Failure).error.message)
         val inactive = CommandContext("inactive", coordinator.capture(), 0) { false }
-        assertEquals("ai.cancelled", (ScoreSettingsService(tx, coordinator, Dispatchers.Unconfined, inactive).reset() as ApiResult.Failure).error.message)
+        assertEquals("ai.cancelled", (ScoreSettingsService(tx, coordinator, Dispatchers.Unconfined, inactive, operationActive = { true }).reset() as ApiResult.Failure).error.message)
         val denied = CommandContext("foreground", coordinator.capture(), 0, mayCommit = { false }) { true }
-        assertEquals("action.foreground_required", (ScoreSettingsService(tx, coordinator, Dispatchers.Unconfined, denied).reset() as ApiResult.Failure).error.message)
+        assertEquals("action.foreground_required", (ScoreSettingsService(tx, coordinator, Dispatchers.Unconfined, denied, operationActive = { true }).reset() as ApiResult.Failure).error.message)
         val scope = CoroutineScope(SupervisorJob() + Dispatchers.Unconfined)
         lateinit var job: Job
         job = scope.launch(start = CoroutineStart.LAZY) { service.reset() }
@@ -116,7 +116,7 @@ class SimpleSettingsServiceTest {
     }
     @Test fun appearanceDirectNullPreservesSeedAndDraftNullClearsItWithOnePreferencesPublication() = runBlocking {
         val prefs = Preferences(); val coordinator = BusinessRevisionCoordinator()
-        val service = AppearanceService(prefs, coordinator, Dispatchers.Unconfined)
+        val service = AppearanceService(prefs, coordinator, Dispatchers.Unconfined, operationActive = { true })
         val custom = prefs.value.copy(customSeedRgb = 0x123456)
         service.save(custom)
         assertEquals(custom, (service.save(custom.copy(customSeedRgb = null)) as ApiResult.Success).value)
@@ -131,7 +131,7 @@ class SimpleSettingsServiceTest {
     }
     @Test fun appearanceDirtyConflictRetainsExistingDraftConflictCode() = runBlocking {
         val prefs = Preferences(); val coordinator = BusinessRevisionCoordinator()
-        val service = AppearanceService(prefs, coordinator, Dispatchers.Unconfined)
+        val service = AppearanceService(prefs, coordinator, Dispatchers.Unconfined, operationActive = { true })
         val base = prefs.value
         service.save(base.copy(colorMode = ColorMode.DARK))
         val error = (service.edit(base, base.copy(colorMode = ColorMode.LIGHT)) as ApiResult.Failure).error

@@ -27,7 +27,7 @@ class AiSettingsServiceTest {
     @Test fun combinedPublishesOneMarkerAndNoopDoesNotPublish() = runBlocking {
         val coordinator = BusinessRevisionCoordinator()
         val store = AndroidRecordingStore(RuntimeEnvironment.getApplication(), "combined-single-marker", cipher, recordingVersion = { coordinator.capture().values.getValue("recording") })
-        val api = AiSettingsService(store, coordinator, { true }, { _, _ -> }, folderView = folder)
+        val api = AiSettingsService(store, coordinator, { true }, { _, _ -> }, folderView = folder, operationActive = { true })
         try {
             api.patchCombined(api.getRecordingView().ok(), RecordingSettingsPatch(recordingEnabled = PatchField.Set(true)),
                 api.getAiView().ok(), AiSettingsPatch(budget = PatchField.Set(ConversationBudget(65536, 4096))), LocalSecretChange.Keep, LocalSecretChange.Keep).ok()
@@ -47,8 +47,8 @@ class AiSettingsServiceTest {
         val api = AiSettingsService(store, coordinator, { true }, { _, _ -> }, afterSave = {
             entered.countDown()
             check(release.await(10, java.util.concurrent.TimeUnit.SECONDS))
-        }, folderView = folder)
-        val other = AiSettingsService(store, coordinator, { true }, { _, _ -> }, folderView = folder)
+        }, folderView = folder, operationActive = { true })
+        val other = AiSettingsService(store, coordinator, { true }, { _, _ -> }, folderView = folder, operationActive = { true })
         try {
             val first = async(Dispatchers.Default) { api.patchRecording(api.getRecordingView().ok(), RecordingSettingsPatch(recordingEnabled = PatchField.Set(true))).ok() }
             check(entered.await(10, java.util.concurrent.TimeUnit.SECONDS))
@@ -65,7 +65,7 @@ class AiSettingsServiceTest {
         val original=RecordingSettings(analysis=AiConnection(url="https://example.com/v1",model="qwen3.8-flash",apiKey="fixture-private"),conversationCompatibility=ConversationCompatibility.QWEN_FAST,conversationBudget=ConversationBudget(65536,8192))
         store.persistSettings(original)
         assertEquals(ConversationCompatibility.AUTO,store.settings().conversationCompatibility)
-        val api=AiSettingsService(store,coordinator,{true},{_,_->}, folderView = folder)
+        val api=AiSettingsService(store,coordinator,{true},{_,_->}, folderView = folder, operationActive = { true })
         try{
             val saved=api.patchAi(api.getAiView().ok(),AiSettingsPatch(analysis=ConnectionPatch(model=PatchField.Set("deepseek-chat")))).ok()
             assertEquals("deepseek-chat",saved.analysis.model)
@@ -78,7 +78,7 @@ class AiSettingsServiceTest {
         val coordinator=BusinessRevisionCoordinator();val store=AndroidRecordingStore(RuntimeEnvironment.getApplication(),"ai_scope_fields",cipher, recordingVersion = { coordinator.capture().values.getValue("recording") })
         val connection=AiConnection(url="https://example.com/v1",model="model",apiKey="fixture-private")
         store.persistSettings(RecordingSettings(analysis=connection,transcription=connection))
-        val api=AiSettingsService(store,coordinator,{true},{_,_->}, folderView = folder)
+        val api=AiSettingsService(store,coordinator,{true},{_,_->}, folderView = folder, operationActive = { true })
         val base=api.getAiView().ok()
         api.patchAi(base,AiSettingsPatch(budget=PatchField.Set(ConversationBudget(65536,4096)))).ok()
         api.patchAi(base,AiSettingsPatch(),analysisSecret=LocalSecretChange.Replace("rotated-fixture")).ok()
@@ -94,7 +94,7 @@ class AiSettingsServiceTest {
         val qwen=AiConnection(url="https://dashscope.aliyuncs.com/compatible-mode/v1",model="qwen3.8-flash",apiKey="fixture-private")
         store.persistSettings(RecordingSettings(analysis=qwen,transcription=qwen,conversationCompatibility=ConversationCompatibility.STANDARD))
         assertEquals(ConversationCompatibility.STANDARD,store.settings().conversationCompatibility)
-        val api=AiSettingsService(store,coordinator,{true},{_,_->}, folderView = folder)
+        val api=AiSettingsService(store,coordinator,{true},{_,_->}, folderView = folder, operationActive = { true })
         assertEquals(ProviderProfile.STANDARD,api.getAiView().ok().analysis.resolvedProfile)
         assertEquals(ProviderProfile.QWEN_FAST,api.getAiView().ok().analysis.copyToAnalysisProfile)
         assertEquals(ProviderProfile.QWEN_FAST,api.getAiView().ok().transcription.copyToAnalysisProfile)
@@ -112,7 +112,7 @@ class AiSettingsServiceTest {
         for(slot in AiSlot.entries) {
             val coordinator = BusinessRevisionCoordinator()
             val store = AndroidRecordingStore(RuntimeEnvironment.getApplication(),"cold_page_$slot",cipher, recordingVersion = { coordinator.capture().values.getValue("recording") })
-            val service = AiSettingsService(store,coordinator,{ true },{ _,_ -> }, folderView = folder)
+            val service = AiSettingsService(store,coordinator,{ true },{ _,_ -> }, folderView = folder, operationActive = { true })
             try {
                 val aiBase = service.getAiView().ok()
                 val rec = service.getRecordingView().ok()
@@ -140,7 +140,7 @@ class AiSettingsServiceTest {
         val saved = AiConnection(url = "https://example.com", apiKey = "secret", model = "saved")
         store.persistSettings(RecordingSettings(analysis = saved))
         var tested: AiConnection? = null
-        val api = AiSettingsService(store,coordinator,{ true },{ connection, _ -> tested = connection }, folderView = folder)
+        val api = AiSettingsService(store,coordinator,{ true },{ connection, _ -> tested = connection }, folderView = folder, operationActive = { true })
         val base = api.getAiView().ok()
         api.testDraft(base,AiSettingsPatch(analysis = ConnectionPatch(model = PatchField.Set("unsaved"))),AiSlot.ANALYSIS).ok()
         assertEquals("unsaved",tested!!.model)
@@ -160,7 +160,7 @@ class AiSettingsServiceTest {
         val store = AndroidRecordingStore(RuntimeEnvironment.getApplication(), "page_merge", cipher, recordingVersion = { coordinator.capture().values.getValue("recording") })
         val old = AiConnection(url = "https://example.com/v1", model = "model", apiKey = "keep-both-keys")
         store.persistSettings(RecordingSettings(analysis = old, transcription = old))
-        val api = AiSettingsService(store, coordinator, { true }, { _, _ -> }, folderView = folder)
+        val api = AiSettingsService(store, coordinator, { true }, { _, _ -> }, folderView = folder, operationActive = { true })
         val recording = api.getRecordingView().ok()
         val ai = api.getAiView().ok()
         api.patchAi(ai, AiSettingsPatch(analysis = ConnectionPatch(model = PatchField.Set("new-model")))).ok()
@@ -175,7 +175,7 @@ class AiSettingsServiceTest {
         val store = AndroidRecordingStore(RuntimeEnvironment.getApplication(), "page_conflict", cipher, recordingVersion = { coordinator.capture().values.getValue("recording") })
         val old = AiConnection(url = "https://example.com/v1", model = "model", apiKey = "key")
         store.persistSettings(RecordingSettings(analysis = old))
-        val api = AiSettingsService(store, coordinator, { true }, { _, _ -> }, folderView = folder)
+        val api = AiSettingsService(store, coordinator, { true }, { _, _ -> }, folderView = folder, operationActive = { true })
         val base = api.getAiView().ok()
         api.patchAi(base, AiSettingsPatch(analysis = ConnectionPatch(model = PatchField.Set("first")))).ok()
         assertTrue(api.patchAi(base, AiSettingsPatch(analysis = ConnectionPatch(model = PatchField.Set("stale")))) is ApiResult.Failure)

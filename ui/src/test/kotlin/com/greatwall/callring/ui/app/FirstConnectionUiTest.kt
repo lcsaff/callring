@@ -25,7 +25,7 @@ class FirstConnectionUiTest {
         val empty = AiConnectionView(AiProtocol.OPENAI,"","",false)
         var view = AiSettingsView(empty,empty,ConversationBudget(),0)
         val submitted = mutableListOf<Triple<AiSettingsPatch,LocalSecretChange,LocalSecretChange>>()
-        val settings = object : AiSettingsApi by UnavailableAiSettingsApi {
+        val settings = object : AiSettingsApi by FixtureAiSettingsApi {
             override suspend fun getAiView() = ApiResult.Success(view)
             override suspend fun getRecordingView() = ApiResult.Success(RecordingSettingsView(false,false,CaptureMode.SYSTEM_ONLY,false,0))
             override suspend fun patchCombined(recordingBase: RecordingSettingsView, recording: RecordingSettingsPatch, aiBase: AiSettingsView, ai: AiSettingsPatch, analysisSecret: LocalSecretChange, transcriptionSecret: LocalSecretChange): ApiResult<Unit> {

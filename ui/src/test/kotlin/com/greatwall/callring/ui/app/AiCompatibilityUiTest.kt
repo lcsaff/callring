@@ -26,7 +26,7 @@ class AiCompatibilityUiTest {
         onPatchAi: (AiSettingsPatch) -> ApiResult<AiSettingsView> = { ApiResult.Success(ai) },
         onPatchCombined: (RecordingSettingsPatch, AiSettingsPatch) -> ApiResult<Unit> = { _, _ -> ApiResult.Success(Unit) },
     ) = object : UiFakeApi() {
-        override val aiSettings = object : AiSettingsApi by UnavailableAiSettingsApi {
+        override val aiSettings = object : AiSettingsApi by FixtureAiSettingsApi {
             override suspend fun getAiView() = ApiResult.Success(onAiView())
             override suspend fun getRecordingView() = ApiResult.Success(onRecordingView())
             override suspend fun patchAi(base: AiSettingsView, patch: AiSettingsPatch,

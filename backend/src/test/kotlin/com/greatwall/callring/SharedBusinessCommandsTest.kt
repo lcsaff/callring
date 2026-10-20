@@ -7,7 +7,7 @@ import com.greatwall.callring.contracts.callers.*
 import com.greatwall.callring.contracts.settings.*
 import com.greatwall.callring.contracts.recording.*
 import com.greatwall.callring.contracts.*
-import com.greatwall.callring.application.capability.*
+import com.greatwall.callring.testing.*
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.*
 import org.junit.Test
@@ -19,7 +19,7 @@ class SharedBusinessCommandsTest {
         fixture.backend.callers.saveProfile(SaveCallerProfile("31234","old name","old unit",position.id,true))
         val command = CommandContext("op",fixture.coordinator.capture(),0) { true }
         val api = object : CallringUiApi by fixture.backend.commandApi(command) {
-            override val recordings = object : RecordingApi by UnavailableRecordingApi {
+            override val recordings = object : RecordingApi by FixtureRecordingApi {
                 override suspend fun getArchive(callId: Long): ApiResult<CallArchive?> = ApiResult.Success(CallArchive(callId,"31234",1,generation = 7,analysis = CallAnalysis(organization = "new unit",position = "CEO",inferredIdentity = "not a self-report")))
             }
         }
@@ -35,7 +35,7 @@ class SharedBusinessCommandsTest {
         val fixture = ConversationFixtures()
         fixture.backend.callers.saveProfile(SaveCallerProfile("31234", "original", "unit", null)).requiredValue()
         val api = object : CallringUiApi by fixture.backend {
-            override val recordings = object : RecordingApi by UnavailableRecordingApi {
+            override val recordings = object : RecordingApi by FixtureRecordingApi {
                 override suspend fun getArchive(callId: Long): ApiResult<CallArchive?> = ApiResult.Success(
                     CallArchive(callId, "31234", 1, generation = 7, analysis = CallAnalysis(name = "stale")))
             }

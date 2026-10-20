@@ -1,5 +1,7 @@
 package com.greatwall.callring.application.settings
 
+import com.greatwall.callring.application.coordination.requireOperationActive
+
 import com.greatwall.callring.application.BusinessRevisionCoordinator
 import com.greatwall.callring.application.coordination.*
 import com.greatwall.callring.application.ports.SyncScheduler
@@ -15,11 +17,13 @@ internal data class StatisticsChange(val before: StatisticsInterval?, val after:
 internal class StatisticsSettingsService(private val transactions: StatisticsTransactions,
     coordinator: BusinessRevisionCoordinator, dispatcher: CoroutineDispatcher,
     private val clock: Clock, private val scheduler: SyncScheduler,
-    private val afterCommit: (StatisticsChange) -> Unit, private val command: CommandContext? = null) {
+    private val afterCommit: (StatisticsChange) -> Unit, private val command: CommandContext? = null,
+    private val operationActive: () -> Boolean,
+) {
     private val runner = UseCaseRunner(dispatcher)
-    private val committer = CommandCommitter(coordinator)
+    private val committer = CommandCommitter(coordinator, operationActive)
     suspend fun set(enabled: Boolean): ApiResult<Unit> {
-        val result = runner.write {
+        val result = runner.write { requireOperationActive(operationActive);
             committer.commit(command, {
                 transactions.writeStatistics { writer ->
                     val head = writer.statisticsHead()

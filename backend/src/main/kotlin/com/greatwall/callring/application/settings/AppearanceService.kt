@@ -1,5 +1,7 @@
 package com.greatwall.callring.application.settings
 
+import com.greatwall.callring.application.coordination.requireOperationActive
+
 import com.greatwall.callring.application.*
 import com.greatwall.callring.application.coordination.*
 import com.greatwall.callring.application.ports.store.AppearanceStore
@@ -12,7 +14,9 @@ import kotlinx.coroutines.CoroutineDispatcher
 /** Preferences have their own resource and publisher; no SQL capability is required. */
 internal class AppearanceService(private val preferences: AppearanceStore,
     private val coordinator: BusinessRevisionCoordinator, dispatcher: CoroutineDispatcher,
-    private val command: CommandContext? = null) {
+    private val command: CommandContext? = null,
+    private val operationActive: () -> Boolean,
+) {
     private val runner = UseCaseRunner(dispatcher)
     suspend fun get() = runner.io { preferences.getAppearance() }
     suspend fun save(value: AppearanceSettings) = update { current ->
@@ -32,6 +36,7 @@ internal class AppearanceService(private val preferences: AppearanceStore,
     }
     private suspend fun update(desired: (AppearanceSettings) -> AppearanceSettings) = runner.write {
         coordinator.guard(command) {
+            requireOperationActive(operationActive)
             val old = preferences.getAppearance()
             val saved = desired(old)
             if (saved.presetId.isBlank()) settingFailure(ErrorCode.VALIDATION, "preset.required", "presetId")

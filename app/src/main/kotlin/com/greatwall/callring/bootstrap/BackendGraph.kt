@@ -1,252 +1,105 @@
 package com.greatwall.callring.bootstrap
 
-import android.Manifest
 import android.content.Context
-import android.content.pm.PackageManager
 import com.greatwall.callring.application.CallringBackend
-import com.greatwall.callring.contracts.common.*
-import com.greatwall.callring.contracts.callers.*
+import com.greatwall.callring.application.IncomingRecordingSession
+import com.greatwall.callring.application.findRecordingCall
+import com.greatwall.callring.application.conversation.QueryService
+import com.greatwall.callring.contracts.CallringUiApi
+import com.greatwall.callring.contracts.callers.IncomingCallUiSink
 import com.greatwall.callring.contracts.runtime.*
-import com.greatwall.callring.contracts.widget.*
-import com.greatwall.callring.contracts.recording.*
-import com.greatwall.callring.contracts.ai.*
-import com.greatwall.callring.contracts.command.*
-import com.greatwall.callring.contracts.*
 import com.greatwall.callring.data.SqliteBackendStore
 import com.greatwall.callring.platform.*
 import com.greatwall.callring.platform.calling.AndroidCallWorkLease
 import com.greatwall.callring.platform.calling.BackendIncomingCallEngine
 import com.greatwall.callring.platform.calling.IncomingCallCoordinator
-import java.io.Closeable
-import com.greatwall.callring.application.RecordingCall
-import com.greatwall.callring.application.IncomingRecordingSession
-import com.greatwall.callring.application.findRecordingCall
 import com.greatwall.callring.RecordingJobService
-import com.greatwall.callring.application.conversation.*
-import com.greatwall.callring.platform.ai.CompatibleConversationClient
+import java.io.Closeable
 
-/**
- * Composition only. No database, media decoder or document is opened by constructing this graph.
- */
+/** Total assembly and lifetime only; construction does not open persistence or media. */
 class BackendGraph(
     context: Context,
     val configuration: BackendConfiguration,
-    val notifications: UiNotificationEntryPoints,
-    val incomingCallUi: IncomingCallUiSink,
+    notifications: UiNotificationEntryPoints,
+    incomingCallUi: IncomingCallUiSink,
 ) : Closeable {
     val coordinator = com.greatwall.callring.application.BusinessRevisionCoordinator()
     private val application = context.applicationContext
     private val lifetime = Any()
-    // Scheduler binder calls never hold the lock used by Telecom's graph getters.
     private val recoveryLifetime = Any()
-    private val callWorkLease = AndroidCallWorkLease(application)
     @Volatile private var closed = false
+    @Volatile private var persistenceClosed = false
+    private val ui = UiBridgeAssembly(application, notifications, incomingCallUi)
+    val notifications get() = ui.notifications
+    val incomingCallUi get() = ui.incomingCallUi
     private val store = StorageResources {
         SqliteBackendStore(application, configuration.databaseName, configuration.sqlAccessProbe)
     }
-    internal val fullSnapshotReader:com.greatwall.callring.application.ports.store.FullSnapshotReader get()=store
-    val playbackState = PlaybackStateTracker { coordinator.publishRuntime(setOf("runtime:ringtonePlayback")) }
-    val playbackCommands by lazy {
-        ensureOpen()
-        AndroidPlaybackCommands(application)
-    }
-    val callLogSource by lazy {
-        ensureOpen()
-        AndroidCallLogSource(application.contentResolver)
-    }
-    private val diagnosticsDelegate = lazy {
-        ensureOpen()
-        AndroidDiagnosticsStore(
-            application.getSharedPreferences(
-                configuration.ringPreferencesName,
-                Context.MODE_PRIVATE,
-            ),
-            configuration.clock,
-            coordinator,
-        )
-    }
-    val diagnostics
-        get() = diagnosticsDelegate.value
-
-    private val audioDelegate = lazy {
-        ensureOpen()
-        AndroidAudioController(
-            application,
-            application.getSharedPreferences(
-                configuration.ringPreferencesName,
-                Context.MODE_PRIVATE,
-            ),
-            { configuration.audioDirectory ?: application.filesDir },
-            documents,
-        )
-    }
-    val audio
-        get() =
-            synchronized(lifetime) {
-                ensureOpen()
-                audioDelegate.value
-            }
-
-    private val documents by lazy {
-        ensureOpen()
-        com.greatwall.callring.application.ReadbackDocumentStore(AndroidDocumentStore(application.contentResolver))
-    }
-    val syncScheduler by lazy {
-        ensureOpen()
-        AndroidSyncScheduler(application)
-    }
-    private val preferenceStore by lazy {
-        AndroidPreferences(application.getSharedPreferences(configuration.appearancePreferencesName,Context.MODE_PRIVATE),application.getSharedPreferences(configuration.widgetPreferencesName,Context.MODE_PRIVATE),configuration.defaultAppearance)
-    }
-    private fun installedWidgets()=WidgetInstallState(android.appwidget.AppWidgetManager.getInstance(application).getAppWidgetIds(android.content.ComponentName(application,com.greatwall.callring.ui.widget.CallringWidgetReceiver::class.java)).toList(),AccessState.GRANTED)
-    private val backendDelegate = lazy {
-        ensureOpen()
-        CallringBackend(
-            store,
-            preferenceStore,
-            documents,
-            AndroidRuntimeProbe(application, playbackState, diagnostics, configuration.clock) {
-                installedWidgets()
-            },
-            audio,
-            syncScheduler,
-            configuration.clock,
-            configuration.dispatcher,
-            HolidayCalendarSource(configuration.clock),
-            coordinator,
-            store,
-            object : com.greatwall.callring.application.callers.NumberDeletionRecordings {
-                override suspend fun archives(number: String) = recordings.service.numberArchives(number)
-                override suspend fun delete(callId: Long, expectedGeneration: Long, command: CommandContext) = recordings.service.delete(callId, expectedGeneration, command)
-            },
-            { recordings.service.getArchive(it) },
-            { !closed },
-        )
-    }
-    val backend: CallringBackend
-        get() =
-            synchronized(lifetime) {
-                ensureOpen()
-                backendDelegate.value
-            }
-
+    private val core: CoreAssembly = CoreAssembly(application, configuration, coordinator, store, ui,
+        ::ensureOpen, { !closed }, { !persistenceClosed }, { recordings }, { conversation }, { update })
+    private val conversation: ConversationAssembly = ConversationAssembly(application, configuration, core,
+        { recordings }, ui, { api }, ::ensureOpen)
+    internal val fullSnapshotReader: com.greatwall.callring.application.ports.store.FullSnapshotReader get() = store
+    val playbackState get() = core.playbackState
+    val playbackCommands get() = core.playbackCommands
+    val callLogSource get() = core.callLogSource
+    val diagnostics get() = core.diagnostics
+    val audio get() = synchronized(lifetime) { ensureOpen(); core.audio }
+    val syncScheduler get() = core.syncScheduler
+    val backend: CallringBackend get() = synchronized(lifetime) { ensureOpen(); core.backend }
     val recordingSession = IncomingRecordingSession()
     private val recordingDelegate = lazy {
         ensureOpen()
         RecordingAssembly(application, configuration.databaseName,
             findCall = { id -> findRecordingCall(store, id) },
             activeCallId = { recordingSession.activeCandidate(configuration.clock.millis()) },
-            schedule = { delay -> RecordingJobService.schedule(application, delay) }, coordinator = coordinator)
+            schedule = { delay -> RecordingJobService.schedule(application, delay) }, coordinator = coordinator, operationActive = { !closed })
     }
     val recordings get() = recordingDelegate.value
-    private val resources = ForegroundResourceRegistry(configuration.clock)
-    private val queriesDelegate=lazy {scopedQueryApi(store.scopedReads(coordinator),{recordings},{api},{preferenceStore},{diagnostics},com.greatwall.callring.platform.ai.SystemRecordingSource(application.contentResolver),coordinator,resources,playbackState::snapshot,::installedWidgets,{
-        val scheduler=application.getSystemService(android.app.job.JobScheduler::class.java)
-        if(scheduler==null) aiObject("available" to aiBool(false)) else aiObject("available" to aiBool(true),"pending" to AiJson.Arr(scheduler.allPendingJobs.filter{it.service.packageName==application.packageName}.map{aiObject("service" to aiString(it.service.className),"jobId" to aiNumber(it.id.toLong()))}))
-    },configuration.clock)}
-    val queries:QueryService get()=queriesDelegate.value
-    /** Safe aggregate counters; reading them neither opens a store nor probes platform state. */
-    fun businessReadCounters():Map<String,Long> = mapOf("coreOpens" to store.coreOpens.get(), "coreStateLoads" to store.stateLoadCount(),"completeCaptures" to store.completeCaptures.get(),"sourceQueries" to if(queriesDelegate.isInitialized())queries.sourceQueries.get()else 0L,"classifications" to com.greatwall.callring.domain.WorkClassifier.evaluations.get(),"runtimeProbes" to AndroidRuntimeProbe.observations.get(), "quietReads" to 0L, "quietWrites" to 0L) + store.narrowAccessCounts()
-    private val snapshotsDelegate = lazy { ensureOpen(); completeSnapshotApi(backend, fullSnapshotReader, recordings, diagnostics, coordinator, resources, configuration.clock) }
-    private val conversationDelegate = lazy { ensureOpen(); ConversationService({ api }, queries, { recordings.store.settings() }, coordinator, { CompatibleConversationClient() }, resources = resources,documentWriteVerified={documents.verifyWrite(it)}) }
+    val queries: QueryService get() = conversation.queries
+    fun businessReadCounters(): Map<String, Long> = mapOf(
+        "coreOpens" to store.coreOpens.get(), "coreStateLoads" to store.stateLoadCount(),
+        "completeCaptures" to store.completeCaptures.get(), "sourceQueries" to conversation.sourceQueries(),
+        "classifications" to com.greatwall.callring.domain.WorkClassifier.evaluations.get(),
+        "runtimeProbes" to AndroidRuntimeProbe.observations.get(), "quietReads" to 0L, "quietWrites" to 0L,
+    ) + store.narrowAccessCounts()
     private val updateDelegate = lazy { ensureOpen(); com.greatwall.callring.platform.update.AndroidAppUpdate(application) }
-    /** 更新平台实现；构造不触网，首次访问才读取 PackageManager。 */
-    val update: AppUpdateApi
-        get() = synchronized(lifetime) {
-            ensureOpen()
-            updateDelegate.value
-        }
-    private val apiDelegate by lazy {
-        object : CallringUiApi by backend {
-            override val recordings: RecordingApi get() = this@BackendGraph.recordings.service
-            override val aiSettings: AiSettingsApi get() = this@BackendGraph.recordings.aiSettings
-            override val snapshots: AiSnapshotApi get() = snapshotsDelegate.value
-            override val conversation: ConversationApi get() = conversationDelegate.value
-            override val update: AppUpdateApi get() = this@BackendGraph.update
-            override fun commandApi(context: CommandContext): CallringUiApi = boundApi(context)
-        }
-    }
-    private fun boundApi(command: CommandContext): CallringUiApi = object : CallringUiApi by backend.commandApi(command) {
-        override val recordings: RecordingApi get() = this@BackendGraph.recordings.service.bound(command)
-        override val aiSettings: AiSettingsApi get() = this@BackendGraph.recordings.aiSettings.bound(command)
-        override val snapshots: AiSnapshotApi get() = snapshotsDelegate.value
-        override val conversation: ConversationApi get() = conversationDelegate.value
-        override val update: AppUpdateApi get() = this@BackendGraph.update
-    }
-    val api: CallringUiApi get() = apiDelegate
-
+    val update: AppUpdateApi get() = synchronized(lifetime) { ensureOpen(); updateDelegate.value }
+    val api: CallringUiApi get() = backend
+    private val callWorkLease = AndroidCallWorkLease(application)
+    private val recovery = com.greatwall.callring.platform.calling.AndroidIncomingRecovery(
+        application, configuration.clock, { syncScheduler }, { !closed }, recoveryLifetime)
     private val incomingDelegate = lazy {
         ensureOpen()
-        IncomingCallCoordinator(
-            BackendIncomingCallEngine(backend),
-            incomingCallUi,
-            workLease = { callWorkLease.acquire() },
-            onIncoming = { sessionId, number, at, account ->
-                recordings.service.observeIncoming(sessionId, number, at, account)?.let { call ->
-                    recordingSession.register(call.id, call.startedAt)
-                    // A fast answer can precede background persistence. Recheck this same live
-                    // session once its independent identity is durable; IDLE clears it first.
-                    if (recordingSession.activeCandidate(configuration.clock.millis()) == call.id)
-                        com.greatwall.callring.CallCaptureService.phoneState(application, true)
-                }
-            },
-            onStatisticsRecorded = { sessionId, id -> recordings.service.linkStatistics(sessionId, id) },
-            afterCompletion = {
-                synchronized(recoveryLifetime) {
-                    if (
-                        !closed &&
-                            application.checkSelfPermission(Manifest.permission.READ_CALL_LOG) ==
-                                PackageManager.PERMISSION_GRANTED
-                    ) {
-                        syncScheduler.requestSync(configuration.clock.millis())
-                    }
-                }
-            },
-        ) {
-            diagnostics.enqueue(DiagnosticEvent.CALL_RECORD_FAILED)
-        }
+        val recording = recordings
+        val engine = BackendIncomingCallEngine(backend::decisionSnapshot, backend::refreshDecisionSnapshot,
+            backend::recordIncoming, backend::updateDecision)
+        com.greatwall.callring.platform.calling.IncomingCallController(engine, ui.incomingCallUi,
+            { callWorkLease.acquire() },
+            { id, number, at, account -> recording.service.observeIncoming(id, number, at, account) },
+            { id, call -> recording.service.linkStatistics(id, call) }, recordingSession, configuration.clock,
+            { com.greatwall.callring.CallCaptureService.phoneState(application, true) },
+            recovery::recover, { diagnostics.enqueue(DiagnosticEvent.CALL_RECORD_FAILED) }).coordinator
     }
-    val incomingCalls: IncomingCallCoordinator
-        get() =
-            synchronized(lifetime) {
-                ensureOpen()
-                incomingDelegate.value
-            }
-
-    private fun ensureOpen() {
-        check(!closed) { "backend.closed" }
-    }
-
-    /** Drains asynchronous writes and closes persistence; call from a background thread. */
+    val incomingCalls: IncomingCallCoordinator get() = synchronized(lifetime) { ensureOpen(); incomingDelegate.value }
+    private fun ensureOpen() { check(!closed) { "backend.closed" } }
     override fun close() {
-        val resources =
-            synchronized(recoveryLifetime) {
-                synchronized(lifetime) {
-                    if (closed) return
-                    closed = true
-                    Triple(
-                        if (incomingDelegate.isInitialized()) incomingDelegate.value else null,
-                        if (audioDelegate.isInitialized()) audioDelegate.value else null,
-                        if (diagnosticsDelegate.isInitialized()) diagnosticsDelegate.value else null,
-                    )
-                }
+        val incoming = synchronized(recoveryLifetime) {
+            synchronized(lifetime) {
+                if (closed) return
+                closed = true
+                if (incomingDelegate.isInitialized()) incomingDelegate.value else null
             }
-        // The coordinator drains persistence work. Its callbacks may need graph-owned diagnostics;
-        // never wait for its executors while holding the graph's lifetime lock.
-        if(conversationDelegate.isInitialized()) conversationDelegate.value.close()
-        if(updateDelegate.isInitialized()) updateDelegate.value.close()
+        }
         try {
-            resources.first?.close()
+            try { conversation.close() }
+            finally { if (updateDelegate.isInitialized()) updateDelegate.value.close() }
         } finally {
-            try {
-                resources.second?.close()
-            } finally {
-                try {
-                    resources.third?.close()
-                } finally {
-                    if (recordingDelegate.isInitialized()) recordingDelegate.value.close()
-                    playbackState.clear()
-                    store.close()
+            try { incoming?.close() } finally {
+                persistenceClosed = true
+                try { core.close() } finally {
+                    try { if (recordingDelegate.isInitialized()) recordingDelegate.value.close() }
+                    finally { store.close() }
                 }
             }
         }

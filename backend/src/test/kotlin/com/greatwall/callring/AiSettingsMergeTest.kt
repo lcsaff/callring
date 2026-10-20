@@ -36,7 +36,7 @@ class AiSettingsMergeTest {
         var networkOutsideFence = false
         val service = AiSettingsService(settings, coordinator, { permission }, { _, _ ->
             networkOutsideFence = !Thread.holdsLock(coordinator.fence)
-        }, folderView = { RecordingFolderView(null, AccessState.NOT_REQUIRED) })
+        }, folderView = { RecordingFolderView(null, AccessState.NOT_REQUIRED) }, operationActive = { true })
     }
     private fun <T> ApiResult<T>.ok(): T = (this as ApiResult.Success).value
     private fun ApiResult<*>.failure() = (this as ApiResult.Failure).error
@@ -89,7 +89,7 @@ class AiSettingsMergeTest {
                 check(release.await(5, java.util.concurrent.TimeUnit.SECONDS))
             }
             RecordingFolderView("fixture", AccessState.GRANTED)
-        })
+        }, operationActive = { true })
         val base = service.getRecordingView().ok()
         block.set(true)
         val task = async(Dispatchers.Default) { service.patchRecording(base, RecordingSettingsPatch(recordingEnabled = PatchField.Set(true))).ok() }
@@ -106,7 +106,7 @@ class AiSettingsMergeTest {
 
     @Test fun recordingAfterSaveFailureReportsExistingFailureAfterCommitButCombinedIsBestEffort() = runBlocking {
         val f = Fixture()
-        val service = AiSettingsService(f.settings, f.coordinator, { true }, { _, _ -> }, afterSave = { error("fixture.after_save") }, folderView = { RecordingFolderView(null, AccessState.NOT_REQUIRED) })
+        val service = AiSettingsService(f.settings, f.coordinator, { true }, { _, _ -> }, afterSave = { error("fixture.after_save") }, folderView = { RecordingFolderView(null, AccessState.NOT_REQUIRED) }, operationActive = { true })
         assertEquals(ErrorCode.STORAGE_FAILURE, service.patchRecording(service.getRecordingView().ok(), RecordingSettingsPatch(recordingEnabled = PatchField.Set(true))).failure().code)
         assertTrue(f.settings.current.recordingEnabled)
         assertEquals(1L, f.coordinator.marker())

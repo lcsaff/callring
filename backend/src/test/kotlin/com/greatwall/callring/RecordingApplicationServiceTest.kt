@@ -173,9 +173,9 @@ class RecordingApplicationServiceTest {
             override fun analyze(connection: AiConnection, transcript: String) = CallAnalysis(summary = "done")
         }
         private val workflow = RecordingWorkflow(this, commands, client)
-        private val ai = AiSettingsService(this, coordinator, { true }, { _, _ -> }, folderView = { error("unused") })
+        private val ai = AiSettingsService(this, coordinator, { true }, { _, _ -> }, folderView = { error("unused") }, operationActive = { true })
         val service = RecordingService(this, this, ::settings, { workflow }, commands, RecordingRegistrationService(this, coordinator), ai,
-            this, this, this, { legacyReads += it; legacy }, { -1 }, {}, coordinator)
+            this, this, this, { legacyReads += it; legacy }, { -1 }, {}, coordinator, operationActive = { true })
         fun seed() = apply {
             events[-1] = RecordingCall(-1, "31234", 1, null)
             entries[-1] = CallArchive(-1, "31234", 1, 1, audioPath = "old")

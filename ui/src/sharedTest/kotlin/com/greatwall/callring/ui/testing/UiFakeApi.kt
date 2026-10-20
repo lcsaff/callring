@@ -17,12 +17,20 @@ import java.time.LocalDate
 
 /** Deterministic screen fixtures. No business rules or production wiring live in this source set. */
 open class UiFakeApi(private val overlayEnabled: Boolean = false) : CallringUiApi, HomeApi, CallersApi, ReportsApi, SettingsApi, RingtoneApi, RuntimeApi, WidgetBindingsApi, ChangeFeed {
-    override val conversation: ConversationApi = UnavailableConversationApi
-    override val aiSettings: AiSettingsApi = UnavailableAiSettingsApi
-    override val numberDeletion: NumberDeletionApi = UnavailableNumberDeletionApi
-    override val update: AppUpdateApi = UnavailableAppUpdateApi
-    override val snapshots: AiSnapshotApi = UnavailableAiSnapshotApi
-    override val recordings: RecordingApi = UnavailableRecordingApi
+    override suspend fun setQuietEnabled(enabled: Boolean): ApiResult<QuietSettings> = unexpected()
+    override suspend fun synchronizeCalendar(year: Int): ApiResult<CalendarInfo> = unexpected()
+    override fun commandApi(context: CommandContext): CallringUiApi = this
+    override suspend fun adoptIdentity(callId: Long, expectedGeneration: Long): ApiResult<CallerProfile> = unexpected()
+    override suspend fun getCallDetail(callId: Long): ApiResult<CallDetail> = unexpected()
+    override suspend fun numberDataImpact(number: String): ApiResult<NumberCoreImpact> = unexpected()
+    override suspend fun deleteNumberCore(number: String, expectedCallCount: Int): ApiResult<Unit> = unexpected()
+    override suspend fun listBindings(): ApiResult<WidgetBindingsListing> = unexpected()
+    override val conversation: ConversationApi = FixtureConversationApi
+    override val aiSettings: AiSettingsApi = FixtureAiSettingsApi
+    override val numberDeletion: NumberDeletionApi = FixtureNumberDeletionApi
+    override val update: AppUpdateApi = FixtureAppUpdateApi
+    override val snapshots: AiSnapshotApi = FixtureAiSnapshotApi
+    override val recordings: RecordingApi = FixtureRecordingApi
     override val home: HomeApi = this
     override val callers: CallersApi = this
     override val reports: ReportsApi = this

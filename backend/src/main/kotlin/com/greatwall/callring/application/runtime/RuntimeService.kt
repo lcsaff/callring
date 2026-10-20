@@ -1,5 +1,7 @@
 package com.greatwall.callring.application.runtime
 
+import com.greatwall.callring.application.coordination.requireOperationActive
+
 import com.greatwall.callring.application.BusinessRevisionCoordinator
 import com.greatwall.callring.application.completeRuntimeStatus
 import com.greatwall.callring.application.coordination.UseCaseRunner
@@ -25,14 +27,18 @@ class RuntimeService(
     private val dispatcher: CoroutineDispatcher,
     private val coordinator: BusinessRevisionCoordinator,
     private val command: CommandContext? = null,
+    private val operationActive: () -> Boolean,
 ) : RuntimeApi {
     private val runner = UseCaseRunner(dispatcher)
-    fun bound(command: CommandContext) = RuntimeService(status, diagnostics, syncScheduler, clock, dispatcher, coordinator, command)
-    override suspend fun getStatus() = runner.io { completeRuntimeStatus(status()) }
-    override suspend fun getDiagnostics() = runner.io { java.util.Collections.unmodifiableList(ArrayList(diagnostics())) }
-    override suspend fun requestCallLogSync() = runner.io {
-        coordinator.guard(command) {}
+    fun bound(command: CommandContext) = RuntimeService(status, diagnostics, syncScheduler, clock, dispatcher, coordinator, command, operationActive = operationActive)
+    override suspend fun getStatus() = runner.io { requireOperationActive(operationActive); completeRuntimeStatus(status()) }
+    override suspend fun getDiagnostics() = runner.io { requireOperationActive(operationActive); java.util.Collections.unmodifiableList(ArrayList(diagnostics())) }
+    override suspend fun requestCallLogSync() = runner.io { requireOperationActive(operationActive);
+        coordinator.guard(command) {
+            requireOperationActive(operationActive)
+        }
         requireCapability(completeRuntimeStatus(status()), Capability.CALL_LOG)
+        coordinator.guard(command) { requireOperationActive(operationActive) }
         syncScheduler.requestSync(clock.millis())
     }
 }

@@ -12,7 +12,7 @@ interface HomeApi {
 }
 
 interface CallersApi {
-    suspend fun getCallDetail(callId: Long): ApiResult<CallDetail> = aiUnavailable()
+    suspend fun getCallDetail(callId: Long): ApiResult<CallDetail>
     suspend fun search(query: CallerSearch): ApiResult<Page<CallerProfile>>
     suspend fun getEditor(number: String?): ApiResult<CallerEditorData>
     suspend fun getOverview(query: OverviewQuery): ApiResult<CallerOverview>
@@ -20,9 +20,9 @@ interface CallersApi {
     suspend fun saveProfile(command: SaveCallerProfile): ApiResult<CallerProfile>
     suspend fun setWhitelisted(number: String, enabled: Boolean): ApiResult<CallerProfile>
     /** 删除前预览：档案是否存在、该号码的通话记录条数。 */
-    suspend fun numberDataImpact(number: String): ApiResult<NumberCoreImpact> = aiUnavailable()
+    suspend fun numberDataImpact(number: String): ApiResult<NumberCoreImpact>
     /** 单事务删除档案与该号码全部通话记录；expectedCallCount 不一致时拒绝。 */
-    suspend fun deleteNumberCore(number: String, expectedCallCount: Int): ApiResult<Unit> = aiUnavailable()
+    suspend fun deleteNumberCore(number: String, expectedCallCount: Int): ApiResult<Unit>
 }
 
 data class CallerSearch(

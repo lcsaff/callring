@@ -28,7 +28,7 @@ class AndroidPreferencesTest {
         val adapter = AndroidPreferences(MemoryPreferences(), widgets, default)
         val service = com.greatwall.callring.application.widget.WidgetBindingsService(adapter,
             { WidgetInstallState(emptyList(), com.greatwall.callring.contracts.runtime.AccessState.GRANTED) },
-            coordinator, kotlinx.coroutines.Dispatchers.Unconfined)
+            coordinator, kotlinx.coroutines.Dispatchers.Unconfined, operationActive = { true })
         service.saveBinding(42, "30001")
         widgets.failNext = true
         assertTrue(service.saveBinding(42, "30002") is com.greatwall.callring.contracts.common.ApiResult.Failure)

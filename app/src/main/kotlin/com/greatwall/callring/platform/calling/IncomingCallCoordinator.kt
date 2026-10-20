@@ -2,7 +2,8 @@ package com.greatwall.callring.platform.calling
 
 import com.greatwall.callring.application.mapping.*
 import com.greatwall.callring.application.recording.policy.*
-import com.greatwall.callring.application.CallringBackend
+import com.greatwall.callring.domain.DecisionSnapshot
+import com.greatwall.callring.domain.model.NumberIdentity
 import com.greatwall.callring.contracts.callers.*
 import com.greatwall.callring.domain.IncomingDecision
 import java.io.Closeable
@@ -30,15 +31,20 @@ interface IncomingCallEngine {
     fun complete(id: Long, decision: CallDecision)
 }
 
-class BackendIncomingCallEngine(private val backend: CallringBackend) : IncomingCallEngine {
-    override fun normalize(raw: String): String = backend.checkNumber(raw).normalized
+class BackendIncomingCallEngine(
+    private val snapshot: () -> DecisionSnapshot,
+    private val refresh: () -> DecisionSnapshot,
+    private val recordCall: (String, Long, CallDecision, String?, ClassificationFact?) -> Long,
+    private val completeCall: (Long, CallDecision) -> Unit,
+) : IncomingCallEngine {
+    override fun normalize(raw: String): String = NumberIdentity.parse(raw).normalized
 
     override fun evaluate(number: String, at: Long): IncomingDecision {
         val snapshot =
             try {
-                backend.decisionSnapshot()
+                snapshot()
             } catch (_: IllegalStateException) {
-                backend.refreshDecisionSnapshot()
+                refresh()
             }
         return snapshot.evaluate(number, at)
     }
@@ -49,9 +55,9 @@ class BackendIncomingCallEngine(private val backend: CallringBackend) : Incoming
         decision: CallDecision,
         account: String?,
         original: ClassificationFact,
-    ): Long = backend.recordIncoming(number, at, decision, account, original)
+    ): Long = recordCall(number, at, decision, account, original)
 
-    override fun complete(id: Long, decision: CallDecision) = backend.updateDecision(id, decision)
+    override fun complete(id: Long, decision: CallDecision) = completeCall(id, decision)
 }
 
 class IncomingCallSession

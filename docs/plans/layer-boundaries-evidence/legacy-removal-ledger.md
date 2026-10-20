@@ -4,7 +4,7 @@
 
 | 当前旧路径 | 仍使用它的业务 | 删除门 |
 |---|---|---|
-| `BackendContext` 及扩展式业务服务 | 仅余总装配、bound/decision mirror生命周期与SettingsApi/UiEditsApi组装；业务服务已迁出 | T10c迁出并删除类及全部引用；禁止替换成另一个万能上下文 |
+| `BackendContext` 及扩展式旧工厂 | T10c已删除类、全部生产/测试引用和with-context工厂，bound共享独立DecisionMirror；服务只接明确窄能力 | 已关闭：完整门及双审PASS，详见t10c-review.md |
 | `BackendStore` 全状态 read/transaction、`BackendState`、`SqliteBackendStore` 全量装载/差异保存 | 初始化及旧fixture；T10b1已删recording findCall旧read，完整快照已迁专用事实 | T10b1目标录音查找已退出；T13初始化/fixture退出后彻底删除；T14检查禁止旧符号 |
 | `StorageResources` 的 legacy 资源投影 | 上述全状态调用 | 随最终旧存储消费者迁出删除，保留统一的显式资源生命周期 |
 | classifier/correlation 接受 `BackendState` 的入口及全状态决策 capture 重载 | 旧入口已删除；剩余 BackendState 的 WorkInputs 实现仅随读/快照和 fixture 继续退出 | T06b/T08 已用实际输入闭包；T09/T13 删除最后旧模型消费者 |
@@ -58,3 +58,7 @@ T10b2b候选源码冻结：已彻底删除AndroidRecordingRuntime文件、implem
 
 
 T10b3候选源码冻结：app/platform/callers/NumberDeletionService、backend/CoreNumberDeletionApi及SharedBusinessCommands类与其最后生产/测试调用全部删除；requiredValue有真实消费者，独立为RequiredValue.kt。唯一backend callers/NumberDeletionService及recording/IdentityAdoptionService由CallringBackend/commandApi供Graph/UI/工具共同使用，Graph退出业务UUID/bound/adopt编排。CallringBackend显式提供必需录音/身份/operationActive窄能力；测试空资源只在test目录。无消费者生产UnavailableNumberDeletionApi/UnavailableUiEditsApi同步删除；没有archiveCount=0/unsupported/Unavailable组合fallback、旧构造器/alias或app业务转发。WidgetBindingStore目标保存项读取与最终预期binding复核替代组合删除全listing/installed访问；同计数不是同集合，GUI与工具均有读前基线和最终scope/代次保护。真实剩余BackendContext/其它Unavailable总装配消费者仍由T10c迁出即删，旧feed及全状态初始化/fixture分别T11/T13；本片不扩入这些门。详见[t10b3实施证据](t10b3-implementation.md)，完整门与双审结论由对应最终证据记录，本段不表示T10整体完成。
+
+T10c 候选冻结：已删除 BackendContext/with-context SettingsApi 与 UiEditsApi 工厂、CallringBackend 无用途 BackendStore 参数、生产 CapabilityFallbacks 全文件/Unavailable API 及 contracts 缺能力默认体/第二归档身份推导/aiUnavailable helper。完整 API 真实能力强制惰性装配；测试专用 fixture 只在测试源，所有 mandatory 方法显式覆盖。Core/Recording/Conversation/UiBridgeAssembly 接线，Graph 退出 widget/Job 查询与 incoming session/phoneState/恢复业务；DecisionMirror 持唯一共享缓存与 typed patch。公开非 SQL writer 的 owner predicate 在最终 fence 复核且 bound 共享，内部 incoming/diagnostics 排空不受公开关闭 gate 阻断。仍真实存在的 coordinator.observe/DataChange/nullable snapshots 归 T11；BackendStore 初始化/fixture、StorageResources legacy 归 T13。没有以本片候选关闭后续门；实际统一门与双审结论见对应证据。
+
+T10c 审查闭包补充：WidgetModel 的 quiet.enable_unavailable 第二恢复路径及 preferredMode/rememberMode、唯一 last_quiet_mode 偏好读写消费者已删除，全部改唯一 backend setQuietEnabled。CommandCommitter 必需明确 owner；九组公开 SQL writer 及非 SQL writer 共用公开 operationActive，内部 incoming/import 使用只延续至 drain 完成的 persistenceActive，无 true/default/空检查。CallringBackend.commandApi 直接返回真实 bound root，旧小服务覆写 decorator/重复实例删除。两种真实 Graph 排空测试分别核持久 link/core/archive 和冷首次观察/公开 SQL 拒绝；详见同片实施证据的真实 RED/GREEN。T11 feed 与 T13 旧存储门保持。

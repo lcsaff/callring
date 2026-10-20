@@ -27,14 +27,12 @@ data class ConnectionPatch(val protocol: PatchField<AiProtocol> = PatchField.Kee
 data class AiSettingsPatch(val analysis: ConnectionPatch = ConnectionPatch(), val transcription: ConnectionPatch = ConnectionPatch(), val budget: PatchField<ConversationBudget> = PatchField.Keep, val compatibility: PatchField<ConversationCompatibility> = PatchField.Keep)
 
 interface AiSettingsApi {
-    suspend fun patchCombined(recordingBase: RecordingSettingsView, recording: RecordingSettingsPatch, aiBase: AiSettingsView, ai: AiSettingsPatch, analysisSecret: LocalSecretChange = LocalSecretChange.Keep, transcriptionSecret: LocalSecretChange = LocalSecretChange.Keep): ApiResult<Unit> = aiUnavailable()
+    suspend fun patchCombined(recordingBase: RecordingSettingsView, recording: RecordingSettingsPatch, aiBase: AiSettingsView, ai: AiSettingsPatch, analysisSecret: LocalSecretChange = LocalSecretChange.Keep, transcriptionSecret: LocalSecretChange = LocalSecretChange.Keep): ApiResult<Unit>
     suspend fun getRecordingView(): ApiResult<RecordingSettingsView>
     suspend fun patchRecording(base: RecordingSettingsView, patch: RecordingSettingsPatch): ApiResult<RecordingSettingsView>
     suspend fun getAiView(): ApiResult<AiSettingsView>
     suspend fun patchAi(base: AiSettingsView, patch: AiSettingsPatch, analysisSecret: LocalSecretChange = LocalSecretChange.Keep, transcriptionSecret: LocalSecretChange = LocalSecretChange.Keep): ApiResult<AiSettingsView>
     suspend fun copyConnection(from: AiSlot, to: AiSlot, expectedRevision: Long): ApiResult<AiSettingsView>
     suspend fun testSlot(slot: AiSlot): ApiResult<Unit>
-    suspend fun testDraft(base: AiSettingsView, patch: AiSettingsPatch, slot: AiSlot): ApiResult<Unit> = aiUnavailable()
+    suspend fun testDraft(base: AiSettingsView, patch: AiSettingsPatch, slot: AiSlot): ApiResult<Unit>
 }
-
-fun aiUnavailable(): ApiResult.Failure = ApiResult.Failure(ApiError(ErrorCode.SYSTEM_UNAVAILABLE, "ai.unavailable"))
