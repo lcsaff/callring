@@ -17,3 +17,9 @@ CallStore.save先清除所有旧linked_screen_id变更，再插入/更新行，�
 主负责人在内存SQLite上实测：同号码screen(id1)与linked provider(id2)用单条DELETE会触发RESTRICT；先删子再删父可行。此为机制预查，不能代替Android适配器最终回归。生产迁移宜保留同事务先解除目标关联再删除，检查真实预期数量及跨号码异常引用行为，不能关闭外键或清库。
 
 证据入口：application/CallersService.kt、CallerProjection.kt、data/CallStore.kt、CallringDatabase.kt。后续以CallerAccessContractTest/删除关联设备或Robolectric回归验证。
+
+## 搜索分页实施闭包补充
+
+基于 db9b9a2 的独立只读复核：UI CallerSearch/Page 无 cursor，paged 使用 Long offset，越界仍返回原请求页号/大小和全部匹配数。空搜索可 SQL COUNT/ORDER BY number/LIMIT/OFFSET；非空 Unicode 精确搜索不能在找到一页后停止，因为还需 totalItems。分批读取 number/name/department 必要投影，使用原 contains(ignoreCase=true) 规则，仅保留本页匹配行，再批读本页岗位，内存 O(pageSize)。不加载全量 CallerProfile 或 calls；这是搜索本身必要的查询形状，不是旧全状态回退。号码排序按既有有效 ASCII 号码路径验证，历史格式也补样本，不能误换按姓名/岗位排序。
+
+UnicodeSearchPattern 当前供 AI GLOB 使用，注释不是与 JVM 字符串匹配等价的证据。补对照：İ/ı、Σ/σ/ς、K/k、ß/ẞ、补充平面；字面 % _ * ? [ ]、trim/组合字符/NUL、多字段去重、页边界/空结果/Int.MAX_VALUE、岗位关系，以及零 calls 查询。不要把 AI 的 callers UNION calls/cursor 协议套到 UI 搜索。
