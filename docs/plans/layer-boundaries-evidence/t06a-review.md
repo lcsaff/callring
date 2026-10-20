@@ -9,3 +9,5 @@
 主负责人独立重跑两个守卫和17+4项 Python 测试，均 PASS，并独立读取完整门日志/XML/SQL证据。完整门 t06a-freeze-final.log：BUILD SUCCESSFUL46s、146 tasks；backend257/UI293/app236，失败/错误/跳过均0。包含 Debug/lint、BackendQa Kotlin 和 UI AndroidTest Kotlin 编译；contracts:test为 NO-SOURCE。UI31 Warning/3 Hint、app6 Warning，无 Error。
 
 质量收尾随后将 AndroidPreferences 中单调用的 saveAppearanceInternal 合并到同步 override。该机械清理后定向运行 PublicationAdaptersTest 和 SimpleSettingsAccessContractTest，共3项，全部通过；t06a-cleanup-followup.log 为 SUCCESS13s、52tasks。最终质量复核 PASS。没有把清理前的完整门声称为清理后的全量重跑；当前 app XML 已被定向运行替换，完整门计数为此前主负责人实际读取的结果。未执行设备测试。
+
+检查点后的追加复核：主负责人发现已取消 Job 在 quiet/score/position 纯预验证失败时可提前返回 VALIDATION，绕过原入口的取消检查；独立质量审查通过只读源码复核确认同源差异。该场景未被本检查点测试覆盖，已纳入唯一 T06b 实现者的首组真实反例和最小修复，不能将此前 PASS 解释为该边界已验证。执行与修复证据随后见 T06b 记录。

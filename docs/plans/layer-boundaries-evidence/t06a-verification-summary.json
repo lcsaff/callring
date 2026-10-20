@@ -39,5 +39,6 @@
   "onlyCrossScaleDifference": "unrelatedCallCount",
   "deviceExecuted": false,
   "T06Complete": false,
+  "postCheckpointFinding": {"issue": "Cancelled caller with invalid quiet/score/position input can bypass cancellation via pure validation early return", "confirmation": "Root and independent read-only quality follow-up", "testAndFixOwner": "T06b sole implementer", "statusAtThisRecord": "Pending actual regression and minimal fix; earlier gate did not cover this case"},
   "remaining": ["T06b work/calendar/override/leaves", "Legacy storage/context consumers T07-T10/T13", "Remaining refresh compatibility deletion T11", "quiet read coarse core consistency debt"]
 }

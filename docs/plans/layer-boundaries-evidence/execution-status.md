@@ -13,7 +13,7 @@
 | T03 contracts | 已完成，339ccd0 | 全量223/283/220、编译/依赖门及双审通过；见t03-review.md |
 | T04 纯领域 | 已完成 | 原生模型、穷尽映射、WorkInputs/DecisionInputs；全量238/283/220及双审通过，见t04-review.md |
 | T05 窄会话/累计失效/懒资源 | 已完成，T05a faaf3b0及T05b b99c5ae | T05b全量245/290/233、双审与修复复审通过；quiet真实SQL/两个VM证据齐全 |
-| T06 设置 | T06a简单设置已完成检查点，T06b待实施 | score/overlay/statistics/appearance/positions/summary窄端口、单次发布及双审通过；完整257/293/236加机械清理后3项定向通过；见t06a-review.md |
+| T06 设置 | T06a已完成，db9b9a2；T06b历史设置实施中 | 简单设置窄端口、单次发布及双审通过；完整257/293/236加机械清理后3项定向通过；T06b迁移work/calendar/override/leaves，见t06a-review.md |
 | T07 档案 | 未开始 | 依赖 T06 |
 | T08 来电/导入 | 未开始 | 依赖 T07 |
 | T09 报表/源查询/快照 | 未开始 | 依赖 T08 |
