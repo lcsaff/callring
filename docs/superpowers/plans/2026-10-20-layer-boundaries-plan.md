@@ -220,6 +220,8 @@ T10a已于c188167完成并双审通过。T10b实施前按真实闭包进一步�
 
 T10b1须区别温热派生投影与未索引历史：不改v4 schema/持久编码，不以raw号码等号代替任意分隔/Char.isDigit匹配，不将只提取metadata的记录标为D16全文索引完成。若历史或格式匹配确需最小投影流式访问，记录实际读行/字节及冷热范围，禁止用warm夹具常量掩盖cold成本；无关归档全文不得被完整解码或保留。其它录音业务与组合语义验收仍按下列完整T10要求执行。
 
+T10b1已于86fdfcf双审完成。T10b2按真实事务/媒体依赖再拆为b2a唯一录音提交发布、b2b录音facade与媒体流程：b2a使raw数据资源退出coordinator/业务发布，Workflow及仍在迁移的Runtime全部调用同一backend提交/登记/关联能力，独立验证实际delta、noop、失败、命令与资源版本；b2b再迁身份/API/导入播放录制/自动发现及组件连接，删除AndroidRuntime旧业务入口。禁止用新的Android facade转发或旧发布保底形成检查点；b2a保留的Runtime必须有真实未迁业务并登记b2b删除门。两片各自双审、全部通过才关闭T10b2。
+
 - [ ] 在 `BT/recording/AiSettingsMergeTest.kt`、`BT/callers/NumberDeletionWorkflowTest.kt` 用窄假端口覆盖密钥修改、复制、权限、字段冲突、busy、数量变化、部分失败与重试。
 - [ ] 单号码归档/绑定查询与音频大小端口替代全归档扫描和 backend File 调用；保留录音→核心→绑定顺序、实际部分成功通知和 continueOwnCommits 语义。
 - [ ] AI 配置和录音业务 facade 移 backend，Android Context、MediaPlayer、目录、录音/网络 IO 留平台；生产能力由装配显式补齐。
