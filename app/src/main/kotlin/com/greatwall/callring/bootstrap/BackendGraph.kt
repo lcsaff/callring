@@ -48,7 +48,7 @@ class BackendGraph(
         SqliteBackendStore(application, configuration.databaseName, configuration.sqlAccessProbe)
     }
     internal val fullSnapshotReader:com.greatwall.callring.application.ports.store.FullSnapshotReader get()=store
-    val playbackState = PlaybackStateTracker()
+    val playbackState = PlaybackStateTracker { coordinator.publishRuntime(setOf("runtime:ringtonePlayback")) }
     val playbackCommands by lazy {
         ensureOpen()
         AndroidPlaybackCommands(application)
@@ -81,7 +81,6 @@ class BackendGraph(
             ),
             { configuration.audioDirectory ?: application.filesDir },
             documents,
-            coordinator,
         )
     }
     val audio
@@ -100,7 +99,7 @@ class BackendGraph(
         AndroidSyncScheduler(application)
     }
     private val preferenceStore by lazy {
-        AndroidPreferences(application.getSharedPreferences(configuration.appearancePreferencesName,Context.MODE_PRIVATE),application.getSharedPreferences(configuration.widgetPreferencesName,Context.MODE_PRIVATE),configuration.defaultAppearance,coordinator)
+        AndroidPreferences(application.getSharedPreferences(configuration.appearancePreferencesName,Context.MODE_PRIVATE),application.getSharedPreferences(configuration.widgetPreferencesName,Context.MODE_PRIVATE),configuration.defaultAppearance)
     }
     private fun installedWidgets()=WidgetInstallState(android.appwidget.AppWidgetManager.getInstance(application).getAppWidgetIds(android.content.ComponentName(application,com.greatwall.callring.ui.widget.CallringWidgetReceiver::class.java)).toList(),AccessState.GRANTED)
     private val backendDelegate = lazy {

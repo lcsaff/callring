@@ -43,6 +43,7 @@ class CallingSqlSemanticsTest {
             )
         val runtime =
             object : RuntimeProbe {
+            override fun getInstalledWidgets() = com.greatwall.callring.contracts.widget.WidgetInstallState(emptyList(), AccessState.GRANTED)
                 override fun getStatus() =
                     RuntimeStatus(
                         mapOf(Capability.CALL_LOG to AccessState.GRANTED),

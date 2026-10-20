@@ -26,6 +26,25 @@ import java.io.*
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [33], manifest = Config.NONE)
 class CompleteSnapshotAssemblyTest {
+    @Test fun realPlaybackTransitionsPublishOneRuntimeMarkerAndNoArchiveVersion() {
+        val context = RuntimeEnvironment.getApplication()
+        val configuration = BackendConfiguration(AppearanceSettings(ThemeSelection.PRESET, "default", null, ColorMode.FOLLOW_SYSTEM))
+        val notifications = object : UiNotificationEntryPoints {
+            override fun home(requestCode: Int) = PendingIntent.getActivity(context, requestCode, Intent("fixture"), PendingIntent.FLAG_IMMUTABLE)
+            override fun playback(preview: Boolean, stopAction: PendingIntent) = Notification()
+        }
+        BackendGraph(context, configuration, notifications, object : IncomingCallUiSink { override fun show(request: IncomingCallUiRequest) = Unit }).use { graph ->
+            val initial = graph.coordinator.capture()
+            graph.playbackState.mark(com.greatwall.callring.contracts.runtime.PlaybackMode.PREVIEW, com.greatwall.callring.contracts.runtime.PlaybackState.PLAYING)
+            assertEquals(1L, graph.coordinator.marker())
+            graph.playbackState.mark(com.greatwall.callring.contracts.runtime.PlaybackMode.PREVIEW, com.greatwall.callring.contracts.runtime.PlaybackState.PLAYING)
+            assertEquals(1L, graph.coordinator.marker())
+            graph.playbackState.clear()
+            assertEquals(2L, graph.coordinator.marker())
+            assertEquals(initial, graph.coordinator.capture())
+        }
+    }
+
     @Test fun realStoresRetainLegacySnapshotButLazyChatStartsWithDiscoveryAndNoBusinessReads() = runBlocking {
         val context = RuntimeEnvironment.getApplication()
         val configuration = BackendConfiguration(AppearanceSettings(ThemeSelection.PRESET, "default", null, ColorMode.FOLLOW_SYSTEM), databaseName = "small_snapshot.db", ringPreferencesName = "small_ring", widgetPreferencesName = "small_widgets", appearancePreferencesName = "small_appearance")
@@ -37,7 +56,7 @@ class CompleteSnapshotAssemblyTest {
         val cipher = object : RecordingCipher { override fun encrypt(value: String) = value; override fun decrypt(value: String) = value }
         val store = AndroidRecordingStore(context, "small_recording", cipher, graph.coordinator)
         val connection = AiConnection(url = "https://example.com/v1", model = "model", apiKey = "unique-secret-sentinel")
-        store.saveSettings(RecordingSettings(analysis = connection))
+        store.persistSettings(RecordingSettings(analysis = connection))
         val runtime = AndroidRecordingRuntime(context, "small_recording", { null }, { null }, {}, { store }, coordinator = graph.coordinator)
         graph.backend.callers.saveProfile(SaveCallerProfile("999", "person", "unit", null, false))
         val call = store.registerIncoming("session", "999", 1, null)

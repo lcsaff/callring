@@ -36,14 +36,14 @@ fun sourceKeys(domain: AiDomain): Set<String> =
                 "appearance:customSeedRgb",
                 "appearance:colorMode",
             )
-        AiDomain.D12 -> setOf("ringtone", "runtime")
+        AiDomain.D12 -> setOf("ringtone", "runtime", "runtime:ringtonePlayback")
         AiDomain.D13 -> setOf("recordingConfig")
         AiDomain.D14 -> setOf("aiConfig")
         AiDomain.D15,
         AiDomain.D16 -> setOf("recording")
         AiDomain.D17 -> setOf("recordingConfig:systemFolder")
         AiDomain.D18 -> setOf("widgets")
-        AiDomain.D19 -> setOf("runtime", "runtime:recordingPlayback")
+        AiDomain.D19 -> setOf("runtime", "runtime:recordingPlayback", "runtime:ringtonePlayback")
         AiDomain.D20 -> setOf("diagnostics")
         AiDomain.D21 -> setOf("audit")
     }

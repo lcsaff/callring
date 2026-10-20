@@ -1,6 +1,5 @@
 package com.greatwall.callring.platform
 
-import com.greatwall.callring.contracts.command.*
 import android.content.Context
 import android.content.Intent
 import android.content.SharedPreferences
@@ -24,7 +23,6 @@ class AndroidAudioController(
     private val preferences: SharedPreferences,
     directoryProvider: () -> File,
     private val documents: DocumentStore,
-    private val coordinator: com.greatwall.callring.application.BusinessRevisionCoordinator = com.greatwall.callring.application.BusinessRevisionCoordinator(),
 ) : AudioController, Closeable {
     private val generation = AudioGeneration()
     private val files = AudioFiles(directoryProvider)
@@ -49,31 +47,15 @@ class AndroidAudioController(
             .also { settingsSnapshot = it }
     }
 
-    override fun setEnabled(enabled: Boolean): RingtoneSettings = setEnabled(enabled,null)
-    override fun setEnabled(enabled: Boolean, command: CommandContext?): RingtoneSettings {
+    override fun setEnabled(enabled: Boolean): RingtoneSettings {
         checkOpen()
-        val settings =
-            coordinator.commit("ringtone",command) { synchronized(preferences) {
-                updatePreferences(preferences, mapOf("enabled" to enabled))
-                readAndPublishSettings()
-            } }
-        if (!enabled)
-            try {
-                stopPlayback()
-            } catch (_: RuntimeException) {
-                // Playback polls enabled. A failed stop command must not misreport the committed
-                // setting.
-                android.util.Log.i("Callring", "audio.stop_delivery_failed")
-            }
-        return settings
+        return synchronized(preferences) {
+            updatePreferences(preferences, mapOf("enabled" to enabled))
+            readAndPublishSettings()
+        }
     }
 
-    override fun importAudio(source: DocumentRef): RingtoneSettings = importAudio(source) {}
-
-    override fun importAudio(source: DocumentRef, checkCancellation: () -> Unit): RingtoneSettings {
-        return importAudio(source,checkCancellation,null)
-    }
-    override fun importAudio(source: DocumentRef, checkCancellation: () -> Unit, command: CommandContext?): RingtoneSettings {
+    override fun prepareAudio(source: DocumentRef, checkCancellation: () -> Unit): PreparedRingtoneImport {
         checkOpen()
         checkCancellation()
         val ticket = generation.begin()
@@ -107,50 +89,43 @@ class AndroidAudioController(
             }
             checkCancellation()
             val name = displayName(source)
-            lateinit var settings: RingtoneSettings
-            val published =
-                coordinator.guard(command) { val success = generation.publish(ticket, checkCancellation) {
-                    checkOpen()
-                    stopPlayback()
-                    synchronized(preferences) {
-                        // Cancellation ends preparation until this commit boundary. File+metadata
-                        // then
-                        // finish or roll back together; no cancellation checks split the
-                        // transaction.
-                        checkCancellation()
-                        replaceAudioAtomically(scratch, files.selected, checkCancellation) {
-                            updatePreferences(
-                                preferences,
-                                mapOf("custom" to true, "audio_display_name" to name),
-                            )
+            val backup = prepareAudioBackup(files.selected)
+            return object : PreparedRingtoneImport {
+                override fun commit(checkCancellation: () -> Unit): RingtoneSettings {
+                    lateinit var settings: RingtoneSettings
+                    val published = generation.publish(ticket, checkCancellation) {
+                        checkOpen()
+                        stopPlayback()
+                        synchronized(preferences) {
+                            checkCancellation()
+                            replaceAudioAtomically(scratch, files.selected, backup, checkCancellation) {
+                                updatePreferences(preferences, mapOf("custom" to true, "audio_display_name" to name))
+                            }
+                            settings = readAndPublishSettings()
                         }
-                        settings = readAndPublishSettings()
                     }
-                }; if(success) { coordinator.changed("ringtone"); coordinator.record(command) }; success }
-            if (!published)
-                throw BackendFailure(
-                    ApiError(ErrorCode.SYSTEM_RESTRICTED, "audio.import_superseded")
-                )
-            return settings
-        } finally {
+                    if (!published) throw BackendFailure(ApiError(ErrorCode.SYSTEM_RESTRICTED, "audio.import_superseded"))
+                    return settings
+                }
+                override fun close() { scratch.delete(); backup.close() }
+            }
+        } catch (failure: Throwable) {
             scratch.delete()
+            throw failure
         }
     }
 
-    override fun restoreBuiltIn(): RingtoneSettings = restoreBuiltIn(null)
-    override fun restoreBuiltIn(command: CommandContext?): RingtoneSettings {
+    override fun restoreBuiltIn(): RingtoneSettings {
         checkOpen()
         lateinit var settings: RingtoneSettings
-        coordinator.commit("ringtone",command) { generation.invalidate {
+        generation.invalidate {
             synchronized(preferences) {
-                updatePreferences(
-                    preferences,
-                    mapOf("custom" to false, "audio_display_name" to null),
-                )
+                if (preferences.getBoolean("custom", false)) {
+                    updatePreferences(preferences, mapOf("custom" to false, "audio_display_name" to null))
+                }
                 settings = readAndPublishSettings()
             }
-        } }
-        runCatching { stopPlayback() }
+        }
         return settings
     }
 

@@ -26,7 +26,7 @@ class RecordingCommandContextTest {
     @Test fun deleteDoesNotWaitForImportPreparationAndLateImportCannotResurrectArchive() = runBlocking {
         val coordinator = BusinessRevisionCoordinator()
         val store = AndroidRecordingStore(context, "import_race", cipher, coordinator)
-        store.saveSettings(RecordingSettings(recordingEnabled = true))
+        store.persistSettings(RecordingSettings(recordingEnabled = true))
         val entered = CountDownLatch(1); val release = CountDownLatch(1)
         val file = File(context.cacheDir, "import-race.wav").apply { writeBytes(ByteArray(32)) }
         val provider = object : ContentProvider() {

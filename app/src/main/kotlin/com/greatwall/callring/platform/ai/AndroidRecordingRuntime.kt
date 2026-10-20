@@ -1,5 +1,6 @@
 package com.greatwall.callring.platform.ai
 
+import com.greatwall.callring.application.recording.AiSettingsService
 import com.greatwall.callring.contracts.command.*
 import com.greatwall.callring.application.ports.BackendFailure
 
@@ -32,7 +33,7 @@ class AndroidRecordingRuntime(
     private val metadataReader: ((File) -> Pair<Long, String>)? = null,
     val coordinator: BusinessRevisionCoordinator = BusinessRevisionCoordinator(),
     private val clientFactory: (() -> AiClient)? = null,
-) : RecordingCapability, AutoCloseable {
+) : RecordingApi, AutoCloseable {
     val store by lazy { storeFactory?.invoke() ?: AndroidRecordingStore(context, namespace, coordinator = coordinator) }
     val aiSettings by lazy { AiSettingsService(store, coordinator,
         { context.checkSelfPermission(android.Manifest.permission.RECORD_AUDIO) == android.content.pm.PackageManager.PERMISSION_GRANTED },
@@ -59,7 +60,7 @@ class AndroidRecordingRuntime(
     fun playbackStatus(): PlaybackStatus = synchronized(filesLock) { PlaybackStatus(if(player == null) PlaybackMode.NONE else PlaybackMode.PREVIEW, if(player?.isPlaying == true) PlaybackState.PLAYING else PlaybackState.IDLE) }
     fun playbackSnapshot():AiJson.Obj=synchronized(filesLock){aiObject("mode" to aiString(if(player==null)"NONE"else"PREVIEW"),"state" to aiString(if(player?.isPlaying==true)"PLAYING"else"IDLE"),"callId" to (playbackCallId?.let(::aiNumber)?:AiJson.Null))}
 
-    private suspend fun <T> result(block: () -> T): ApiResult<T> = withContext(Dispatchers.IO) {
+    private suspend fun <T> result(block: suspend () -> T): ApiResult<T> = withContext(Dispatchers.IO) {
         try { ApiResult.Success(block()) }
         catch (cancelled: CancellationException) { throw cancelled }
         catch (failure: com.greatwall.callring.application.ports.BackendFailure) { ApiResult.Failure(failure.error) }
@@ -69,15 +70,6 @@ class AndroidRecordingRuntime(
         catch (_: IllegalStateException) { ApiResult.Failure(ApiError(ErrorCode.SYSTEM_RESTRICTED, "recording.busy_or_changed", retryable = true)) }
         catch (_: Exception) { ApiResult.Failure(ApiError(ErrorCode.IO_FAILURE, "recording.storage_or_network", retryable = true)) }
     }
-    override suspend fun getSettings() = result { store.settings() }
-    override suspend fun saveSettings(settings: RecordingSettings) = result {
-        if (settings.captureMode == CaptureMode.MICROPHONE_EXPERIMENTAL && context.checkSelfPermission(android.Manifest.permission.RECORD_AUDIO) != android.content.pm.PackageManager.PERMISSION_GRANTED)
-            throw com.greatwall.callring.application.ports.BackendFailure(ApiError(ErrorCode.PERMISSION_REQUIRED, "capability.required", requiredCapabilities = setOf(Capability.MICROPHONE)))
-        settings.validate(); store.saveSettings(settings)
-        if (!settings.recordingEnabled) context.stopService(android.content.Intent(context, com.greatwall.callring.CallCaptureService::class.java))
-        settings
-    }
-    override suspend fun testConnection(connection: AiConnection, transcription: Boolean) = result { client.test(connection, transcription) }
     fun observeIncoming(sessionId: String, number: String, at: Long, account: String?): RecordingCall? = coordinator.guard { synchronized(filesLock) {
         if (!store.settings().recordingEnabled || number.isBlank()) null else store.registerIncoming(sessionId, number, at, account)
     } }
@@ -241,17 +233,16 @@ class AndroidRecordingRuntime(
     override suspend fun setSystemFolder(document: DocumentRef) = folderWith(document, null)
     private suspend fun folderWith(document: DocumentRef, command: CommandContext?) = result {
         sources.authorize(document.uri)
-        store.updateSettings(command) { it.copy(systemFolder = document.uri) }
+        (if (command == null) aiSettings else aiSettings.bound(command)).setSystemFolder(document.uri)
         Unit
     }
-    fun bound(command: CommandContext): RecordingCapability = object : RecordingCapability, RecordingApi by this, RecordingConfigurationPort by this {
+    fun bound(command: CommandContext): RecordingApi = object : RecordingApi by this {
         override suspend fun importRecording(callId: Long, number: String, startedAt: Long, document: DocumentRef, source: RecordingSource) = result { importFile(callId, number, startedAt, document, source, command = command) }
         override suspend fun retry(callId: Long) = retryWith(callId, command)
         override suspend fun delete(callId: Long) = deleteWith(callId, command)
         override suspend fun play(callId: Long) = playWith(callId, command)
         override suspend fun stop() = stopWith(command)
         override suspend fun setSystemFolder(document: DocumentRef) = folderWith(document, command)
-        override suspend fun saveSettings(settings: RecordingSettings) = result { store.updateSettings(command) { settings } }
     }
     override suspend fun systemRecordings() = result { store.settings().systemFolder?.let(sources::list).orEmpty() }
     override suspend fun inspectSystemRecording(document:DocumentRef)=result {val folder=store.settings().systemFolder?:throw BackendFailure(ApiError(ErrorCode.NOT_FOUND,"recording.folder_required"));sources.inspect(folder,document)?:throw BackendFailure(ApiError(ErrorCode.NOT_FOUND,"recording.file_missing"))}

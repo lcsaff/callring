@@ -4,7 +4,7 @@
 
 | 当前旧路径 | 仍使用它的业务 | 删除门 |
 |---|---|---|
-| `BackendContext` 及扩展式业务服务 | 铃声、小组件/运行状态及当前总装配；设置/档案/来电/报表/首页/完整快照已迁出 | T10迁出并删除类及全部引用；禁止替换成另一个万能上下文 |
+| `BackendContext` 及扩展式业务服务 | 仅余总装配、bound/decision mirror生命周期与SettingsApi/UiEditsApi组装；业务服务已迁出 | T10c迁出并删除类及全部引用；禁止替换成另一个万能上下文 |
 | `BackendStore` 全状态 read/transaction、`BackendState`、`SqliteBackendStore` 全量装载/差异保存 | recording findCall旧read、初始化及旧fixture；完整快照已迁专用事实 | T10目标录音查找、T13初始化/fixture退出后彻底删除；T14检查禁止旧符号 |
 | `StorageResources` 的 legacy 资源投影 | 上述全状态调用 | 随最终旧存储消费者迁出删除，保留统一的显式资源生命周期 |
 | classifier/correlation 接受 `BackendState` 的入口及全状态决策 capture 重载 | 旧入口已删除；剩余 BackendState 的 WorkInputs 实现仅随读/快照和 fixture 继续退出 | T06b/T08 已用实际输入闭包；T09/T13 删除最后旧模型消费者 |
@@ -27,4 +27,17 @@ T09a 已删除旧 Home/Reports Context工厂与业务、ReportCalculator.timeRan
 
 T09b 已删除BackendStore.captureFull、CallringBackend.captureCore、Context完整入口、CoreSnapshotProjection/ReportCalculator文件及score/quality/reportTotals/visible/currentSchedule/stats、quiet/schedule/windows复制旧助手。FullSnapshotReader只返回专用深冻结facts；SQL源的BackendState/分类/评分业务退出，唯一JSON/StrictJson codec真迁data且旧platform文件删除。SettingsValidation只剩真实widgetId消费者T10。目录会话和完整快照资源各有唯一生命周期，无旧validateRead重载/无迁移fallback。
 
+T10a源码已冻结并通过规格修复复审及独立质量审查：旧app AiSettingsService、Runtime/Ringtone/Widget的Context工厂、SettingsValidation、Context末用io/write/validation/notifyChanged等helpers、RecordingConfigurationPort/RecordingCapability及Runtime旧配置管理、Audio默认command重载/guarded fallback、Widget/Runtime接口与平台构造器无消费者默认均已删除。配置和binding数据adapter退出业务差异/发布，音频备份只有锁外准备加最终generation保护一条路径。尚未关闭的archive登记/CAS/delete旧发布和旧通知协议有真实后续消费者，分别在T10b/T11删除；不将它们算为本片已完成项。
+
 最终证据应包含生产与测试符号搜索、编译类路径、架构正反例，以及无旧路径可执行的回归结果。历史基线与审查文档保留原貌，不将历史文字当作当前代码残留。
+
+## 最终删除验收口径
+
+用户再次明确“修改不要留下兼容代码和遗留未完全删除的代码”。最终验收不能只证明新入口已启用：表中各项必须记录实际删除文件/符号及最后调用方的迁移位置，生产、测试、调试设备入口、验证脚本和 CI 都不得继续引用旧实现。
+
+- 禁止保留迁移专用的类型别名、转发方法、旧构造器重载、nullable/default 回退、双订阅、双发布或以异常捕获切回旧业务的分支。
+- 删除专门支撑旧路径的测试替身与无效测试，保留业务行为断言并通过新唯一入口执行；不能用删除断言掩盖回归。
+- 数据库现有编码读取、对外工具名称/代码以及 Android 组件身份属于本次明确保持的持久化/外部协议。它们可由唯一实现继续解释；不得据此保留第二套业务路径。数字工具兼容标识仅作协议元数据，不参与语义分派。
+- 分阶段仍有真实调用方的旧设施只能登记到明确删除门；最终报告不能将待删除清单非空的状态标为完成。历史说明文件与冻结协议样本不作机械关键字清除。
+
+本节是验收约束，不表示当前清单已经关闭；实际完成仍以各检查点和最终源码/测试/守卫证据为准。

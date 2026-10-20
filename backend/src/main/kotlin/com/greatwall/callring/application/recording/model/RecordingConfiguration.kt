@@ -38,12 +38,3 @@ data class RecordingSettings(
         if (automaticAnalysis) { analysis.validate(); transcription.validate() }
     }
 }
-
-/** Internal configuration port; credentials never cross the UI capability boundary. */
-interface RecordingConfigurationPort {
-    suspend fun getSettings(): ApiResult<RecordingSettings>
-    suspend fun saveSettings(settings: RecordingSettings): ApiResult<RecordingSettings>
-    suspend fun testConnection(connection: AiConnection, transcription: Boolean): ApiResult<Unit>
-}
-
-interface RecordingCapability : RecordingApi, RecordingConfigurationPort

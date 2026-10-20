@@ -21,7 +21,7 @@ class AndroidRuntimeProbe(
     private val playback: PlaybackStateTracker,
     private val diagnostics: AndroidDiagnosticsStore,
     private val clock: Clock,
-    private val installedWidgets: () -> WidgetInstallState = { WidgetInstallState(emptyList(), AccessState.UNKNOWN) },
+    private val installedWidgets: () -> WidgetInstallState,
 ) : RuntimeProbe {
     companion object {val observations=java.util.concurrent.atomic.AtomicLong()}
     override fun getInstalledWidgets(): WidgetInstallState = installedWidgets()

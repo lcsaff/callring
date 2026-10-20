@@ -14,7 +14,7 @@ class DomainIsolationTest {
         assertEquals("domain dependencies", emptyList<String>(), violations)
     }
     @Test fun settingsValidationDelegatesPureRulesToDomain() {
-        val source = File("src/main/kotlin/com/greatwall/callring/application/SettingsValidation.kt").readText()
+        val source = File("src/main/kotlin/com/greatwall/callring/application/settings/WorkScheduleService.kt").readText()
         assertFalse("minute validation belongs to domain", source.contains("w.startMinute in"))
         assertFalse("window validation belongs to domain", source.contains("w.endMinute in"))
     }

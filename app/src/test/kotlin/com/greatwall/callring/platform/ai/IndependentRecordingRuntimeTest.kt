@@ -27,7 +27,7 @@ import java.time.format.DateTimeFormatter
 class IndependentRecordingRuntimeTest {
     @Test fun authorizedFolderDiscoveryImportsOwnEventAndRespectsDeletionWithoutStatistics() = runBlocking {
         val store = AndroidRecordingStore(context, "folder_independent", cipher)
-        store.saveSettings(RecordingSettings(recordingEnabled = true, systemFolder = "content://recording-fixture/tree/root"))
+        store.persistSettings(RecordingSettings(recordingEnabled = true, systemFolder = "content://recording-fixture/tree/root"))
         val now = System.currentTimeMillis() / 1000 * 1000
         val displayName = "31234_" + DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss").withZone(ZoneId.systemDefault()).format(Instant.ofEpochMilli(now)) + ".wav"
         val original = File(context.cacheDir, "original-recording.wav").apply { writeBytes(ByteArray(128) { it.toByte() }) }
@@ -75,11 +75,11 @@ class IndependentRecordingRuntimeTest {
     }
     @Test fun optionalAssociationIsRetainedWhenRecordingSwitchChangesBeforeStatisticsCommit() {
         val store = AndroidRecordingStore(context, "toggle_links", cipher)
-        store.saveSettings(RecordingSettings(recordingEnabled = true))
+        store.persistSettings(RecordingSettings(recordingEnabled = true))
         val runtime = AndroidRecordingRuntime(context, "toggle_links", findCall = { error("statistics lookup") },
             activeCallId = { null }, schedule = {}, storeFactory = { store })
         val call = runtime.observeIncoming("session", "31234", 1000, null)!!
-        store.saveSettings(RecordingSettings(recordingEnabled = false))
+        store.persistSettings(RecordingSettings(recordingEnabled = false))
         runtime.linkStatistics("session", 42)
         assertEquals(call, store.linkedRecording(42))
         runtime.close()
@@ -91,7 +91,7 @@ class IndependentRecordingRuntimeTest {
     }
     @Test fun recordsListsAndReadsOwnCallsWithoutStatisticsDatabase() = runBlocking {
         val store = AndroidRecordingStore(context, "independent", cipher)
-        store.saveSettings(RecordingSettings(recordingEnabled = true))
+        store.persistSettings(RecordingSettings(recordingEnabled = true))
         val runtime = AndroidRecordingRuntime(context, "independent", findCall = { error("statistics must not be read") },
             activeCallId = { null }, schedule = {}, storeFactory = { store })
         val call = requireNotNull(runtime.observeIncoming("session", "31234", 1000, null))

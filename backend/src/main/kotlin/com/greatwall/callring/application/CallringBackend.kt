@@ -76,9 +76,12 @@ class CallringBackend(
         )
     override val settings: SettingsApi = createSettingsApi(context)
     override val edits: UiEditsApi = createUiEditsApi(context)
-    override val ringtone: RingtoneApi = createRingtoneApi(context)
-    override val runtime: RuntimeApi = createRuntimeApi(context)
-    override val widgets: WidgetBindingsApi = createWidgetBindingsApi(context)
+    private val ringtoneService = com.greatwall.callring.application.ringtone.RingtoneService(audio, runtimeProbe::getStatus, coordinator, dispatcher)
+    private val runtimeService = com.greatwall.callring.application.runtime.RuntimeService(runtimeProbe::getStatus, runtimeProbe::getDiagnostics, syncScheduler, clock, dispatcher, coordinator)
+    private val widgetService = com.greatwall.callring.application.widget.WidgetBindingsService(preferences, runtimeProbe::getInstalledWidgets, coordinator, dispatcher)
+    override val ringtone: RingtoneApi = ringtoneService
+    override val runtime: RuntimeApi = runtimeService
+    override val widgets: WidgetBindingsApi = widgetService
     override val numberDeletion: NumberDeletionApi = CoreNumberDeletionApi(callers, widgets)
     override val changes: ChangeFeed =
         object : ChangeFeed {
@@ -96,11 +99,11 @@ class CallringBackend(
             override val callers = bound.callersApi
             override val settings = createSettingsApi(bound)
             override val edits = createUiEditsApi(bound)
-            override val widgets = createWidgetBindingsApi(bound)
+            override val widgets = widgetService.bound(context)
             override val numberDeletion =
-                CoreNumberDeletionApi(deletion.callersApi, createWidgetBindingsApi(deletion))
-            override val ringtone = createRingtoneApi(bound)
-            override val runtime = createRuntimeApi(bound)
+                CoreNumberDeletionApi(deletion.callersApi, widgetService.bound(context.copy(continueOwnCommits = true)))
+            override val ringtone = ringtoneService.bound(context)
+            override val runtime = runtimeService.bound(context)
         }
     }
 

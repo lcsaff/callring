@@ -6,10 +6,36 @@ import com.greatwall.callring.contracts.widget.*
 import com.greatwall.callring.application.ports.BackendFailure
 import org.junit.Assert.*
 import org.junit.Test
+import com.greatwall.callring.application.BusinessRevisionCoordinator
+import com.greatwall.callring.contracts.change.DataDomain
 
 class AndroidPreferencesTest {
     private val default =
         AppearanceSettings(ThemeSelection.PRESET, "provided_by_ui", null, ColorMode.FOLLOW_SYSTEM)
+
+    @Test fun bindingPersistenceDoesNotPublishBusinessChanges() {
+        val coordinator = BusinessRevisionCoordinator()
+        val adapter = AndroidPreferences(MemoryPreferences(), MemoryPreferences(), default)
+        adapter.saveBinding(WidgetBinding(42, "+8610010"))
+        adapter.saveBinding(WidgetBinding(42, "+8610010"))
+        adapter.removeBinding(99)
+        assertEquals(0L, coordinator.marker())
+    }
+
+    @Test fun failedBindingCommitRestoresVisibleValueAndPublishesNothing() = kotlinx.coroutines.runBlocking {
+        val coordinator = BusinessRevisionCoordinator()
+        val widgets = MemoryPreferences()
+        val adapter = AndroidPreferences(MemoryPreferences(), widgets, default)
+        val service = com.greatwall.callring.application.widget.WidgetBindingsService(adapter,
+            { WidgetInstallState(emptyList(), com.greatwall.callring.contracts.runtime.AccessState.GRANTED) },
+            coordinator, kotlinx.coroutines.Dispatchers.Unconfined)
+        service.saveBinding(42, "30001")
+        widgets.failNext = true
+        assertTrue(service.saveBinding(42, "30002") is com.greatwall.callring.contracts.common.ApiResult.Failure)
+        assertEquals(WidgetBinding(42, "30001"), adapter.getBinding(42))
+        assertEquals(1L, coordinator.marker())
+        assertEquals(setOf(DataDomain.WIDGET_BINDINGS), coordinator.invalidations.snapshots.value.domains.keys)
+    }
 
     @Test
     fun appearanceAndWidgetKeysAreIndependentAndPreserveLegacyBinding() {

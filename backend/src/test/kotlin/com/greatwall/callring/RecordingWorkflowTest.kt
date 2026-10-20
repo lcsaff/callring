@@ -34,7 +34,7 @@ class RecordingWorkflowTest {
     }
     private val workflow = RecordingWorkflow(store, client, { 1000L })
     private fun configure(auto: Boolean = true) {
-        store.saveSettings(RecordingSettings(automaticAnalysis = auto, analysis = connection, transcription = connection))
+        store.seedSettings(RecordingSettings(automaticAnalysis = auto, analysis = connection, transcription = connection))
     }
     @Test fun disabledAutomaticAnalysisRetainsAudioWithoutSendingIt() {
         configure(false)
@@ -144,7 +144,7 @@ class RecordingWorkflowTest {
         private var config = RecordingSettings()
         private val entries = mutableMapOf<Long, CallArchive>()
         @Synchronized override fun settings() = config
-        @Synchronized override fun saveSettings(value: RecordingSettings) { config = value }
+        @Synchronized fun seedSettings(value: RecordingSettings) { config = value }
         @Synchronized override fun get(callId: Long) = entries[callId]
         @Synchronized override fun all() = entries.values.toList()
         @Synchronized override fun compareAndSet(callId: Long, expectedGeneration: Long?, value: CallArchive): Boolean {

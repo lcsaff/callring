@@ -83,7 +83,7 @@ class PlatformSafetyTest {
             var metadata = "old"
             assertThrows(CancellationException::class.java) {
                 gate.publish(ticket, { throw CancellationException() }) {
-                    replaceAudioAtomically(candidate, selected) { metadata = "new" }
+                    replaceAudioAtomically(candidate, selected, prepareAudioBackup(selected)) { metadata = "new" }
                 }
             }
             assertEquals("old", selected.readText())
@@ -103,7 +103,7 @@ class PlatformSafetyTest {
             val candidate = directory.resolve("candidate").apply { writeText("new") }
             var metadata = "old"
             assertThrows(CancellationException::class.java) {
-                replaceAudioAtomically(candidate, selected, { throw CancellationException() }) {
+                replaceAudioAtomically(candidate, selected, prepareAudioBackup(selected), { throw CancellationException() }) {
                     metadata = "new"
                 }
             }
@@ -128,6 +128,7 @@ class PlatformSafetyTest {
             replaceAudioAtomically(
                 candidate,
                 selected,
+                prepareAudioBackup(selected),
                 { if (cancelled) throw CancellationException() },
             ) {
                 cancelled = true
@@ -164,11 +165,11 @@ class PlatformSafetyTest {
         val older = gate.begin()
         val newer = gate.begin()
         var published = false
-        assertFalse(gate.publish(older) { published = true })
+        assertFalse(gate.publish(older, {}) { published = true })
         assertFalse(published)
-        assertTrue(gate.publish(newer) { published = true })
+        assertTrue(gate.publish(newer, {}) { published = true })
         gate.invalidate { published = false }
-        assertFalse(gate.publish(newer) { published = true })
+        assertFalse(gate.publish(newer, {}) { published = true })
         assertFalse(published)
     }
 
@@ -182,7 +183,7 @@ class PlatformSafetyTest {
             val ticket = gate.begin()
             copying.countDown()
             check(copied.await(5, TimeUnit.SECONDS))
-            gate.publish(ticket) { selected = "stale" }
+            gate.publish(ticket, {}) { selected = "stale" }
         }
         worker.start()
         assertTrue(copying.await(5, TimeUnit.SECONDS))
@@ -207,7 +208,7 @@ class PlatformSafetyTest {
             val selected = directory.resolve("selected_audio").apply { writeText("old") }
             val candidate = directory.resolve("candidate").apply { writeText("new") }
             assertThrows(java.io.IOException::class.java) {
-                replaceAudioAtomically(candidate, selected) {
+                replaceAudioAtomically(candidate, selected, prepareAudioBackup(selected)) {
                     throw java.io.IOException("prefs_failed")
                 }
             }

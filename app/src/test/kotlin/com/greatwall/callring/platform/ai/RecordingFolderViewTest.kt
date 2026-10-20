@@ -1,5 +1,6 @@
 package com.greatwall.callring.platform.ai
 
+import com.greatwall.callring.application.recording.AiSettingsService
 import android.content.*
 import android.database.*
 import android.net.Uri
@@ -46,12 +47,12 @@ class RecordingFolderViewTest {
         val service = AiSettingsService(store,coordinator,{ true },{ _,_ -> },folderView = source::describe)
         fun <T> ApiResult<T>.value() = (this as ApiResult.Success).value
         assertEquals(AccessState.NOT_REQUIRED,service.getRecordingView().value().folderAccess)
-        store.saveSettings(RecordingSettings(systemFolder = "content://folder-fixture/tree/first"))
+        store.persistSettings(RecordingSettings(systemFolder = "content://folder-fixture/tree/first"))
         val first = service.getRecordingView().value()
         assertEquals("First recordings",first.folderDisplayName)
         assertEquals(AccessState.GRANTED,first.folderAccess)
         assertTrue(source.list(store.settings().systemFolder!!).isEmpty())
-        store.saveSettings(store.settings().copy(systemFolder = "content://folder-fixture/tree/second"))
+        store.persistSettings(store.settings().copy(systemFolder = "content://folder-fixture/tree/second"))
         val second = service.getRecordingView().value()
         assertEquals("Second recordings",second.folderDisplayName)
         assertNotEquals(first.copy(revision = 0),second.copy(revision = 0))

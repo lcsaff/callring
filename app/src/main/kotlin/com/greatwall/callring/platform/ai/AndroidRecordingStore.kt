@@ -1,6 +1,5 @@
 package com.greatwall.callring.platform.ai
 
-import com.greatwall.callring.contracts.command.*
 import android.content.ContentValues
 import android.content.Context
 import android.database.sqlite.SQLiteDatabase
@@ -57,7 +56,7 @@ class KeystoreRecordingCipher(private val alias: String) : RecordingCipher {
 class AndroidRecordingStore(context: Context, namespace: String,
     private val cipher: RecordingCipher = KeystoreRecordingCipher("callring.recording.$namespace"),
     val coordinator: BusinessRevisionCoordinator = BusinessRevisionCoordinator(),
-) : RecordingStore, AutoCloseable {
+) : RecordingStore, com.greatwall.callring.application.recording.RecordingSettingsStore, AutoCloseable {
     private val preferences = context.getSharedPreferences(namespace + "_recording", Context.MODE_PRIVATE)
     private val helper = object : SQLiteOpenHelper(context, namespace + "_recording.db", null, 4) {
         override fun onCreate(db: SQLiteDatabase) {
@@ -122,21 +121,8 @@ class AndroidRecordingStore(context: Context, namespace: String,
     override fun settings(): RecordingSettings = synchronized(preferences) { preferences.getString("config", null)?.let {
         RecordingJson.settings(JSONObject(cipher.decrypt(it)))
     } ?: RecordingSettings() }
-    override fun saveSettings(value: RecordingSettings) { updateSettings { value } }
-    fun updateSettings(command: CommandContext? = null, transform: (RecordingSettings) -> RecordingSettings): RecordingSettings = coordinator.guard(command) {
-        synchronized(preferences) {
-            val old = settings()
-            val next = transform(old).also { it.validate() }
-            if (next != old) {
-                updatePreferences(preferences, mapOf("config" to cipher.encrypt(RecordingJson.settings(next).toString())))
-                val before=com.greatwall.callring.application.recordingSettingsScopeValues(old);val after=com.greatwall.callring.application.recordingSettingsScopeValues(next)
-                coordinator.publishScopes((before.keys+after.keys).filterTo(linkedSetOf()){before[it]!=after[it]})
-                if (old.recordingEnabled != next.recordingEnabled || old.automaticAnalysis != next.automaticAnalysis || old.captureMode != next.captureMode || old.systemFolder != next.systemFolder) coordinator.changed("recordingConfig")
-                if (old.analysis != next.analysis || old.transcription != next.transcription || old.conversationBudget != next.conversationBudget || old.conversationCompatibility != next.conversationCompatibility) coordinator.changed("aiConfig")
-                coordinator.record(command)
-            }
-            next
-        }
+    override fun persistSettings(value: RecordingSettings) = synchronized(preferences) {
+        updatePreferences(preferences, mapOf("config" to cipher.encrypt(RecordingJson.settings(value).toString())))
     }
     @Synchronized override fun get(callId: Long): CallArchive? = helper.readableDatabase.query("archives", arrayOf("payload"),
         "call_id=?", arrayOf(callId.toString()), null, null, null).use { if (it.moveToFirst()) RecordingJson.archive(JSONObject(it.getString(0))) else null }

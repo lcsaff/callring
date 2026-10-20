@@ -7,7 +7,6 @@ import java.io.File
 interface RecordingStore {
     fun isDeleted(callId: Long): Boolean = false
     fun settings(): RecordingSettings
-    fun saveSettings(value: RecordingSettings)
     fun get(callId: Long): CallArchive?
     fun all(): List<CallArchive>
     /** Expected null inserts only if missing. Generation protects replacement/deletion races. */

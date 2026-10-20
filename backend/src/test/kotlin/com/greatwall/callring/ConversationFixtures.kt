@@ -38,13 +38,23 @@ class ConversationFixtures {
             override fun readCalendar(source: DocumentRef) = CalendarImport(CalendarYear(2026, "fixture", "2026-01-01", "1").toDomain(), emptyMap(), emptySet())
         },
         object : RuntimeProbe {
+            override fun getInstalledWidgets() = com.greatwall.callring.contracts.widget.WidgetInstallState(emptyList(), AccessState.GRANTED)
             override fun getStatus() = RuntimeStatus(Capability.values().associateWith { AccessState.GRANTED }, Audibility.AUDIBLE, PhoneActivity.IDLE, PlaybackStatus(PlaybackMode.NONE, PlaybackState.IDLE), true, now)
             override fun getDiagnostics() = emptyList<DiagnosticEntry>()
         },
         object : AudioController {
             override fun getSettings() = ringtone
             override fun setEnabled(enabled: Boolean) = ringtone.copy(enabled = enabled).also { ringtone = it }
-            override fun importAudio(source: DocumentRef, checkCancellation: () -> Unit): RingtoneSettings { checkCancellation(); return ringtone.copy(source = AudioSource.IMPORTED).also { ringtone = it } }
+            override fun prepareAudio(source: DocumentRef, checkCancellation: () -> Unit): PreparedRingtoneImport {
+                checkCancellation()
+                return object : PreparedRingtoneImport {
+                    override fun commit(checkCancellation: () -> Unit): RingtoneSettings {
+                        checkCancellation()
+                        return ringtone.copy(source = AudioSource.IMPORTED).also { ringtone = it }
+                    }
+                    override fun close() {}
+                }
+            }
             override fun restoreBuiltIn() = ringtone.copy(source = AudioSource.BUILT_IN).also { ringtone = it }
             override fun startPreview() = Unit
             override fun stopPlayback() = Unit

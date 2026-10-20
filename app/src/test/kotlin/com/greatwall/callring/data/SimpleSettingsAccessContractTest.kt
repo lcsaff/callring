@@ -151,6 +151,27 @@ class SimpleSettingsAccessContractTest {
             measure("positionDelete") { graph.api.settings.deletePosition(position!!.id).requiredValue() }
             assertSame("positions cannot rebuild decision inputs", statisticsDecision, graph.backend.decisionSnapshot())
             measure("summaryRead") { assertEquals(ScoreSettings(6, 3, 10, 30), graph.api.settings.getSummary().requiredValue().score) }
+            measure("widgetWrite") { graph.api.widgets.saveBinding(17, "30001").requiredValue() }
+            measure("widgetNoop") { graph.api.widgets.saveBinding(17, "30001").requiredValue() }
+            measure("widgetMissingRemoveNoop") { graph.api.widgets.removeBinding(18).requiredValue() }
+            measure("widgetRead") { assertEquals("30001", graph.api.widgets.getBinding(17).requiredValue()!!.number) }
+            measure("widgetDelete") { graph.api.widgets.removeBinding(17).requiredValue() }
+            val recordingStore = com.greatwall.callring.platform.ai.AndroidRecordingStore(context, "narrow-config-$unrelatedCalls",
+                object : com.greatwall.callring.platform.ai.RecordingCipher {
+                    override fun encrypt(value: String) = value
+                    override fun decrypt(value: String) = value
+                }, graph.coordinator)
+            recordingStore.use {
+                val settings = com.greatwall.callring.application.recording.AiSettingsService(recordingStore, graph.coordinator, { true }, { _, _ -> },
+                    folderView = { com.greatwall.callring.contracts.recording.RecordingFolderView(null, com.greatwall.callring.contracts.runtime.AccessState.NOT_REQUIRED) })
+                measure("recordingConfigRead") { settings.getRecordingView().requiredValue() }
+                measure("recordingConfigWrite") { settings.patchRecording(settings.getRecordingView().requiredValue(),
+                    com.greatwall.callring.contracts.recording.RecordingSettingsPatch(recordingEnabled = com.greatwall.callring.contracts.ai.PatchField.Set(true))).requiredValue() }
+                measure("recordingConfigNoop") { settings.patchRecording(settings.getRecordingView().requiredValue(), com.greatwall.callring.contracts.recording.RecordingSettingsPatch()).requiredValue() }
+                measure("aiConfigWrite") { settings.patchAi(settings.getAiView().requiredValue(), com.greatwall.callring.contracts.ai.AiSettingsPatch(
+                    budget = com.greatwall.callring.contracts.ai.PatchField.Set(com.greatwall.callring.contracts.ai.ConversationBudget(65536, 4096)))).requiredValue() }
+                measure("aiConfigNoop") { settings.patchAi(settings.getAiView().requiredValue(), com.greatwall.callring.contracts.ai.AiSettingsPatch()).requiredValue() }
+            }
             val output = File("build/qa/layer-boundaries/settings-access-$unrelatedCalls.json")
             checkNotNull(output.parentFile).mkdirs()
             output.writeText(observations.toString(2))

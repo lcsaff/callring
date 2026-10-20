@@ -27,14 +27,8 @@ fun interface CalendarSource {
     fun fetch(year: Int): CalendarImport
 }
 
-interface PreferenceStore : com.greatwall.callring.application.ports.store.AppearanceStore {
-    fun listBindings(): List<WidgetBinding> = throw BackendFailure(ApiError(ErrorCode.SYSTEM_UNAVAILABLE, "snapshot.bindings_unavailable"))
-    fun getBinding(widgetId: Int): WidgetBinding?
-
-    fun saveBinding(binding: WidgetBinding)
-
-    fun removeBinding(widgetId: Int)
-}
+interface PreferenceStore : com.greatwall.callring.application.ports.store.AppearanceStore,
+    com.greatwall.callring.application.widget.WidgetBindingStore
 
 fun interface CalendarDocumentReader { fun readCalendar(source: DocumentRef): CalendarImport }
 
@@ -48,7 +42,7 @@ interface DocumentStore : CalendarDocumentReader {
 }
 
 interface RuntimeProbe {
-    fun getInstalledWidgets(): WidgetInstallState = WidgetInstallState(emptyList(), AccessState.UNKNOWN)
+    fun getInstalledWidgets(): WidgetInstallState
     fun getStatus(): RuntimeStatus
 
     fun getDiagnostics(): List<DiagnosticEntry>
@@ -59,39 +53,18 @@ interface RuntimeProbe {
  * must validate <=20 MiB, playable duration, then atomically replace; failures preserve the
  * previous selection. No private paths in settings.
  */
+interface PreparedRingtoneImport : AutoCloseable {
+    /** Final generation/cancellation validation and atomic file/metadata replacement. */
+    fun commit(checkCancellation: () -> Unit): RingtoneSettings
+    override fun close()
+}
+
 interface AudioController {
     fun getSettings(): RingtoneSettings
-
-    /**
-     * The adapter persists first; disabling then stops playback on a best-effort basis. Playback
-     * restrictions must not turn an already committed disable into a failure.
-     */
     fun setEnabled(enabled: Boolean): RingtoneSettings
-    fun setEnabled(enabled: Boolean, command: CommandContext?): RingtoneSettings {
-        if(command != null) throw BackendFailure(ApiError(ErrorCode.SYSTEM_UNAVAILABLE,"audio.guarded_commands_unavailable"))
-        return setEnabled(enabled)
-    }
-
-    fun importAudio(source: DocumentRef): RingtoneSettings = importAudio(source) {}
-
-    /**
-     * Checks run during preparation and immediately before atomic publication. Once published, the
-     * controller returns without checking cancellation so the caller can notify the commit.
-     */
-    fun importAudio(source: DocumentRef, checkCancellation: () -> Unit): RingtoneSettings
-    fun importAudio(source: DocumentRef, checkCancellation: () -> Unit, command: CommandContext?): RingtoneSettings {
-        if(command != null) throw BackendFailure(ApiError(ErrorCode.SYSTEM_UNAVAILABLE,"audio.guarded_commands_unavailable"))
-        return importAudio(source,checkCancellation)
-    }
-
+    fun prepareAudio(source: DocumentRef, checkCancellation: () -> Unit): PreparedRingtoneImport
     fun restoreBuiltIn(): RingtoneSettings
-    fun restoreBuiltIn(command: CommandContext?): RingtoneSettings {
-        if(command != null) throw BackendFailure(ApiError(ErrorCode.SYSTEM_UNAVAILABLE,"audio.guarded_commands_unavailable"))
-        return restoreBuiltIn()
-    }
-
     fun startPreview()
-
     fun stopPlayback()
 }
 

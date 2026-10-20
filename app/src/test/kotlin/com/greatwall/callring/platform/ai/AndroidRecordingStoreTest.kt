@@ -71,7 +71,7 @@ class AndroidRecordingStoreTest {
         val a = AndroidRecordingStore(context, "a", cipher)
         val b = AndroidRecordingStore(context, "b", cipher)
         val connection = AiConnection(url = "https://example.com/prefix/v1", apiKey = "unique-private-key", model = "custom")
-        a.saveSettings(RecordingSettings(analysis = connection, transcription = connection))
+        a.persistSettings(RecordingSettings(analysis = connection, transcription = connection))
         assertFalse(context.getSharedPreferences("a_recording", 0).all.toString().contains("unique-private-key"))
         assertEquals("unique-private-key", AndroidRecordingStore(context, "a", cipher).settings().analysis.apiKey)
         assertEquals("", b.settings().analysis.apiKey)

@@ -2,17 +2,17 @@ package com.greatwall.callring.platform
 
 import com.greatwall.callring.contracts.runtime.*
 
-/** A service publishes observed transitions; UI polling never starts or prepares audio. */
-class PlaybackStateTracker {
+/** Only observed transitions publish; submitting a service intent is not a playback transition. */
+class PlaybackStateTracker(private val publish: () -> Unit) {
     @Volatile private var current = PlaybackStatus(PlaybackMode.NONE, PlaybackState.IDLE)
 
-    fun mark(mode: PlaybackMode, state: PlaybackState) {
-        current = PlaybackStatus(mode, state)
+    @Synchronized fun mark(mode: PlaybackMode, state: PlaybackState) {
+        val next = PlaybackStatus(mode, state)
+        if (current == next) return
+        current = next
+        publish()
     }
 
-    fun clear() {
-        current = PlaybackStatus(PlaybackMode.NONE, PlaybackState.IDLE)
-    }
-
+    fun clear() = mark(PlaybackMode.NONE, PlaybackState.IDLE)
     fun snapshot(): PlaybackStatus = current
 }

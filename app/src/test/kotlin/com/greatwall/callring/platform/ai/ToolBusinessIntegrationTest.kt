@@ -55,8 +55,8 @@ class ToolBusinessIntegrationTest {
         val coordinator = BusinessRevisionCoordinator()
         val store = SqliteBackendStore(context,"$namespace.db")
         val docs = ReadbackDocumentStore(AndroidDocumentStore(context.contentResolver))
-        val audio = AndroidAudioController(context,context.getSharedPreferences("${namespace}_ring",0),{ File(context.filesDir,"${namespace}_audio") },docs,coordinator)
-        val preferences = AndroidPreferences(context.getSharedPreferences("${namespace}_appearance",0),context.getSharedPreferences("${namespace}_widgets",0),AppearanceSettings(ThemeSelection.PRESET,"default",null,ColorMode.FOLLOW_SYSTEM),coordinator)
+        val audio = AndroidAudioController(context,context.getSharedPreferences("${namespace}_ring",0),{ File(context.filesDir,"${namespace}_audio") },docs)
+        val preferences = AndroidPreferences(context.getSharedPreferences("${namespace}_appearance",0),context.getSharedPreferences("${namespace}_widgets",0),AppearanceSettings(ThemeSelection.PRESET,"default",null,ColorMode.FOLLOW_SYSTEM))
         val client = Client()
         val calls = ConcurrentLinkedQueue<String>()
         val backend = CallringBackend(store,preferences,docs,object : RuntimeProbe {
@@ -101,7 +101,7 @@ class ToolBusinessIntegrationTest {
             backend.settings.saveDateOverride(DateOverride(LocalDate.parse("2026-10-19"),DateOverrideKind.REST,emptyList())).requiredValue()
             backend.widgets.saveBinding(1,"31234").requiredValue()
             val connection = AiConnection(url = "https://example.com/v1",apiKey = "fixture-secret-one",model = "fixture")
-            recordingStore.saveSettings(RecordingSettings(recordingEnabled = true,analysis = connection,transcription = connection.copy(apiKey = "fixture-secret-two")))
+            recordingStore.persistSettings(RecordingSettings(recordingEnabled = true,analysis = connection,transcription = connection.copy(apiKey = "fixture-secret-two")))
             val identity = runtime.observeIncoming("session","31234",now,null)!!
             recordingId = identity.id
             runtime.importRecording(identity.id,identity.number,identity.startedAt,DocumentRef("content://tool-fixture/audio")).requiredValue()

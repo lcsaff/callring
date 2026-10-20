@@ -104,6 +104,7 @@ class CallringBackendTest {
     }
 
     private class Prefs : PreferenceStore {
+        override fun listBindings() = bindings.values.toList()
         @Volatile
         var appearanceValue =
             AppearanceSettings(ThemeSelection.PRESET, "default", null, ColorMode.FOLLOW_SYSTEM)
@@ -150,6 +151,7 @@ class CallringBackendTest {
     }
 
     private class Probe : RuntimeProbe {
+            override fun getInstalledWidgets() = com.greatwall.callring.contracts.widget.WidgetInstallState(emptyList(), AccessState.GRANTED)
         var capabilities = Capability.values().associateWith { AccessState.GRANTED }
 
         override fun getStatus() =
@@ -177,27 +179,22 @@ class CallringBackendTest {
 
         override fun setEnabled(enabled: Boolean): RingtoneSettings {
             current = current.copy(enabled = enabled)
-            if (!enabled)
-                try {
-                    stopPlayback()
-                } catch (_: BackendFailure) {
-                    /* persisted disable still succeeds */
-                }
             return current
         }
 
-        override fun importAudio(source: DocumentRef) = current
-
-        override fun importAudio(
-            source: DocumentRef,
-            checkCancellation: () -> Unit,
-        ): RingtoneSettings {
+        override fun prepareAudio(source: DocumentRef, checkCancellation: () -> Unit): PreparedRingtoneImport {
             beforeCommit()
             checkCancellation()
-            current = current.copy(source = AudioSource.IMPORTED)
-            imports++
-            afterCommit()
-            return current
+            return object : PreparedRingtoneImport {
+                override fun commit(checkCancellation: () -> Unit): RingtoneSettings {
+                    checkCancellation()
+                    current = current.copy(source = AudioSource.IMPORTED)
+                    imports++
+                    afterCommit()
+                    return current
+                }
+                override fun close() {}
+            }
         }
 
         override fun restoreBuiltIn() = current
@@ -236,6 +233,11 @@ class CallringBackendTest {
             CalendarSource { annualCalendar() },
             coreTransactions = MemoryQuietTransactions(store),
         )
+
+    @Test fun unchangedRingtoneSettingDoesNotPublish() = runBlocking {
+        api.ringtone.setEnabled(false).value()
+        assertEquals(0L, api.coordinator.marker())
+    }
 
     @Test
     fun annualSyncPreservesCachedCalendarWhenDownloadFails() = runBlocking {
@@ -978,11 +980,10 @@ class CallringBackendTest {
             resume.complete(Unit)
             val observed = withTimeout(5000) { delivered.await() }
             assertEquals(finalRevision, observed.dataRevision)
+            assertTrue(api.changes.snapshots()!!.value.domains.getValue(DataDomain.CALLERS).lastAnyRevision > 0)
             assertTrue(
                 observed.domains.containsAll(
                     setOf(
-                        DataDomain.CALLERS,
-                        DataDomain.REPORTS,
                         DataDomain.SCORE_SETTINGS,
                         DataDomain.WIDGET_BINDINGS,
                     )
@@ -1018,6 +1019,7 @@ class CallringBackendTest {
             subscribe.complete(Unit)
             val observed = withTimeout(5000) { delivered.await() }
             assertEquals(finalRevision, observed.dataRevision)
+            assertTrue(api.changes.snapshots()!!.value.domains.getValue(DataDomain.CALLERS).lastAnyRevision > 0)
             assertTrue(
                 observed.domains.containsAll(
                     setOf(DataDomain.CALLERS, DataDomain.REPORTS, DataDomain.OVERLAY_SETTINGS)

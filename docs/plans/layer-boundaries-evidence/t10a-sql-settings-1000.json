@@ -1,0 +1,626 @@
+{
+  "unrelatedCallCount": 1000,
+  "implementationBaseSha": "b99c5ae",
+  "measurement": "query calls and successful cursor moves \/ scalar results; not SQLite scan rows",
+  "appearanceWrite": [],
+  "scoreRead": [
+    {
+      "tag": "SCOPED_SETTING",
+      "tables": [
+        "settings"
+      ],
+      "queryCalls": 1,
+      "consumedRows": 0,
+      "closedCursors": 1,
+      "writtenRows": 0,
+      "queryOrMovementFailures": 0
+    }
+  ],
+  "scoreWrite": [
+    {
+      "tag": "SCOPED_SETTING",
+      "tables": [
+        "settings"
+      ],
+      "queryCalls": 1,
+      "consumedRows": 0,
+      "closedCursors": 1,
+      "writtenRows": 0,
+      "queryOrMovementFailures": 0
+    },
+    {
+      "tag": "DIRECT_UPDATE",
+      "tables": [
+        "settings"
+      ],
+      "queryCalls": 1,
+      "consumedRows": 0,
+      "closedCursors": 0,
+      "writtenRows": 0,
+      "queryOrMovementFailures": 0
+    },
+    {
+      "tag": "DIRECT_INSERT",
+      "tables": [
+        "settings"
+      ],
+      "queryCalls": 1,
+      "consumedRows": 0,
+      "closedCursors": 0,
+      "writtenRows": 1,
+      "queryOrMovementFailures": 0
+    }
+  ],
+  "scoreNoop": [
+    {
+      "tag": "SCOPED_SETTING",
+      "tables": [
+        "settings"
+      ],
+      "queryCalls": 1,
+      "consumedRows": 1,
+      "closedCursors": 1,
+      "writtenRows": 0,
+      "queryOrMovementFailures": 0
+    }
+  ],
+  "scoreEdit": [
+    {
+      "tag": "SCOPED_SETTING",
+      "tables": [
+        "settings"
+      ],
+      "queryCalls": 1,
+      "consumedRows": 1,
+      "closedCursors": 1,
+      "writtenRows": 0,
+      "queryOrMovementFailures": 0
+    },
+    {
+      "tag": "DIRECT_UPDATE",
+      "tables": [
+        "settings"
+      ],
+      "queryCalls": 1,
+      "consumedRows": 0,
+      "closedCursors": 0,
+      "writtenRows": 0,
+      "queryOrMovementFailures": 0
+    },
+    {
+      "tag": "DIRECT_INSERT",
+      "tables": [
+        "settings"
+      ],
+      "queryCalls": 1,
+      "consumedRows": 0,
+      "closedCursors": 0,
+      "writtenRows": 1,
+      "queryOrMovementFailures": 0
+    }
+  ],
+  "overlayNoop": [
+    {
+      "tag": "SCOPED_SETTING",
+      "tables": [
+        "settings"
+      ],
+      "queryCalls": 1,
+      "consumedRows": 0,
+      "closedCursors": 1,
+      "writtenRows": 0,
+      "queryOrMovementFailures": 0
+    }
+  ],
+  "overlayEnable": [
+    {
+      "tag": "SCOPED_SETTING",
+      "tables": [
+        "settings"
+      ],
+      "queryCalls": 1,
+      "consumedRows": 0,
+      "closedCursors": 1,
+      "writtenRows": 0,
+      "queryOrMovementFailures": 0
+    },
+    {
+      "tag": "DIRECT_UPDATE",
+      "tables": [
+        "settings"
+      ],
+      "queryCalls": 1,
+      "consumedRows": 0,
+      "closedCursors": 0,
+      "writtenRows": 0,
+      "queryOrMovementFailures": 0
+    },
+    {
+      "tag": "DIRECT_INSERT",
+      "tables": [
+        "settings"
+      ],
+      "queryCalls": 1,
+      "consumedRows": 0,
+      "closedCursors": 0,
+      "writtenRows": 1,
+      "queryOrMovementFailures": 0
+    }
+  ],
+  "overlayDisable": [
+    {
+      "tag": "SCOPED_SETTING",
+      "tables": [
+        "settings"
+      ],
+      "queryCalls": 1,
+      "consumedRows": 1,
+      "closedCursors": 1,
+      "writtenRows": 0,
+      "queryOrMovementFailures": 0
+    },
+    {
+      "tag": "DIRECT_UPDATE",
+      "tables": [
+        "settings"
+      ],
+      "queryCalls": 1,
+      "consumedRows": 0,
+      "closedCursors": 0,
+      "writtenRows": 1,
+      "queryOrMovementFailures": 0
+    }
+  ],
+  "statisticsDisable": [
+    {
+      "tag": "SCOPED_ROWS",
+      "tables": [
+        "statistics_intervals"
+      ],
+      "queryCalls": 1,
+      "consumedRows": 1,
+      "closedCursors": 1,
+      "writtenRows": 0,
+      "queryOrMovementFailures": 0
+    },
+    {
+      "tag": "AGGREGATE",
+      "tables": [
+        "statistics_intervals"
+      ],
+      "queryCalls": 1,
+      "consumedRows": 1,
+      "closedCursors": 1,
+      "writtenRows": 0,
+      "queryOrMovementFailures": 0
+    },
+    {
+      "tag": "DIRECT_UPDATE",
+      "tables": [
+        "statistics_intervals"
+      ],
+      "queryCalls": 1,
+      "consumedRows": 0,
+      "closedCursors": 0,
+      "writtenRows": 1,
+      "queryOrMovementFailures": 0
+    }
+  ],
+  "statisticsEnable": [
+    {
+      "tag": "SCOPED_ROWS",
+      "tables": [
+        "statistics_intervals"
+      ],
+      "queryCalls": 1,
+      "consumedRows": 0,
+      "closedCursors": 1,
+      "writtenRows": 0,
+      "queryOrMovementFailures": 0
+    },
+    {
+      "tag": "AGGREGATE",
+      "tables": [
+        "statistics_intervals"
+      ],
+      "queryCalls": 1,
+      "consumedRows": 1,
+      "closedCursors": 1,
+      "writtenRows": 0,
+      "queryOrMovementFailures": 0
+    },
+    {
+      "tag": "DIRECT_INSERT",
+      "tables": [
+        "statistics_intervals"
+      ],
+      "queryCalls": 1,
+      "consumedRows": 0,
+      "closedCursors": 0,
+      "writtenRows": 1,
+      "queryOrMovementFailures": 0
+    }
+  ],
+  "statisticsNoop": [
+    {
+      "tag": "SCOPED_ROWS",
+      "tables": [
+        "statistics_intervals"
+      ],
+      "queryCalls": 1,
+      "consumedRows": 1,
+      "closedCursors": 1,
+      "writtenRows": 0,
+      "queryOrMovementFailures": 0
+    },
+    {
+      "tag": "AGGREGATE",
+      "tables": [
+        "statistics_intervals"
+      ],
+      "queryCalls": 1,
+      "consumedRows": 1,
+      "closedCursors": 1,
+      "writtenRows": 0,
+      "queryOrMovementFailures": 0
+    }
+  ],
+  "positionsRead": [
+    {
+      "tag": "SCOPED_SETTING",
+      "tables": [
+        "settings"
+      ],
+      "queryCalls": 1,
+      "consumedRows": 0,
+      "closedCursors": 1,
+      "writtenRows": 0,
+      "queryOrMovementFailures": 0
+    },
+    {
+      "tag": "SCOPED_ROWS",
+      "tables": [
+        "positions"
+      ],
+      "queryCalls": 1,
+      "consumedRows": 1,
+      "closedCursors": 1,
+      "writtenRows": 0,
+      "queryOrMovementFailures": 0
+    }
+  ],
+  "positionCreate": [
+    {
+      "tag": "SCOPED_ROWS",
+      "tables": [
+        "callers"
+      ],
+      "queryCalls": 1,
+      "consumedRows": 0,
+      "closedCursors": 1,
+      "writtenRows": 0,
+      "queryOrMovementFailures": 0
+    },
+    {
+      "tag": "SCOPED_SETTING",
+      "tables": [
+        "settings"
+      ],
+      "queryCalls": 1,
+      "consumedRows": 0,
+      "closedCursors": 1,
+      "writtenRows": 0,
+      "queryOrMovementFailures": 0
+    },
+    {
+      "tag": "AGGREGATE",
+      "tables": [
+        "positions"
+      ],
+      "queryCalls": 1,
+      "consumedRows": 1,
+      "closedCursors": 1,
+      "writtenRows": 0,
+      "queryOrMovementFailures": 0
+    },
+    {
+      "tag": "DIRECT_INSERT",
+      "tables": [
+        "positions"
+      ],
+      "queryCalls": 1,
+      "consumedRows": 0,
+      "closedCursors": 0,
+      "writtenRows": 1,
+      "queryOrMovementFailures": 0
+    }
+  ],
+  "positionNoop": [
+    {
+      "tag": "SCOPED_SETTING",
+      "tables": [
+        "settings"
+      ],
+      "queryCalls": 1,
+      "consumedRows": 0,
+      "closedCursors": 1,
+      "writtenRows": 0,
+      "queryOrMovementFailures": 0
+    },
+    {
+      "tag": "SCOPED_ROWS",
+      "tables": [
+        "positions"
+      ],
+      "queryCalls": 1,
+      "consumedRows": 1,
+      "closedCursors": 1,
+      "writtenRows": 0,
+      "queryOrMovementFailures": 0
+    },
+    {
+      "tag": "AGGREGATE",
+      "tables": [
+        "positions"
+      ],
+      "queryCalls": 1,
+      "consumedRows": 1,
+      "closedCursors": 1,
+      "writtenRows": 0,
+      "queryOrMovementFailures": 0
+    }
+  ],
+  "positionEdit": [
+    {
+      "tag": "SCOPED_ROWS",
+      "tables": [
+        "callers"
+      ],
+      "queryCalls": 1,
+      "consumedRows": 0,
+      "closedCursors": 1,
+      "writtenRows": 0,
+      "queryOrMovementFailures": 0
+    },
+    {
+      "tag": "SCOPED_SETTING",
+      "tables": [
+        "settings"
+      ],
+      "queryCalls": 1,
+      "consumedRows": 0,
+      "closedCursors": 1,
+      "writtenRows": 0,
+      "queryOrMovementFailures": 0
+    },
+    {
+      "tag": "SCOPED_ROWS",
+      "tables": [
+        "positions"
+      ],
+      "queryCalls": 1,
+      "consumedRows": 1,
+      "closedCursors": 1,
+      "writtenRows": 0,
+      "queryOrMovementFailures": 0
+    },
+    {
+      "tag": "AGGREGATE",
+      "tables": [
+        "positions"
+      ],
+      "queryCalls": 1,
+      "consumedRows": 1,
+      "closedCursors": 1,
+      "writtenRows": 0,
+      "queryOrMovementFailures": 0
+    },
+    {
+      "tag": "DIRECT_UPDATE",
+      "tables": [
+        "positions"
+      ],
+      "queryCalls": 1,
+      "consumedRows": 0,
+      "closedCursors": 0,
+      "writtenRows": 1,
+      "queryOrMovementFailures": 0
+    }
+  ],
+  "myPosition": [
+    {
+      "tag": "SCOPED_SETTING",
+      "tables": [
+        "settings"
+      ],
+      "queryCalls": 2,
+      "consumedRows": 1,
+      "closedCursors": 2,
+      "writtenRows": 0,
+      "queryOrMovementFailures": 0
+    },
+    {
+      "tag": "DIRECT_UPDATE",
+      "tables": [
+        "settings"
+      ],
+      "queryCalls": 1,
+      "consumedRows": 0,
+      "closedCursors": 0,
+      "writtenRows": 0,
+      "queryOrMovementFailures": 0
+    },
+    {
+      "tag": "DIRECT_INSERT",
+      "tables": [
+        "settings"
+      ],
+      "queryCalls": 1,
+      "consumedRows": 0,
+      "closedCursors": 0,
+      "writtenRows": 1,
+      "queryOrMovementFailures": 0
+    },
+    {
+      "tag": "SCOPED_ROWS",
+      "tables": [
+        "positions"
+      ],
+      "queryCalls": 2,
+      "consumedRows": 3,
+      "closedCursors": 2,
+      "writtenRows": 0,
+      "queryOrMovementFailures": 0
+    }
+  ],
+  "myPositionNoop": [
+    {
+      "tag": "SCOPED_SETTING",
+      "tables": [
+        "settings"
+      ],
+      "queryCalls": 2,
+      "consumedRows": 2,
+      "closedCursors": 2,
+      "writtenRows": 0,
+      "queryOrMovementFailures": 0
+    },
+    {
+      "tag": "SCOPED_ROWS",
+      "tables": [
+        "positions"
+      ],
+      "queryCalls": 2,
+      "consumedRows": 3,
+      "closedCursors": 2,
+      "writtenRows": 0,
+      "queryOrMovementFailures": 0
+    }
+  ],
+  "myPositionClear": [
+    {
+      "tag": "SCOPED_SETTING",
+      "tables": [
+        "settings"
+      ],
+      "queryCalls": 2,
+      "consumedRows": 2,
+      "closedCursors": 2,
+      "writtenRows": 0,
+      "queryOrMovementFailures": 0
+    },
+    {
+      "tag": "DIRECT_UPDATE",
+      "tables": [
+        "settings"
+      ],
+      "queryCalls": 1,
+      "consumedRows": 0,
+      "closedCursors": 0,
+      "writtenRows": 1,
+      "queryOrMovementFailures": 0
+    },
+    {
+      "tag": "SCOPED_ROWS",
+      "tables": [
+        "positions"
+      ],
+      "queryCalls": 1,
+      "consumedRows": 2,
+      "closedCursors": 1,
+      "writtenRows": 0,
+      "queryOrMovementFailures": 0
+    }
+  ],
+  "positionDelete": [
+    {
+      "tag": "SCOPED_SETTING",
+      "tables": [
+        "settings"
+      ],
+      "queryCalls": 1,
+      "consumedRows": 1,
+      "closedCursors": 1,
+      "writtenRows": 0,
+      "queryOrMovementFailures": 0
+    },
+    {
+      "tag": "SCOPED_ROWS",
+      "tables": [
+        "positions"
+      ],
+      "queryCalls": 1,
+      "consumedRows": 1,
+      "closedCursors": 1,
+      "writtenRows": 0,
+      "queryOrMovementFailures": 0
+    },
+    {
+      "tag": "AGGREGATE",
+      "tables": [
+        "callers"
+      ],
+      "queryCalls": 1,
+      "consumedRows": 1,
+      "closedCursors": 1,
+      "writtenRows": 0,
+      "queryOrMovementFailures": 0
+    },
+    {
+      "tag": "DIRECT_DELETE",
+      "tables": [
+        "positions"
+      ],
+      "queryCalls": 1,
+      "consumedRows": 0,
+      "closedCursors": 0,
+      "writtenRows": 1,
+      "queryOrMovementFailures": 0
+    }
+  ],
+  "summaryRead": [
+    {
+      "tag": "SCOPED_SETTING",
+      "tables": [
+        "settings"
+      ],
+      "queryCalls": 1,
+      "consumedRows": 4,
+      "closedCursors": 1,
+      "writtenRows": 0,
+      "queryOrMovementFailures": 0
+    },
+    {
+      "tag": "AGGREGATE",
+      "tables": [
+        "statistics_intervals"
+      ],
+      "queryCalls": 1,
+      "consumedRows": 1,
+      "closedCursors": 1,
+      "writtenRows": 0,
+      "queryOrMovementFailures": 0
+    },
+    {
+      "tag": "SCOPED_ROWS",
+      "tables": [
+        "config_versions"
+      ],
+      "queryCalls": 1,
+      "consumedRows": 1,
+      "closedCursors": 1,
+      "writtenRows": 0,
+      "queryOrMovementFailures": 0
+    }
+  ],
+  "widgetWrite": [],
+  "widgetNoop": [],
+  "widgetMissingRemoveNoop": [],
+  "widgetRead": [],
+  "widgetDelete": [],
+  "recordingConfigRead": [],
+  "recordingConfigWrite": [],
+  "recordingConfigNoop": [],
+  "aiConfigWrite": [],
+  "aiConfigNoop": []
+}

@@ -243,29 +243,6 @@ internal class BackendContext(
         return NumberCheck(identity.normalized, identity.validProfileNumber, identity.matchesRule)
     }
 
-    private val runner = com.greatwall.callring.application.coordination.UseCaseRunner(dispatcher)
-
-    internal suspend fun <T> io(block: () -> T): ApiResult<T> = runner.io(block)
-
-    internal fun fail(code: ErrorCode, message: String, field: String? = null): Nothing =
-        throw BackendFailure(
-            ApiError(code, message, if (field == null) emptyMap() else mapOf(field to message)),
-        )
-
-    internal fun requireField(ok: Boolean, field: String, code: String) {
-        if (!ok) fail(ErrorCode.VALIDATION, code, field)
-    }
-
-    internal fun number(raw: String): String =
-        checkNumber(raw).let {
-            requireField(it.validProfileNumber, "number", "number.invalid")
-            it.normalized
-        }
-
-    internal fun notifyChanged() {
-        coordinator.changed("core")
-    }
-
     internal val incomingCalls =
         com.greatwall.callring.application.calling.IncomingCallService(
             coreTransactions,
@@ -286,20 +263,5 @@ internal class BackendContext(
             decisions,
         )
 
-    /** Once a write starts, commit and its notification survive caller cancellation. */
-    internal suspend fun <T> write(block: () -> T): ApiResult<T> = runner.write(block)
-
     internal fun runtimeStatus(): RuntimeStatus = completeRuntimeStatus(runtimeProbe.getStatus())
-
-    internal fun capability(capability: Capability, role: Boolean = false) {
-        val access = runtimeStatus().capabilities.getValue(capability)
-        if (access != AccessState.GRANTED && access != AccessState.NOT_REQUIRED)
-            throw BackendFailure(
-                ApiError(
-                    if (role) ErrorCode.ROLE_REQUIRED else ErrorCode.PERMISSION_REQUIRED,
-                    "capability.required",
-                    requiredCapabilities = frozenSet(setOf(capability)),
-                ),
-            )
-    }
 }

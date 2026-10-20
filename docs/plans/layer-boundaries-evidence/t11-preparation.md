@@ -35,3 +35,11 @@ RequestLoader 仍可服务号码预览、目录读取等一次性请求；须删
 - 精确刷新不弱化新增归档/绑定、字段并发、密钥、自有提交与 incarnation 的冲突保护。
 
 现有工具标识/schema、D 编号、持久值 codec、组件/Job/PendingIntent 身份与历史基线是现有协议数据。保留其语义须由最终唯一实现承担，不能借此保留旧业务实现或迁移桥。
+
+## Runtime 实体与生命周期信号补充（4eac375只读预查）
+
+T09b的publishRuntime已保证真实RUNTIME累计发布，当前仍是域宽impact。T10a开始迁铃声自然状态发布；T11必须按最终publisher复核capabilities、phone/audibility、ringtonePlayback、recordingPlayback、processing/jobs的实际依赖，不能把所有scope key直接投成跨域实体，也不能把报告仅需CALL_LOG质量扩成依赖所有播放变化。Report/CallerOverview/Overlay的质量查询、Home完整状态、Runtime完整状态和录音播放器各自闭包不同；补实际loader的“录音播放→报告0、相关权限→质量1”等反例。
+
+SourceDependencies的D12/D19等固定源并集须随真实runtime key同步；精确UI实体与AI sourceVersion/命令scope仍三种不同职责。仅发布新fine key但源仍看旧runtime会造成源版本不推进；借发布runtime:capabilities覆盖所有播放变化则又过度冲突。
+
+CallringActivity.onResume以及time/date广播当前递增refreshSignal，RuntimeViewModel组合status/diagnostics。系统设置返回与时间变化确实需要重新观测平台，不能一刀删除这些信号。整理为明确的生命周期/系统观察入口，去除对相同订阅数据的无条件全页面重查；设备未执行时如实保留权限/自然播放生命周期缺口。原PlaybackStateTracker.mark/clear只有赋值，由T10a补真实变化后发布，T11不能再在API成功回调补第二次同状态发布。

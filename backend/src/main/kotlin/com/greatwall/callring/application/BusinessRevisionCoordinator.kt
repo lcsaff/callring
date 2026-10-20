@@ -29,12 +29,22 @@ class BusinessRevisionCoordinator {
     fun publishCore(keys: Set<String>, impact: ChangeImpact) = synchronized(fence) {
         publishResource("core", keys, impact)
     }
-    fun publishResource(domain: String, keys: Set<String>, impact: ChangeImpact) = synchronized(fence) {
+    fun publishResource(domain: String, keys: Set<String>, impact: ChangeImpact) =
+        publishResources(setOf(domain), keys, impact)
+
+    /** One logical commit may change multiple persisted resources. */
+    fun publishResources(resources: Set<String>, keys: Set<String>, impact: ChangeImpact) = synchronized(fence) {
         if (keys.isEmpty()) return@synchronized
-        versions[domain] = Math.addExact(versions.getValue(domain), 1)
+        require(resources.isNotEmpty() && resources.all { it in versions })
         revision = Math.addExact(revision, 1)
-        (keys + domain).forEach { scopeChanges[it] = revision }
-        domainMarkers.getValue(domain).let { history -> history[versions.getValue(domain)] = revision; if (history.size > 1024) history.remove(history.keys.first()) }
+        resources.forEach { domain ->
+            versions[domain] = Math.addExact(versions.getValue(domain), 1)
+            domainMarkers.getValue(domain).let { history ->
+                history[versions.getValue(domain)] = revision
+                if (history.size > 1024) history.remove(history.keys.first())
+            }
+        }
+        (keys + resources).forEach { scopeChanges[it] = revision }
         invalidations.publish(revision, impact)
         changes.value = DataChange(revision, impact.domains.keys, null, null)
     }

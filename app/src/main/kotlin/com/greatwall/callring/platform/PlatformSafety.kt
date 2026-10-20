@@ -65,11 +65,6 @@ internal class AudioGeneration {
     @Synchronized fun begin(): Long = ++generation
 
     @Synchronized
-    fun publish(expected: Long, block: () -> Unit): Boolean {
-        return publish(expected, {}, block)
-    }
-
-    @Synchronized
     fun publish(expected: Long, checkCancellation: () -> Unit, block: () -> Unit): Boolean {
         if (expected != generation) return false
         checkCancellation()
@@ -84,43 +79,42 @@ internal class AudioGeneration {
     }
 }
 
-/**
- * Both files must be in the same directory/filesystem. A failed metadata write restores the old
- * file.
- */
-internal fun replaceAudioAtomically(
-    candidate: File,
-    selected: File,
-    checkCancellation: () -> Unit = {},
-    commitMetadata: () -> Unit,
-) {
-    require(candidate.parentFile?.canonicalFile == selected.parentFile?.canonicalFile) {
-        "audio.invalid_directory"
-    }
+/** A rollback copy is prepared before the coordinator fence; generation rejects stale preparations. */
+internal class PreparedAudioBackup(val selected: File, val file: File, val hadPrevious: Boolean) : java.io.Closeable {
+    override fun close() { file.delete() }
+}
+
+internal fun prepareAudioBackup(selected: File): PreparedAudioBackup {
     val backup = File.createTempFile("audio-backup-", ".tmp", selected.parentFile)
     val hadPrevious = selected.exists()
     try {
-        if (hadPrevious)
-            Files.copy(selected.toPath(), backup.toPath(), StandardCopyOption.REPLACE_EXISTING)
-        // Backup copying belongs to preparation. The atomic rename is the publication boundary.
+        if (hadPrevious) Files.copy(selected.toPath(), backup.toPath(), StandardCopyOption.REPLACE_EXISTING)
+        return PreparedAudioBackup(selected, backup, hadPrevious)
+    } catch (failure: Throwable) {
+        backup.delete()
+        throw failure
+    }
+}
+
+/** Atomic rename and metadata commit; a failed metadata write restores the prepared previous file. */
+internal fun replaceAudioAtomically(
+    candidate: File,
+    selected: File,
+    backup: PreparedAudioBackup,
+    checkCancellation: () -> Unit = {},
+    commitMetadata: () -> Unit,
+) {
+    require(candidate.parentFile?.canonicalFile == selected.parentFile?.canonicalFile && backup.selected.canonicalFile == selected.canonicalFile) {
+        "audio.invalid_directory"
+    }
+    try {
         checkCancellation()
-        Files.move(
-            candidate.toPath(),
-            selected.toPath(),
-            StandardCopyOption.ATOMIC_MOVE,
-            StandardCopyOption.REPLACE_EXISTING,
-        )
+        Files.move(candidate.toPath(), selected.toPath(), StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING)
         try {
             commitMetadata()
         } catch (failure: Throwable) {
             try {
-                if (hadPrevious)
-                    Files.move(
-                        backup.toPath(),
-                        selected.toPath(),
-                        StandardCopyOption.ATOMIC_MOVE,
-                        StandardCopyOption.REPLACE_EXISTING,
-                    )
+                if (backup.hadPrevious) Files.move(backup.file.toPath(), selected.toPath(), StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING)
                 else Files.deleteIfExists(selected.toPath())
             } catch (rollback: Throwable) {
                 failure.addSuppressed(rollback)
@@ -128,6 +122,6 @@ internal fun replaceAudioAtomically(
             throw failure
         }
     } finally {
-        backup.delete()
+        backup.close()
     }
 }

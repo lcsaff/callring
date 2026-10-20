@@ -50,7 +50,6 @@ class AndroidPreferences(
     private val appearance: SharedPreferences,
     private val widgets: SharedPreferences,
     private val defaultAppearance: AppearanceSettings,
-    private val coordinator: com.greatwall.callring.application.BusinessRevisionCoordinator = com.greatwall.callring.application.BusinessRevisionCoordinator(),
 ) : PreferenceStore {
     fun scopedBindingRows():Sequence<com.greatwall.callring.application.ports.SourceRow> = widgets.all.entries.asSequence().filter{it.key.startsWith("number_")}.map{entry->
         val id=entry.key.removePrefix("number_").toInt()
@@ -94,18 +93,12 @@ class AndroidPreferences(
     override fun getBinding(widgetId: Int): WidgetBinding? =
         widgets.getString("number_$widgetId", null)?.let { WidgetBinding(widgetId, it) }
 
-    override fun saveBinding(binding: WidgetBinding) = coordinator.commit("preferences") { saveBindingInternal(binding) }
-    @Synchronized private fun saveBindingInternal(binding: WidgetBinding) {
-        val before=getBinding(binding.widgetId)
+    @Synchronized override fun saveBinding(binding: WidgetBinding) {
         updatePreferences(widgets, mapOf("number_${binding.widgetId}" to binding.number))
-        if(before!=binding)coordinator.publishScopes(setOf("widgets","widget:${binding.widgetId}"))
     }
 
-    override fun removeBinding(widgetId: Int) = coordinator.commit("preferences") { removeBindingInternal(widgetId) }
-    @Synchronized private fun removeBindingInternal(widgetId: Int) {
-        val before=getBinding(widgetId)
+    @Synchronized override fun removeBinding(widgetId: Int) {
         updatePreferences(widgets, mapOf("number_$widgetId" to null))
-        if(before!=null)coordinator.publishScopes(setOf("widgets","widget:$widgetId"))
     }
 
     @Synchronized override fun listBindings(): List<WidgetBinding> = widgets.all.entries.filter { it.key.startsWith("number_") }.map {
