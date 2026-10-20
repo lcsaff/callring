@@ -39,3 +39,11 @@ CoreUnitOfWork 可作为同库事务的内部聚合，服务只注入 QuietTrans
 旧写入也必须保守推进累计 tracker，否则新消费者会漏掉未迁移写入。旧 observe 可由每个 collector 从累计快照计算差异；跨域实体无法无损映射时只对实际变化域降级，不扩成所有域。首片真实消费者覆盖 QuietViewModel 的 ImmediateEditor→edits.quiet 与 HomeQuietViewModel 直接写两条路径，验证结果回填与 feed 并发不会用旧保存结果覆盖新加载。
 
 旧 core 写入口两次推进（publishScopes + changed）仅留未迁移片；新 CommandCommitter 单次提交只推进一次。无操作不推进数据版本，仍可 record 命令完成，保留 incarnation / domainMarker / own commit 保护。
+
+## T04 检查点后的可用机制
+
+T04 a0b420a 已通过双审：DecisionSnapshot.inputs 是深冻结 DecisionInputs，可在 fence 内从最新快照做 copy(quiet=...) 再 capture；SettingsRules 与原生 QuietSettings 已可复用，不需要重新引入契约依赖。UseCaseRunner 保持原有执行边界；T05 的后台准备与短提交区间应显式拆分，不能把网络或扫描塞入提交段。
+
+新提交一次推进 core 版本、domainMarker、冲突键及累计失效时，保留 quiet 与 coarse core 的观察保护。不要删掉 coarse 版本而使未迁移的无 scoped 命令漏检；也不要据此更新所有细粒度冲突键。命令 record 在发布后进行，no-op 亦保留完成记录。
+
+ImmediateEditor 目前在写入期间记录 refreshRequested，完成后才重载；HomeQuiet 则在成功回调直接 loader.load(Success(saved))。迁移时应沿用草稿/队列/冲突恢复语义，消除旧保存结果覆盖更晚 feed 结果的窗口，不以重写所有编辑状态机扩大当前切片。其余旧消费者可通过每订阅者累计差异适配继续工作；第一精确 quiet 提交不应为了兼容旧消费者再次发布全领域。
