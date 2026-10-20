@@ -82,6 +82,6 @@ class BusinessRevisionCoordinator {
     fun record(context: CommandContext?) { if(context != null) synchronized(fence) { commandCommits[context.operationId] = capture();commandMarkers[context.operationId]=revision } }
     fun committedMarker(operationId:String):Long?=synchronized(fence){commandMarkers[operationId]}
     fun committed(operationId: String): RevisionVector? = synchronized(fence) { commandCommits[operationId] }
-    fun runtimeChanged() = synchronized(fence) { revision = Math.addExact(revision,1); changes.value = DataChange(revision,DataDomain.values().toSet(),null,null); invalidations.publish(revision, ChangeImpact.wide(DataDomain.entries.toSet())) }
+    fun runtimeChanged() = synchronized(fence) { revision = Math.addExact(revision,1); scopeChanges["runtime"] = revision; changes.value = DataChange(revision,DataDomain.values().toSet(),null,null); invalidations.publish(revision, ChangeImpact.wide(DataDomain.entries.toSet())) }
     fun <T> commit(domain: String, context: CommandContext? = null, block: () -> T): T = guard(context) { block().also { changed(domain); record(context) } }
 }

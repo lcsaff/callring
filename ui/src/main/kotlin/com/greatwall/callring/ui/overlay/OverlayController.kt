@@ -47,7 +47,10 @@ class OverlayController(
         val parent = sessionScope ?: return
         val editLifetime = CoroutineScope(parent.coroutineContext + SupervisorJob(parent.coroutineContext[Job]))
         editorScope = editLifetime
-        val editor = CallerEditorViewModel(current.presentation.request.number, api.callers, api.changes, SavedStateHandle(), editLifetime)
+        val editor = CallerEditorViewModel(
+            current.presentation.request.number, api.callers, api.changes, SavedStateHandle(),
+            editLifetime, saveWithBase = api.edits::profile,
+        )
         mutableModels.value = current.copy(editor = editor)
         sessions.beginEditing()
         editLifetime.launch {

@@ -9,7 +9,7 @@ import com.greatwall.callring.contracts.settings.*
 import com.greatwall.callring.contracts.report.*
 import com.greatwall.callring.application.createSettingsApi
 import com.greatwall.callring.application.csvCell
-import com.greatwall.callring.application.relation
+import com.greatwall.callring.application.callers.callerProfile
 import com.greatwall.callring.application.score
 import com.greatwall.callring.domain.*
 import java.lang.reflect.Proxy
@@ -610,11 +610,11 @@ class DomainRegressionTest {
         state.positions[2] = PositionRecord(2, "lower", 3, false)
         state.positions[3] = PositionRecord(3, "same", 2, true)
         state.myPositionId = 1
-        assertEquals(PositionRelation.LOWER, calculations.relation(state, 2))
-        assertEquals(PositionRelation.SAME, calculations.relation(state, 3))
-        assertEquals(PositionRelation.UNKNOWN, calculations.relation(state, null))
+        assertEquals(PositionRelation.LOWER, callerProfile("1", null, state.positions[2], state.positions[state.myPositionId]).relation)
+        assertEquals(PositionRelation.SAME, callerProfile("1", null, state.positions[3], state.positions[state.myPositionId]).relation)
+        assertEquals(PositionRelation.UNKNOWN, callerProfile("1", null, null, state.positions[state.myPositionId]).relation)
         state.myPositionId = null
-        assertEquals(PositionRelation.UNKNOWN, calculations.relation(state, 2))
+        assertEquals(PositionRelation.UNKNOWN, callerProfile("1", null, state.positions[2], state.positions[state.myPositionId]).relation)
     }
 
     @Test

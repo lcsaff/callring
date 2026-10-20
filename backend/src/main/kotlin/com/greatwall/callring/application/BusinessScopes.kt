@@ -7,6 +7,7 @@ import com.greatwall.callring.domain.BackendState
 
 /** Ephemeral comparison inside shared writes. Neither values nor entity keys are diagnostic data. */
 internal fun coreScopeValues(s:BackendState):Map<String,Any?> = buildMap {
+    put("profiles",s.profiles.toMap())
     s.profiles.forEach{(n,p)->put("profile:$n",p);put("profile:$n:exists",true);put("profile:$n:name",p.name);put("profile:$n:department",p.department);put("profile:$n:positionId",p.positionId);put("profile:$n:whitelisted",p.whitelisted)}
     s.positions.forEach{(id,p)->put("position:$id",p);put("position:$id:valid",p.active to p.level)}
     put("positions",s.positions.toMap())

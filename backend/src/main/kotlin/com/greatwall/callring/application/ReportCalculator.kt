@@ -78,7 +78,7 @@ internal fun BackendContext.report(
             }
         }
     return CallerReport(
-        profile(s, n),
+        com.greatwall.callring.application.callers.callerProfile(n,s.profiles[n],s.positions[s.profiles[n]?.positionId],s.positions[s.myPositionId]),
         range,
         totals,
         summary,
@@ -93,3 +93,12 @@ internal fun BackendContext.reportTotals(rows: List<CallDetail>, summary: ScoreS
     rows.forEach{accumulator.accept(it.counted,it.classification.working,it.durationSeconds,it.result.toDomain())}
     return accumulator.value(summary.offHoursCalls).toContract()
 }
+
+/** Remaining full-state closure for ReportsService, HomeService and CoreSnapshotProjection; T09 removes it. */
+internal fun BackendContext.visible(s: BackendState, number: String? = null) =
+    s.calls.values
+        .asSequence()
+        .filter { !it.hidden && (number == null || it.number == number) }
+        .sortedWith(compareByDescending<RawCallRecord> { it.time }.thenByDescending { it.id })
+        .map { com.greatwall.callring.application.callers.callDetail(it,it.linkedScreenId?.let { id -> s.calls[id] }) }
+        .toList()

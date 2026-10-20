@@ -4,7 +4,7 @@
 
 | 当前旧路径 | 仍使用它的业务 | 删除门 |
 |---|---|---|
-| `BackendContext` 及扩展式业务服务 | 历史设置、档案、通话、报表、运行状态等尚未迁出的业务 | T06b–T10 逐片迁出，T13 删除类及全部引用；禁止替换成另一个万能上下文 |
+| `BackendContext` 及扩展式业务服务 | 通话、报表、运行状态等尚未迁出的业务；设置/档案服务已迁窄依赖，但当前总装配仍在 Context | T08–T10 逐片迁出，T13 删除类及全部引用；禁止替换成另一个万能上下文 |
 | `BackendStore` 全状态 read/transaction、`BackendState`、`SqliteBackendStore` 全量装载/差异保存 | 尚未迁出的普通业务和旧完整快照 | T06b–T09 改为窄事务/专用快照模型，最后消费者迁出后删除；T13/T14 检查禁止旧符号 |
 | `StorageResources` 的 legacy 资源投影 | 上述全状态调用 | 随最终旧存储消费者迁出删除，保留统一的显式资源生命周期 |
 | classifier/correlation 接受 `BackendState` 的入口及全状态决策 capture 重载 | 历史重分类、来电关联和决策预热 | T06b/T08 改用实际输入闭包，删除旧重载而不是包装转调 |
@@ -18,5 +18,7 @@ T06a 额外清理已完成并经双审：删除 `UnavailableCoreUnitOfWork` / `U
 已删除且经既有检查点验证：`LazyBackendStore`（T05b，以明确资源和窄能力替代）；UI 对 backend 的生产/测试编译依赖及旧包导入（T03）；domain 对 contracts/application 的依赖（T04）。
 
 T06b 已删除历史设置旧业务、work/leave premerge、WorkClassifier.reclassify(BackendState) 及无调用助手。currentSchedule 仍由 CallersService/ReportCalculator/CoreSnapshotProjection 使用，scheduleCopy 仍由 CoreSnapshotProjection 使用；T09 替换这些消费者后删除。quiet.get 的 core 复核与旧 SettingsStore 全量保存路径一并审计收紧；不要以未定位的“restore”等泛称作为永久保留依据。
+
+T07 已删除 CallersService、旧 CallerProjection 包装、UiEdits.profile 预合并、无消费者 BackendContext.mutate/events/allDomains，以及 CallerEditorViewModel nullable 写入回退/full-field 保存/whitelistTouched。页面和悬浮窗都必需注入同一草稿命令。剩余 visible(BackendState) 的真实消费者是 Reports/Home/CoreSnapshotProjection；options(BackendState) 仅 CoreSnapshotProjection 使用，T09 替换后一并删除。coreScopeValues 的 profiles 集合键暂为 T08 尚未迁移写入者提供正确版本，不能成为最终保留的全量差异路径。完整删除项/消费者见 t07-implementation.md。
 
 最终证据应包含生产与测试符号搜索、编译类路径、架构正反例，以及无旧路径可执行的回归结果。历史基线与审查文档保留原貌，不将历史文字当作当前代码残留。

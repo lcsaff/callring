@@ -662,7 +662,7 @@ class CallringBackendTest {
     @Test
     fun failedCommitRollsBackProfileAndDoesNotPublishCandidateSnapshotOrEvent() = runBlocking {
         api.callers.setWhitelisted("30001", false).value()
-        val before = api.decisionSnapshot()
+        val before = api.refreshDecisionSnapshot()
         val revision = api.changes.observe().first().dataRevision
         store.failCommit = true
         val failed = api.callers.setWhitelisted("30001", true) as ApiResult.Failure

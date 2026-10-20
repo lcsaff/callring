@@ -54,7 +54,7 @@ class CallringBackend(
     override val snapshots: AiSnapshotApi = UnavailableAiSnapshotApi
     override val recordings: RecordingApi = UnavailableRecordingApi
     override val home: HomeApi = createHomeApi(context)
-    override val callers: CallersApi = createCallersApi(context)
+    override val callers: CallersApi = context.callersApi
     override val reports: ReportsApi = createReportsApi(context)
     override val settings: SettingsApi = createSettingsApi(context)
     override val edits: UiEditsApi = createUiEditsApi(context)
@@ -74,11 +74,11 @@ class CallringBackend(
         val bound = this.context.bound(context)
         val deletion = this.context.bound(context.copy(continueOwnCommits = true))
         return object : CallringUiApi by this {
-            override val callers = createCallersApi(bound)
+            override val callers = bound.callersApi
             override val settings = createSettingsApi(bound)
             override val edits = createUiEditsApi(bound)
             override val widgets = createWidgetBindingsApi(bound)
-            override val numberDeletion = CoreNumberDeletionApi(createCallersApi(deletion), createWidgetBindingsApi(deletion))
+            override val numberDeletion = CoreNumberDeletionApi(deletion.callersApi, createWidgetBindingsApi(deletion))
             override val ringtone = createRingtoneApi(bound)
             override val runtime = createRuntimeApi(bound)
         }

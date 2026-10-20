@@ -30,8 +30,8 @@ class ReportViewModel(
     val query = mutableQuery.asStateFlow()
 
     init {
-        observeChanges(changes, setOf(DataDomain.CALLERS, DataDomain.POSITIONS, DataDomain.CALLS, DataDomain.REPORTS,
-            DataDomain.WORK_CALENDAR, DataDomain.SCORE_SETTINGS, DataDomain.STATISTICS), number) { page(0) }
+        observeChanges(changes, setOf(DataDomain.CALLERS, DataDomain.CALLS, DataDomain.REPORTS,
+            DataDomain.WORK_CALENDAR, DataDomain.SCORE_SETTINGS, DataDomain.STATISTICS, DataDomain.RUNTIME), number) { page(0) }
     }
 
     fun range(range: DateRange) = update(query.value.copy(range = range, page = PageRequest()))

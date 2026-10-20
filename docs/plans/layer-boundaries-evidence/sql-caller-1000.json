@@ -1,0 +1,328 @@
+{
+  "unrelatedCallCount": 1000,
+  "measurement": "query invocations \/ consumed rows, not engine scan rows",
+  "editor": [
+    {
+      "tag": "SCOPED_ROWS",
+      "tables": [
+        "callers"
+      ],
+      "queryCalls": 1,
+      "consumedRows": 1,
+      "writtenRows": 0
+    },
+    {
+      "tag": "SCOPED_SETTING",
+      "tables": [
+        "settings"
+      ],
+      "queryCalls": 1,
+      "consumedRows": 0,
+      "writtenRows": 0
+    },
+    {
+      "tag": "SCOPED_ROWS",
+      "tables": [
+        "positions"
+      ],
+      "queryCalls": 1,
+      "consumedRows": 1,
+      "writtenRows": 0
+    }
+  ],
+  "emptySearch": [
+    {
+      "tag": "SCOPED_ROWS",
+      "tables": [
+        "callers"
+      ],
+      "queryCalls": 1,
+      "consumedRows": 2,
+      "writtenRows": 0
+    },
+    {
+      "tag": "SCOPED_SETTING",
+      "tables": [
+        "settings"
+      ],
+      "queryCalls": 1,
+      "consumedRows": 0,
+      "writtenRows": 0
+    },
+    {
+      "tag": "SCOPED_ROWS",
+      "tables": [
+        "positions"
+      ],
+      "queryCalls": 1,
+      "consumedRows": 1,
+      "writtenRows": 0
+    },
+    {
+      "tag": "AGGREGATE",
+      "tables": [
+        "callers"
+      ],
+      "queryCalls": 1,
+      "consumedRows": 1,
+      "writtenRows": 0
+    }
+  ],
+  "textSearch": [
+    {
+      "tag": "SCOPED_ROWS",
+      "tables": [
+        "callers"
+      ],
+      "queryCalls": 2,
+      "consumedRows": 4,
+      "writtenRows": 0
+    },
+    {
+      "tag": "SCOPED_SETTING",
+      "tables": [
+        "settings"
+      ],
+      "queryCalls": 1,
+      "consumedRows": 0,
+      "writtenRows": 0
+    },
+    {
+      "tag": "SCOPED_ROWS",
+      "tables": [
+        "positions"
+      ],
+      "queryCalls": 1,
+      "consumedRows": 1,
+      "writtenRows": 0
+    }
+  ],
+  "save": [
+    {
+      "tag": "SCOPED_ROWS",
+      "tables": [
+        "callers"
+      ],
+      "queryCalls": 1,
+      "consumedRows": 1,
+      "writtenRows": 0
+    },
+    {
+      "tag": "SCOPED_SETTING",
+      "tables": [
+        "settings"
+      ],
+      "queryCalls": 1,
+      "consumedRows": 0,
+      "writtenRows": 0
+    },
+    {
+      "tag": "SCOPED_ROWS",
+      "tables": [
+        "positions"
+      ],
+      "queryCalls": 1,
+      "consumedRows": 1,
+      "writtenRows": 0
+    },
+    {
+      "tag": "DIRECT_UPDATE",
+      "tables": [
+        "callers"
+      ],
+      "queryCalls": 1,
+      "consumedRows": 0,
+      "writtenRows": 1
+    }
+  ],
+  "noop": [
+    {
+      "tag": "SCOPED_ROWS",
+      "tables": [
+        "callers"
+      ],
+      "queryCalls": 1,
+      "consumedRows": 1,
+      "writtenRows": 0
+    },
+    {
+      "tag": "SCOPED_SETTING",
+      "tables": [
+        "settings"
+      ],
+      "queryCalls": 1,
+      "consumedRows": 0,
+      "writtenRows": 0
+    },
+    {
+      "tag": "SCOPED_ROWS",
+      "tables": [
+        "positions"
+      ],
+      "queryCalls": 1,
+      "consumedRows": 1,
+      "writtenRows": 0
+    }
+  ],
+  "detail": [
+    {
+      "tag": "SCOPED_ROWS",
+      "tables": [
+        "calls"
+      ],
+      "queryCalls": 1,
+      "consumedRows": 1,
+      "writtenRows": 0
+    }
+  ],
+  "latest": [
+    {
+      "tag": "SCOPED_ROWS",
+      "tables": [
+        "calls"
+      ],
+      "queryCalls": 1,
+      "consumedRows": 1,
+      "writtenRows": 0
+    }
+  ],
+  "overview": [
+    {
+      "tag": "SCOPED_ROWS",
+      "tables": [
+        "callers"
+      ],
+      "queryCalls": 1,
+      "consumedRows": 1,
+      "writtenRows": 0
+    },
+    {
+      "tag": "SCOPED_SETTING",
+      "tables": [
+        "settings"
+      ],
+      "queryCalls": 3,
+      "consumedRows": 0,
+      "writtenRows": 0
+    },
+    {
+      "tag": "SCOPED_ROWS",
+      "tables": [
+        "positions"
+      ],
+      "queryCalls": 1,
+      "consumedRows": 1,
+      "writtenRows": 0
+    },
+    {
+      "tag": "SCOPED_ROWS",
+      "tables": [
+        "calls"
+      ],
+      "queryCalls": 2,
+      "consumedRows": 2,
+      "writtenRows": 0
+    },
+    {
+      "tag": "WORK_ROWS",
+      "tables": [
+        "config_versions"
+      ],
+      "queryCalls": 1,
+      "consumedRows": 2,
+      "writtenRows": 0
+    },
+    {
+      "tag": "WORK_ROWS",
+      "tables": [
+        "calendar_days"
+      ],
+      "queryCalls": 1,
+      "consumedRows": 39,
+      "writtenRows": 0
+    },
+    {
+      "tag": "WORK_ROWS",
+      "tables": [
+        "calendar_years"
+      ],
+      "queryCalls": 1,
+      "consumedRows": 1,
+      "writtenRows": 0
+    },
+    {
+      "tag": "WORK_ROWS",
+      "tables": [
+        "overrides"
+      ],
+      "queryCalls": 1,
+      "consumedRows": 0,
+      "writtenRows": 0
+    },
+    {
+      "tag": "WORK_ROWS",
+      "tables": [
+        "leaves"
+      ],
+      "queryCalls": 1,
+      "consumedRows": 0,
+      "writtenRows": 0
+    },
+    {
+      "tag": "WORK_ROWS",
+      "tables": [
+        "settings"
+      ],
+      "queryCalls": 1,
+      "consumedRows": 0,
+      "writtenRows": 0
+    },
+    {
+      "tag": "SCOPED_ROWS",
+      "tables": [
+        "statistics_intervals"
+      ],
+      "queryCalls": 1,
+      "consumedRows": 1,
+      "writtenRows": 0
+    },
+    {
+      "tag": "AGGREGATE",
+      "tables": [
+        "statistics_intervals"
+      ],
+      "queryCalls": 1,
+      "consumedRows": 1,
+      "writtenRows": 0
+    }
+  ],
+  "impact": [
+    {
+      "tag": "SCOPED_ROWS",
+      "tables": [
+        "callers"
+      ],
+      "queryCalls": 1,
+      "consumedRows": 1,
+      "writtenRows": 0
+    },
+    {
+      "tag": "SCOPED_ROWS",
+      "tables": [
+        "calls"
+      ],
+      "queryCalls": 1,
+      "consumedRows": 1,
+      "writtenRows": 0
+    },
+    {
+      "tag": "AGGREGATE",
+      "tables": [
+        "calls"
+      ],
+      "queryCalls": 1,
+      "consumedRows": 1,
+      "writtenRows": 0
+    }
+  ]
+}

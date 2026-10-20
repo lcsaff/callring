@@ -1,0 +1,39 @@
+{
+  "unrelatedCallCount": 10000,
+  "editor": {
+    "fullStateLoads": 0,
+    "revisionDelta": 0
+  },
+  "emptySearch": {
+    "fullStateLoads": 0,
+    "revisionDelta": 0
+  },
+  "textSearch": {
+    "fullStateLoads": 0,
+    "revisionDelta": 0
+  },
+  "save": {
+    "fullStateLoads": 0,
+    "revisionDelta": 1
+  },
+  "noop": {
+    "fullStateLoads": 0,
+    "revisionDelta": 0
+  },
+  "detail": {
+    "fullStateLoads": 0,
+    "revisionDelta": 0
+  },
+  "latest": {
+    "fullStateLoads": 0,
+    "revisionDelta": 0
+  },
+  "overview": {
+    "fullStateLoads": 0,
+    "revisionDelta": 0
+  },
+  "impact": {
+    "fullStateLoads": 0,
+    "revisionDelta": 0
+  }
+}

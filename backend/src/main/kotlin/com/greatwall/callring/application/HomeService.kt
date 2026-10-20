@@ -20,7 +20,7 @@ internal fun createHomeApi(context: BackendContext): HomeApi =
                         ring,
                         runtime,
                         WorkClassifier.status(s, clock.millis()).toContract(),
-                        latest(s),
+                        visible(s).firstOrNull(),
                         stats(s),
                         s.overlayEnabled,
                         s.quiet.mode.toContract(),

@@ -7,6 +7,21 @@ import com.greatwall.callring.domain.BackendState
 /** Test-only adaptation of deterministic memory fixtures. Production has no legacy fallback. */
 internal class MemoryQuietTransactions(private val store: BackendStore) : CoreUnitOfWork {
     private fun reader(state: BackendState) = object : CoreWriteSession {
+        override fun caller(number: String) = state.profiles[number]
+        override fun callerCount() = state.profiles.size.toLong()
+        override fun callerPage(offset: Long, limit: Int) = state.profiles.values.sortedBy{it.number}.drop(offset.coerceAtMost(Int.MAX_VALUE.toLong()).toInt()).take(limit)
+        override fun callers(numbers: List<String>) = numbers.mapNotNull { state.profiles[it] }
+        override fun callerPositions(ids: Set<Long>) = ids.mapNotNull { state.positions[it] }
+        override fun visitCallerSearch(accept: (CallerSearchRow) -> Unit) { state.profiles.values.sortedBy{it.number}.forEach { accept(CallerSearchRow(it.number,it.name,it.department)) } }
+        override fun putCaller(value: com.greatwall.callring.domain.ProfileRecord, insert: Boolean) { state.profiles[value.number]=value }
+        override fun removeCaller(number: String) { state.profiles.remove(number) }
+        override fun matchingCallNumbers(number: String) = state.calls.values.map{it.number}.distinct().filter{com.greatwall.callring.domain.model.NumberIdentity.parse(it).normalized==number}
+        override fun visitCallerCallIdentities(numbers: List<String>, accept: (Long,String) -> Unit) { state.calls.values.filter{it.number in numbers}.forEach{accept(it.id,it.number)} }
+        override fun callCount(numbers: List<String>) = state.calls.values.count{it.number in numbers}.toLong()
+        override fun removeCallerCalls(numbers: List<String>, expectedCount: Long) { state.calls.entries.removeAll { it.value.number in numbers } }
+        override fun callerCall(id: Long) = state.calls[id]
+        override fun latestCallerCall() = state.calls.values.filter{!it.hidden}.maxWithOrNull(compareBy<com.greatwall.callring.domain.RawCallRecord>{it.time}.thenBy{it.id})
+        override fun visitVisibleCallerCalls(number: String, accept: (CallerOverviewFact) -> Unit) { state.calls.values.filter{!it.hidden&&it.number==number}.sortedWith(compareBy<com.greatwall.callring.domain.RawCallRecord>{it.time}.thenBy{it.id}).forEach{accept(CallerOverviewFact(it.id,it.time,it.duration,it.result,it.counted,it.classification.working,it.classification.calendarVerified))} }
         override fun calendarOverview() = CalendarOverview(state.calendarYears.values.sortedBy { it.year }, state.overrides.values.sortedBy { it.date })
         override fun calendarYear(year: Int) = state.calendarYears[year]?.let { com.greatwall.callring.domain.CalendarImport(it, state.holidays.filterKeys { it.year == year }, state.makeupDates.filterTo(linkedSetOf()) { it.year == year }) }
         override fun replaceCalendar(value: com.greatwall.callring.domain.CalendarImport) {

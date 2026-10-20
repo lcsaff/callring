@@ -33,7 +33,7 @@ internal fun BackendContext.captureCore(at: Long): Map<String, AiJson> {
                 "rolling" to score(s, calls, TimeRange(saturatedSubtract(end, s.score.observationDays * 86400000L), end, zone)))
         }
         return mapOf(
-            "D01" to safeValue(numbers.map { profile(s, it) }),
+            "D01" to safeValue(numbers.map { com.greatwall.callring.application.callers.callerProfile(it,s.profiles[it],s.positions[s.profiles[it]?.positionId],s.positions[s.myPositionId]) }),
             "D02" to safeValue(PositionSettings(options(s), s.myPositionId)),
             "D03" to safeValue(s.calls.values.toList()),
             "D04" to safeValue(visible(s)),
@@ -49,3 +49,7 @@ internal fun BackendContext.captureCore(at: Long): Map<String, AiJson> {
             "D21" to safeValue(audits),
         )
 }
+
+internal fun BackendContext.options(s: BackendState) = frozenList(s.positions.values
+    .sortedWith(compareBy<PositionRecord> { it.level }.thenBy { it.name }.thenBy { it.id })
+    .map { com.greatwall.callring.application.settings.positionOption(it,s.positions[s.myPositionId]) })

@@ -41,6 +41,23 @@ internal class BackendContext(
     private fun patchLeaveHistory(history: com.greatwall.callring.application.ports.store.WorkHistory) {
         decisions.get()?.let { current -> decisions.set(DecisionSnapshot.capture(current.inputs.copy(leaves = history.leaves, leaveVersion = history.leaveVersion))) }
     }
+    internal val callerQueries = com.greatwall.callring.application.callers.CallerQueryService(
+        coreTransactions, coreTransactions, coordinator, dispatcher, clock, ::runtimeStatus,
+    )
+    internal val callerCommands = com.greatwall.callring.application.callers.CallerCommandService(
+        coreTransactions,
+        coordinator,
+        dispatcher,
+        { number, enabled ->
+            decisions.get()?.let { current ->
+                val whitelist = if (enabled) current.inputs.whitelistedNumbers + number
+                    else current.inputs.whitelistedNumbers - number
+                decisions.set(DecisionSnapshot.capture(current.inputs.copy(whitelistedNumbers = whitelist)))
+            }
+        },
+        commandContext,
+    )
+    internal val callersApi = com.greatwall.callring.application.callers.callersApi(callerQueries, callerCommands)
     internal val calendarService = com.greatwall.callring.application.settings.CalendarService(coreTransactions, coordinator, dispatcher, clock, calendarSource,
         com.greatwall.callring.application.ports.CalendarDocumentReader(documents::readCalendar), ::patchCalendarHistory, commandContext)
     internal val leaveService = com.greatwall.callring.application.settings.LeaveService(coreTransactions, coordinator, dispatcher, clock, ::patchLeaveHistory, commandContext)
@@ -63,9 +80,6 @@ internal class BackendContext(
     internal val summaryService = com.greatwall.callring.application.settings.SettingsSummaryService(coreTransactions, preferences, coordinator, dispatcher, clock)
     internal val lock = coordinator.fence
     internal val revision get() = coordinator.changes.value.dataRevision
-    internal val allDomains = frozenSet(DataDomain.values().toSet())
-    // Conflation retains a complete invalidation, so slow collectors never lose a changed domain.
-    internal val events get() = coordinator.changes
 
     fun bound(command: CommandContext) = BackendContext(store, preferences, documents, runtimeProbe, audio, syncScheduler, clock, dispatcher, calendarSource, coordinator, command, decisions, coreTransactions)
     internal val quietService = com.greatwall.callring.application.settings.QuietSettingsService(coreTransactions, coordinator, dispatcher, { quiet ->
@@ -120,14 +134,6 @@ internal class BackendContext(
         coordinator.publishScopes(committed.second)
         return committed.first
     }
-
-    internal fun <T> mutate(block: (BackendState) -> T): T =
-        coordinator.commit("core", commandContext) {
-            val committed =
-                coreTransaction { state -> Pair(block(state), DecisionSnapshot.capture(state)) }
-            decisions.set(committed.second)
-            committed.first
-        }
 
     fun refreshDecisionSnapshot(): DecisionSnapshot = read {
         DecisionSnapshot.capture(it).also(decisions::set)

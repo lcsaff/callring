@@ -170,10 +170,10 @@ UT = ui/src/test/kotlin/com/greatwall/callring/ui
 
 **目标：** `B/application/callers/{CallerQueryService,CallerCommandService,CallerProjection}.kt`、`A/data/callers/SqliteCallerStore.kt`。
 
-- [ ] 在 `AT/data/CallerAccessContractTest.kt` 验证 A 编辑只查 A/岗位/必要版本，空搜索列表 SQL 分页；非空 Unicode 搜索按必要字段分批精确匹配/计数、仅保留请求页；不读 calls，无 N+1 全量历史读取。
-- [ ] 使用同库写会话实现档案更新、白名单、职位引用校验；保留基线/dirtyFields 合并与无关字段并发不冲突。
-- [ ] 以实际字段变化发布 A 范围；白名单影响决策，姓名/部门只影响展示；本人岗位和职位修改传播真实引用关系。
-- [ ] 调整调用方只拿需要的 CallersApi/Reader；A/B 报表和编辑负例、搜索列表和最新来电正例必须同时通过。
+- [x] 在 `AT/data/CallerAccessContractTest.kt` 验证 A 编辑只查 A/岗位/必要版本，空搜索列表 SQL 分页；非空 Unicode 搜索按必要字段分批精确匹配/计数、仅保留请求页；不读 calls，无 N+1 全量历史读取。
+- [x] 使用同库写会话实现档案更新、白名单、职位引用校验；保留基线/dirtyFields 合并与无关字段并发不冲突。
+- [x] 以实际字段变化发布 A 范围；白名单影响决策，姓名/部门只影响展示；本人岗位和职位修改传播真实引用关系。
+- [x] 调整调用方只拿需要的 CallersApi/Reader；A/B 报表和编辑负例、搜索列表和最新来电正例必须同时通过。
 
 **门：** 不加载其他号码/全量通话；UI/AI 两条入口使用相同业务命令。覆盖 P1/P2/P4，A1/A2/A3/A5/A7。
 

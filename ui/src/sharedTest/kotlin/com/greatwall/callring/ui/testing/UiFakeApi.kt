@@ -27,8 +27,14 @@ open class UiFakeApi(private val overlayEnabled: Boolean = false) : CallringUiAp
     override val callers: CallersApi = this
     override val reports: ReportsApi = this
     override val settings: SettingsApi = this
+    var profileEdits = 0
+        private set
     override val edits: UiEditsApi = object : UiEditsApi {
-        override suspend fun profile(base: CallerDraft, value: CallerDraft) = saveProfile(SaveCallerProfile(value.number, value.name, value.department, value.positionId, value.whitelisted))
+        override suspend fun profile(base: CallerDraft, value: CallerDraft): ApiResult<CallerProfile> {
+            profileEdits++
+            return saveProfile(SaveCallerProfile(value.number, value.name, value.department,
+                value.positionId, value.whitelisted, baseline = base))
+        }
         override suspend fun quiet(base: QuietSettings, value: QuietSettings) = saveQuietHours(value)
         override suspend fun work(base: WorkScheduleSettings, value: WorkScheduleSettings) = saveWorkSchedule(SaveWorkSchedule(value.zoneId, value.weekly, value.makeup))
         override suspend fun score(base: ScoreSettings, value: ScoreSettings) = saveScoreSettings(value)
