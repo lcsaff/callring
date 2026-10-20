@@ -39,7 +39,7 @@ class ConfirmationTargetTest {
                 override fun commandApi(context: CommandContext) = root(context)
                 override suspend fun adoptIdentity(callId: Long, expectedGeneration: Long) = com.greatwall.callring.application.recording.IdentityAdoptionService(recordings::getArchive, { callers.getEditor(it) }, { base, value, cmd -> f.backend.commandApi(cmd).edits.profile(base, value) }, f.coordinator, context, active = { true }).adoptIdentity(callId,expectedGeneration)
             }
-            val foreground = ForegroundActionService(checkCommand = { command -> command == null || runCatching { f.coordinator.guard(command) {} }.isSuccess })
+            val foreground = ForegroundActionService(checkCommand = ForegroundCommandValidator(f.coordinator)::check)
             val host = foreground.attachHost()
             val executor = ToolExecutor({ root() },f.coordinator,foreground,ForegroundResourceRegistry())
             val definition = executor.registry.definitions.single { it.index == index }

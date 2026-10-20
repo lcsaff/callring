@@ -24,17 +24,24 @@ internal object WidgetRefreshSignals {
             }
         }
     }
+    fun present(widgetIds: Iterable<Int>, error: ApiError?) {
+        requests.update { previous -> previous.toMutableMap().apply {
+            widgetIds.forEach { id -> put(id, (previous[id] ?: WidgetRefreshRequest(0)).copy(error = error)) }
+        } }
+    }
     fun forget(widgetId: Int) { requests.update { it - widgetId } }
 }
 
 /** Application change-feed and time-change bridges may call this from their owned coroutine. */
 object UiWidgetRefresh {
-    suspend fun refresh(context: Context, widgetIds: Set<Int>? = null) {
+    suspend fun refresh(context: Context, widgetIds: Set<Int>? = null) = update(context, widgetIds, true, null)
+    suspend fun present(context: Context, widgetIds: Set<Int>, error: ApiError?) = update(context, widgetIds, false, error)
+    private suspend fun update(context: Context, widgetIds: Set<Int>?, reload: Boolean, error: ApiError?) {
         val application = context.applicationContext
         val ownedIds = AppWidgetManager.getInstance(application)
             .getAppWidgetIds(ComponentName(application, CallringWidgetReceiver::class.java)).toSet()
         val ids = if (widgetIds == null) ownedIds else ownedIds.intersect(widgetIds)
-        WidgetRefreshSignals.signal(ids)
+        if (reload) WidgetRefreshSignals.signal(ids) else WidgetRefreshSignals.present(ids, error)
         val manager = GlanceAppWidgetManager(application)
         ids.forEach { id -> CallringWidget().update(application, manager.getGlanceIdBy(id)) }
     }

@@ -46,7 +46,7 @@ class FullSnapshotConsistencyTest {
                             )
                         pending +=
                             ((part.data as AiJson.Arr).values[1] as AiJson.Obj)["handle"].string()
-                        if (mode == "changed") coordinator.runtimeChanged()
+                        if (mode == "changed") coordinator.publishRuntime(setOf("runtime:status"))
                         AiDomain.entries
                             .filter { mode != "budget" || it != AiDomain.D20 }
                             .associate {
@@ -107,7 +107,7 @@ class FullSnapshotConsistencyTest {
             setOf("appearance:colorMode"),
             ChangeImpact.wide(setOf(DataDomain.APPEARANCE)),
         )
-        coordinator.publishRuntime(setOf("runtime", "runtime:capabilities"))
+        coordinator.publishRuntime(setOf("runtime:status", "runtime:ringtonePlayback", "runtime:capability:CALL_LOG"))
         val api =
             AiSnapshotService(
                 coordinator,
@@ -132,7 +132,7 @@ class FullSnapshotConsistencyTest {
                 listOf(
                     { _ ->
                         reads++
-                        coordinator.runtimeChanged()
+                        coordinator.publishRuntime(setOf("runtime:status"))
                         AiDomain.entries.associate {
                             it.name to
                                 SnapshotPart(

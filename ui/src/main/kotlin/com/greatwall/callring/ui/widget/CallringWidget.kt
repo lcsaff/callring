@@ -24,7 +24,6 @@ import com.greatwall.callring.contracts.settings.*
 import com.greatwall.callring.ui.app.UiApiOwner
 import com.greatwall.callring.ui.designsystem.ThemeRegistry
 import com.greatwall.callring.ui.designsystem.usesDarkColors
-import com.greatwall.callring.ui.state.affects
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.currentCoroutineContext
@@ -39,21 +38,15 @@ class CallringWidget : GlanceAppWidget() {
         val widgetId = GlanceAppWidgetManager(context).getAppWidgetId(id)
         val api = (context.applicationContext as UiApiOwner).uiApi
         val model = WidgetModel(api)
+        val initialRequest = WidgetRefreshSignals.requests.value[widgetId]
         val initial = model.load()
         provideContent {
             var snapshot by remember { mutableStateOf(initial) }
-            var requestError by remember { mutableStateOf<ApiError?>(null) }
+            var requestError by remember { mutableStateOf(initialRequest?.error) }
             LaunchedEffect(widgetId) {
-                merge(
-                    WidgetRefreshSignals.requests.map { it[widgetId] }.distinctUntilChanged()
-                        .map { WidgetLoadRequest(clearError = true, error = it?.error) },
-                    api.changes.observe().filter { it.affects(widgetDomains, null, widgetId) }
-                        .map { WidgetLoadRequest() },
-                ).collectLatest { request ->
-                    if (request.clearError) requestError = request.error
-                    val loaded = model.load()
-                    currentCoroutineContext().ensureActive()
-                    snapshot = loaded
+                widgetSessionUpdates(widgetId, initialRequest, model).collect { update ->
+                    requestError = update.error
+                    update.snapshot?.let { snapshot = it }
                 }
             }
             WidgetContent(context, snapshot, requestError)
@@ -66,8 +59,6 @@ class CallringWidget : GlanceAppWidget() {
     }
 }
 
-private data class WidgetLoadRequest(val clearError: Boolean = false, val error: ApiError? = null)
-private val widgetDomains = setOf(DataDomain.WORK_CALENDAR, DataDomain.QUIET_HOURS, DataDomain.APPEARANCE)
 
 @Composable
 private fun WidgetContent(context: Context, snapshot: WidgetSnapshot, actionError: ApiError?) {
@@ -128,6 +119,5 @@ private suspend fun runWidgetAction(context: Context, glanceId: GlanceId, action
     } catch (_: TimeoutCancellationException) { ApiError(ErrorCode.INTERNAL, "操作超时，请刷新后重试", retryable = true) }
     catch (cancelled: CancellationException) { throw cancelled }
     catch (_: Exception) { ApiError(ErrorCode.INTERNAL, "操作未完成，请重试", retryable = true) }
-    UiWidgetRefresh.refresh(context)
-    if (error != null) WidgetRefreshSignals.signal(listOf(id), error)
+    UiWidgetRefresh.present(context, setOf(id), error)
 }

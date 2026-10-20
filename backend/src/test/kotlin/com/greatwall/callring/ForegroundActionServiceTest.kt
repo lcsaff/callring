@@ -12,7 +12,7 @@ class ForegroundActionServiceTest {
         var now = 0L
         val clock = object : Clock() { override fun getZone() = ZoneOffset.UTC; override fun withZone(zone: ZoneId) = this; override fun instant() = Instant.ofEpochMilli(now) }
         var active = true
-        val service = ForegroundActionService(clock)
+        val service = ForegroundActionService(clock, checkCommand = { _, _ -> true })
         val result = async { service.request("s", "t", "call", 1, ForegroundActionKind.APP_SETTINGS, aiObject()) { active } }
         yield()
         val ticket = service.pending.value!!
@@ -31,7 +31,7 @@ class ForegroundActionServiceTest {
         assertEquals(ForegroundResultStatus.STALE, next.await().status)
     }
     @Test fun hostClaimsOnceAndLateResultCannotCompleteNewTicket() = runBlocking {
-        val service = ForegroundActionService(Clock.systemUTC())
+        val service = ForegroundActionService(Clock.systemUTC(), checkCommand = { _, _ -> true })
         val result = async { service.request("s", "t", "call", 1, ForegroundActionKind.APP_SETTINGS, aiObject()) { true } }
         yield()
         val old = service.pending.value!!

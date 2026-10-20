@@ -24,6 +24,7 @@ open class CallringApplication : Application(), BackendProvider, UiOverlayOwner 
         }, AndroidIncomingCallUiSink(this))
     }
     override val uiApi get() = backendGraph.api
+    override suspend fun reobservePlatform() = backendGraph.reobservePlatform()
     private val lifetime = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
     override fun onCreate() {
         super.onCreate()

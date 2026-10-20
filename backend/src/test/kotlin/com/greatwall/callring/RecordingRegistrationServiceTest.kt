@@ -51,6 +51,7 @@ class RecordingRegistrationServiceTest {
         assertEquals(2L, coordinator.marker())
         assertEquals(2L, coordinator.lastChange(setOf("recordingLinks")))
         assertEquals(2L, coordinator.lastChange(setOf("recordingLink:42")))
+        assertEquals(2L, coordinator.invalidations.snapshots.value.domains.getValue(com.greatwall.callring.contracts.change.DataDomain.RECORDING_ARCHIVES).entityRevisions["statistics:42"])
         service.linkStatistics("one", 42, command)
         assertEquals(2L, coordinator.marker())
         assertEquals(coordinator.capture(), coordinator.committed("continued"))

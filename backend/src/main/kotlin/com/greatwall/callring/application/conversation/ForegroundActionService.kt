@@ -7,7 +7,7 @@ import java.util.UUID
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.MutableStateFlow
 
-class ForegroundActionService(private val clock: Clock = Clock.systemUTC(), private val checkCommand: (CommandContext?) -> Boolean = { true }) : ForegroundActionApi {
+class ForegroundActionService(private val clock: Clock = Clock.systemUTC(), private val checkCommand: (ForegroundTicket, ForegroundHostResult?) -> Boolean) : ForegroundActionApi {
     private val lock = Any()
     override val pending = MutableStateFlow<ForegroundTicket?>(null)
     @Volatile private var host: String? = null
@@ -21,7 +21,7 @@ class ForegroundActionService(private val clock: Clock = Clock.systemUTC(), priv
     override fun beginLaunch(requestId: String, token: String): Boolean = synchronized(lock) {
         val ticket = pending.value ?: return false
         if (host != token || ticket.requestId != requestId || ticket.launched) return false
-        if(!valid() || !checkCommand(ticket.commandContext)) { finish(ForegroundHostResult(ForegroundResultStatus.STALE)); return false }
+        if(!valid() || !checkCommand(ticket, null)) { finish(ForegroundHostResult(ForegroundResultStatus.STALE)); return false }
         if(clock.millis() >= ticket.expiresAt) { finish(ForegroundHostResult(ForegroundResultStatus.EXPIRED)); return false }
         pending.value = ticket.copy(launched = true)
         true
@@ -29,7 +29,7 @@ class ForegroundActionService(private val clock: Clock = Clock.systemUTC(), priv
     override fun deliver(requestId: String, result: ForegroundHostResult): Boolean = synchronized(lock) {
         val ticket = pending.value ?: return false
         if (ticket.requestId != requestId || !ticket.launched) return false
-        if(!valid() || !checkCommand(ticket.commandContext)) { finish(ForegroundHostResult(ForegroundResultStatus.STALE)); return false }
+        if(!valid() || !checkCommand(ticket, result)) { finish(ForegroundHostResult(ForegroundResultStatus.STALE)); return false }
         if(clock.millis() >= ticket.expiresAt) { finish(ForegroundHostResult(ForegroundResultStatus.EXPIRED)); return false }
         finish(result)
     }

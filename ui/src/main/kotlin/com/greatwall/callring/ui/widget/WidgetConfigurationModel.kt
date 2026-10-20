@@ -24,12 +24,6 @@ class WidgetConfigurationModel(
     testScope: CoroutineScope? = null,
     private val savedState: SavedStateHandle = SavedStateHandle(),
 ) : UiViewModel(testScope) {
-    private val bindingLoader = RequestLoader<WidgetBinding?>(scope)
-    val binding = bindingLoader.state
-    private val resultsLoader = RequestLoader<Page<CallerProfile>>(scope)
-    val results = resultsLoader.state
-    private val appearanceLoader = RequestLoader<AppearanceSettings>(scope)
-    val appearance = appearanceLoader.state
     private val writer = MutationRunner(scope)
     val mutation = writer.state
     private val queryMutable = MutableStateFlow(savedState.get<String>("query") ?: "")
@@ -42,13 +36,17 @@ class WidgetConfigurationModel(
     val validation = validationMutable.asStateFlow()
     private var edited = savedState.get<Boolean>("edited") ?: false
 
-    init {
-        bindingLoader.load(onSuccess = { if (!edited) selectionMutable.value = it?.number }) {
-            api.widgets.getBinding(widgetId)
-        }
-        appearanceLoader.load { api.settings.getAppearance() }
-        search()
-    }
+    private val bindingLoader = ObservedQuery(scope, api.changes,
+        ChangeSubscription(setOf(DataDomain.WIDGET_BINDINGS), mapOf(DataDomain.WIDGET_BINDINGS to setOf(widgetId.toString()))),
+        load = { api.widgets.getBinding(widgetId) }, onSuccess = { if (!edited) selectionMutable.value = it?.number })
+    val binding = bindingLoader.state
+    private val resultsLoader = ObservedQuery(scope, api.changes, ChangeSubscription(setOf(DataDomain.CALLERS, DataDomain.POSITIONS)),
+        { query.value }, { api.callers.search(CallerSearch(query.value)) })
+    val results = resultsLoader.state
+    private val appearanceLoader = ObservedQuery(scope, api.changes, ChangeSubscription(setOf(DataDomain.APPEARANCE)),
+        load = { api.settings.getAppearance() })
+    val appearance = appearanceLoader.state
+    init { bindingLoader.start(scope); resultsLoader.start(scope); appearanceLoader.start(scope) }
 
     fun changeQuery(text: String) {
         if (mutation.value.busy) return
@@ -77,8 +75,7 @@ class WidgetConfigurationModel(
     }
 
     fun search() {
-        val text = query.value
-        resultsLoader.load(preserveData = false) { api.callers.search(CallerSearch(text)) }
+        resultsLoader.request()
     }
 
     fun save() {

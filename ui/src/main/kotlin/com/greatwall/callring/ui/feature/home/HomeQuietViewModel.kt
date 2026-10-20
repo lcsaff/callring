@@ -17,10 +17,8 @@ class HomeQuietViewModel(
     private val savedState: SavedStateHandle? = null,
     testScope: CoroutineScope? = null,
 ) : UiViewModel(testScope) {
-    private val loader = RequestLoader<QuietSettings>(scope)
-    private val cumulative = changes.snapshots() != null
     private val mutableState = MutableStateFlow(LoadState<QuietSettings>())
-    val state = if (cumulative) mutableState.asStateFlow() else loader.state
+    val state = mutableState.asStateFlow()
     private val observation = ChangeObserver(changes, ChangeSubscription(setOf(DataDomain.QUIET_HOURS)))
     private val refreshCoordinator = RefreshCoordinator(scope, observation::token, api::getQuietHours, { result ->
         when (result) {
@@ -35,15 +33,13 @@ class HomeQuietViewModel(
     private val mutableDraft = MutableStateFlow(savedState?.get<String>("quiet.draft")?.let(SettingsDraftCodecs.quiet::decode))
     val draft = mutableDraft.asStateFlow()
 
-    init { observeChanges(changes, setOf(DataDomain.QUIET_HOURS), refresh = ::refresh) }
+    init { observation.start(scope) { refreshCoordinator.request() } }
 
-    fun refresh() { if (cumulative) refreshCoordinator.request() else loader.load { api.getQuietHours() } }
+    fun refresh() = refreshCoordinator.request(force = true)
 
     fun setEnabled(enabled: Boolean) {
         if (state.value.data == null || mutableOpen.value) return
-        writer.run({ api.setQuietEnabled(enabled) }, "免打扰已更新") { saved ->
-            if (!cumulative) loader.load { ApiResult.Success(saved) }
-        }
+        writer.run({ api.setQuietEnabled(enabled) }, "免打扰已更新")
     }
 
     fun openEditor() {
@@ -65,8 +61,7 @@ class HomeQuietViewModel(
     fun save() {
         val value = mutableDraft.value ?: return
         if (!mutableOpen.value || !validQuietDraft(value)) return
-        writer.run({ api.saveQuietHours(value) }, "免打扰已保存") { saved ->
-            if (!cumulative) loader.load { ApiResult.Success(saved) }
+        writer.run({ api.saveQuietHours(value) }, "免打扰已保存") {
             dismiss()
         }
     }

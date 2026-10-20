@@ -19,7 +19,7 @@ class OperationScopePlannerTest {
     }),revision=c::marker)
     @Test fun internalPreflightDoesNotReplaceOldModelObservation()=runBlocking {
         q.get(AiDomain.D11,"current").requiredValue()
-        c.publishScopes(setOf("appearance:colorMode"))
+        c.publishCore(setOf("appearance:colorMode"), com.greatwall.callring.application.coordination.ChangeImpact(emptyMap()))
         val p=OperationScopePlanner(q,c)
         val scopes=p.prepare(ConversationToolCall("a","settings_saveAppearance",aiObject("colorMode" to aiString("DARK"))),37)
         assertEquals(0L,scopes["appearance:colorMode"])
@@ -37,8 +37,8 @@ class OperationScopePlannerTest {
         val call=ConversationToolCall("a","settings_saveAppearance",aiObject("colorMode" to aiString("DARK")))
         val first=p.prepare(call,37)
         val ctx=CommandContext("own",c.capture(),1,expectedScopes=first){true}
-        c.guard(ctx){c.publishScopes(first.keys);c.record(ctx)}
-        c.publishScopes(setOf("appearance:colorMode"))
+        c.guard(ctx){c.publishCore(first.keys, com.greatwall.callring.application.coordination.ChangeImpact(emptyMap()));c.record(ctx)}
+        c.publishCore(setOf("appearance:colorMode"), com.greatwall.callring.application.coordination.ChangeImpact(emptyMap()))
         p.committed("own",first.keys)
         val second=p.prepare(call.copy(id="b"),37)
         assertEquals(c.committedMarker("own"),second.values.single())

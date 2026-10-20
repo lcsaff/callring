@@ -66,6 +66,11 @@ class BackendGraph(
     private val updateDelegate = lazy { ensureOpen(); com.greatwall.callring.platform.update.AndroidAppUpdate(application) }
     val update: AppUpdateApi get() = synchronized(lifetime) { ensureOpen(); updateDelegate.value }
     val api: CallringUiApi get() = backend
+    suspend fun reobservePlatform() = kotlinx.coroutines.withContext(configuration.dispatcher) {
+        ensureOpen()
+        backend.runtime.getStatus()
+        if (recordingDelegate.isInitialized()) recordingDelegate.value.reobserveFolder()
+    }
     private val callWorkLease = AndroidCallWorkLease(application)
     private val recovery = com.greatwall.callring.platform.calling.AndroidIncomingRecovery(
         application, configuration.clock, { syncScheduler }, { !closed }, recoveryLifetime)

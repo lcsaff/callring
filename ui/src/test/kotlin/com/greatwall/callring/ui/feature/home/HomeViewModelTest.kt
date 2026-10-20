@@ -22,10 +22,6 @@ class HomeViewModelTest {
 
         override fun snapshots() = state
 
-        override fun observe():
-            kotlinx.coroutines.flow.Flow<com.greatwall.callring.contracts.change.DataChange> =
-            error("home must use cumulative tokens")
-
         fun publish(domain: com.greatwall.callring.contracts.change.DataDomain) {
             val revision = state.value.revision + 1
             state.value =

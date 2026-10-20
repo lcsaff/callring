@@ -124,7 +124,7 @@ class SimpleSettingsServiceTest {
         assertEquals(1L, coordinator.capture().values["preferences"])
         val cleared = custom.copy(customSeedRgb = null)
         assertEquals(cleared, (service.edit(custom, cleared) as ApiResult.Success).value)
-        assertEquals(2L, coordinator.marker()); assertEquals(setOf(DataDomain.APPEARANCE), coordinator.changes.value.domains)
+        assertEquals(2L, coordinator.marker()); assertEquals(setOf(DataDomain.APPEARANCE), coordinator.invalidations.snapshots.value.let { snapshot -> snapshot.domains.filterValues { it.lastAnyRevision == snapshot.revision }.keys })
         prefs.fail = true
         assertTrue(service.save(custom) is ApiResult.Failure)
         assertEquals(cleared, prefs.value); assertEquals(2L, coordinator.marker())
@@ -160,7 +160,7 @@ class SimpleSettingsServiceTest {
                 reads++
                 val result = block(object : SummaryReader { override fun settingsSummary() = CoreSettingsSummary(false, false,
                     com.greatwall.callring.domain.model.QuietMode.OFF, null, "UTC", ScoreSettings(5, 2, 10, 30).toDomain()) })
-                coordinator.changed("recording")
+                coordinator.publishResource("recording", setOf("recording"), com.greatwall.callring.application.coordination.ChangeImpact.wide(setOf(com.greatwall.callring.contracts.change.DataDomain.RECORDING_ARCHIVES)))
                 return result
             }
         }

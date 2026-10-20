@@ -1,9 +1,9 @@
 package com.greatwall.callring.ui.state
 
+import com.greatwall.callring.ui.testing.TestChangeFeed
 import com.greatwall.callring.contracts.common.*
 import com.greatwall.callring.contracts.change.*
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.test.*
 import org.junit.Assert.*
 import org.junit.Test
@@ -15,7 +15,7 @@ class ImmediateEditorTest {
         load: suspend () -> ApiResult<Int>,
         write: suspend (Int, Int) -> ApiResult<Int>,
     ) : ImmediateEditor<Int>(
-        object : ChangeFeed { override fun observe() = MutableSharedFlow<DataChange>() },
+        object : ChangeFeed { override fun snapshots() = TestChangeFeed().snapshots() },
         setOf(DataDomain.SCORE_SETTINGS), load, write, testScope
     ) {
         fun coalesce(value: Int, millis: Long) = editCoalesced(value, millis)

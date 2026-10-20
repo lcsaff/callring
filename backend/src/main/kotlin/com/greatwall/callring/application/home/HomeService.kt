@@ -36,7 +36,7 @@ internal class HomeService(
                 "quiet",
                 "overlay",
                 "statistics",
-                "runtime",
+                "runtime:status", "runtime:ringtonePlayback",
                 "ringtone",
             )
         repeat(3) {

@@ -1,5 +1,6 @@
 package com.greatwall.callring.ui.state
 
+import com.greatwall.callring.ui.testing.TestChangeFeed
 import com.greatwall.callring.contracts.change.*
 import com.greatwall.callring.contracts.common.*
 import com.greatwall.callring.contracts.settings.*
@@ -13,9 +14,19 @@ import org.junit.Test
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class RefreshCoordinatorTest {
-    @Test fun nullableFeedEventDuringFirstEditorLoadQueuesLatestTruth() = runTest {
-        val events = MutableSharedFlow<DataChange>()
-        val feed = object : ChangeFeed { override fun observe() = events }
+    @Test fun cancelledReadCannotLoseAlreadyPendingCommit() = runTest {
+        var token = 0; var loads = 0; val gate = CompletableDeferred<Unit>(); val applied = mutableListOf<Int>()
+        val coordinator = RefreshCoordinator(backgroundScope, { token }, {
+            if (++loads == 1) { gate.await(); throw CancellationException("aborted read") }
+            token
+        }, applied::add)
+        coordinator.request(); runCurrent()
+        token = 1; coordinator.request(); gate.complete(Unit); runCurrent()
+        assertEquals(2, loads); assertEquals(listOf(1), applied)
+    }
+    @Test fun cumulativeCommitDuringFirstEditorLoadQueuesLatestTruth() = runTest {
+        val events = TestChangeFeed()
+        val feed = object : ChangeFeed { override fun snapshots() = events.snapshots() }
         val first = CompletableDeferred<Unit>(); var value = 0; var loads = 0
         val editor = ImmediateEditor(feed, setOf(DataDomain.QUIET_HOURS), {
             val captured = value
@@ -23,14 +34,14 @@ class RefreshCoordinatorTest {
             ApiResult.Success(captured)
         }, { _, wanted -> ApiResult.Success(wanted) }, backgroundScope)
         editor.refresh(); runCurrent()
-        value = 1; events.emit(DataChange(1, setOf(DataDomain.QUIET_HOURS), null, null)); runCurrent()
+        value = 1; events.publish(setOf(DataDomain.QUIET_HOURS)); runCurrent()
         first.complete(Unit); runCurrent()
         assertEquals(2, loads)
         assertEquals(1, editor.state.value.data)
     }
-    @Test fun nullableFeedEventDuringFirstHomeLoadRejectsCancelledOldResult() = runTest {
-        val events = MutableSharedFlow<DataChange>()
-        val feed = object : ChangeFeed { override fun observe() = events }
+    @Test fun cumulativeCommitDuringFirstHomeLoadRejectsStaleResult() = runTest {
+        val events = TestChangeFeed()
+        val feed = object : ChangeFeed { override fun snapshots() = events.snapshots() }
         val first = CompletableDeferred<Unit>(); var value = QuietSettings(QuietMode.OFF, false, emptyMap()); var loads = 0
         val api = object : SettingsApi by UiFakeApi() {
             override suspend fun getQuietHours(): ApiResult<QuietSettings> {
@@ -42,7 +53,7 @@ class RefreshCoordinatorTest {
         val home = HomeQuietViewModel(api, feed, testScope = backgroundScope)
         home.refresh(); runCurrent()
         value = value.copy(mode = QuietMode.NON_WORK)
-        events.emit(DataChange(1, setOf(DataDomain.QUIET_HOURS), null, null)); runCurrent()
+        events.publish(setOf(DataDomain.QUIET_HOURS)); runCurrent()
         first.complete(Unit); runCurrent()
         assertEquals(2, loads)
         assertEquals(value, home.state.value.data)
@@ -63,7 +74,6 @@ class RefreshCoordinatorTest {
     private class Feed : ChangeFeed {
         val state = MutableStateFlow(InvalidationSnapshot("process", 0, 0, emptyMap()))
         override fun snapshots() = state
-        override fun observe(): Flow<DataChange> = error("quiet must use cumulative tokens")
         fun publish(revision: Long, domain: DataDomain) {
             state.value = InvalidationSnapshot("process", 0, revision, state.value.domains + (domain to DomainInvalidation(revision, revision)))
         }

@@ -1,5 +1,6 @@
 package com.greatwall.callring.ui.feature.callers
 
+import com.greatwall.callring.ui.testing.TestChangeFeed
 import com.greatwall.callring.contracts.ai.*
 import com.greatwall.callring.contracts.callers.*
 import com.greatwall.callring.contracts.command.*
@@ -13,7 +14,6 @@ import com.greatwall.callring.contracts.callers.*
 import com.greatwall.callring.contracts.change.*
 import com.greatwall.callring.contracts.common.*
 import com.greatwall.callring.contracts.settings.*
-import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.test.*
 import org.junit.Assert.*
 import org.junit.Test
@@ -79,9 +79,9 @@ class CallerEditorViewModelTest {
     }
 
     private class ChangesFake : ChangeFeed {
-        val events = MutableSharedFlow<DataChange>()
+        val events = TestChangeFeed()
 
-        override fun observe() = events
+        override fun snapshots() = events.snapshots()
     }
 
     @Test
@@ -101,7 +101,7 @@ class CallerEditorViewModelTest {
         runCurrent()
         model.edit { copy(name = "正在编辑") }
         api.editor = api.editor.copy(draft = api.editor.draft.copy(name = "另一入口保存"))
-        changes.events.emit(DataChange(1, setOf(DataDomain.CALLERS), setOf("100"), null))
+        changes.events.publish(setOf(DataDomain.CALLERS), setOf(DataDomain.CALLERS).filter { it in setOf(DataDomain.CALLERS, DataDomain.CALLS, DataDomain.REPORTS) }.associateWith { setOf("100") })
         runCurrent()
         assertEquals("正在编辑", model.draft.value?.name)
         model.save()
@@ -198,7 +198,7 @@ class CallerEditorViewModelTest {
             api.editor.copy(
                 draft = api.editor.draft.copy(name = "newer", department = "after-save"),
             )
-        changes.events.emit(DataChange(1, setOf(DataDomain.CALLERS), setOf("100"), null))
+        changes.events.publish(setOf(DataDomain.CALLERS), setOf(DataDomain.CALLERS).filter { it in setOf(DataDomain.CALLERS, DataDomain.CALLS, DataDomain.REPORTS) }.associateWith { setOf("100") })
         runCurrent()
         gate.complete(
             CallerProfile("100", true, "local", "old", null, PositionRelation.UNKNOWN, false),

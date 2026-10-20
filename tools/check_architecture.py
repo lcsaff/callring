@@ -25,6 +25,13 @@ def check(root=ROOT):
             references=re.sub(r'"(?:\\.|[^"\\])*"', '""', source)
             if re.search(r'\bas\s*\??\s*(?:com\.greatwall\.callring\.data\.)?SqliteBackendStore\b|\basSqliteBackendStore\s*\(|\(\s*(?:com\.greatwall\.callring\.data\.)?SqliteBackendStore\s*\)', references):
                 errors.append(f'{path.relative_to(root)}: concrete backend store cast; inject explicit resource capabilities')
+            if re.search(r'\bDataChange\b|\brefreshFromChanges\b|\bfun\s+observeChanges\b', references):
+                errors.append(f'{path.relative_to(root)}: removed legacy change protocol or dual subscription mode')
+            if re.search(r'\binterface\s+ChangeFeed\b', references):
+                if re.search(r'\bfun\s+observe\s*\(', references) or re.search(r'\bfun\s+snapshots\s*\([^)]*\)\s*:\s*(?:[\w.]+\.)?StateFlow\s*<\s*InvalidationSnapshot\s*>\s*(?:\?|=|\{)', references):
+                    errors.append(f'{path.relative_to(root)}: cumulative snapshots must be the required sole feed protocol')
+            if path.name == 'BusinessRevisionCoordinator.kt' and re.search(r'\bfun\s+(?:changed|commit|publishScopes|runtimeChanged|observe)\s*\(', references):
+                errors.append(f'{path.relative_to(root)}: removed coordinator publisher')
             if module in ('contracts','backend') and re.search(r'\b(?:android|androidx)\.|\bcom\.greatwall\.callring\.ui\.',source):errors.append(f'{path.relative_to(root)}: Android/UI dependency')
             if module=='backend' and re.search(r'\bpackage\s+com\.greatwall\.callring\.domain\b', references):
                 if re.search(r'\bcom\.greatwall\.callring\.(?:contracts|application)\b|\b(?:kotlinx\.coroutines|java\.io|java\.nio\.file|java\.sql|javax\.sql|java\.net\.(?!URI\b))', references): errors.append(f'{path.relative_to(root)}: domain implementation/transport/IO dependency')

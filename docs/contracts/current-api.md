@@ -6,10 +6,10 @@ The facade is `com.greatwall.callring.contracts.CallringUiApi` in `CallringApi.k
 
 ## Approved internal signature changes
 
-T05b adds the internal cumulative change protocol (`InvalidationSnapshot`, domain-local entity revisions, subscriptions and projected tokens). `ChangeFeed.snapshots()` returns an optional `StateFlow` during migration; production `CallringBackend` and its command-bound facade supply the same real cumulative flow. Quiet consumers use that flow directly. Legacy/fake implementations may temporarily return null; the remaining producers/consumers and removal of this nullable transition belong to T11. Legacy `observe()` is adapted per collector from cumulative snapshots and conservatively reports only domains changed since that collector last resumed. The external 81-tool schema, D domains, persisted values and frozen v1 API snapshot are unchanged.
+T11 makes `ChangeFeed.snapshots(): StateFlow<InvalidationSnapshot>` mandatory and removes `DataChange`, `observe()` and nullable/default feed implementations. Every production consumer uses cumulative tokens. `ChangeSubscription.entities` is a domain-local map of nonempty entity sets; each selected domain token is the maximum of its selected entity/wide revisions. Missing selectors mean the actual whole domain, while empty selectors are rejected. All selected domains must belong to the subscription. Epoch/incarnation invalidate every token. No single-string overload or legacy notification bridge remains. External tool schemas, D identities and persisted formats are unchanged.
 
 
-T06a adds internal typed score/overlay/statistics/position/summary transaction capabilities to the shared `CoreUnitOfWork`, with scoped readers/writers invalid after callbacks. `CallringBackend` requires one `CoreUnitOfWork` composition argument; there is no default unsupported implementation or dual quiet/simple assembly. Calculation-only tests explicitly supply their own unused-port fake. `PreferenceStore` now inherits narrow `AppearanceStore`/`AppearanceReader` capabilities. New appearance and summary services receive those projections and cannot access widget bindings. Preferences adapters persist and roll back appearance; `AppearanceService` is its sole business publisher. `BusinessRevisionCoordinator.publishResource` advances one resource version, precise field scopes and cumulative impact in one guarded publication. `SnapshotViewModel` gains an internal `refreshFromChanges` opt-in used by summary and positions; other consumers retain their prior mutation refresh behavior. Frozen product contracts and their hashes below are unchanged.
+T06a adds internal typed score/overlay/statistics/position/summary transaction capabilities to the shared `CoreUnitOfWork`, with scoped readers/writers invalid after callbacks. `CallringBackend` requires one `CoreUnitOfWork` composition argument; there is no default unsupported implementation or dual quiet/simple assembly. Calculation-only tests explicitly supply their own unused-port fake. `PreferenceStore` now inherits narrow `AppearanceStore`/`AppearanceReader` capabilities. New appearance and summary services receive those projections and cannot access widget bindings. Preferences adapters persist and roll back appearance; `AppearanceService` is its sole business publisher. `BusinessRevisionCoordinator.publishResource` advances one resource version, precise field scopes and cumulative impact in one guarded publication. T11 removes the temporary `SnapshotViewModel.refreshFromChanges` opt-in and its second loader; the feed is the single subscribed-query owner after successful commits. Frozen product contracts and their hashes below are unchanged.
 
 
 These are repository-internal changes approved by the layer-boundaries specification. `docs/contracts/CallringUiApi.kt` and `current-api-baseline.md` remain historical snapshots; they are not current source requirements.
@@ -167,15 +167,14 @@ T10c removes only missing-capability method bodies: `UiEditsApi`'s seven edits, 
     ]
   },
   "change/CallringUiApi.kt": {
-    "sha256": "c80cb9314f7277d26a90b8c9ccfc3c846301e7936ef10bf2f2830df26b70d292",
+    "sha256": "4eff1514512947eda5465d10baf05e213f6af6eca8661a737c8c79553f5a8c4e",
     "declarations": [
       "ChangeFeed",
-      "DataDomain",
-      "DataChange"
+      "DataDomain"
     ]
   },
   "change/InvalidationSnapshot.kt": {
-    "sha256": "06e9d4e2496ca79346d7269c0db13bfd23bab46a92805e45e8267cb433644ad1",
+    "sha256": "f073599edeb0cb6dfa71f5c53ed7d7c084f9c58611b09f838858b011de79e64a",
     "declarations": [
       "DomainInvalidation",
       "InvalidationSnapshot",

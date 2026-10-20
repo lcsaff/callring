@@ -98,7 +98,7 @@ class BackendApiDeviceTest : InstrumentationTestCase() {
         success(api.settings.saveQuietHours(quiet))
         success(api.settings.saveScoreSettings(score))
         success(api.settings.setOverlayEnabled(false))
-        val revision = api.changes.observe().first().dataRevision
+        val revision = api.changes.snapshots().value.revision
         val snapshot = fixture.graph.backend.decisionSnapshot()
         val raw = SQLiteDatabase.openDatabase(fixture.databaseFile.absolutePath, null, SQLiteDatabase.OPEN_READONLY).use { db ->
             db.rawQuery("SELECT key,value,position_id FROM settings ORDER BY key", null).use { rows ->
@@ -107,7 +107,7 @@ class BackendApiDeviceTest : InstrumentationTestCase() {
         }
         failure(api.settings.saveQuietHours(QuietSettings(QuietMode.CUSTOM, false, emptyMap())), ErrorCode.VALIDATION)
         assertEquals(quiet, success(api.settings.getQuietHours()))
-        assertEquals(revision, api.changes.observe().first().dataRevision)
+        assertEquals(revision, api.changes.snapshots().value.revision)
         assertSame(snapshot, fixture.graph.backend.decisionSnapshot())
         SQLiteDatabase.openDatabase(fixture.databaseFile.absolutePath, null, SQLiteDatabase.OPEN_READONLY).use { db ->
             db.rawQuery("SELECT key,value,position_id FROM settings ORDER BY key", null).use { rows ->
@@ -126,10 +126,10 @@ class BackendApiDeviceTest : InstrumentationTestCase() {
         val mine = success(api.settings.savePosition(SavePosition(name = " mine ", level = 2, active = true)))
         assertEquals("mine", mine.name)
         success(api.settings.setMyPosition(mine.id))
-        val revision = api.changes.observe().first().dataRevision
+        val revision = api.changes.snapshots().value.revision
         failure(api.settings.deletePosition(mine.id), ErrorCode.IN_USE)
         failure(api.settings.savePosition(SavePosition(name = "mine ", level = 1, active = true)), ErrorCode.VALIDATION)
-        assertEquals(revision, api.changes.observe().first().dataRevision)
+        assertEquals(revision, api.changes.snapshots().value.revision)
         val inactive = success(api.settings.savePosition(SavePosition(name = "retired", level = 3, active = false)))
         val active = success(api.settings.savePosition(SavePosition(name = "active", level = 1, active = true)))
         val blankEditor = success(api.callers.getEditor(null))
@@ -260,7 +260,7 @@ class BackendApiDeviceTest : InstrumentationTestCase() {
 
     fun testProfileReferencesStatisticsIntervalsChangeFeedAndReopenAreWired() = runBlocking {
         val api = fixture.graph.api
-        val initialRevision = api.changes.observe().first().dataRevision
+        val initialRevision = api.changes.snapshots().value.revision
         val mine =
             success(
                 api.settings.savePosition(
@@ -279,10 +279,10 @@ class BackendApiDeviceTest : InstrumentationTestCase() {
                 )
             )
         assertEquals(PositionRelation.HIGHER, profile.relation)
-        val committedRevision = api.changes.observe().first().dataRevision
+        val committedRevision = api.changes.snapshots().value.revision
         assertTrue(committedRevision > initialRevision)
         failure(api.settings.deletePosition(manager.id), ErrorCode.IN_USE)
-        assertEquals(committedRevision, api.changes.observe().first().dataRevision)
+        assertEquals(committedRevision, api.changes.snapshots().value.revision)
 
         configureWorkingDay()
         assertTrue(record("31234", millis("2026-06-01T10:00:00Z")) > 0)
@@ -418,7 +418,7 @@ class BackendApiDeviceTest : InstrumentationTestCase() {
             assertEquals("first.wav", first.displayName)
             val selected = File(fixture.audioDirectory, "selected_audio")
             assertTrue(bytes.contentEquals(selected.readBytes()))
-            val revision = fixture.graph.api.changes.observe().first().dataRevision
+            val revision = fixture.graph.api.changes.snapshots().value.revision
             val changedBytes =
                 bytes.copyOf().apply { this[lastIndex] = (this[lastIndex].toInt() xor 1).toByte() }
             fixture.ringPreferences.failNextCommit.set(true)
@@ -430,7 +430,7 @@ class BackendApiDeviceTest : InstrumentationTestCase() {
             )
             assertEquals(first, success(fixture.graph.api.ringtone.getSettings()))
             assertTrue(bytes.contentEquals(selected.readBytes()))
-            assertEquals(revision, fixture.graph.api.changes.observe().first().dataRevision)
+            assertEquals(revision, fixture.graph.api.changes.snapshots().value.revision)
             assertTrue(fixture.graph.audio.enabledForCalls())
             failure(
                 fixture.graph.api.ringtone.importAudio(

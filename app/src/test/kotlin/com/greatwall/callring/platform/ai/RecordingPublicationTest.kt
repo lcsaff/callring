@@ -131,7 +131,7 @@ class RecordingPublicationTest {
                 assertTrue(runCatching { runtime.service.attachCapture(com.greatwall.callring.application.RecordingCall(-1, "31234", 1, null), com.greatwall.callring.application.AudioReference(newAudio.absolutePath)) }.isFailure)
             }
             assertEquals(before + 1, coordinator.marker())
-            assertEquals(setOf(DataDomain.RUNTIME), coordinator.changes.value.domains)
+            assertEquals(setOf(DataDomain.RUNTIME), coordinator.invalidations.snapshots.value.let { snapshot -> snapshot.domains.filterValues { it.lastAnyRevision == snapshot.revision }.keys })
             assertEquals(0L, coordinator.capture().values.getValue("recording"))
             assertEquals(archive, store.get(-1))
             assertEquals("old contents", oldAudio.readText())
@@ -154,7 +154,7 @@ class RecordingPublicationTest {
             val before = coordinator.marker()
             runtime.service.delete(-1).requiredValue()
             assertEquals(before + 1, coordinator.marker())
-            assertEquals(setOf(DataDomain.RECORDING_ARCHIVES, DataDomain.RUNTIME), coordinator.changes.value.domains)
+            assertEquals(setOf(DataDomain.RECORDING_ARCHIVES, DataDomain.RUNTIME), coordinator.invalidations.snapshots.value.let { snapshot -> snapshot.domains.filterValues { it.lastAnyRevision == snapshot.revision }.keys })
             assertEquals(coordinator.marker(), coordinator.lastChange(setOf("runtime:recordingPlayback")))
             assertEquals(1L, coordinator.capture().values.getValue("recording"))
             assertFalse(file.exists())
@@ -177,7 +177,7 @@ class RecordingPublicationTest {
             val before = coordinator.marker()
             assertTrue(runtime.service.delete(-1) is ApiResult.Failure)
             assertEquals(before + 1, coordinator.marker())
-            assertEquals(setOf(DataDomain.RUNTIME), coordinator.changes.value.domains)
+            assertEquals(setOf(DataDomain.RUNTIME), coordinator.invalidations.snapshots.value.let { snapshot -> snapshot.domains.filterValues { it.lastAnyRevision == snapshot.revision }.keys })
             assertEquals(0L, coordinator.capture().values.getValue("recording"))
             assertEquals(archive, store.get(-1))
             assertFalse(store.isDeleted(-1))
@@ -229,7 +229,7 @@ class RecordingPublicationTest {
         try {
             val call = runtime.service.observeIncoming("one", "31234", 1000, null)!!
             assertEquals("One logical registration has one marker", 1L, coordinator.marker())
-            assertEquals(setOf(DataDomain.RECORDING_ARCHIVES), coordinator.changes.value.domains)
+            assertEquals(setOf(DataDomain.RECORDING_ARCHIVES), coordinator.invalidations.snapshots.value.let { snapshot -> snapshot.domains.filterValues { it.lastAnyRevision == snapshot.revision }.keys })
             assertEquals(setOf(call.id.toString()), coordinator.invalidations.snapshots.value.domains.getValue(DataDomain.RECORDING_ARCHIVES).entityRevisions.keys)
             runtime.service.observeIncoming("one", "31234", 1000, null)
             assertEquals(1L, coordinator.marker())
@@ -258,6 +258,6 @@ class RecordingPublicationTest {
         assertNotEquals(afterRegistration, coordinator.capture())
         commands.delete(call.id, null, false)
         assertTrue(store.isDeleted(call.id))
-        assertEquals(setOf(DataDomain.RECORDING_ARCHIVES), coordinator.changes.value.domains)
+        assertEquals(setOf(DataDomain.RECORDING_ARCHIVES), coordinator.invalidations.snapshots.value.let { snapshot -> snapshot.domains.filterValues { it.lastAnyRevision == snapshot.revision }.keys })
     }
 }

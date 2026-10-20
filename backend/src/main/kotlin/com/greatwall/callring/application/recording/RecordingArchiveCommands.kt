@@ -38,7 +38,7 @@ class RecordingArchiveCommands(
     private fun publish(callId: Long, playbackStopped: Boolean) {
         val keys = linkedSetOf("archive:$callId")
         val impact = linkedMapOf<DataDomain, Set<String>?>(DataDomain.RECORDING_ARCHIVES to setOf(callId.toString()))
-        if (playbackStopped) { keys += "runtime:recordingPlayback"; impact[DataDomain.RUNTIME] = null }
+        if (playbackStopped) { keys += "runtime:recordingPlayback"; impact[DataDomain.RUNTIME] = setOf("recordingPlayback") }
         coordinator.publishResource("recording", keys, ChangeImpact(impact))
     }
 }

@@ -42,6 +42,40 @@ class AiSettingsMergeTest {
     private fun ApiResult<*>.failure() = (this as ApiResult.Failure).error
     private fun valid() = AiConnection(url = "https://example.com/v1", model = "fixture", apiKey = "private-fixture")
 
+    @Test fun platformFolderReobserveUsesExistingUriWithoutReReadingOrDecryptingConfiguration() = runBlocking {
+        val settings = Settings().apply { current = current.copy(systemFolder = "content://fixture/tree") }
+        val coordinator = BusinessRevisionCoordinator(); var probes = 0; var access = AccessState.GRANTED
+        val service = AiSettingsService(settings, coordinator, { true }, { _, _ -> },
+            folderView = { uri -> assertEquals("content://fixture/tree", uri); probes++; RecordingFolderView("folder", access) }, operationActive = { true })
+        service.reobserveFolder(); assertEquals(0, settings.reads); assertEquals(0, probes)
+        service.getRecordingView().ok(); assertEquals(1, settings.reads); assertEquals(1, probes)
+        service.reobserveFolder(); assertEquals(1, settings.reads); assertEquals(0L, coordinator.marker())
+        access = AccessState.DENIED; service.reobserveFolder()
+        assertEquals(1, settings.reads); assertEquals(1L, coordinator.marker())
+        val runtime = coordinator.invalidations.snapshots.value.domains.getValue(com.greatwall.callring.contracts.change.DataDomain.RUNTIME)
+        assertEquals(setOf("recordingFolder"), runtime.entityRevisions.keys)
+        val bound = service.bound(CommandContext("bound", coordinator.capture(), 0) { true })
+        bound.reobserveFolder(); assertEquals(1L, coordinator.marker()); assertEquals(1, settings.reads)
+        assertEquals(0L, coordinator.capture().values.getValue("recordingConfig"))
+    }
+    @Test fun cancelledFolderObservationCannotPublishItsProviderResult() = runBlocking {
+        val settings = Settings().apply { current = current.copy(systemFolder = "content://fixture/tree") }
+        val coordinator = BusinessRevisionCoordinator()
+        var cancelProbe = false
+        var probe: Job? = null
+        val service = AiSettingsService(settings, coordinator, { true }, { _, _ -> },
+            folderView = {
+                assertFalse("provider I/O must remain outside the publication fence", Thread.holdsLock(coordinator.fence))
+                if (cancelProbe) probe!!.cancel()
+                RecordingFolderView("folder", if (cancelProbe) AccessState.DENIED else AccessState.GRANTED)
+            }, operationActive = { true })
+        service.getRecordingView().ok()
+        cancelProbe = true
+        probe = launch(start = CoroutineStart.LAZY) { service.reobserveFolder() }
+        probe.start(); probe.join()
+        assertTrue(probe.isCancelled)
+        assertEquals("cancelled observation must not advance the shared baseline/marker", 0L, coordinator.marker())
+    }
     @Test fun callerCancellationWhileReadingBeforePersistenceDoesNotCommit() = runBlocking {
         val f = Fixture()
         val base = f.service.getAiView().ok()

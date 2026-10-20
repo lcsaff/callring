@@ -66,7 +66,7 @@ class ConversationServiceTest {
         val service=ConversationService({f.backend},queries(f),{config},f.coordinator,{client})
         try {
             service.send(service.state.value.sessionId,"hello"); withTimeout(5000){entered.await()}
-            config=config.copy(conversationCompatibility=ConversationCompatibility.STANDARD);f.coordinator.changed("aiConfig")
+            config=config.copy(conversationCompatibility=ConversationCompatibility.STANDARD);f.coordinator.publishResource("aiConfig", setOf("aiConfig"), com.greatwall.callring.application.coordination.ChangeImpact.wide(setOf(com.greatwall.callring.contracts.change.DataDomain.AI_SETTINGS)))
             withTimeout(1500){service.state.first{!it.busy}}
             assertTrue(cancelled);assertTrue(service.state.value.messages.isEmpty())
         } finally {service.close()}
@@ -104,7 +104,7 @@ class ConversationServiceTest {
         service.send(service.state.value.sessionId,"old target")
         withTimeout(5000) { entered.await() }
         configuration = configuration.copy(analysis = configuration.analysis.copy(model = "changed"))
-        fixture.coordinator.changed("aiConfig")
+        fixture.coordinator.publishResource("aiConfig", setOf("aiConfig"), com.greatwall.callring.application.coordination.ChangeImpact.wide(setOf(com.greatwall.callring.contracts.change.DataDomain.AI_SETTINGS)))
         withTimeout(5000) { service.state.first { !it.busy } }
         assertTrue(cancelled)
         assertEquals("ai.connection_changed", service.state.value.error?.message)

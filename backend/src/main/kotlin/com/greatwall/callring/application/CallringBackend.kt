@@ -40,6 +40,7 @@ class CallringBackend(
     private val recordingsProvider: (CommandContext?) -> RecordingApi,
     private val decisions: com.greatwall.callring.application.calling.DecisionMirror = com.greatwall.callring.application.calling.DecisionMirror(),
     private val commandContext: CommandContext? = null,
+    private val runtimeObservations: com.greatwall.callring.application.runtime.RuntimeObservationTracker = com.greatwall.callring.application.runtime.RuntimeObservationTracker(coordinator),
 ) : CallringUiApi {
     private val callerQueries =
         com.greatwall.callring.application.callers.CallerQueryService(
@@ -157,7 +158,7 @@ class CallringBackend(
             decisions.snapshots,
         )
 
-    private fun runtimeStatus(): RuntimeStatus = completeRuntimeStatus(runtimeProbe.getStatus())
+    private fun runtimeStatus(): RuntimeStatus = runtimeObservations.observed(completeRuntimeStatus(runtimeProbe.getStatus()))
     override val conversation: ConversationApi get() = conversationProvider()
     override val aiSettings: AiSettingsApi get() = aiSettingsProvider(commandContext)
     override val update: AppUpdateApi get() = updateProvider()
@@ -169,7 +170,7 @@ class CallringBackend(
             coordinator,
             dispatcher,
             clock,
-            { completeRuntimeStatus(runtimeProbe.getStatus()) },
+            ::runtimeStatus,
             audio::getSettings,
         )
     override val callers: CallersApi = callersApi
@@ -179,13 +180,13 @@ class CallringBackend(
             coordinator,
             dispatcher,
             clock,
-            { completeRuntimeStatus(runtimeProbe.getStatus()) },
+            ::runtimeStatus,
             { destination, write -> documents.write(destination, write) },
         )
     override val settings: SettingsApi = settingsApi()
     override val edits: UiEditsApi = editsApi()
-    private val ringtoneService = com.greatwall.callring.application.ringtone.RingtoneService(audio, runtimeProbe::getStatus, coordinator, dispatcher, command = commandContext, operationActive = operationActive)
-    private val runtimeService = com.greatwall.callring.application.runtime.RuntimeService(runtimeProbe::getStatus, runtimeProbe::getDiagnostics, syncScheduler, clock, dispatcher, coordinator, command = commandContext, operationActive = operationActive)
+    private val ringtoneService = com.greatwall.callring.application.ringtone.RingtoneService(audio, ::runtimeStatus, coordinator, dispatcher, command = commandContext, operationActive = operationActive)
+    private val runtimeService = com.greatwall.callring.application.runtime.RuntimeService(::runtimeStatus, runtimeProbe::getDiagnostics, syncScheduler, clock, dispatcher, coordinator, command = commandContext, operationActive = operationActive)
     private val widgetService = com.greatwall.callring.application.widget.WidgetBindingsService(preferences, runtimeProbe::getInstalledWidgets, coordinator, dispatcher, command = commandContext, operationActive = operationActive)
     override val ringtone: RingtoneApi = ringtoneService
     override val runtime: RuntimeApi = runtimeService
@@ -202,7 +203,6 @@ class CallringBackend(
     override suspend fun adoptIdentity(callId: Long, expectedGeneration: Long) = adoption().adoptIdentity(callId, expectedGeneration)
     override val changes: ChangeFeed =
         object : ChangeFeed {
-            override fun observe(): Flow<DataChange> = coordinator.observe()
 
             override fun snapshots() = coordinator.invalidations.snapshots
         }
@@ -220,7 +220,7 @@ class CallringBackend(
     private fun bound(command: CommandContext) = CallringBackend(preferences, documents, runtimeProbe,
         audio, syncScheduler, clock, dispatcher, calendarSource, coordinator, coreTransactions,
         numberRecordings, identityArchive, operationActive, persistenceActive, conversationProvider, aiSettingsProvider,
-        updateProvider, snapshotsProvider, recordingsProvider, decisions, command)
+        updateProvider, snapshotsProvider, recordingsProvider, decisions, command, runtimeObservations)
 
     override fun commandApi(context: CommandContext): CallringUiApi = bound(context)
 

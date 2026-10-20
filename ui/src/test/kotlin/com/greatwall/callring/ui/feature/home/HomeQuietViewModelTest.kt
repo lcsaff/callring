@@ -11,6 +11,7 @@ import org.junit.Test
 @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
 class HomeQuietViewModelTest {
     private class Fixture : SettingsApi by UiFakeApi() {
+        val changes = com.greatwall.callring.ui.testing.TestChangeFeed()
         var saved = QuietSettings(QuietMode.OFF, false, mapOf(1 to listOf(TimeWindow(1320, 420))))
         val toggles = mutableListOf<Boolean>()
         var writes = 0
@@ -22,6 +23,7 @@ class HomeQuietViewModelTest {
             gate?.await()
             if (fail) return ApiResult.Failure(ApiError(ErrorCode.STORAGE_FAILURE, "保存失败"))
             saved = saved.copy(mode = if (enabled) QuietMode.NON_WORK else QuietMode.OFF)
+            changes.publish(setOf(com.greatwall.callring.contracts.change.DataDomain.QUIET_HOURS))
             return ApiResult.Success(saved)
         }
         override suspend fun saveQuietHours(settings: QuietSettings): ApiResult<QuietSettings> {
@@ -29,13 +31,14 @@ class HomeQuietViewModelTest {
             gate?.await()
             if (fail) return ApiResult.Failure(ApiError(ErrorCode.STORAGE_FAILURE, "保存失败"))
             saved = settings
+            changes.publish(setOf(com.greatwall.callring.contracts.change.DataDomain.QUIET_HOURS))
             return ApiResult.Success(saved)
         }
     }
 
     @Test fun toggleUsesSharedApiAndFailedWriteKeepsSavedTruth() = runTest {
         val api = Fixture()
-        val model = HomeQuietViewModel(api, UiFakeApi(), testScope = backgroundScope)
+        val model = HomeQuietViewModel(api, api.changes, testScope = backgroundScope)
         model.refresh(); runCurrent()
         api.fail = true
         model.setEnabled(true); runCurrent()
@@ -49,7 +52,7 @@ class HomeQuietViewModelTest {
 
     @Test fun openingOffStartsCustomPreservesWindowsAndCancelNeverWrites() = runTest {
         val api = Fixture()
-        val model = HomeQuietViewModel(api, UiFakeApi(), testScope = backgroundScope)
+        val model = HomeQuietViewModel(api, api.changes, testScope = backgroundScope)
         model.refresh(); runCurrent(); model.openEditor()
         assertEquals(QuietMode.CUSTOM, model.draft.value?.mode)
         assertEquals(api.saved.weeklyWindows, model.draft.value?.weeklyWindows)
@@ -63,7 +66,7 @@ class HomeQuietViewModelTest {
 
     @Test fun failedSaveKeepsDraftAndSuccessActivatesAndCloses() = runTest {
         val api = Fixture()
-        val model = HomeQuietViewModel(api, UiFakeApi(), testScope = backgroundScope)
+        val model = HomeQuietViewModel(api, api.changes, testScope = backgroundScope)
         model.refresh(); runCurrent(); model.openEditor()
         val draft = model.draft.value!!.copy(allNumbers = true)
         model.edit(draft); api.fail = true
@@ -79,7 +82,7 @@ class HomeQuietViewModelTest {
 
     @Test fun emptyOrEqualCustomWindowsCannotSaveAndBusyPreventsDuplicateWrites() = runTest {
         val api = Fixture()
-        val model = HomeQuietViewModel(api, UiFakeApi(), testScope = backgroundScope)
+        val model = HomeQuietViewModel(api, api.changes, testScope = backgroundScope)
         model.refresh(); runCurrent(); model.openEditor()
         model.edit(model.draft.value!!.copy(weeklyWindows = emptyMap()))
         model.save(); runCurrent()

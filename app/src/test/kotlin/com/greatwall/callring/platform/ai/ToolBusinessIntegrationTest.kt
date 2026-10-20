@@ -75,7 +75,7 @@ class ToolBusinessIntegrationTest {
         val runtime = RecordingAssembly(context,namespace,{ null },{ null },{}, { recordingStore },metadataReader = { 1000L to "wav" },coordinator = coordinator,clientFactory = { client }, operationActive = { true })
         var recordingId = -1L
         val resources = ForegroundResourceRegistry()
-        val foreground = ForegroundActionService(checkCommand = { cmd -> cmd == null || coordinator.committed(cmd.operationId) != null || runCatching { coordinator.guard(cmd.copy(mayCommit = { true })) {} }.isSuccess })
+        val foreground = ForegroundActionService(checkCommand = ForegroundCommandValidator(coordinator)::check)
         @Suppress("UNCHECKED_CAST") fun <T> spy(type: Class<T>, label: String, value: T): T = Proxy.newProxyInstance(type.classLoader,arrayOf(type)) { _,method,args ->
             calls += "$label.${method.name}"
             try { method.invoke(value,*(args ?: emptyArray())) } catch(e: InvocationTargetException) { throw e.targetException }

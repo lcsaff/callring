@@ -5,7 +5,7 @@ import android.util.Log
 import com.greatwall.callring.contracts.change.*
 import com.greatwall.callring.contracts.*
 import kotlinx.coroutines.*
-import kotlinx.coroutines.flow.collect
+import kotlinx.coroutines.flow.*
 
 /** Application owns this observer, so widgets update while no screen is open. */
 fun CoroutineScope.observeWidgetUpdates(context: Context, api: CallringUiApi): Job = observeWidgetChanges(api.changes) {
@@ -13,19 +13,16 @@ fun CoroutineScope.observeWidgetUpdates(context: Context, api: CallringUiApi): J
 }
 
 internal fun CoroutineScope.observeWidgetChanges(changes: ChangeFeed, refresh: suspend (Set<Int>?) -> Unit): Job = launch {
-    changes.observe().collect { change ->
-        if (change.domains.none { it in displayDomains }) return@collect
-        try {
-            val ids = if (change.domains.intersect(displayDomains) == setOf(DataDomain.WIDGET_BINDINGS)) change.widgetIds else null
-            refresh(ids)
-        } catch (cancelled: CancellationException) { throw cancelled }
+    changes.snapshots().map { it.token(widgetSubscription) }.distinctUntilChanged().collect {
+        try { refresh(null) }
+        catch (cancelled: CancellationException) { throw cancelled }
         catch (_: Exception) { Log.w("CallringWidget", "Widget refresh deferred to next update") }
     }
 }
 
-private val displayDomains = setOf(DataDomain.WIDGET_BINDINGS, DataDomain.CALLERS, DataDomain.POSITIONS,
-    DataDomain.CALLS, DataDomain.REPORTS, DataDomain.WORK_CALENDAR, DataDomain.QUIET_HOURS,
-    DataDomain.SCORE_SETTINGS, DataDomain.STATISTICS, DataDomain.APPEARANCE)
+internal val widgetSubscription = ChangeSubscription(
+    setOf(DataDomain.WORK_CALENDAR, DataDomain.QUIET_HOURS, DataDomain.APPEARANCE),
+    mapOf(DataDomain.WORK_CALENDAR to setOf("leaves")))
 
 /** System time changes invalidate the device-day leave acknowledgement. */
 class WidgetTimeReceiver : BroadcastReceiver() {

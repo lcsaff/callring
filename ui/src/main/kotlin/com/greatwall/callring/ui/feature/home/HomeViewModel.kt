@@ -11,7 +11,8 @@ import kotlinx.coroutines.flow.asStateFlow
 
 class HomeViewModel(private val api: CallringUiApi, testScope: CoroutineScope? = null) : SnapshotViewModel<HomeData>(
     api.changes, setOf(DataDomain.CALLS, DataDomain.WORK_CALENDAR, DataDomain.QUIET_HOURS,
-        DataDomain.STATISTICS, DataDomain.OVERLAY_SETTINGS, DataDomain.RINGTONE, DataDomain.RUNTIME), api.home::load, testScope, refreshFromChanges = true
+        DataDomain.STATISTICS, DataDomain.OVERLAY_SETTINGS, DataDomain.RINGTONE, DataDomain.RUNTIME), api.home::load, testScope,
+    entities = mapOf(DataDomain.RUNTIME to setOf("status", "ringtonePlayback"))
 ) {
     private val latestLoader = RequestLoader<CallDetail?>(scope)
     val latestPreview = latestLoader.state

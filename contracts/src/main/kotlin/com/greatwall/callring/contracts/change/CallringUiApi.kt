@@ -1,11 +1,9 @@
 package com.greatwall.callring.contracts.change
 
-import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.StateFlow
 
 interface ChangeFeed {
-    fun observe(): Flow<DataChange>
-    /** Legacy/fake implementations may omit this during the internal Kotlin migration. */
-    fun snapshots(): kotlinx.coroutines.flow.StateFlow<InvalidationSnapshot>? = null
+    fun snapshots(): StateFlow<InvalidationSnapshot>
 }
 
 enum class DataDomain {
@@ -14,10 +12,3 @@ enum class DataDomain {
     RINGTONE, APPEARANCE, WIDGET_BINDINGS, RUNTIME,
     RECORDING_SETTINGS, AI_SETTINGS, RECORDING_ARCHIVES
 }
-
-data class DataChange(
-    val dataRevision: Long,
-    val domains: Set<DataDomain>,
-    val numbers: Set<String>?,
-    val widgetIds: Set<Int>?
-)

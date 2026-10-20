@@ -21,7 +21,7 @@ open class ImmediateEditor<T : Any>(
     private val write: suspend (base: T, value: T) -> ApiResult<T>,
     testScope: CoroutineScope? = null,
     private val editDebounceMillis: Long = 0L,
-    entities: Map<DataDomain, String> = emptyMap(),
+    entities: Map<DataDomain, Set<String>> = emptyMap(),
 ) : UiViewModel(testScope) {
     private sealed interface Request<T : Any> {
         data class Edit<T : Any>(val value: T) : Request<T>
@@ -57,8 +57,7 @@ open class ImmediateEditor<T : Any>(
 
     fun refresh() {
         if (writing) { refreshRequested = true; return }
-        // Legacy feeds have no cumulative token: each accepted refresh must invalidate an in-flight read.
-        refreshCoordinator.request(force = observation.token() == null)
+        refreshCoordinator.request()
     }
 
     /** A discrete change (switch, chip, picker) is committed as soon as the shared writer is free. */

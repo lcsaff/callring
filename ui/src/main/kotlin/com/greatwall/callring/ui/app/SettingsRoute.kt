@@ -23,7 +23,6 @@ import com.greatwall.callring.ui.feature.update.AppUpdateViewModel
             val state by model.state.collectAsStateWithLifecycle()
             val draft by model.draft.collectAsStateWithLifecycle()
             val mutation by model.mutation.collectAsStateWithLifecycle()
-            ActiveRefresh(signal, refresh = model::refresh)
             QuietScreen(state, draft, mutation, onBack, model::refresh, model::edit)
         }
         SettingsPage.WORK -> {
@@ -31,7 +30,6 @@ import com.greatwall.callring.ui.feature.update.AppUpdateViewModel
             val state by model.state.collectAsStateWithLifecycle()
             val draft by model.draft.collectAsStateWithLifecycle()
             val mutation by model.mutation.collectAsStateWithLifecycle()
-            ActiveRefresh(signal, refresh = model::refresh)
             WorkScheduleScreen(state, draft, mutation, onBack, model::refresh, model::edit, model::reset)
         }
         SettingsPage.SCORE -> {
@@ -39,7 +37,6 @@ import com.greatwall.callring.ui.feature.update.AppUpdateViewModel
             val state by model.state.collectAsStateWithLifecycle()
             val draft by model.draft.collectAsStateWithLifecycle()
             val mutation by model.mutation.collectAsStateWithLifecycle()
-            ActiveRefresh(signal, refresh = model::refresh)
             ScoreSettingsScreen(state, draft, mutation, onBack, model::refresh, model::edit, model::reset)
         }
         SettingsPage.APPEARANCE -> {
@@ -47,7 +44,6 @@ import com.greatwall.callring.ui.feature.update.AppUpdateViewModel
             val state by model.state.collectAsStateWithLifecycle()
             val draft by model.draft.collectAsStateWithLifecycle()
             val mutation by model.mutation.collectAsStateWithLifecycle()
-            ActiveRefresh(signal, refresh = model::refresh)
             AppearanceScreen(state, draft, mutation, onBack, model::refresh, model::edit, model::save,
                 onColorChange = model::editColor)
         }
@@ -55,21 +51,18 @@ import com.greatwall.callring.ui.feature.update.AppUpdateViewModel
             val model: PositionsViewModel = uiViewModel { PositionsViewModel(api) }
             val state by model.state.collectAsStateWithLifecycle()
             val mutation by model.mutation.collectAsStateWithLifecycle()
-            ActiveRefresh(signal, refresh = model::refresh)
             PositionsScreen(state, mutation, onBack, model::refresh, model::save, model::delete, model::mine, onSaveDraft = model::saveDraft)
         }
         SettingsPage.MY_POSITION -> {
             val model: PositionsViewModel = uiViewModel { PositionsViewModel(api) }
             val state by model.state.collectAsStateWithLifecycle()
             val mutation by model.mutation.collectAsStateWithLifecycle()
-            ActiveRefresh(signal, refresh = model::refresh)
             MyPositionScreen(state, mutation, onBack, model::refresh, model::mine)
         }
         SettingsPage.CALENDAR -> {
             val model: CalendarViewModel = uiViewModel { CalendarViewModel(api) }
             val state by model.state.collectAsStateWithLifecycle()
             val mutation by model.mutation.collectAsStateWithLifecycle()
-            ActiveRefresh(signal, refresh = model::refresh)
             val summary by summaryModel.state.collectAsStateWithLifecycle()
             val zone = summary.data?.workZoneId?.let { runCatching { java.time.ZoneId.of(it) }.getOrNull() } ?: java.time.ZoneId.systemDefault()
             val year = java.time.LocalDate.now(zone).year
@@ -80,7 +73,7 @@ import com.greatwall.callring.ui.feature.update.AppUpdateViewModel
             val state by model.state.collectAsStateWithLifecycle()
             val mutation by model.mutation.collectAsStateWithLifecycle()
             val summary by summaryModel.state.collectAsStateWithLifecycle()
-            ActiveRefresh(signal, intervalMillis = 60_000, refresh = model::refresh)
+            TimeRefresh(model.timeRefresh, signal, intervalMillis = 60_000, refresh = model::refresh)
             val zone = summary.data?.workZoneId
             if (zone == null) ScreenFrame("请假管理", onBack) { LoadFeedback(summary, summaryModel::refresh) }
             else LeavesScreen(state, mutation, zone, onBack, model::refresh, model::save, model::delete, onSaveDraft = model::saveDraft)
@@ -90,21 +83,19 @@ import com.greatwall.callring.ui.feature.update.AppUpdateViewModel
             val state by model.state.collectAsStateWithLifecycle()
             val mutation by model.mutation.collectAsStateWithLifecycle()
             val import = rememberImportPicker(arrayOf("audio/*"), model::import)
-            ActiveRefresh(signal, refresh = model::refresh)
             RingtoneScreen(state, mutation, onBack, model::refresh, model::enabled, import, model::restore, model::preview, model::stop)
         }
         SettingsPage.RUNTIME -> {
             val model: RuntimeViewModel = uiViewModel { RuntimeViewModel(api) }
             val state by model.state.collectAsStateWithLifecycle()
             val mutation by model.mutation.collectAsStateWithLifecycle()
-            ActiveRefresh(signal, intervalMillis = 10_000, refresh = model::refresh)
             RuntimeScreen(state, mutation, onBack, model::refresh, onCapability, model::synchronize, onAppSettings, onTestOverlay)
         }
         SettingsPage.UPDATE -> {
             val model: AppUpdateViewModel = uiViewModel { AppUpdateViewModel(api.update) }
             val state by model.state.collectAsStateWithLifecycle()
             val mutation by model.mutation.collectAsStateWithLifecycle()
-            ActiveRefresh(signal, refresh = model::refresh)
+            LaunchedEffect(model) { model.refresh() }
             AppUpdateScreen(state, mutation, onBack, model::refresh,
                 model::check, model::download, model::cancel, model::install)
         }

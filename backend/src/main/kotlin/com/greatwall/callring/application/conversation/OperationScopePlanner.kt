@@ -72,7 +72,11 @@ class OperationScopePlanner(private val queries:QueryService,private val coordin
                 34,35->config(setOf("score"))
                 37->{var keys:Set<String> = fields("appearance:",setOf("selection","presetId","customSeedRgb","colorMode"));if(keys.any{it!="appearance:colorMode"})keys=keys+setOf("appearance:selection","appearance:presetId","appearance:customSeedRgb");observe(AiDomain.D11,"current",keys.ifEmpty{setOf("appearance:colorMode")} )}
                 in 39..43->observe(AiDomain.D12,"current",setOf("ringtone"))
-                46,67,68,69,70->observe(AiDomain.D19,"current",setOf("runtime:capabilities"))
+                46->observe(AiDomain.D19,"current",setOf("runtime:capability:CALL_LOG"))
+                67->observe(AiDomain.D19,"current",setOf("runtime:capability:"+a.s("capability")))
+                68->observe(AiDomain.D19,"current",setOf("runtime:status"))
+                69->observe(AiDomain.D19,"current",setOf("runtime:pinWidget"))
+                70->observe(AiDomain.D19,"current",setOf("runtime:capability:OVERLAY"))
                 48,49->{val id=a.l("widgetId");observe(AiDomain.D18,"binding:$id",setOf("widget:$id"),"bindings",QueryFilter(id=id))}
                 52->{val r=a.optObj("recording");if(r!=null)observe(AiDomain.D13,"current",r.fields.keys.mapTo(linkedSetOf()){ "recordingConfig:$it" }.ifEmpty{setOf("recordingConfig")});a.optObj("ai")?.let{observe(AiDomain.D14,"current",aiKeys(it))};if(scopes.isEmpty())observe(AiDomain.D13,"current",setOf("recordingConfig"))}
                 53,66->{val slot=a.s("slot");observe(AiDomain.D14,"current",setOf("ai:$slot:protocol","ai:$slot:url","ai:$slot:model","ai:$slot:key"))}

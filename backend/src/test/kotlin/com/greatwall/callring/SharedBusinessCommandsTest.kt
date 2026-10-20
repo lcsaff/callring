@@ -42,7 +42,7 @@ class SharedBusinessCommandsTest {
             override val callers = object : CallersApi by fixture.backend.callers {
                 override suspend fun getEditor(number: String?): ApiResult<CallerEditorData> {
                     val editor = fixture.backend.callers.getEditor(number)
-                    fixture.coordinator.changed("recording")
+                    fixture.coordinator.publishResource("recording", setOf("recording"), com.greatwall.callring.application.coordination.ChangeImpact.wide(setOf(com.greatwall.callring.contracts.change.DataDomain.RECORDING_ARCHIVES)))
                     return editor
                 }
             }

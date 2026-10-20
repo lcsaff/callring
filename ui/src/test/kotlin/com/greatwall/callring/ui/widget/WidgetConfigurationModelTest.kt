@@ -20,6 +20,34 @@ import androidx.lifecycle.SavedStateHandle
 
 @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
 class WidgetConfigurationModelTest {
+    @Test fun bindingInstancesAreIsolatedAndSaveNoopOrFailureHasNoCallbackQuery() = runTest {
+        val feed = TestChangeFeed(); val counts = mutableMapOf<Int, Int>(); val bindings = mutableMapOf(7 to "100", 8 to "200")
+        var fail = false
+        val api = object : UiFakeApi() {
+            override val changes: ChangeFeed = feed
+            override fun checkNumber(raw: String) = NumberCheck(raw, raw in setOf("100", "200"), false)
+            override suspend fun getBinding(widgetId: Int): ApiResult<WidgetBinding?> {
+                counts[widgetId] = (counts[widgetId] ?: 0) + 1
+                return ApiResult.Success(bindings[widgetId]?.let { WidgetBinding(widgetId, it) })
+            }
+            override suspend fun saveBinding(widgetId: Int, number: String): ApiResult<WidgetBinding> {
+                if (fail) return ApiResult.Failure(ApiError(ErrorCode.STORAGE_FAILURE, "failed"))
+                if (bindings[widgetId] != number) { bindings[widgetId] = number; feed.entity(DataDomain.WIDGET_BINDINGS, widgetId.toString()) }
+                return ApiResult.Success(WidgetBinding(widgetId, number))
+            }
+        }
+        val i = WidgetConfigurationModel(7, api, backgroundScope)
+        val j = WidgetConfigurationModel(8, api, backgroundScope)
+        runCurrent(); assertEquals(mapOf(7 to 1, 8 to 1), counts)
+        bindings[7] = "200"; feed.entity(DataDomain.WIDGET_BINDINGS, "7"); runCurrent()
+        assertEquals(mapOf(7 to 2, 8 to 1), counts); assertEquals("200", i.binding.value.data!!.number); assertEquals("200", j.binding.value.data!!.number)
+        i.changeQuery("100"); i.selectDirectNumber(); runCurrent(); i.save(); runCurrent()
+        assertEquals(mapOf(7 to 3, 8 to 1), counts); assertEquals("100", i.binding.value.data!!.number)
+        i.save(); runCurrent(); assertEquals(mapOf(7 to 3, 8 to 1), counts)
+        i.changeQuery("200"); i.selectDirectNumber(); runCurrent(); fail = true; i.save(); runCurrent()
+        assertEquals(mapOf(7 to 3, 8 to 1), counts); assertEquals("200", i.selectedNumber.value); assertEquals("100", bindings[7])
+        assertNotNull(i.mutation.value.error)
+    }
     @Test fun processRestorationKeepsEditedSelectionInsteadOfTheOldBinding() = runTest {
         val api = object : UiFakeApi() {
             override suspend fun getBinding(widgetId: Int) = ApiResult.Success(WidgetBinding(widgetId, "200"))

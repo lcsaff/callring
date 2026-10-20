@@ -8,7 +8,20 @@ import org.junit.Assert.*
 import org.junit.Test
 
 class InvalidationTrackerTest {
-    private fun entity(domain: DataDomain, key: String) = ChangeSubscription(setOf(domain), mapOf(domain to key))
+    private fun entity(domain: DataDomain, key: String) = ChangeSubscription(setOf(domain), mapOf(domain to setOf(key)))
+    @Test fun multipleSelectedEntitiesUseLatestRelevantRevisionAndNeverAliasAnotherDomain() {
+        val tracker = InvalidationTracker("process")
+        val selected = ChangeSubscription(setOf(DataDomain.RUNTIME), mapOf(DataDomain.RUNTIME to setOf("status", "ringtonePlayback")))
+        tracker.publish(1, ChangeImpact(mapOf(DataDomain.RUNTIME to setOf("status"))))
+        tracker.publish(2, ChangeImpact(mapOf(DataDomain.RUNTIME to setOf("diagnostics"))))
+        assertEquals(1L, tracker.snapshots.value.token(selected).revisions[DataDomain.RUNTIME])
+        tracker.publish(3, ChangeImpact(mapOf(DataDomain.RUNTIME to setOf("ringtonePlayback"))))
+        assertEquals(3L, tracker.snapshots.value.token(selected).revisions[DataDomain.RUNTIME])
+        tracker.publish(4, ChangeImpact(mapOf(DataDomain.CALLERS to setOf("status"))))
+        assertEquals(3L, tracker.snapshots.value.token(selected).revisions[DataDomain.RUNTIME])
+        assertThrows(IllegalArgumentException::class.java) { ChangeSubscription(setOf(DataDomain.RUNTIME), mapOf(DataDomain.RUNTIME to emptySet())) }
+        assertThrows(IllegalArgumentException::class.java) { ChangeSubscription(setOf(DataDomain.RUNTIME), mapOf(DataDomain.CALLERS to setOf("status"))) }
+    }
     @Test fun slowCollectorRetainsBothEntitiesWithoutRefreshingAnotherDomain() = runBlocking {
         val tracker = InvalidationTracker("process")
         val release = CompletableDeferred<Unit>()

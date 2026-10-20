@@ -27,7 +27,7 @@ class ToolBatchEngineTest {
             override fun query(spec:QuerySpec,after:String?)=SourcePage(spec.filter.number?.let{get(spec.domain,it,spec.projection)}?.let{listOf(it)}?:emptyList(),if(spec.filter.number in f.state.profiles)1 else 0)
         }
         val q=QueryService(listOf(source),revision=f.coordinator::marker)
-        val foreground=ForegroundActionService().also{it.attachHost()}
+        val foreground=ForegroundActionService(checkCommand = { _, _ -> true }).also{it.attachHost()}
         val executor=ToolExecutor({f.backend},f.coordinator,foreground,ForegroundResourceRegistry(),queries=q)
         val engine=ToolBatchEngine({f.backend},executor,q,f.coordinator,"session","turn",1,{true})
         fun profile(id:String,number:String,task:String)=ConversationToolCall(id,"callers_saveProfile",aiObject("number" to aiString(number),"name" to aiString("合成测试-$number"),"taskId" to aiString(task)))
@@ -135,7 +135,7 @@ class ToolBatchEngineTest {
         assertTrue(t.engine.complete)
     }
     @Test fun losingForegroundDuringPreparationPreventsActualPublication()=runBlocking {
-        val t=Fixture();val host=ForegroundActionService();val token=host.attachHost()
+        val t=Fixture();val host=ForegroundActionService(checkCommand = { _, _ -> true });val token=host.attachHost()
         fun api(command:CommandContext?=null):CallringUiApi {
 
             val base=command?.let(t.f.backend::commandApi)?:t.f.backend

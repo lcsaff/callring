@@ -5,10 +5,6 @@ import com.greatwall.callring.contracts.common.*
 import com.greatwall.callring.contracts.change.*
 import com.greatwall.callring.application.ports.BackendFailure
 import java.util.UUID
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.flow
-import kotlinx.coroutines.flow.collect
 import com.greatwall.callring.application.coordination.*
 
 /** Fence only publication, never preparation, network, or consumers of the change feed. */
@@ -16,16 +12,6 @@ class BusinessRevisionCoordinator {
     val fence = Any()
     private val incarnation = UUID.randomUUID().toString()
     val invalidations = InvalidationTracker(incarnation)
-    fun observe(): Flow<DataChange> = flow {
-        var previous: InvalidationSnapshot? = null
-        invalidations.snapshots.collect { current ->
-            val old = previous
-            val domains = if (old == null || old.epoch != current.epoch) DataDomain.entries.toSet()
-                else DataDomain.entries.filterTo(linkedSetOf()) { (current.domains[it]?.lastAnyRevision ?: 0) != (old.domains[it]?.lastAnyRevision ?: 0) }
-            previous = current
-            if (domains.isNotEmpty()) emit(DataChange(current.revision, domains, null, null))
-        }
-    }
     fun publishCore(keys: Set<String>, impact: ChangeImpact) = synchronized(fence) {
         publishResource("core", keys, impact)
     }
@@ -46,7 +32,6 @@ class BusinessRevisionCoordinator {
         }
         (keys + resources).forEach { scopeChanges[it] = revision }
         invalidations.publish(revision, impact)
-        changes.value = DataChange(revision, impact.domains.keys, null, null)
     }
     private val versions = linkedMapOf("core" to 0L, "recording" to 0L, "recordingConfig" to 0L, "aiConfig" to 0L, "preferences" to 0L, "ringtone" to 0L, "diagnostics" to 0L)
     private var revision = 0L
@@ -57,12 +42,8 @@ class BusinessRevisionCoordinator {
     fun domainMarker(domain:String,version:Long):Long?=synchronized(fence){domainMarkers[domain]?.get(version)}
     fun unchanged(keys:Set<String>,at:Long)=synchronized(fence){keys.isNotEmpty()&&at<=revision&&keys.none{(scopeChanges[it]?:0L)>at}}
     fun expect(keys:Set<String>,observedAt:Long=marker()):Map<String,Long> = synchronized(fence){require(keys.isNotEmpty()&&observedAt<=revision);keys.associateWith{observedAt}}
-    fun publishScopes(keys:Set<String>)=synchronized(fence){
-        if(keys.isNotEmpty()){revision=Math.addExact(revision,1);keys.forEach{scopeChanges[it]=revision};changes.value=DataChange(revision,DataDomain.values().toSet(),null,null)}
-    }
     private val commandCommits = linkedMapOf<String, RevisionVector>()
     private val commandMarkers = linkedMapOf<String,Long>()
-    val changes = MutableStateFlow(DataChange(0, DataDomain.values().toSet(), null, null))
     fun capture(): RevisionVector = synchronized(fence) { RevisionVector(incarnation, versions.toMap()) }
     fun check(context: CommandContext?) { synchronized(fence){
         if (context == null) return
@@ -82,14 +63,6 @@ class BusinessRevisionCoordinator {
         if (changed) throw BackendFailure(ApiError(ErrorCode.CONFLICT, "business.changed", retryable = true))
     } }
     fun <T> guard(context: CommandContext? = null, block: () -> T): T = synchronized(fence) { check(context); block() }
-    fun changed(domain: String) = synchronized(fence) {
-        versions[domain] = Math.addExact(versions.getValue(domain), 1)
-        revision = Math.addExact(revision, 1)
-        scopeChanges[domain]=revision
-        domainMarkers.getValue(domain).let{history->history[versions.getValue(domain)]=revision;if(history.size>1024)history.remove(history.keys.first())}
-        changes.value = DataChange(revision, DataDomain.values().toSet(), null, null)
-        invalidations.publish(revision, ChangeImpact.wide(DataDomain.entries.toSet()))
-    }
     fun record(context: CommandContext?) { if(context != null) synchronized(fence) { commandCommits[context.operationId] = capture();commandMarkers[context.operationId]=revision } }
     fun committedMarker(operationId:String):Long?=synchronized(fence){commandMarkers[operationId]}
     fun committed(operationId: String): RevisionVector? = synchronized(fence) { commandCommits[operationId] }
@@ -97,10 +70,7 @@ class BusinessRevisionCoordinator {
         if(keys.isEmpty())return@synchronized
         revision=Math.addExact(revision,1)
         keys.forEach{scopeChanges[it]=revision}
-        val impact=ChangeImpact.wide(setOf(DataDomain.RUNTIME))
-        changes.value=DataChange(revision,impact.domains.keys,null,null)
+        val impact=ChangeImpact(mapOf(DataDomain.RUNTIME to keys.mapTo(linkedSetOf()) { it.removePrefix("runtime:") }))
         invalidations.publish(revision,impact)
     }
-    fun runtimeChanged()=publishRuntime(setOf("runtime","runtime:capabilities"))
-    fun <T> commit(domain: String, context: CommandContext? = null, block: () -> T): T = guard(context) { block().also { changed(domain); record(context) } }
 }

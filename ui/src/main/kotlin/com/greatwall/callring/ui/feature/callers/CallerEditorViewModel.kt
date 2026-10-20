@@ -20,8 +20,6 @@ class CallerEditorViewModel(
     private val deletion: NumberDeletionApi? = null,
     private val onDeleted: () -> Unit = {},
 ) : UiViewModel(testScope) {
-    private val loader = RequestLoader<CallerEditorData>(scope)
-    val state = loader.state
     private val writer = MutationRunner(scope)
     val mutation = writer.state
     private val mutableDraft = MutableStateFlow<CallerDraft?>(null)
@@ -35,13 +33,9 @@ class CallerEditorViewModel(
     private var baseline: CallerDraft? =
         if (savedState.get<String>("baseNumber") != null) restoreBase() else null
 
-    init {
-        observeChanges(changes, setOf(DataDomain.CALLERS, DataDomain.POSITIONS), number, ::refresh)
-    }
-
-    fun refresh() =
-        loader.load(
-            onSuccess = { snapshot ->
+    private val loader = ObservedQuery(scope, changes,
+        numberSubscription(setOf(DataDomain.CALLERS, DataDomain.POSITIONS), number),
+        load = { api.getEditor(number) }, onSuccess = { snapshot ->
                 loadedGeneration++
                 if (mutableDraft.value == null) {
                     mutableDraft.value =
@@ -55,10 +49,10 @@ class CallerEditorViewModel(
                     }
                     setBaseline(snapshot.draft)
                 }
-            },
-        ) {
-            api.getEditor(number)
-        }
+        })
+    val state = loader.state
+    init { loader.start(scope) }
+    fun refresh() = loader.request(force = true)
 
     fun edit(change: CallerDraft.() -> CallerDraft) {
         if (mutation.value.busy) return

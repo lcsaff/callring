@@ -14,12 +14,12 @@ class BusinessRevisionCoordinatorTest {
             val command = CommandContext("sequence", coordinator.capture(), 1,
                 expectedScopes = if (scoped) coordinator.expect(setOf("profile:31234:exists")) else null,
                 continueOwnCommits = true) { active }
-            coordinator.commit("core", command) { coordinator.publishScopes(setOf("profile:31234:exists")) }
-            coordinator.commit("preferences", command) { }
+            coordinator.guard(command) { coordinator.publishCore(setOf("profile:31234:exists"), com.greatwall.callring.application.coordination.ChangeImpact(emptyMap())); coordinator.record(command) }
+            coordinator.guard(command) { coordinator.publishResource("preferences", setOf("appearance"), com.greatwall.callring.application.coordination.ChangeImpact(emptyMap())); coordinator.record(command) }
             active = false
             assertTrue(runCatching { coordinator.guard(command) { } }.isFailure)
             active = true
-            coordinator.guard { coordinator.publishScopes(setOf("profile:31234:exists")); coordinator.changed("core") }
+            coordinator.guard { coordinator.publishCore(setOf("profile:31234:exists"), com.greatwall.callring.application.coordination.ChangeImpact(emptyMap())); coordinator.publishResource("core", setOf("core"), com.greatwall.callring.application.coordination.ChangeImpact.wide(setOf(com.greatwall.callring.contracts.change.DataDomain.CALLERS))) }
             assertTrue(runCatching { coordinator.guard(command) { } }.isFailure)
         }
     }
@@ -27,26 +27,26 @@ class BusinessRevisionCoordinatorTest {
     @Test fun ordinaryCommandsCannotReuseTheirOwnStaleBaseline() {
         val coordinator = BusinessRevisionCoordinator()
         val command = CommandContext("ordinary", coordinator.capture(), 1) { true }
-        coordinator.commit("core", command) { }
-        assertTrue(runCatching { coordinator.commit("core", command) { } }.isFailure)
+        coordinator.guard(command) { coordinator.publishCore(setOf("core"), com.greatwall.callring.application.coordination.ChangeImpact(emptyMap())); coordinator.record(command) }
+        assertTrue(runCatching { coordinator.guard(command) { coordinator.publishCore(setOf("core"), com.greatwall.callring.application.coordination.ChangeImpact(emptyMap())); coordinator.record(command) } }.isFailure)
     }
     @Test fun failedCommitDoesNotAdvanceAndStaleCommandNeverWrites() {
         val coordinator = BusinessRevisionCoordinator()
         val before = coordinator.capture()
-        runCatching { coordinator.commit("core") { error("rollback") } }
+        runCatching { coordinator.guard { error("rollback") } }
         assertEquals(before, coordinator.capture())
-        coordinator.commit("core") { 1 }
+        coordinator.publishCore(setOf("core"), com.greatwall.callring.application.coordination.ChangeImpact(emptyMap()))
         var wrote = false
         val stale = CommandContext("op", before, 1) { true }
-        assertTrue(runCatching { coordinator.commit("core", stale) { wrote = true } }.isFailure)
+        assertTrue(runCatching { coordinator.guard(stale) { wrote = true } }.isFailure)
         assertFalse(wrote)
     }
-    @Test fun stoppedGenerationCannotCommitAndChangesRetainAllDomains() {
+    @Test fun stoppedGenerationCannotCommitAndPublicationHasOnlyActualDomain() {
         val coordinator = BusinessRevisionCoordinator()
         val stopped = CommandContext("op", coordinator.capture(), 1) { false }
-        assertTrue(runCatching { coordinator.commit("recording", stopped) { 1 } }.isFailure)
-        coordinator.commit("recording") { 1 }
-        assertEquals(DataDomain.values().toSet(), coordinator.changes.value.domains)
+        assertTrue(runCatching { coordinator.guard(stopped) { error("must not execute") } }.isFailure)
+        coordinator.publishResource("recording", setOf("archive:1"), com.greatwall.callring.application.coordination.ChangeImpact.wide(setOf(DataDomain.RECORDING_ARCHIVES)))
+        assertEquals(setOf(DataDomain.RECORDING_ARCHIVES), coordinator.invalidations.snapshots.value.let { snapshot -> snapshot.domains.filterValues { it.lastAnyRevision == snapshot.revision }.keys })
         assertEquals(1L, coordinator.capture().values["recording"])
     }
 }

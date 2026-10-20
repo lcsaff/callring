@@ -17,8 +17,6 @@ class CallerListViewModel(
 ) : UiViewModel(testScope) {
     private val searchRequest = search
     private val checkNumberValue = checkNumber
-    private val loader = RequestLoader<Page<CallerProfile>>(scope)
-    val state = loader.state
     private val mutableQuery = MutableStateFlow(CallerSearch(savedState["text"] ?: "", PageRequest(savedState["page"] ?: 0)))
     val query = mutableQuery.asStateFlow()
 
@@ -27,18 +25,18 @@ class CallerListViewModel(
         .map { search -> search.text.takeIf { it.isNotBlank() }?.let(checkNumberValue) }
         .stateIn(scope, SharingStarted.Eagerly, checkFor(mutableQuery.value))
 
-    init { observeChanges(changes, setOf(DataDomain.CALLERS, DataDomain.POSITIONS)) { page(0) } }
+    private val loader = ObservedQuery(scope, changes,
+        ChangeSubscription(setOf(DataDomain.CALLERS, DataDomain.POSITIONS)), { query.value },
+        { searchRequest(query.value) }, { result ->
+            val lastPage = ((result.totalItems - 1).coerceAtLeast(0) / result.pageSize).toInt()
+            if (query.value.page.pageIndex > lastPage) page(lastPage)
+        })
+    val state = loader.state
+    init { loader.start(scope) { mutableQuery.value = query.value.copy(page = PageRequest()); savedState["page"] = 0 } }
 
     fun search(text: String) = update(CallerSearch(text))
     fun page(index: Int) = update(query.value.copy(page = PageRequest(index.coerceAtLeast(0))))
-
-    fun refresh(preserveData: Boolean = true) {
-        val captured = query.value
-        loader.load(preserveData, onSuccess = { result ->
-            val lastPage = ((result.totalItems - 1).coerceAtLeast(0) / result.pageSize).toInt()
-            if (captured.page.pageIndex > lastPage) page(lastPage)
-        }) { searchRequest(captured) }
-    }
+    fun refresh() = loader.request(force = true)
 
     private fun checkFor(search: CallerSearch): NumberCheck? = search.text.takeIf { it.isNotBlank() }?.let(checkNumberValue)
 
@@ -46,6 +44,6 @@ class CallerListViewModel(
         mutableQuery.value = value
         savedState["text"] = value.text
         savedState["page"] = value.page.pageIndex
-        refresh(false)
+        loader.request()
     }
 }

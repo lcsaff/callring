@@ -51,21 +51,6 @@ class RequestLoaderTest {
         assertNull(loader.state.value.error)
     }
 
-    @Test fun runtimeEventsWithSameRevisionAreBothRelevant() {
-        val event = DataChange(3, setOf(DataDomain.RUNTIME), null, null)
-        repeat(2) { assertTrue(event.affects(setOf(DataDomain.RUNTIME))) }
-        assertFalse(event.affects(setOf(DataDomain.CALLERS)))
-    }
-
-    @Test fun objectFiltersRestrictOnlyTheirOwnObjectDomain() {
-        val event = DataChange(3, setOf(DataDomain.CALLERS), setOf("100"), null)
-        assertTrue(event.affects(setOf(DataDomain.CALLERS), number = "100"))
-        assertFalse(event.affects(setOf(DataDomain.CALLERS), number = "200"))
-        assertTrue(event.affects(setOf(DataDomain.CALLERS)))
-        val broad = event.copy(numbers = null)
-        assertTrue(broad.affects(setOf(DataDomain.CALLERS), number = "200"))
-    }
-
     @Test fun duplicateMutationIsIgnoredAndValidationRetained() = runTest {
         val runner = MutationRunner(backgroundScope)
         val result = CompletableDeferred<ApiResult<Unit>>()

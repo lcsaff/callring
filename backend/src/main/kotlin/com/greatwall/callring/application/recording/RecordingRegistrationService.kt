@@ -29,7 +29,8 @@ class RecordingRegistrationService(
         require(statisticsId > 0 && sessionId.isNotBlank())
         val call = store.sessionRecording(sessionId)
         if (call != null && store.insertStatisticsLink(statisticsId, sessionId))
-            publish(call.id, setOf("recordingLinks", "recordingLink:$statisticsId"))
+            coordinator.publishResource("recording", setOf("recordingLinks", "recordingLink:$statisticsId"),
+                ChangeImpact(mapOf(DataDomain.RECORDING_ARCHIVES to setOf(call.id.toString(), "statistics:$statisticsId"))))
         coordinator.record(command)
     }
 

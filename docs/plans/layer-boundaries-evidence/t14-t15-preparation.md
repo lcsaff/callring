@@ -37,3 +37,5 @@ verify_backend 需校验单 APK metadata、输出目录内路径、aapt package 
 ToolRegistry 的展示字面量许可当前依赖数字 index/位置参数，具名目录后改为明确声明解析，不能扩大为目录白名单。当前契约 inventory 同步经过审查的当前源码；冻结 baseline 不改。
 
 主负责人决定：ai-operation-compatibility.json 继续冻结并保留原 pin。具名生产目录内部结构变化不构成重写 golden 或移除 pin 的理由；可增加外部字段语义比较，不能通过更新 hash 掩盖工具名/schema/标识变化。
+
+操作守卫还应拒绝把数字分派改藏到displayOrder或operationCode解析：这些字段只能服务稳定协议/元数据及发现排序，Executor/Batch/Scope/Confirmation/Verifier/Reader的行为应由OperationId或明确策略驱动。目录自身也不整文件豁免数字逻辑；保留显式定义字面量、唯一性校验和兼容导出正例，并用目录中偷偷引入numeric when的反例验证边界。

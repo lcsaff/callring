@@ -21,7 +21,7 @@ class RecordingArchiveListTest {
                 return ApiResult.Success(listOf(older, newer))
             }
         }
-        val model = RecordingArchivesViewModel(api, this)
+        val model = RecordingArchivesViewModel(api, backgroundScope, com.greatwall.callring.ui.testing.TestChangeFeed())
         model.refresh(); runCurrent()
         assertEquals(listOf(newer, older), model.state.value.data)
         assertEquals(1, loads)
@@ -37,7 +37,7 @@ class RecordingArchiveListTest {
                 ApiResult.Failure(ApiError(ErrorCode.STORAGE_FAILURE, "recording.storage_or_network"))
             else ApiResult.Success(emptyList())
         }
-        val model = RecordingArchivesViewModel(api, this)
+        val model = RecordingArchivesViewModel(api, backgroundScope, com.greatwall.callring.ui.testing.TestChangeFeed())
         model.refresh(); runCurrent()
         assertNotNull(model.state.value.error)
         fail = false

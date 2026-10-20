@@ -169,7 +169,7 @@ class RecordingCommandContextTest {
         val old = store.get(call.id)!!
         val runtime = RecordingAssembly(context, "record_command", { null }, { null }, {}, { store }, coordinator = coordinator, operationActive = { true })
         val stale = CommandContext("op", coordinator.capture(), 1) { true }
-        coordinator.commit("core") { Unit }
+        coordinator.publishCore(setOf("core"), com.greatwall.callring.application.coordination.ChangeImpact(emptyMap()))
         assertTrue(runtime.service.bound(stale).retry(call.id) is ApiResult.Failure)
         assertEquals(old.generation, store.get(call.id)!!.generation)
         runtime.close()

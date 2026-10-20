@@ -15,7 +15,7 @@ class ForegroundLockOrderTest {
         val fenceHeld = CountDownLatch(1)
         val foregroundHeld = CountDownLatch(1)
         val pool = Executors.newFixedThreadPool(3) { work -> Thread(work).apply { isDaemon = true } }
-        val foreground = ForegroundActionService(checkCommand = {
+        val foreground = ForegroundActionService(checkCommand = { _, _ ->
             foregroundHeld.countDown()
             coordinator.guard { true }
         })

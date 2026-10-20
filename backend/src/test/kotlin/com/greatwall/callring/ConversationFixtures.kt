@@ -17,6 +17,7 @@ class ConversationFixtures {
     val bindings = linkedMapOf<Int, WidgetBinding>()
     var appearance = AppearanceSettings(ThemeSelection.PRESET, "default", null, ColorMode.FOLLOW_SYSTEM)
     var ringtone = RingtoneSettings(false, AudioSource.BUILT_IN, "built-in", 8)
+    var capabilities = Capability.entries.associateWith { AccessState.GRANTED }
     var now = 100000000L
     private val store = object : BackendStore {
             override fun <T> read(block: (BackendState) -> T) = block(state)
@@ -39,7 +40,7 @@ class ConversationFixtures {
         },
         object : RuntimeProbe {
             override fun getInstalledWidgets() = com.greatwall.callring.contracts.widget.WidgetInstallState(emptyList(), AccessState.GRANTED)
-            override fun getStatus() = RuntimeStatus(Capability.values().associateWith { AccessState.GRANTED }, Audibility.AUDIBLE, PhoneActivity.IDLE, PlaybackStatus(PlaybackMode.NONE, PlaybackState.IDLE), true, now)
+            override fun getStatus() = RuntimeStatus(capabilities, Audibility.AUDIBLE, PhoneActivity.IDLE, PlaybackStatus(PlaybackMode.NONE, PlaybackState.IDLE), true, now)
             override fun getDiagnostics() = emptyList<DiagnosticEntry>()
         },
         object : AudioController {

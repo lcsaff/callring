@@ -14,6 +14,49 @@ import org.robolectric.annotation.Config
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [33], manifest = Config.NONE)
 class PublicationAdaptersTest {
+    @Test fun realPlaybackTrackerAndFollowingPlatformObservationPublishOnce() {
+        val coordinator = BusinessRevisionCoordinator()
+        val observations = com.greatwall.callring.application.runtime.RuntimeObservationTracker(coordinator)
+        val tracker = PlaybackStateTracker { coordinator.publishRuntime(setOf("runtime:ringtonePlayback")) }
+        val status = com.greatwall.callring.contracts.runtime.RuntimeStatus(emptyMap(),
+            com.greatwall.callring.contracts.runtime.Audibility.AUDIBLE, com.greatwall.callring.contracts.runtime.PhoneActivity.IDLE,
+            tracker.snapshot(), true, 0)
+        observations.observed(status)
+        tracker.mark(com.greatwall.callring.contracts.runtime.PlaybackMode.PREVIEW, com.greatwall.callring.contracts.runtime.PlaybackState.PLAYING)
+        observations.observed(status.copy(playback = tracker.snapshot(), checkedAtEpochMillis = 1000))
+        assertEquals(1L, coordinator.marker())
+        tracker.mark(com.greatwall.callring.contracts.runtime.PlaybackMode.PREVIEW, com.greatwall.callring.contracts.runtime.PlaybackState.PLAYING)
+        assertEquals(1L, coordinator.marker())
+    }
+    @Test fun diagnosticsSaturationAndFailedPersistenceDoNotPublish() {
+        val context = RuntimeEnvironment.getApplication()
+        val coordinator = BusinessRevisionCoordinator()
+        val preferences = context.getSharedPreferences("t11_diag_saturation", 0)
+        val clock = Clock.fixed(java.time.Instant.EPOCH, java.time.ZoneOffset.UTC)
+        AndroidDiagnosticsStore(preferences, clock, coordinator).use { store ->
+            repeat(18) { store.add(DiagnosticEvent.AUDIO_PLAYING) }
+            val before = coordinator.marker()
+            store.add(DiagnosticEvent.AUDIO_PLAYING)
+            assertEquals("identical persisted history is a no-op", before, coordinator.marker())
+            val snapshot = coordinator.invalidations.snapshots.value
+            assertEquals(setOf(com.greatwall.callring.contracts.change.DataDomain.RUNTIME), snapshot.domains.keys)
+            assertEquals(setOf("diagnostics"), snapshot.domains.getValue(com.greatwall.callring.contracts.change.DataDomain.RUNTIME).entityRevisions.keys)
+        }
+        val failed = object : android.content.SharedPreferences by preferences {
+            override fun edit(): android.content.SharedPreferences.Editor {
+                val editor = preferences.edit()
+                return object : android.content.SharedPreferences.Editor by editor {
+                    override fun putString(key: String?, value: String?): android.content.SharedPreferences.Editor { editor.putString(key, value); return this }
+                    override fun commit() = false
+                }
+            }
+        }
+        val before = coordinator.marker()
+        AndroidDiagnosticsStore(failed, clock, coordinator).use { store ->
+            assertTrue(runCatching { store.add(DiagnosticEvent.AUDIO_STOPPED) }.isFailure)
+        }
+        assertEquals(before, coordinator.marker())
+    }
     @Test fun bindingsAppearanceAndDiagnosticsPublishRealCommits() = kotlinx.coroutines.runBlocking {
         val context = RuntimeEnvironment.getApplication()
         val coordinator = BusinessRevisionCoordinator()

@@ -51,4 +51,20 @@ class ArchitectureTests(unittest.TestCase):
         def mutate(r):
             p=r/'ui/src/sharedTest/kotlin/Bad.kt';p.parent.mkdir(parents=True);p.write_text('import com.greatwall.callring.application.api.RecordingApi')
         self.check_bad(mutate)
+    def test_legacy_change_event_is_rejected_in_every_source_set(self):
+        for module, source_set in (("contracts", "main"), ("ui", "sharedTest"), ("app", "debug"), ("backend", "test")):
+            def mutate(root):
+                path = root / f"{module}/src/{source_set}/kotlin/Old.kt"
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_text("val old: DataChange? = null")
+            self.check_bad(mutate)
+    def test_nullable_or_default_cumulative_feed_is_rejected(self):
+        for declaration in ("fun snapshots(): StateFlow<InvalidationSnapshot>?", "fun snapshots(): StateFlow<InvalidationSnapshot> = emptyFlow()", "fun observe(): Flow<InvalidationSnapshot>"):
+            self.check_bad(lambda root: (root/'contracts/src/main/kotlin/Old.kt').write_text("interface ChangeFeed { " + declaration + " }"))
+    def test_dual_subscription_mode_is_rejected(self):
+        for declaration in ("val refreshFromChanges = false", "fun observeChanges() {}"):
+            self.check_bad(lambda root: (root/'ui/src/main/kotlin/Old.kt').write_text(declaration))
+    def test_removed_coordinator_publishers_are_rejected(self):
+        for name in ("changed", "commit", "publishScopes", "runtimeChanged", "observe"):
+            self.check_bad(lambda root: (root/'backend/src/main/kotlin/BusinessRevisionCoordinator.kt').write_text(f"class BusinessRevisionCoordinator {{ fun {name}() {{}} }}"))
 if __name__ == '__main__': unittest.main()

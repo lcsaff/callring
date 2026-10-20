@@ -225,7 +225,7 @@ class BackendMutationDeviceTest : InstrumentationTestCase() {
         val positionsBefore = success(api.settings.getPositions())
         val rowsBefore = settingsRows()
         val snapshotBefore = fixture.graph.backend.decisionSnapshot()
-        val revisionBefore = api.changes.observe().first().dataRevision
+        val revisionBefore = api.changes.snapshots().value.revision
         database { db ->
             // Current settings persistence uses INSERT OR REPLACE. Guard UPDATE as well so the
             // assertion still exercises ignored writes if persistence switches to UPDATE later.
@@ -241,7 +241,7 @@ class BackendMutationDeviceTest : InstrumentationTestCase() {
         assertEquals(first.id, success(api.settings.getPositions()).myPositionId)
         assertEquals(rowsBefore, settingsRows())
         assertSame(snapshotBefore, fixture.graph.backend.decisionSnapshot())
-        assertEquals(revisionBefore, api.changes.observe().first().dataRevision)
+        assertEquals(revisionBefore, api.changes.snapshots().value.revision)
     }
 
     fun testIgnoredQuietWindowWriteRollsBackAllSettingsDecisionSnapshotAndChangeRevision() =
@@ -264,7 +264,7 @@ class BackendMutationDeviceTest : InstrumentationTestCase() {
             val quietBefore = success(api.settings.getQuietHours())
             val rowsBefore = settingsRows()
             val snapshotBefore = fixture.graph.backend.decisionSnapshot()
-            val revisionBefore = api.changes.observe().first().dataRevision
+            val revisionBefore = api.changes.snapshots().value.revision
             val at = fixture.clock.millis() // Monday 08:00 UTC, outside the configured work window.
             assertTrue(snapshotBefore.evaluate("31234", at).silence)
             assertFalse(snapshotBefore.evaluate("123", at).silence)
@@ -288,7 +288,7 @@ class BackendMutationDeviceTest : InstrumentationTestCase() {
             assertSame(snapshotBefore, fixture.graph.backend.decisionSnapshot())
             assertTrue(fixture.graph.backend.decisionSnapshot().evaluate("31234", at).silence)
             assertFalse(fixture.graph.backend.decisionSnapshot().evaluate("123", at).silence)
-            assertEquals(revisionBefore, api.changes.observe().first().dataRevision)
+            assertEquals(revisionBefore, api.changes.snapshots().value.revision)
         }
 
     fun testProviderFirstLifecyclePreservesScreeningIdentityAcrossAmbiguityAndProviderMove() =

@@ -101,6 +101,7 @@ class CallringActivityTest {
 }
 
 class PermissionRecoveryApplication : Application(), UiApiOwner {
+    override suspend fun reobservePlatform() { uiApi.runtime.getStatus() }
     override val uiApi = PermissionRecoveryApi()
 }
 

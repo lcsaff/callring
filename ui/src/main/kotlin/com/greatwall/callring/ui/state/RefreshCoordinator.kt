@@ -34,7 +34,12 @@ class RefreshCoordinator<T>(private val scope: CoroutineScope, private val token
                     if (ticket != generation || readingToken != token()) pending = true
                     else if (!pending) apply(result)
                 }
-            } finally { if (currentRun == runId) loading(false) }
+            } finally {
+                if (currentRun == runId) {
+                    loading(false)
+                    if (pending && scope.isActive) { job = null; request(parameter) }
+                }
+            }
         }
     }
     fun cancel() { generation++; runId++; pending = false; job?.cancel(); job = null }

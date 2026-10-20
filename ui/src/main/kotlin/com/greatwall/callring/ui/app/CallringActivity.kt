@@ -47,7 +47,7 @@ class CallringActivity : ComponentActivity() {
 
     override fun onResume() {
         super.onResume()
-        refreshSignal++
+        lifecycleScope.launch { (application as UiApiOwner).reobservePlatform() }
         // A grant made in system settings must restore the observer as well as refresh its status.
         if (checkSelfPermission(Manifest.permission.READ_CALL_LOG) == PackageManager.PERMISSION_GRANTED) {
             lifecycleScope.launch { (application as UiApiOwner).uiApi.runtime.requestCallLogSync() }

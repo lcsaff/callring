@@ -53,8 +53,6 @@ private val BottomBarContentHeight = 44.dp
     val navigationState: UiNavigationState = uiViewModel("application-navigation") { UiNavigationState(it) }
     val appearance by appearanceModel.draft.collectAsStateWithLifecycle()
     val appearanceState by appearanceModel.state.collectAsStateWithLifecycle()
-    ActiveRefresh(refreshSignal, refresh = settings::refresh)
-    ActiveRefresh(refreshSignal, refresh = appearanceModel::refresh)
     CallringTheme(appearance ?: appearanceState.data ?: DefaultAppearance) {
         ThemeWindowSupport()
         val navigation = rememberNavController()
@@ -132,8 +130,7 @@ private fun AppScaffold(
                 val quietMutation by quiet.mutation.collectAsStateWithLifecycle()
                 val quietDraft by quiet.draft.collectAsStateWithLifecycle()
                 val quietOpen by quiet.dialogOpen.collectAsStateWithLifecycle()
-                ActiveRefresh(refreshSignal, state.data?.currentWork?.nextBoundaryEpochMillis, 60_000, model::refresh)
-                ActiveRefresh(refreshSignal, refresh = quiet::refresh)
+                TimeRefresh(model.timeRefresh, refreshSignal, state.data?.currentWork?.nextBoundaryEpochMillis, 60_000, model::refresh)
                 HomeScreen(state, model::refresh, { open(UiDestination.Leaves) }, quietCard = {
                     HomeQuietCard(quietState, quietMutation, quiet::refresh, quiet::setEnabled, quiet::openEditor)
                 })
@@ -148,7 +145,6 @@ private fun AppScaffold(
                 val state by model.state.collectAsStateWithLifecycle()
                 val query by model.query.collectAsStateWithLifecycle()
                 val check by model.check.collectAsStateWithLifecycle()
-                ActiveRefresh(refreshSignal, refresh = { model.refresh() })
                 CallerListScreen(state, query, check, model::search, model::page, { model.refresh() },
                     { open(UiDestination.EditCaller()) }, { open(UiDestination.Report(it)) },
                     { open(UiDestination.Report(it)) }, { open(UiDestination.Positions) })
@@ -174,7 +170,6 @@ private fun AppScaffold(
                 val impact by model.impact.collectAsStateWithLifecycle()
                 val deletionState by model.deletionState.collectAsStateWithLifecycle()
                 val deletionError by model.deletionError.collectAsStateWithLifecycle()
-                ActiveRefresh(refreshSignal, refresh = model::refresh)
                 CallerEditorScreen(state, draft, mutation, number == null, back, model::refresh, { value -> model.edit { value } }, model::save,
                     onDeleteRequest = if (number != null) model::requestDeletion else null,
                     impact = impact, deletionState = deletionState, deletionError = deletionError,
@@ -188,7 +183,7 @@ private fun AppScaffold(
                 val query by model.query.collectAsStateWithLifecycle()
                 val mutation by model.mutation.collectAsStateWithLifecycle()
                 val export = rememberExportPicker(model::export)
-                ActiveRefresh(refreshSignal, intervalMillis = 60_000, refresh = { model.refresh() })
+                TimeRefresh(model.timeRefresh, refreshSignal, intervalMillis = 60_000, refresh = { model.refresh() })
                 ReportScreen(state, query, mutation, back, { model.refresh() }, model::range, model::filter, model::page,
                     export, { open(UiDestination.EditCaller(number)) }, onCapability,
                     { open(UiDestination.Archive(it.id, number, it.startedAtEpochMillis)) })

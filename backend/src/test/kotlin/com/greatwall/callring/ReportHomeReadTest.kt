@@ -321,7 +321,7 @@ class ReportHomeReadTest {
         reads.after = {
             if (reads.captures == 1) {
                 reads.profile = reads.profile.copy(name = "new")
-                coordinator.publishScopes(setOf("profile:31234"))
+                coordinator.publishCore(setOf("profile:31234"), com.greatwall.callring.application.coordination.ChangeImpact(emptyMap()))
             }
         }
         val value = service(reads, coordinator).load(ReportQuery("31234", dates)).value()
@@ -329,7 +329,7 @@ class ReportHomeReadTest {
         assertEquals("new", value.profile.name)
         assertEquals(1L, value.meta.dataRevision)
         reads.captures = 0
-        reads.after = { coordinator.publishScopes(setOf("profile:39999")) }
+        reads.after = { coordinator.publishCore(setOf("profile:39999"), com.greatwall.callring.application.coordination.ChangeImpact(emptyMap())) }
         val unrelated = service(reads, coordinator).load(ReportQuery("31234", dates)).value()
         assertEquals(1, reads.captures)
         assertEquals(1L, unrelated.meta.dataRevision)
@@ -341,7 +341,7 @@ class ReportHomeReadTest {
         val reads = Reads()
         val coordinator = BusinessRevisionCoordinator()
         var writes = 0
-        reads.after = { coordinator.publishScopes(setOf("calls:31234")) }
+        reads.after = { coordinator.publishCore(setOf("calls:31234"), com.greatwall.callring.application.coordination.ChangeImpact(emptyMap())) }
         val result =
             service(reads, coordinator, write = { _, _ -> writes++ })
                 .exportCsv(ReportExportQuery("31234", dates), DocumentRef("memory"))
@@ -358,7 +358,7 @@ class ReportHomeReadTest {
         reads.after = {
             if (reads.captures == 1) {
                 reads.profile = reads.profile.copy(name = "new")
-                coordinator.publishScopes(setOf("score"))
+                coordinator.publishCore(setOf("score"), com.greatwall.callring.application.coordination.ChangeImpact(emptyMap()))
             }
         }
         val bytes = ByteArrayOutputStream()
@@ -379,7 +379,7 @@ class ReportHomeReadTest {
                     )
                     thread.join()
                     writes++
-                    coordinator.publishScopes(setOf("calls:31234"))
+                    coordinator.publishCore(setOf("calls:31234"), com.greatwall.callring.application.coordination.ChangeImpact(emptyMap()))
                     output(bytes)
                 },
             )
@@ -434,11 +434,11 @@ class ReportHomeReadTest {
                 "score",
                 "schedule",
                 "statistics",
-                "runtime",
+                "runtime:capability:CALL_LOG",
             )) {
             val reads = Reads()
             val coordinator = BusinessRevisionCoordinator()
-            reads.after = { coordinator.publishScopes(setOf(key)) }
+            reads.after = { coordinator.publishCore(setOf(key), com.greatwall.callring.application.coordination.ChangeImpact(emptyMap())) }
             assertEquals(
                 key,
                 ErrorCode.CONFLICT,
@@ -456,12 +456,12 @@ class ReportHomeReadTest {
                 "quiet",
                 "overlay",
                 "statistics",
-                "runtime",
+                "runtime:status", "runtime:ringtonePlayback",
                 "ringtone",
             )) {
             val reads = Reads()
             val coordinator = BusinessRevisionCoordinator()
-            reads.after = { coordinator.publishScopes(setOf(key)) }
+            reads.after = { coordinator.publishCore(setOf(key), com.greatwall.callring.application.coordination.ChangeImpact(emptyMap())) }
             val api =
                 HomeService(
                     reads,
@@ -489,7 +489,7 @@ class ReportHomeReadTest {
                     write = { _, output ->
                         writes++
                         if (readback) output(ByteArrayOutputStream())
-                        coordinator.publishScopes(setOf("calls:31234"))
+                        coordinator.publishCore(setOf("calls:31234"), com.greatwall.callring.application.coordination.ChangeImpact(emptyMap()))
                         throw IOException(if (readback) "readback failed" else "write failed")
                     },
                 )
@@ -525,7 +525,7 @@ class ReportHomeReadTest {
         reads.after = {
             if (reads.captures == 1) {
                 reads.quietMode = DomainQuietMode.NON_WORK
-                coordinator.publishScopes(setOf("quiet"))
+                coordinator.publishCore(setOf("quiet"), com.greatwall.callring.application.coordination.ChangeImpact(emptyMap()))
             }
         }
         val api =
@@ -557,7 +557,7 @@ class ReportHomeReadTest {
             fail("mutable runtime")
         } catch (_: UnsupportedOperationException) {}
         reads.captures = 0
-        reads.after = { coordinator.publishScopes(setOf("profile:31234", "score")) }
+        reads.after = { coordinator.publishCore(setOf("profile:31234", "score"), com.greatwall.callring.application.coordination.ChangeImpact(emptyMap())) }
         val unrelated = api.load().value()
         assertEquals(1, reads.captures)
         assertEquals(1L, unrelated.meta.dataRevision)

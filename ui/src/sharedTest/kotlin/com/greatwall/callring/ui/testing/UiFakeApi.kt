@@ -1,5 +1,6 @@
 package com.greatwall.callring.ui.testing
 
+import com.greatwall.callring.ui.testing.TestChangeFeed
 import com.greatwall.callring.contracts.common.*
 import com.greatwall.callring.contracts.change.*
 import com.greatwall.callring.contracts.callers.*
@@ -54,8 +55,8 @@ open class UiFakeApi(private val overlayEnabled: Boolean = false) : CallringUiAp
     override val runtime: RuntimeApi = this
     override val widgets: WidgetBindingsApi = this
     override val changes: ChangeFeed = this
-    private val feed = MutableStateFlow(DataChange(0, DataDomain.entries.toSet(), null, null))
-    override fun observe() = feed
+    protected val feed = TestChangeFeed()
+    override fun snapshots() = feed.snapshots()
     override fun checkNumber(raw: String) = NumberCheck(raw, raw == "100", false)
     var appearance = DefaultAppearance
         private set
@@ -132,6 +133,6 @@ open class UiFakeApi(private val overlayEnabled: Boolean = false) : CallringUiAp
     override suspend fun getBinding(widgetId: Int): ApiResult<WidgetBinding?> = unexpected()
     override suspend fun saveBinding(widgetId: Int, number: String): ApiResult<WidgetBinding> = unexpected()
     override suspend fun removeBinding(widgetId: Int): ApiResult<Unit> = unexpected()
-    private fun changed(domain: DataDomain) { feed.value = DataChange(feed.value.dataRevision + 1, setOf(domain), null, null) }
+    private fun changed(domain: DataDomain) { feed.publish(setOf(domain)) }
     private fun unexpected(): Nothing = error("This operation has no fixture in this test")
 }

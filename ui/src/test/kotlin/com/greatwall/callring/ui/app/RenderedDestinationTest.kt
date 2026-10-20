@@ -24,10 +24,11 @@ class RenderedDestinationTest {
     @Test fun clickCarriesRenderedConnectionEvenWhenVmHasReceivedANewerOne() {
         val old = AiConnectionView(AiProtocol.OPENAI,"https://old.example","old",true)
         val config = MutableStateFlow(AiSettingsView(old,old,ConversationBudget(),0))
+        val changes = TestChangeFeed()
         val attempts = mutableListOf<AiConnectionView>()
         var reads = 0
         val api = object : UiFakeApi() {
-            override val changes = object : ChangeFeed { override fun observe() = config.map { DataChange(it.revision,setOf(DataDomain.AI_SETTINGS),null,null) } }
+            override val changes: ChangeFeed = changes
             override val aiSettings = object : AiSettingsApi by FixtureAiSettingsApi { override suspend fun getAiView(): ApiResult<AiSettingsView> { reads++; return ApiResult.Success(config.value) } }
             override val conversation = object : ConversationApi by FixtureConversationApi {
                 override val state = MutableStateFlow(ConversationState("s"))
@@ -42,7 +43,7 @@ class RenderedDestinationTest {
         compose.onNodeWithText("说说你想了解或处理什么").performTextInput("next")
         val renderedClick = compose.onNodeWithContentDescription("发送消息").fetchSemanticsNode().config[SemanticsActions.OnClick].action!!
         compose.mainClock.autoAdvance = false
-        compose.runOnIdle { config.value = config.value.copy(analysis = old.copy(url = "https://new.example",model = "new"),revision = 1) }
+        compose.runOnIdle { config.value = config.value.copy(analysis = old.copy(url = "https://new.example",model = "new"),revision = 1); changes.publish(setOf(DataDomain.AI_SETTINGS)) }
         compose.waitUntil(3000) { reads >= 2 }
         // Dispatch the action captured from the still-visible composition without the test driver's frame advancement.
         compose.runOnIdle { renderedClick() }

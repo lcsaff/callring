@@ -15,6 +15,19 @@ import org.junit.Test
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class SimpleSettingsRefreshTest {
+    @Test fun defaultSnapshotCommitQueriesOnceAndNoopQueriesZero() = runTest {
+        val api = Api()
+        var reads = 0
+        val model = SnapshotViewModel(api, setOf(DataDomain.STATISTICS), {
+            reads++; ApiResult.Success(api.enabled)
+        }, backgroundScope)
+        runCurrent(); assertEquals(1, reads)
+        model.execute { api.setStatisticsEnabled(true) }; runCurrent()
+        assertEquals("one committed invalidation must have one query owner", 2, reads)
+        model.execute { api.setStatisticsEnabled(true) }; runCurrent()
+        assertEquals("no-op has no new truth to query", 2, reads)
+        assertEquals(true, model.state.value.data)
+    }
     private class Api : UiFakeApi() {
         val cumulative = MutableStateFlow(InvalidationSnapshot("test", 0, 0, emptyMap()))
         override fun snapshots() = cumulative

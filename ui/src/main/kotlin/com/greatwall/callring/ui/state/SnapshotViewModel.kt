@@ -10,36 +10,32 @@ open class SnapshotViewModel<T>(
     domains: Set<DataDomain>,
     private val load: suspend () -> ApiResult<T>,
     testScope: CoroutineScope? = null,
-    private val refreshFromChanges: Boolean = false,
-    entities: Map<DataDomain, String> = emptyMap()
+    entities: Map<DataDomain, Set<String>> = emptyMap(),
+    clock: java.time.Clock = SystemLocalClock
 ) : UiViewModel(testScope) {
-    private val loader = RequestLoader<T>(scope)
+    internal val timeRefresh = TimeRefreshSchedule(clock)
+    private var readStartedAt = timeRefresh.captureRead()
     private val mutableState = MutableStateFlow(LoadState<T>())
-    val state = if (refreshFromChanges) mutableState.asStateFlow() else loader.state
+    val state = mutableState.asStateFlow()
     private val observation = ChangeObserver(changes, ChangeSubscription(domains, entities))
     private val refreshCoordinator = RefreshCoordinator(scope, observation::token, {
+        readStartedAt = timeRefresh.captureRead()
         try { load() } catch (cancelled: CancellationException) { throw cancelled }
         catch (_: Exception) { ApiResult.Failure(ApiError(ErrorCode.INTERNAL, "设置未完成，请重试", retryable = true)) }
     }, { result ->
         mutableState.value = when (result) {
-            is ApiResult.Success -> LoadState(result.value, loaded = true)
+            is ApiResult.Success -> { timeRefresh.readSucceeded(readStartedAt); LoadState(result.value, loaded = true) }
             is ApiResult.Failure -> mutableState.value.copy(loading = false, error = result.error)
         }
     }, { loading -> mutableState.value = mutableState.value.copy(loading = loading) })
     private val writer = MutationRunner(scope)
     val mutation = writer.state
 
-    init {
-        if (refreshFromChanges) observation.start(scope) { refreshCoordinator.request(force = observation.token() == null) }
-        else observeChanges(changes, domains, refresh = ::refresh)
-    }
+    init { observation.start(scope) { refreshCoordinator.request() } }
 
-    fun refresh() {
-        if (refreshFromChanges) refreshCoordinator.request(force = true)
-        else loader.load { load() }
-    }
+    fun refresh() = refreshCoordinator.request(force = true)
 
-    protected fun <R> write(operation: suspend () -> ApiResult<R>, successMessage: String = "设置已更新", onSuccess: (R) -> Unit = { if (!refreshFromChanges) refresh() }) =
+    protected fun <R> write(operation: suspend () -> ApiResult<R>, successMessage: String = "设置已更新", onSuccess: (R) -> Unit = {}) =
         writer.run(operation, successMessage, onSuccess)
 
     // Useful for composed presentation models whose operations are injected alongside their query.

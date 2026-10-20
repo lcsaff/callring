@@ -2,6 +2,7 @@ package com.greatwall.callring.application.conversation
 
 import com.greatwall.callring.application.*
 import com.greatwall.callring.contracts.common.*
+import com.greatwall.callring.contracts.change.*
 import com.greatwall.callring.contracts.ai.*
 import com.greatwall.callring.contracts.*
 import com.greatwall.callring.application.recording.model.*
@@ -24,7 +25,7 @@ class ConversationService(
 ):ConversationApi,AutoCloseable {
     private val lock=Any()
     override val state=MutableStateFlow(ConversationState(UUID.randomUUID().toString()))
-    override val foreground=ForegroundActionService(checkCommand={command->command==null||coordinator.committed(command.operationId)!=null||runCatching{coordinator.guard(command.copy(mayCommit={true})) {}}.isSuccess})
+    override val foreground=ForegroundActionService(checkCommand=ForegroundCommandValidator(coordinator)::check)
     private val generation=AtomicLong()
     private val context=ContextAssembler()
     private var turnJob:Job?=null
@@ -48,7 +49,7 @@ class ConversationService(
     }
     private val executor=ToolExecutor(api,coordinator,foreground,resources,queries=queries,documentWriteVerified=documentWriteVerified)
     private val monitor=scope.launch {
-        coordinator.changes.collect {
+        coordinator.invalidations.snapshots.map { it.token(ChangeSubscription(setOf(DataDomain.AI_SETTINGS))) }.distinctUntilChanged().collect {
             if(state.value.busy&&fingerprint.isNotEmpty()&&runCatching{connectionFingerprint(settings())!=fingerprint}.getOrDefault(true)) {
                 connectionChanged=true;client?.cancel();foreground.invalidate();turnJob?.cancel()
             }

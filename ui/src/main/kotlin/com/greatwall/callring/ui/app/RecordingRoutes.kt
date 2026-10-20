@@ -16,7 +16,6 @@ import com.greatwall.callring.ui.feature.ai.ScopedRecordingSettingsViewModel
     onArchive: (CallArchive) -> Unit) {
     val model: RecordingArchivesViewModel = uiViewModel { RecordingArchivesViewModel(api.recordings, changes = api.changes) }
     val state by model.state.collectAsStateWithLifecycle()
-    ActiveRefresh(signal, intervalMillis = 3_000, refresh = model::refresh)
     RecordingArchivesScreen(state, onBack, model::refresh, onArchive)
 }
 
@@ -32,7 +31,6 @@ import com.greatwall.callring.ui.feature.ai.ScopedRecordingSettingsViewModel
         if (granted) model.captureMode(CaptureMode.MICROPHONE_EXPERIMENTAL)
         else permissionError = "未获得麦克风权限；录音模式未改变"
     }
-    LaunchedEffect(Unit) { model.refresh() }
     RecordingSettingsScreen(state, mutation, onBack, model::refresh, model::enabled, model::captureMode,
         { try { folder.launch(null) } catch (_: ActivityNotFoundException) { permissionError = "系统没有可用的目录选择器" } },
         { microphone.launch(Manifest.permission.RECORD_AUDIO) })
@@ -43,12 +41,11 @@ import com.greatwall.callring.ui.feature.ai.ScopedRecordingSettingsViewModel
 
 @Composable internal fun ArchiveRoute(api: CallringUiApi, callId: Long, number: String, startedAt: Long, signal: Long,
     onBack: () -> Unit, onEdit: () -> Unit) {
-    val model: ArchiveViewModel = uiViewModel { ArchiveViewModel(api.recordings, api.callers, callId, number, startedAt, adoptCommand = api::adoptIdentity, changes = api.changes) }
+    val model: ArchiveViewModel = uiViewModel { ArchiveViewModel(api.recordings, callId, number, startedAt, adoptCommand = api::adoptIdentity, changes = api.changes) }
     val state by model.state.collectAsStateWithLifecycle()
     val files by model.files.collectAsStateWithLifecycle()
     val mutation by model.mutation.collectAsStateWithLifecycle()
     val picker = rememberImportPicker(arrayOf("audio/*")) { model.import(it) }
-    ActiveRefresh(signal, intervalMillis = 3_000, refresh = model::refresh)
     DisposableEffect(model) { onDispose { model.stopForExit() } }
     ArchiveScreen(state, files, mutation, onBack, model::refresh, picker, model::listSystem,
         { model.import(DocumentRef(it.uri), RecordingSource.SYSTEM) }, model::retry, model::delete, model::play, model::stop,

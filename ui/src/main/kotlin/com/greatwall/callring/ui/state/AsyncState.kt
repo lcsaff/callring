@@ -85,14 +85,3 @@ class MutationRunner(private val scope: CoroutineScope) {
 }
 
 private fun unexpectedError() = ApiError(ErrorCode.INTERNAL, "操作未完成，请刷新后重试")
-
-private val numberedDomains = setOf(DataDomain.CALLERS, DataDomain.CALLS, DataDomain.REPORTS)
-
-fun DataChange.affects(domains: Set<DataDomain>, number: String? = null, widgetId: Int? = null): Boolean =
-    this.domains.intersect(domains).any { domain ->
-        when {
-            domain in numberedDomains && number != null -> numbers?.contains(number) != false
-            domain == DataDomain.WIDGET_BINDINGS && widgetId != null -> widgetIds?.contains(widgetId) != false
-            else -> true
-        }
-    }

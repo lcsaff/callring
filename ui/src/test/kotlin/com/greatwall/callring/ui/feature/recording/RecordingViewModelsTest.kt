@@ -25,7 +25,7 @@ class RecordingViewModelsTest {
             override suspend fun getArchive(callId: Long): ApiResult<CallArchive?> = ApiResult.Success(CallArchive(
                 callId, "100", 0, analysis = CallAnalysis(name = "self reported", organization = "new unit", position = "CEO", inferredIdentity = "inferred")))
         }
-        val model = ArchiveViewModel(recordings, callers, 1, "100", 0, this, adoptCommand = { id, generation -> command = id to generation; fake.saveProfile(SaveCallerProfile("100","self reported","new unit",42,true)) })
+        val model = ArchiveViewModel(recordings, 1, "100", 0, backgroundScope, changes = fake.changes, adoptCommand = { id, generation -> command = id to generation; fake.saveProfile(SaveCallerProfile("100","self reported","new unit",42,true)) })
         model.refresh(); runCurrent()
         assertNull(command)
         model.adoptIdentity(); runCurrent()
@@ -49,8 +49,8 @@ class RecordingViewModelsTest {
                 return ApiResult.Success(Unit)
             }
         }
-        val model = ArchiveViewModel(api, com.greatwall.callring.ui.testing.UiFakeApi(), 1, "100", 0,
-            playbackScope, dispatcher)
+        val model = ArchiveViewModel(api, 1, "100", 0,
+            playbackScope, dispatcher, adoptCommand = { _, _ -> error("unused") }, changes = TestChangeFeed())
         model.play(); runCurrent()
         assertTrue(model.mutation.value.busy)
         val cleanup = model.stopForExit()

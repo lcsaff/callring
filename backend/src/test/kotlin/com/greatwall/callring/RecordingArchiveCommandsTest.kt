@@ -63,7 +63,7 @@ class RecordingArchiveCommandsTest {
         assertEquals(1L, coordinator.marker())
         assertEquals(1L, coordinator.capture().values.getValue("recording"))
         assertEquals(0L, coordinator.capture().values.getValue("core"))
-        assertEquals(setOf(DataDomain.RECORDING_ARCHIVES), coordinator.changes.value.domains)
+        assertEquals(setOf(DataDomain.RECORDING_ARCHIVES), coordinator.invalidations.snapshots.value.let { snapshot -> snapshot.domains.filterValues { it.lastAnyRevision == snapshot.revision }.keys })
         assertEquals(setOf("-1"), coordinator.invalidations.snapshots.value.domains.getValue(DataDomain.RECORDING_ARCHIVES).entityRevisions.keys)
         assertEquals(1L, coordinator.lastChange(setOf("recording", "archive:-1")))
         val command = CommandContext("noop", coordinator.capture(), 0) { true }
@@ -94,7 +94,7 @@ class RecordingArchiveCommandsTest {
         assertEquals(0L, coordinator.marker())
         assertNull(coordinator.committed("failed"))
         data.fail = false
-        coordinator.changed("core")
+        coordinator.publishResource("core", setOf("core"), com.greatwall.callring.application.coordination.ChangeImpact.wide(setOf(com.greatwall.callring.contracts.change.DataDomain.CALLERS)))
         assertTrue(runCatching { commands.compareAndSet(-1, null, value, command, false) }.isFailure)
         assertEquals(0, data.writes)
         assertEquals(1L, coordinator.marker())

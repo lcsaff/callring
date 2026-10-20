@@ -402,7 +402,7 @@ class CallringBackendTest {
     @Test
     fun initialChangeInvalidatesAllDomainsAndReturnedCollectionsCannotMutateStorage() =
         runBlocking {
-            assertEquals(DataDomain.values().toSet(), api.changes.observe().first().domains)
+            assertEquals(0L, api.changes.snapshots().value.revision)
             val windows = mutableListOf(TimeWindow(540, 720))
             api.settings
                 .saveWorkSchedule(SaveWorkSchedule("UTC", mapOf(1 to windows), emptyList()))
@@ -664,13 +664,13 @@ class CallringBackendTest {
     fun failedCommitRollsBackProfileAndDoesNotPublishCandidateSnapshotOrEvent() = runBlocking {
         api.callers.setWhitelisted("30001", false).value()
         val before = api.refreshDecisionSnapshot()
-        val revision = api.changes.observe().first().dataRevision
+        val revision = api.changes.snapshots().value.revision
         store.failCommit = true
         val failed = api.callers.setWhitelisted("30001", true) as ApiResult.Failure
         assertEquals(ErrorCode.STORAGE_FAILURE, failed.error.code)
         assertFalse(store.state.profiles.getValue("30001").whitelisted)
         assertSame(before, api.decisionSnapshot())
-        assertEquals(revision, api.changes.observe().first().dataRevision)
+        assertEquals(revision, api.changes.snapshots().value.revision)
     }
 
     @Test
@@ -738,19 +738,19 @@ class CallringBackendTest {
 
     @Test
     fun outputFailureReturnsIoFailureAndDoesNotPublishDataChanges() = runBlocking {
-        val revision = api.changes.observe().first().dataRevision
+        val revision = api.changes.snapshots().value.revision
         docs.failOutput = true
         val range = DateRange(LocalDate.parse("2026-10-12"), LocalDate.parse("2026-10-12"), "UTC")
         val result =
             api.reports.exportCsv(ReportExportQuery("30001", range), DocumentRef("memory"))
                 as ApiResult.Failure
         assertEquals(ErrorCode.IO_FAILURE, result.error.code)
-        assertEquals(revision, api.changes.observe().first().dataRevision)
+        assertEquals(revision, api.changes.snapshots().value.revision)
     }
 
     @Test
     fun cancellationDuringAudioPreparationDoesNotPublishSelectionOrChangeEvent() = runBlocking {
-        val revision = api.changes.observe().first().dataRevision
+        val revision = api.changes.snapshots().value.revision
         val importTask =
             launch(start = CoroutineStart.LAZY) { api.ringtone.importAudio(DocumentRef("memory")) }
         audio.beforeCommit = { importTask.cancel() }
@@ -759,12 +759,12 @@ class CallringBackendTest {
         assertTrue(importTask.isCancelled)
         assertEquals(0, audio.imports)
         assertEquals(AudioSource.BUILT_IN, audio.current.source)
-        assertEquals(revision, api.changes.observe().first().dataRevision)
+        assertEquals(revision, api.changes.snapshots().value.revision)
     }
 
     @Test
     fun cancellationAfterAudioCommitStillPublishesTheCommittedChange() = runBlocking {
-        val revision = api.changes.observe().first().dataRevision
+        val revision = api.changes.snapshots().value.revision
         val importTask =
             launch(start = CoroutineStart.LAZY) { api.ringtone.importAudio(DocumentRef("memory")) }
         audio.afterCommit = { importTask.cancel() }
@@ -773,7 +773,7 @@ class CallringBackendTest {
         assertTrue(importTask.isCancelled)
         assertEquals(1, audio.imports)
         assertEquals(AudioSource.IMPORTED, audio.current.source)
-        assertTrue(api.changes.observe().first().dataRevision > revision)
+        assertTrue(api.changes.snapshots().value.revision > revision)
     }
 
     @Test
@@ -883,7 +883,7 @@ class CallringBackendTest {
             val calls = store.state.calls.toMap()
             val audits = store.state.pendingAudits.toList()
             val snapshot = api.refreshDecisionSnapshot()
-            val revision = api.changes.observe().first().dataRevision
+            val revision = api.changes.snapshots().value.revision
             val invalid =
                 listOf(
                     "conflicting date" to valid.copy(makeupDates = setOf(date)),
@@ -905,7 +905,7 @@ class CallringBackendTest {
                 assertEquals(label, calls, store.state.calls)
                 assertEquals(label, audits, store.state.pendingAudits)
                 assertSame(label, snapshot, api.decisionSnapshot())
-                assertEquals(label, revision, api.changes.observe().first().dataRevision)
+                assertEquals(label, revision, api.changes.snapshots().value.revision)
             }
         }
 
@@ -954,18 +954,18 @@ class CallringBackendTest {
 
     @Test
     fun slowChangeCollectorEventuallyReceivesAllDomainsAfterConflatedCommits() = runBlocking {
-        val paused = CompletableDeferred<DataChange>()
+        val paused = CompletableDeferred<InvalidationSnapshot>()
         val resume = CompletableDeferred<Unit>()
-        val delivered = CompletableDeferred<DataChange>()
+        val delivered = CompletableDeferred<InvalidationSnapshot>()
         var pausedRevision = -1L
         val collector =
             launch(start = CoroutineStart.UNDISPATCHED) {
-                api.changes.observe().collect { change ->
-                    if (change.dataRevision > 0 && !paused.isCompleted) {
-                        pausedRevision = change.dataRevision
+                api.changes.snapshots().collect { change ->
+                    if (change.revision > 0 && !paused.isCompleted) {
+                        pausedRevision = change.revision
                         paused.complete(change)
                         resume.await()
-                    } else if (paused.isCompleted && change.dataRevision > pausedRevision) {
+                    } else if (paused.isCompleted && change.revision > pausedRevision) {
                         delivered.complete(change)
                     }
                 }
@@ -975,13 +975,13 @@ class CallringBackendTest {
             withTimeout(5000) { paused.await() }
             api.settings.saveScoreSettings(ScoreSettings(7, 3, 5, 14)).value()
             api.widgets.saveBinding(1, "30001").value()
-            val finalRevision = api.changes.observe().first().dataRevision
+            val finalRevision = api.changes.snapshots().value.revision
             resume.complete(Unit)
             val observed = withTimeout(5000) { delivered.await() }
-            assertEquals(finalRevision, observed.dataRevision)
-            assertTrue(api.changes.snapshots()!!.value.domains.getValue(DataDomain.CALLERS).lastAnyRevision > 0)
+            assertEquals(finalRevision, observed.revision)
+            assertTrue(api.changes.snapshots().value.domains.getValue(DataDomain.CALLERS).lastAnyRevision > 0)
             assertTrue(
-                observed.domains.containsAll(
+                observed.domains.keys.containsAll(
                     setOf(
                         DataDomain.SCORE_SETTINGS,
                         DataDomain.WIDGET_BINDINGS,
@@ -995,13 +995,13 @@ class CallringBackendTest {
 
     @Test
     fun commitBetweenInitialInvalidationAndFlowSubscriptionIsNotLost() = runBlocking {
-        val initial = CompletableDeferred<DataChange>()
+        val initial = CompletableDeferred<InvalidationSnapshot>()
         val subscribe = CompletableDeferred<Unit>()
-        val delivered = CompletableDeferred<DataChange>()
+        val delivered = CompletableDeferred<InvalidationSnapshot>()
         var isInitial = true
         val collector =
             launch(start = CoroutineStart.UNDISPATCHED) {
-                api.changes.observe().collect { change ->
+                api.changes.snapshots().collect { change ->
                     if (isInitial) {
                         isInitial = false
                         initial.complete(change)
@@ -1011,16 +1011,16 @@ class CallringBackendTest {
             }
         try {
             val first = withTimeout(5000) { initial.await() }
-            assertEquals(DataDomain.values().toSet(), first.domains)
+            assertEquals(0L, first.revision)
             api.callers.setWhitelisted("30001", true).value()
             api.settings.setOverlayEnabled(true).value()
-            val finalRevision = api.changes.observe().first().dataRevision
+            val finalRevision = api.changes.snapshots().value.revision
             subscribe.complete(Unit)
             val observed = withTimeout(5000) { delivered.await() }
-            assertEquals(finalRevision, observed.dataRevision)
-            assertTrue(api.changes.snapshots()!!.value.domains.getValue(DataDomain.CALLERS).lastAnyRevision > 0)
+            assertEquals(finalRevision, observed.revision)
+            assertTrue(api.changes.snapshots().value.domains.getValue(DataDomain.CALLERS).lastAnyRevision > 0)
             assertTrue(
-                observed.domains.containsAll(
+                observed.domains.keys.containsAll(
                     setOf(DataDomain.CALLERS, DataDomain.REPORTS, DataDomain.OVERLAY_SETTINGS)
                 )
             )

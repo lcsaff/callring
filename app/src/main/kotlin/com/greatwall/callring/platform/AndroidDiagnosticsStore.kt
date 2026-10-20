@@ -89,24 +89,30 @@ class AndroidDiagnosticsStore(
 
     fun add(event: DiagnosticEvent) = addAt(event, clock.millis())
 
-    private fun addAt(event: DiagnosticEvent, occurredAt: Long) = coordinator.commit("diagnostics") { addAtInternal(event, occurredAt) }
-    @Synchronized private fun addAtInternal(event: DiagnosticEvent, occurredAt: Long) {
+    private fun addAt(event: DiagnosticEvent, occurredAt: Long) = coordinator.guard {
+        if (addAtInternal(event, occurredAt)) coordinator.publishResource("diagnostics", setOf("diagnostics"),
+            com.greatwall.callring.application.coordination.ChangeImpact(mapOf(
+                com.greatwall.callring.contracts.change.DataDomain.RUNTIME to setOf("diagnostics"))))
+    }
+    @Synchronized private fun addAtInternal(event: DiagnosticEvent, occurredAt: Long): Boolean {
         Log.i("Callring", event.code)
+        val previous = preferences.getString("diagnostics_v2", "").orEmpty()
         val old =
-            preferences
-                .getString("diagnostics_v2", "")
-                .orEmpty()
+            previous
                 .lineSequence()
                 .filter { it.isNotBlank() }
                 .take(17)
                 .toList()
+        val next = (listOf("$occurredAt\t${event.code}") + old).joinToString("\n")
+        if (next == previous) return false
         preferences
             .edit()
             .putString(
                 "diagnostics_v2",
-                (listOf("$occurredAt\t${event.code}") + old).joinToString("\n"),
+                next,
             )
             .commitOrThrow()
+        return true
     }
 
     @Synchronized

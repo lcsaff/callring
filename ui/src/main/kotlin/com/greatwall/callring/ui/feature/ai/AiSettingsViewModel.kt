@@ -1,6 +1,7 @@
 package com.greatwall.callring.ui.feature.ai
 
 import com.greatwall.callring.contracts.common.*
+import com.greatwall.callring.contracts.change.*
 import com.greatwall.callring.contracts.recording.*
 import com.greatwall.callring.contracts.ai.*
 import com.greatwall.callring.contracts.*
@@ -36,30 +37,21 @@ class AiSettingsViewModel(
     private var debounced: Queued? = null
     private var debounceJob: Job? = null
     private var writing = false
-    private var loadJob: Job? = null
-    private var loadRevision = 0L
     private var refreshRequested = false
     private var pendingAnalysis: AiConnectionView? = null
     private var pendingTranscription: AiConnectionView? = null
-
-    init { scope.launch { api.changes.observe().collect { refresh() } } }
-
-    fun refresh() {
-        if (writing) { refreshRequested = true; return }
-        val ticket = ++loadRevision
-        loadJob?.cancel()
-        mutableState.value = mutableState.value.copy(loading = true, error = null)
-        loadJob = scope.launch {
-            when (val result = loadForm()) {
-                is ApiResult.Failure -> if (ticket == loadRevision) {
-                    mutableState.value = mutableState.value.copy(loading = false, error = result.error)
-                }
-                is ApiResult.Success -> if (ticket == loadRevision) {
-                    mutableState.value = LoadState(result.value, loaded = true)
-                }
-            }
+    private val observation = ChangeObserver(api.changes, ChangeSubscription(setOf(DataDomain.AI_SETTINGS, DataDomain.RECORDING_SETTINGS, DataDomain.RUNTIME), mapOf(DataDomain.RUNTIME to setOf("recordingFolder"))))
+    private val refreshCoordinator = RefreshCoordinator(scope, observation::token, { loadForm() }, { result ->
+        when (result) {
+            is ApiResult.Failure -> mutableState.value = mutableState.value.copy(error = result.error)
+            is ApiResult.Success -> mutableState.value = LoadState(result.value, loaded = true)
         }
+    }, { loading -> mutableState.value = mutableState.value.copy(loading = loading) })
+    init { observation.start(scope) { requestRefresh() } }
+    private fun requestRefresh() {
+        if (writing) refreshRequested = true else refreshCoordinator.request()
     }
+    fun refresh() { if (writing) refreshRequested = true else refreshCoordinator.request(force = true) }
 
     fun editAnalysis(connection: AiConnectionView) {
         pendingAnalysis = connection
@@ -103,7 +95,7 @@ class AiSettingsViewModel(
             api.aiSettings.patchCombined(form.recording,
                 RecordingSettingsPatch(automaticAnalysis = PatchField.Set(enabled)), form.ai, AiSettingsPatch())
         }) {
-            is ApiResult.Success -> loadForm()
+            is ApiResult.Success -> ApiResult.Success(form.copy(recording = form.recording.copy(automaticAnalysis = enabled)))
             is ApiResult.Failure -> result
         }
     }))
@@ -129,7 +121,6 @@ class AiSettingsViewModel(
         // The credential dialog writes through patchCombined itself; the page only reloads both snapshots.
         pendingAnalysis = null
         pendingTranscription = null
-        refresh()
     }
 
     /** Cancelling the key dialog keeps the typed connection edits and schedules their normal commit again. */
@@ -205,7 +196,7 @@ class AiSettingsViewModel(
             } finally {
                 writing = false
                 mutableMutation.value = mutableMutation.value.copy(busy = queue.isNotEmpty())
-                if (queue.isEmpty() && refreshRequested) { refreshRequested = false; refresh() }
+                if (queue.isEmpty() && refreshRequested) { refreshRequested = false; requestRefresh() }
             }
         }
     }
@@ -213,11 +204,7 @@ class AiSettingsViewModel(
     private suspend fun reportFailure(error: ApiError) {
         val message = if (error.code == ErrorCode.CONFLICT) "已更新，请重新修改。当前输入已保留。" else error.message
         mutableMutation.value = mutableMutation.value.copy(error = error.copy(message = message))
-        if (error.code != ErrorCode.CONFLICT) return
-        when (val latest = loadForm()) {
-            is ApiResult.Success -> mutableState.value = LoadState(latest.value, loaded = true)
-            is ApiResult.Failure -> Unit
-        }
+        if (error.code == ErrorCode.CONFLICT) refreshRequested = true
     }
 
     private suspend fun loadForm(): ApiResult<AiSettingsUi> {
@@ -246,15 +233,14 @@ class ScopedRecordingSettingsViewModel(
     private val api: CallringUiApi,
     testScope: CoroutineScope? = null,
 ) : UiViewModel(testScope) {
-    private val loader = RequestLoader<RecordingSettingsView>(scope)
+    private var base: RecordingSettingsView? = null
+    private val loader = ObservedQuery(scope, api.changes, ChangeSubscription(setOf(DataDomain.RECORDING_SETTINGS, DataDomain.RUNTIME), mapOf(DataDomain.RUNTIME to setOf("recordingFolder"))),
+        load = { api.aiSettings.getRecordingView() }, onSuccess = { base = it })
     val state = loader.state
     private val writer = MutationRunner(scope)
     val mutation = writer.state
-    private var base: RecordingSettingsView? = null
-
-    init { scope.launch { api.changes.observe().collect { refresh() } } }
-
-    fun refresh() = loader.load(onSuccess = { base = it }) { api.aiSettings.getRecordingView() }
+    init { loader.start(scope) }
+    fun refresh() = loader.request(force = true)
 
     fun enabled(value: Boolean) = patch(RecordingSettingsPatch(recordingEnabled = PatchField.Set(value)))
 
@@ -264,11 +250,8 @@ class ScopedRecordingSettingsViewModel(
         val original = base ?: return
         writer.run({ api.aiSettings.patchRecording(original, patch) }, "录音设置已更新") {
             base = it
-            refresh()
         }
     }
 
-    fun folder(document: DocumentRef) = writer.run({ api.recordings.setSystemFolder(document) }, "系统录音目录已授权") {
-        refresh()
-    }
+    fun folder(document: DocumentRef) = writer.run({ api.recordings.setSystemFolder(document) }, "系统录音目录已授权")
 }

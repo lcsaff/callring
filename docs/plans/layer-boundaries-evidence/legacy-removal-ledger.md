@@ -9,8 +9,8 @@
 | `StorageResources` 的 legacy 资源投影 | 上述全状态调用 | 随最终旧存储消费者迁出删除，保留统一的显式资源生命周期 |
 | classifier/correlation 接受 `BackendState` 的入口及全状态决策 capture 重载 | 旧入口已删除；剩余 BackendState 的 WorkInputs 实现仅随读/快照和 fixture 继续退出 | T06b/T08 已用实际输入闭包；T09/T13 删除最后旧模型消费者 |
 | schema 初始化/升级中使用旧全状态协议 | onCreate 仍用 StorageSession.load/save；upgrade 已于T08迁出 | T13 改定向初始化；T08 已删除升级 saveCalls/State 关联入口，最终守卫不得豁免初始化 |
-| nullable `ChangeFeed.snapshots()` 默认实现及 UI 对旧通知的回退 | 尚未迁移的 UI 消费者、旧测试假实现 | T11 全部消费者及测试切换后删除 nullable/default/observe 回退；累计失效成为唯一生产协议 |
-| 旧通知与整库版本/全域刷新发布 | 尚未迁出的旧写入链路 | 每片接入唯一提交者，T11 删除旧发布路径；不保留双发布兜底 |
+| nullable `ChangeFeed.snapshots()` 默认实现及 UI 对旧通知的回退 | T11 已删除 nullable/default/observe/DataChange、双 loader/迁移开关和旧 fake；全部消费者及设备 fixture 只用必需累计 flow | 本片源码已删除，实际最终门与独立审查见 t11-implementation.md / t11-verification-summary.json / 负责人 review |
+| 旧通知与整库版本/全域刷新发布 | T11 已删除 coordinator 第二份 changes、observe/changed/commit/publishScopes/runtimeChanged；diagnostics 及 runtime 只发真实实体，command/domainMarker 原职责保留 | 本片源码已删除；无双发布兜底，剩余全状态初始化协议仍属 T13 |
 | AI 数字索引/顺序分派 | 当前工具目录和业务命令绑定 | T12 迁为具名操作，删除按序号找行为的路径；外部现有标识仅作为协议元数据 |
 
 T06a 额外清理已完成并经双审：删除 `UnavailableCoreUnitOfWork` / `UnavailableQuietTransactions` 及构造器默认替代；装配显式要求必需端口，计算测试使用测试专用假实现。对应简单设置旧实现、premerge、无用验证助手和偏好重复发布均删除，见 t06a-review.md。SnapshotViewModel 的 refreshFromChanges 双路径仍有未迁移消费者，T11 必须删除该开关及旧订阅分支；一次性请求仍可使用 RequestLoader。
@@ -62,3 +62,5 @@ T10b3候选源码冻结：app/platform/callers/NumberDeletionService、backend/C
 T10c 候选冻结：已删除 BackendContext/with-context SettingsApi 与 UiEditsApi 工厂、CallringBackend 无用途 BackendStore 参数、生产 CapabilityFallbacks 全文件/Unavailable API 及 contracts 缺能力默认体/第二归档身份推导/aiUnavailable helper。完整 API 真实能力强制惰性装配；测试专用 fixture 只在测试源，所有 mandatory 方法显式覆盖。Core/Recording/Conversation/UiBridgeAssembly 接线，Graph 退出 widget/Job 查询与 incoming session/phoneState/恢复业务；DecisionMirror 持唯一共享缓存与 typed patch。公开非 SQL writer 的 owner predicate 在最终 fence 复核且 bound 共享，内部 incoming/diagnostics 排空不受公开关闭 gate 阻断。仍真实存在的 coordinator.observe/DataChange/nullable snapshots 归 T11；BackendStore 初始化/fixture、StorageResources legacy 归 T13。没有以本片候选关闭后续门；实际统一门与双审结论见对应证据。
 
 T10c 审查闭包补充：WidgetModel 的 quiet.enable_unavailable 第二恢复路径及 preferredMode/rememberMode、唯一 last_quiet_mode 偏好读写消费者已删除，全部改唯一 backend setQuietEnabled。CommandCommitter 必需明确 owner；九组公开 SQL writer 及非 SQL writer 共用公开 operationActive，内部 incoming/import 使用只延续至 drain 完成的 persistenceActive，无 true/default/空检查。CallringBackend.commandApi 直接返回真实 bound root，旧小服务覆写 decorator/重复实例删除。两种真实 Graph 排空测试分别核持久 link/core/archive 和冷首次观察/公开 SQL 拒绝；详见同片实施证据的真实 RED/GREEN。T11 feed 与 T13 旧存储门保持。
+
+T11 候选源码冻结：唯一 mandatory 累计 flow 覆盖生产、测试与 debug/AndroidTest fixture；旧事件协议、nullable feed、UiViewModel.observeChanges、Snapshot/HomeQuiet 双查询模式、ImmediateEditor null-token 分支、录音无 feed 模式、adoption_unavailable 与无用途 callers 参数已删除。各 route 盲刷、写成功补查和双 widget feed owner 已删除，保留显式用户刷新、真实系统/时钟/provider 观察及 WidgetRefreshSignals 错误呈现。Runtime/folder baselines 独立放在具名 observation tracker，不回塞通用版本协调器；实际授权有稳定 proof+observedAt、scoped/full-vector 最终 fence 与唯一 own marker。T12 数字语义、T13 全量初始化/fixture/目录、T14 CI整合及 T15 最终设备门仍有真实消费者与明确后续任务，不由本片代为关闭。最终验证与双审以本片证据和负责人记录为准。

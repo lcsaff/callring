@@ -1,5 +1,6 @@
 package com.greatwall.callring.ui.feature.report
 
+import com.greatwall.callring.ui.testing.TestChangeFeed
 import androidx.lifecycle.SavedStateHandle
 import com.greatwall.callring.contracts.common.*
 import com.greatwall.callring.contracts.change.*
@@ -7,7 +8,6 @@ import com.greatwall.callring.contracts.callers.*
 import com.greatwall.callring.contracts.settings.*
 import com.greatwall.callring.contracts.report.*
 import com.greatwall.callring.contracts.runtime.*
-import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.test.*
 import org.junit.Assert.*
 import org.junit.Test
@@ -18,7 +18,7 @@ class ReportViewModelTest {
     @Test fun exportAlwaysUsesWholeRangeIgnoringDetailFilterAndPage() = runTest {
         val api = ReportsFake()
         val range = DateRange(LocalDate.of(2026, 10, 1), LocalDate.of(2026, 10, 15), "Asia/Shanghai")
-        val model = ReportViewModel("100", api, object : ChangeFeed { override fun observe() = MutableSharedFlow<DataChange>() }, SavedStateHandle(), range, backgroundScope)
+        val model = ReportViewModel("100", api, object : ChangeFeed { override fun snapshots() = TestChangeFeed().snapshots() }, SavedStateHandle(), range, backgroundScope)
         model.filter(CallFilter.HOLIDAY)
         model.page(3)
         model.export(DocumentRef("content://test/report.csv")); runCurrent()
@@ -28,7 +28,7 @@ class ReportViewModelTest {
     @Test fun filterChangesOnlyQueryAndNeverCalculatesTotalsFromCurrentPage() = runTest {
         val api = ReportsFake()
         val range = DateRange(LocalDate.of(2026, 10, 1), LocalDate.of(2026, 10, 15))
-        val model = ReportViewModel("100", api, object : ChangeFeed { override fun observe() = MutableSharedFlow<DataChange>() }, SavedStateHandle(), range, backgroundScope)
+        val model = ReportViewModel("100", api, object : ChangeFeed { override fun snapshots() = TestChangeFeed().snapshots() }, SavedStateHandle(), range, backgroundScope)
         model.filter(CallFilter.HOLIDAY); runCurrent()
         assertEquals(999L, model.state.value.data?.totals?.totalCalls)
         assertEquals(37, model.state.value.data?.score?.points)

@@ -13,6 +13,7 @@ import com.greatwall.callring.contracts.*
 import com.greatwall.callring.application.recording.policy.*
 import com.greatwall.callring.application.ports.BackendFailure
 import java.time.LocalDate
+import com.greatwall.callring.contracts.runtime.*
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.delay
 
@@ -174,7 +175,24 @@ class ToolExecutor(
                 64 -> bound.aiSettings.getAiView().requiredValue()
                 65 -> { val base = bound.aiSettings.getAiView().requiredValue(); bound.aiSettings.patchAi(base, a.aiPatch(base.budget)).requiredValue() }
                 66 -> { action(ForegroundActionKind.CREDENTIAL); api().aiSettings.getAiView().requiredValue() }
-                67 -> { action(ForegroundActionKind.CAPABILITY); bound.runtime.getStatus().requiredValue() }
+                67 -> {
+                    val result = action(ForegroundActionKind.CAPABILITY)
+                    val capability = Capability.valueOf(a.s("capability"))
+                    if (result.status != ForegroundResultStatus.VERIFIED) throw BackendFailure(ApiError(ErrorCode.PERMISSION_REQUIRED, "action.denied"))
+                    val key = "runtime:capability:$capability"
+                    var proof: RuntimeStatus? = null
+                    for (attempt in 0 until 3) {
+                        val observedAt = coordinator.marker()
+                        val observed = bound.runtime.getStatus().requiredValue()
+                        if (!coordinator.unchanged(setOf(key), observedAt)) continue
+                        if (observed.capabilities[capability] !in setOf(AccessState.GRANTED, AccessState.NOT_REQUIRED))
+                            throw BackendFailure(ApiError(ErrorCode.PERMISSION_REQUIRED, "action.denied"))
+                        ForegroundCommandValidator(coordinator).recordCapability(scope.command, capability, observedAt)
+                        proof = observed
+                        break
+                    }
+                    proof ?: throw BackendFailure(ApiError(ErrorCode.CONFLICT, "business.changed", retryable = true))
+                }
                 68 -> { status = ToolStatus.LAUNCHED; action(ForegroundActionKind.APP_SETTINGS); bound.runtime.getStatus().requiredValue() }
                 69 -> { status = ToolStatus.LAUNCHED; action(ForegroundActionKind.PIN_WIDGET); bound.widgets.listBindings().requiredValue() }
                 70 -> { status = ToolStatus.LAUNCHED; action(ForegroundActionKind.TEST_OVERLAY); Unit }

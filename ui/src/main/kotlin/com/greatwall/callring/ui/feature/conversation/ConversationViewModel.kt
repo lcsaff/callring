@@ -20,26 +20,20 @@ class ConversationViewModel(private val api: CallringUiApi, testScope: Coroutine
     private var requestTarget: Pair<AiConnectionView, Long?>? = null
 
     init {
+        val settings = ObservedQuery(scope, api.changes, ChangeSubscription(setOf(DataDomain.AI_SETTINGS)),
+            load = { api.aiSettings.getAiView() }, onSuccess = { view ->
+                if (view.analysis != destination.value || view.revision != settingsRevision) {
+                    connected.value = false
+                    requestTarget = null
+                }
+                destination.value = view.analysis
+                settingsRevision = view.revision
+            })
+        settings.start(scope)
         scope.launch {
-            api.changes.observe().collect { change ->
-                if (change.affects(setOf(DataDomain.AI_SETTINGS))) {
-                    when (val result = api.aiSettings.getAiView()) {
-                        is ApiResult.Success -> {
-                            val view = result.value
-                            if (view.analysis != destination.value || view.revision != settingsRevision) {
-                                connected.value = false
-                                requestTarget = null
-                            }
-                            destination.value = view.analysis
-                            settingsRevision = view.revision
-                        }
-                        is ApiResult.Failure -> {
-                            destination.value = null
-                            connected.value = false
-                            requestTarget = null
-                            localError.value = result.error
-                        }
-                    }
+            settings.state.collect { snapshot ->
+                snapshot.error?.let {
+                    destination.value = null; connected.value = false; requestTarget = null; localError.value = it
                 }
             }
         }

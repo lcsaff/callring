@@ -1,5 +1,6 @@
 package com.greatwall.callring.ui.testing
 
+import com.greatwall.callring.ui.testing.TestChangeFeed
 import android.app.Application
 import com.greatwall.callring.contracts.common.*
 import com.greatwall.callring.contracts.change.*
@@ -19,6 +20,7 @@ import java.util.concurrent.atomic.AtomicLong
 class UiTestApplication : Application(), UiOverlayOwner {
     override val overlaySessions = OverlaySessions()
     override val uiApi = UiDeviceFixture()
+    override suspend fun reobservePlatform() { uiApi.runtime.getStatus() }
 }
 
 class UiDeviceFixture : UiFakeApi(true) {
@@ -30,10 +32,6 @@ class UiDeviceFixture : UiFakeApi(true) {
     val leaveWrites = CopyOnWriteArrayList<SaveLeave>()
     private val nextLeaveId = AtomicLong()
     private val widgetRevision = AtomicLong()
-    private val widgetChanges = MutableSharedFlow<DataChange>(extraBufferCapacity = 16)
-    override val changes: ChangeFeed = object : ChangeFeed {
-        override fun observe() = merge(this@UiDeviceFixture.observe(), widgetChanges)
-    }
     override fun checkNumber(raw: String) = NumberCheck(raw, raw in setOf("100", "200"), false)
     suspend fun resetWidgetState() {
         bindings.clear()
@@ -76,13 +74,13 @@ class UiDeviceFixture : UiFakeApi(true) {
     }
 
     private suspend fun changed(vararg domains: DataDomain) {
-        widgetChanges.emit(DataChange(widgetRevision.incrementAndGet(), domains.toSet(), null, null))
+        feed.publish(domains.toSet())
     }
 
     override suspend fun getBinding(widgetId: Int) = ApiResult.Success(bindings[widgetId]?.let { WidgetBinding(widgetId, it) })
     override suspend fun saveBinding(widgetId: Int, number: String): ApiResult<WidgetBinding> {
         bindings[widgetId] = number
-        widgetChanges.emit(DataChange(0, setOf(DataDomain.WIDGET_BINDINGS), null, setOf(widgetId)))
+        feed.publish(setOf(DataDomain.WIDGET_BINDINGS), mapOf(DataDomain.WIDGET_BINDINGS to setOf(widgetId).map { it.toString() }.toSet()))
         return ApiResult.Success(WidgetBinding(widgetId, number))
     }
     override suspend fun removeBinding(widgetId: Int): ApiResult<Unit> {

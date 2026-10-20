@@ -17,8 +17,8 @@ class ReportViewModel(
     initialRange: DateRange,
     testScope: CoroutineScope? = null
 ) : UiViewModel(testScope) {
-    private val loader = RequestLoader<CallerReport>(scope)
-    val state = loader.state
+    internal val timeRefresh = TimeRefreshSchedule()
+    private var readStartedAt = timeRefresh.captureRead()
     private val writer = MutationRunner(scope)
     val mutation = writer.state
     private val mutableQuery = MutableStateFlow(ReportQuery(number, DateRange(
@@ -29,23 +29,23 @@ class ReportViewModel(
         PageRequest(savedState["page"] ?: 0)))
     val query = mutableQuery.asStateFlow()
 
-    init {
-        observeChanges(changes, setOf(DataDomain.CALLERS, DataDomain.CALLS, DataDomain.REPORTS,
-            DataDomain.WORK_CALENDAR, DataDomain.SCORE_SETTINGS, DataDomain.STATISTICS, DataDomain.RUNTIME), number) { page(0) }
-    }
+    private val subscription = numberSubscription(setOf(DataDomain.CALLERS, DataDomain.CALLS, DataDomain.REPORTS,
+        DataDomain.WORK_CALENDAR, DataDomain.SCORE_SETTINGS, DataDomain.STATISTICS, DataDomain.RUNTIME), number)
+    private val loader = ObservedQuery(scope, changes, ChangeSubscription(subscription.domains,
+        subscription.entities + (DataDomain.RUNTIME to setOf("capability:CALL_LOG"))), { query.value },
+        { readStartedAt = timeRefresh.captureRead(); api.load(query.value) }, { report ->
+            timeRefresh.readSucceeded(readStartedAt)
+            val details = report.details
+            val lastPage = ((details.totalItems - 1).coerceAtLeast(0) / details.pageSize).toInt()
+            if (query.value.page.pageIndex > lastPage) page(lastPage)
+        })
+    val state = loader.state
+    init { loader.start(scope) { mutableQuery.value = query.value.copy(page = PageRequest()); savedState["page"] = 0 } }
 
     fun range(range: DateRange) = update(query.value.copy(range = range, page = PageRequest()))
     fun filter(filter: CallFilter) = update(query.value.copy(filter = filter, page = PageRequest()))
     fun page(index: Int) = update(query.value.copy(page = PageRequest(index.coerceAtLeast(0))))
-
-    fun refresh(preserveData: Boolean = true) {
-        val captured = query.value
-        loader.load(preserveData, onSuccess = { report ->
-            val details = report.details
-            val lastPage = ((details.totalItems - 1).coerceAtLeast(0) / details.pageSize).toInt()
-            if (captured.page.pageIndex > lastPage) page(lastPage)
-        }) { api.load(captured) }
-    }
+    fun refresh() = loader.request(force = true)
 
     fun export(destination: DocumentRef) {
         val captured = query.value
@@ -59,6 +59,6 @@ class ReportViewModel(
         savedState["zone"] = value.range.zoneId
         savedState["filter"] = value.filter.name
         savedState["page"] = value.page.pageIndex
-        refresh(false)
+        loader.request()
     }
 }

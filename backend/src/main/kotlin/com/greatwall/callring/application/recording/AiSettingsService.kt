@@ -24,8 +24,13 @@ class AiSettingsService(
     private val afterSave: (RecordingSettings) -> Unit = {},
     private val folderView: (String?) -> RecordingFolderView,
     private val operationActive: () -> Boolean,
+    private val folderObservations: RecordingFolderObservation = RecordingFolderObservation(coordinator),
 ) : AiSettingsApi {
-    fun bound(command: CommandContext) = AiSettingsService(store, coordinator, microphoneGranted, testConnection, command, afterSave, folderView, operationActive = operationActive)
+    suspend fun reobserveFolder() {
+        val caller = currentCoroutineContext()
+        folderObservations.reobserve(folderView) { caller.ensureActive(); operationActive() }
+    }
+    fun bound(command: CommandContext) = AiSettingsService(store, coordinator, microphoneGranted, testConnection, command, afterSave, folderView, operationActive = operationActive, folderObservations = folderObservations)
     private data class CommittedSettings(val settings: RecordingSettings, val recordingRevision: Long, val aiRevision: Long)
 
     private suspend fun updateSettings(transform: (RecordingSettings) -> RecordingSettings): CommittedSettings {
@@ -71,7 +76,7 @@ class AiSettingsService(
     }
     private fun RecordingSettings.aiView(version: Long) = AiSettingsView(analysis.view(conversationCompatibility), transcription.view(), conversationBudget, version, conversationCompatibility)
     private fun RecordingSettings.recordingView(version: Long): RecordingSettingsView {
-        val folder = folderView(systemFolder)
+        val folder = folderObservations.observed(systemFolder, folderView(systemFolder))
         return RecordingSettingsView(recordingEnabled, automaticAnalysis, captureMode, systemFolder != null, version,folder.displayName,folder.access)
     }
     private suspend fun <T> result(block: suspend () -> T): ApiResult<T> = withContext(Dispatchers.IO) {

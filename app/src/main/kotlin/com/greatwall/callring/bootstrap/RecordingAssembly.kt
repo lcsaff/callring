@@ -32,10 +32,12 @@ class RecordingAssembly(
             file
         })
     }
-    val aiSettings by lazy { AiSettingsService(store, coordinator,
+    private val aiSettingsDelegate = lazy { AiSettingsService(store, coordinator,
         { context.checkSelfPermission(android.Manifest.permission.RECORD_AUDIO) == android.content.pm.PackageManager.PERMISSION_GRANTED },
         { connection, transcription -> client.test(connection, transcription) },
         afterSave = { if (!it.recordingEnabled) context.stopService(android.content.Intent(context, com.greatwall.callring.CallCaptureService::class.java)) }, folderView = sources::describe, operationActive = operationActive) }
+    val aiSettings get() = aiSettingsDelegate.value
+    suspend fun reobserveFolder() { if (aiSettingsDelegate.isInitialized()) aiSettingsDelegate.value.reobserveFolder() }
     val archiveCommands by lazy { RecordingArchiveCommands(store, store, coordinator) }
     val registrations by lazy { RecordingRegistrationService(store, coordinator) }
     val workflow by lazy { RecordingWorkflow(store, archiveCommands, AndroidAudioTranscriber(client, File(context.cacheDir, namespace + "_ai_audio"))) }

@@ -24,6 +24,7 @@ class FirstConnectionUiTest {
         val index = if(slot == AiSlot.ANALYSIS) 0 else 1
         val empty = AiConnectionView(AiProtocol.OPENAI,"","",false)
         var view = AiSettingsView(empty,empty,ConversationBudget(),0)
+        val changes = TestChangeFeed()
         val submitted = mutableListOf<Triple<AiSettingsPatch,LocalSecretChange,LocalSecretChange>>()
         val settings = object : AiSettingsApi by FixtureAiSettingsApi {
             override suspend fun getAiView() = ApiResult.Success(view)
@@ -33,10 +34,11 @@ class FirstConnectionUiTest {
                 if(submitted.size == 1) return ApiResult.Failure(ApiError(ErrorCode.STORAGE_FAILURE,"test-storage-failed"))
                 val saved = AiConnectionView(AiProtocol.OPENAI,"https://first.example/v1","first-model",true)
                 view = if(slot == AiSlot.ANALYSIS) view.copy(analysis = saved,revision = 1) else view.copy(transcription = saved,revision = 1)
+                changes.publish(setOf(com.greatwall.callring.contracts.change.DataDomain.AI_SETTINGS))
                 return ApiResult.Success(Unit)
             }
         }
-        val api = object : UiFakeApi() { override val aiSettings = settings }
+        val api = object : UiFakeApi() { override val aiSettings = settings; override val changes: com.greatwall.callring.contracts.change.ChangeFeed = changes }
         compose.setContent { AiSettingsRoute(api,0,{}) }
         compose.onAllNodesWithText("API 基础地址（含 /v1 或自定义前缀）")[index].performTextInput("https://first.example/v1")
         compose.onAllNodesWithText("模型名称")[index].performTextInput("first-model")

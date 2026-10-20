@@ -38,7 +38,7 @@ internal class ReportService(
                 "score",
                 "schedule",
                 "statistics",
-                "runtime",
+                "runtime:capability:CALL_LOG",
             )
         repeat(3) {
             val before = coordinator.marker()

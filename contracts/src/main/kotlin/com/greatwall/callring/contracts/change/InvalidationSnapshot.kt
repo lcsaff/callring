@@ -13,12 +13,13 @@ class DomainInvalidation(lastAnyRevision: Long = 0, wideRevision: Long = 0, enti
 class InvalidationSnapshot(val incarnation: String, val epoch: Long, val revision: Long, domains: Map<DataDomain, DomainInvalidation>) {
     val domains: Map<DataDomain, DomainInvalidation> = Collections.unmodifiableMap(LinkedHashMap(domains))
     fun token(subscription: ChangeSubscription) = InvalidationToken(incarnation, epoch,
-        Collections.unmodifiableMap(subscription.domains.associateWith { domains[it]?.token(subscription.entities[it]) ?: 0 }))
+        Collections.unmodifiableMap(subscription.domains.associateWith { subscription.entities[it]?.maxOf { key -> domains[it]?.token(key) ?: 0 } ?: domains[it]?.token() ?: 0 }))
 }
 
-class ChangeSubscription(domains: Set<DataDomain>, entities: Map<DataDomain, String> = emptyMap()) {
+class ChangeSubscription(domains: Set<DataDomain>, entities: Map<DataDomain, Set<String>> = emptyMap()) {
+    init { require(entities.keys.all { it in domains }) }
     val domains: Set<DataDomain> = Collections.unmodifiableSet(LinkedHashSet(domains))
-    val entities: Map<DataDomain, String> = Collections.unmodifiableMap(LinkedHashMap(entities))
+    val entities: Map<DataDomain, Set<String>> = Collections.unmodifiableMap(entities.mapValues { (_, keys) -> require(keys.isNotEmpty()); Collections.unmodifiableSet(LinkedHashSet(keys)) })
 }
 
 data class InvalidationToken(val incarnation: String, val epoch: Long, val revisions: Map<DataDomain, Long>)

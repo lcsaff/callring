@@ -120,7 +120,7 @@ class LocalAccessContractTest {
                     .put("quietReads", after.getValue("quietReads") - before.getValue("quietReads"))
                     .put("quietWrites", after.getValue("quietWrites") - before.getValue("quietWrites"))
                     .put("publishedDomains", JSONArray(if (revisionDelta == 0L) emptyList<String>()
-                        else graph.coordinator.changes.value.domains.map { it.name }.sorted())))
+                        else graph.coordinator.invalidations.snapshots.value.let { snapshot -> snapshot.domains.filterValues { it.lastAnyRevision == snapshot.revision }.keys }.map { it.name }.sorted())))
                 assertEquals("ordinary operations must not request a complete AI snapshot",
                     before.getValue("completeCaptures"), after.getValue("completeCaptures"))
                 assertEquals("$name must preserve every unrelated profile/call fact",

@@ -147,7 +147,7 @@ internal class CallerQueryService(
                 "leaves",
                 "statistics",
                 "quiet",
-                "runtime",
+                "runtime:capability:CALL_LOG",
             ),
         ) { before ->
             val status = runtime()

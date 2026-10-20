@@ -11,7 +11,9 @@ import com.greatwall.callring.contracts.ai.*
 import com.greatwall.callring.contracts.recording.RecordingSettingsPatch
 import com.greatwall.callring.contracts.command.CommandContext
 import com.greatwall.callring.platform.UiNotificationEntryPoints
+import com.greatwall.callring.contracts.runtime.AccessState
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.async
 import org.junit.Assert.*
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -22,6 +24,76 @@ import org.robolectric.annotation.Config
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [33], manifest = Config.NONE)
 class AssemblyLifetimeTest {
+    @Test fun platformResumeDoesNotInitializeUnrelatedRecordingResources() = runBlocking {
+        val graph = graph("t11-platform-resume")
+        try {
+            val field = BackendGraph::class.java.getDeclaredField("recordingDelegate").apply { isAccessible = true }
+            val recording = field.get(graph) as Lazy<*>
+            graph.reobservePlatform()
+            assertFalse("home/platform observation must not read recording configuration", recording.isInitialized())
+            val marker = graph.coordinator.marker()
+            graph.reobservePlatform()
+            assertEquals(marker, graph.coordinator.marker())
+            assertFalse(recording.isInitialized())
+        } finally { graph.close() }
+    }
+    @OptIn(kotlinx.coroutines.DelicateCoroutinesApi::class, kotlinx.coroutines.ExperimentalCoroutinesApi::class)
+    @Test fun resumedFolderProviderRunsOffTheCallingUiDispatcherAndDoesNotBlockIt() = runBlocking {
+        val context = RuntimeEnvironment.getApplication()
+        val entered = java.util.concurrent.CountDownLatch(1)
+        val release = java.util.concurrent.CountDownLatch(1)
+        val probeThread = java.util.concurrent.atomic.AtomicReference<Thread>()
+        val probes = java.util.concurrent.atomic.AtomicInteger()
+        var block = false
+        val provider = object : android.content.ContentProvider() {
+            override fun onCreate() = true
+            override fun getType(uri: android.net.Uri) = "vnd.android.document/directory"
+            override fun query(uri: android.net.Uri, projection: Array<out String>?, selection: String?, args: Array<out String>?, sort: String?): android.database.Cursor {
+                probes.incrementAndGet()
+                if (block) {
+                    probeThread.set(Thread.currentThread()); entered.countDown()
+                    check(release.await(5, java.util.concurrent.TimeUnit.SECONDS))
+                }
+                return android.database.MatrixCursor(projection!!).apply { addRow(arrayOf("Recordings")) }
+            }
+            override fun insert(uri: android.net.Uri, values: android.content.ContentValues?): android.net.Uri? = null
+            override fun update(uri: android.net.Uri, values: android.content.ContentValues?, selection: String?, args: Array<out String>?) = 0
+            override fun delete(uri: android.net.Uri, selection: String?, args: Array<out String>?) = 0
+        }
+        provider.attachInfo(context, android.content.pm.ProviderInfo().apply { authority = "t11-resume-folder"; exported = true })
+        org.robolectric.shadows.ShadowContentResolver.registerProviderInternal("t11-resume-folder", provider)
+        val graph = graph("t11-provider-dispatch")
+        val ui = kotlinx.coroutines.newSingleThreadContext("t11-ui")
+        var job: kotlinx.coroutines.Deferred<Unit>? = null
+        try {
+            val recording = graph.recordings
+            recording.javaClass.getDeclaredField("sources\$delegate").apply { isAccessible = true }
+                .set(recording, lazy { com.greatwall.callring.platform.ai.SystemRecordingSource(context.contentResolver) { true } })
+            val cipher = object : com.greatwall.callring.platform.ai.RecordingCipher {
+                override fun encrypt(value: String) = value
+                override fun decrypt(value: String) = value
+            }
+            recording.javaClass.getDeclaredField("storeDelegate").apply { isAccessible = true }.set(recording,
+                lazy { com.greatwall.callring.platform.ai.AndroidRecordingStore(context, graph.configuration.databaseName, cipher,
+                    recordingVersion = { graph.coordinator.capture().values.getValue("recording") }) })
+            recording.store.persistSettings(com.greatwall.callring.application.recording.model.RecordingSettings(systemFolder = "content://t11-resume-folder/tree/root"))
+            assertEquals(AccessState.GRANTED, graph.api.aiSettings.getRecordingView().requiredValue().folderAccess)
+            assertEquals(1, probes.get())
+            val baseline = graph.coordinator.marker()
+            block = true
+            val caller = kotlinx.coroutines.withContext(ui) { Thread.currentThread() }
+            job = kotlinx.coroutines.CoroutineScope(ui).async { graph.reobservePlatform() }
+            assertTrue("provider probe was not reached", entered.await(5, java.util.concurrent.TimeUnit.SECONDS))
+            assertNotEquals("blocking provider I/O must leave the resume/UI dispatcher", caller, probeThread.get())
+            kotlinx.coroutines.withTimeout(1000) { kotlinx.coroutines.withContext(ui) { assertEquals(caller, Thread.currentThread()) } }
+            release.countDown(); job.await()
+            assertEquals("one cached-folder provider reobservation", 2, probes.get())
+            assertEquals("unchanged provider facts publish nothing", baseline, graph.coordinator.marker())
+        } finally {
+            release.countDown(); job?.join(); ui.close(); graph.close()
+        }
+    }
+
     @Test fun retainedPublicPreferenceWritersCannotMutateANewGraphAfterClose() = runBlocking {
         val old = graph("retained-public")
         val api = old.api

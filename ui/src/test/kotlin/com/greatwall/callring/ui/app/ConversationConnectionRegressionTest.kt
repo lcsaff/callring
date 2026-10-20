@@ -17,7 +17,7 @@ class ConversationConnectionRegressionTest {
         val connection = AiConnectionView(AiProtocol.OPENAI, "https://example.test/v1", "test", true)
         var view = AiSettingsView(connection, connection, ConversationBudget(), 0)
         var probes = 0
-        val feed = MutableStateFlow(DataChange(0, DataDomain.entries.toSet(), null, null))
+        val feed = TestChangeFeed()
         val conversationState = MutableStateFlow(ConversationState("session"))
         val settings = object : AiSettingsApi by FixtureAiSettingsApi {
             override suspend fun getAiView() = ApiResult.Success(view)
@@ -33,11 +33,11 @@ class ConversationConnectionRegressionTest {
         val api = object : UiFakeApi() {
             override val aiSettings = settings
             override val conversation = conversation
-            override val changes = object : ChangeFeed { override fun observe() = feed }
+            override val changes = object : ChangeFeed { override fun snapshots() = feed.snapshots() }
         }
         val model = ConversationViewModel(api, backgroundScope)
         runCurrent()
-        feed.value = DataChange(1, DataDomain.entries.toSet(), null, null)
+        feed.publish(DataDomain.entries.toSet())
         runCurrent()
         assertEquals(0, probes)
         assertFalse(model.connected.value)
@@ -49,7 +49,7 @@ class ConversationConnectionRegressionTest {
         runCurrent()
         assertTrue(model.connected.value)
         view = view.copy(revision = 1)
-        feed.value = DataChange(2, DataDomain.entries.toSet(), null, null)
+        feed.publish(DataDomain.entries.toSet())
         runCurrent()
         assertFalse(model.connected.value)
         assertEquals(0, probes)

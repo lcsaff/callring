@@ -88,7 +88,7 @@ class RecordingApplicationServiceTest {
         assertTrue(f.service.importRecording(-1, "31234", 1, DocumentRef("content://audio")) is ApiResult.Failure)
         assertEquals(before, f.entries[-1])
         assertEquals(listOf("prepare", "rename", "stop", "discard"), f.effects)
-        assertEquals(setOf(DataDomain.RUNTIME), f.coordinator.changes.value.domains)
+        assertEquals(setOf(DataDomain.RUNTIME), f.coordinator.invalidations.snapshots.value.let { snapshot -> snapshot.domains.filterValues { it.lastAnyRevision == snapshot.revision }.keys })
         assertEquals(1L, f.coordinator.marker())
     }
     @Test fun successfulAttachmentCommitsOnceThenRemovesOnlyPreviousOwnedAudio() = runBlocking {
@@ -98,7 +98,7 @@ class RecordingApplicationServiceTest {
         assertEquals("new", next.audioPath)
         assertEquals(listOf("prepare", "rename", "stop", "retain", "delete:old"), f.effects)
         assertEquals(1L, f.coordinator.marker())
-        assertEquals(setOf(DataDomain.RECORDING_ARCHIVES, DataDomain.RUNTIME), f.coordinator.changes.value.domains)
+        assertEquals(setOf(DataDomain.RECORDING_ARCHIVES, DataDomain.RUNTIME), f.coordinator.invalidations.snapshots.value.let { snapshot -> snapshot.domains.filterValues { it.lastAnyRevision == snapshot.revision }.keys })
     }
     @Test fun failedPlayerReplacementPublishesOnlyTheRealStop() = runBlocking {
         val f = Fixture().seed()
@@ -106,7 +106,7 @@ class RecordingApplicationServiceTest {
         f.failStart = true
         assertTrue(f.service.play(-1) is ApiResult.Failure)
         assertEquals(listOf("prepare-play", "stop", "start", "release"), f.effects)
-        assertEquals(setOf(DataDomain.RUNTIME), f.coordinator.changes.value.domains)
+        assertEquals(setOf(DataDomain.RUNTIME), f.coordinator.invalidations.snapshots.value.let { snapshot -> snapshot.domains.filterValues { it.lastAnyRevision == snapshot.revision }.keys })
         assertEquals(1L, f.coordinator.marker())
         assertEquals("old", f.entries[-1]?.audioPath)
     }

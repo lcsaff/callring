@@ -96,7 +96,7 @@ class OverlayController(
             }
         }
         lifetime.launch {
-            model.runtime.collect { snapshot ->
+            combine(model.runtime, model.runtimeRead) { snapshot, read -> snapshot to read }.collect { (snapshot, _) ->
                 if (!current(request)) return@collect
                 val status = snapshot.data
                 if (snapshot.error != null) sessions.phone(PhoneActivity.UNKNOWN)

@@ -1,12 +1,11 @@
 package com.greatwall.callring.ui.state
 
+import com.greatwall.callring.ui.testing.TestChangeFeed
 import com.greatwall.callring.contracts.common.ApiResult
 import com.greatwall.callring.contracts.change.ChangeFeed
-import com.greatwall.callring.contracts.change.DataChange
 import com.greatwall.callring.contracts.change.DataDomain
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
@@ -16,8 +15,8 @@ import org.junit.Test
 @OptIn(ExperimentalCoroutinesApi::class)
 class RefreshIsolationTest {
     private class Feed : ChangeFeed {
-        val events = MutableSharedFlow<DataChange>()
-        override fun observe() = events
+        val events = TestChangeFeed()
+        override fun snapshots() = events.snapshots()
     }
 
     private class NumberSnapshot(
@@ -27,14 +26,11 @@ class RefreshIsolationTest {
     ) : UiViewModel(testScope) {
         var loads = 0
             private set
-        private val loader = RequestLoader<String>(scope)
+        private val loader = ObservedQuery(scope, changes, numberSubscription(setOf(DataDomain.CALLERS, DataDomain.POSITIONS), number),
+            load = { ApiResult.Success("snapshot:${++loads}") })
         val state = loader.state
-
-        init {
-            observeChanges(changes, setOf(DataDomain.CALLERS, DataDomain.POSITIONS), number, ::refresh)
-        }
-
-        fun refresh() = loader.load { ApiResult.Success("snapshot:${++loads}") }
+        init { loader.start(scope) }
+        fun refresh() = loader.request()
     }
 
     @Test fun unrelatedNarrowDomainDoesNotInvokeSnapshotLoader() = runTest {
@@ -46,12 +42,12 @@ class RefreshIsolationTest {
         runCurrent()
         assertEquals(1, loads)
 
-        feed.events.emit(DataChange(1, setOf(DataDomain.APPEARANCE), null, null))
+        feed.events.publish(setOf(DataDomain.APPEARANCE))
         runCurrent()
         assertEquals(1, loads)
         assertEquals(1, quiet.state.value.data)
 
-        feed.events.emit(DataChange(2, setOf(DataDomain.QUIET_HOURS), null, null))
+        feed.events.publish(setOf(DataDomain.QUIET_HOURS))
         runCurrent()
         assertEquals(2, loads)
         assertEquals(2, quiet.state.value.data)
@@ -65,30 +61,30 @@ class RefreshIsolationTest {
         b.refresh()
         runCurrent()
 
-        feed.events.emit(DataChange(1, setOf(DataDomain.CALLERS), setOf("100"), null))
+        feed.events.publish(setOf(DataDomain.CALLERS), setOf(DataDomain.CALLERS).filter { it in setOf(DataDomain.CALLERS, DataDomain.CALLS, DataDomain.REPORTS) }.associateWith { setOf("100") })
         runCurrent()
         assertEquals(2, a.loads)
         assertEquals(1, b.loads)
         assertEquals("snapshot:2", a.state.value.data)
         assertEquals("snapshot:1", b.state.value.data)
 
-        feed.events.emit(DataChange(2, setOf(DataDomain.CALLERS), setOf("200"), null))
+        feed.events.publish(setOf(DataDomain.CALLERS), setOf(DataDomain.CALLERS).filter { it in setOf(DataDomain.CALLERS, DataDomain.CALLS, DataDomain.REPORTS) }.associateWith { setOf("200") })
         runCurrent()
         assertEquals(2, a.loads)
         assertEquals(2, b.loads)
 
         // Empty means no matching numbered entity; null means every numbered entity.
-        feed.events.emit(DataChange(3, setOf(DataDomain.CALLERS), emptySet(), null))
+        feed.events.publish(setOf(DataDomain.CALLERS), setOf(DataDomain.CALLERS).filter { it in setOf(DataDomain.CALLERS, DataDomain.CALLS, DataDomain.REPORTS) }.associateWith { emptySet() })
         runCurrent()
         assertEquals(2, a.loads)
         assertEquals(2, b.loads)
-        feed.events.emit(DataChange(4, setOf(DataDomain.CALLERS), null, null))
+        feed.events.publish(setOf(DataDomain.CALLERS))
         runCurrent()
         assertEquals(3, a.loads)
         assertEquals(3, b.loads)
 
         // A key attached to an event must not incorrectly narrow a global dependency.
-        feed.events.emit(DataChange(5, setOf(DataDomain.POSITIONS), setOf("100"), null))
+        feed.events.publish(setOf(DataDomain.POSITIONS), setOf(DataDomain.POSITIONS).filter { it in setOf(DataDomain.CALLERS, DataDomain.CALLS, DataDomain.REPORTS) }.associateWith { setOf("100") })
         runCurrent()
         assertEquals(4, a.loads)
         assertEquals(4, b.loads)
@@ -108,14 +104,13 @@ class RefreshIsolationTest {
 
         // Recorded producer shape, injected as input: this test does not require any future
         // producer to keep broadcasting all domains. The application graph test owns that evidence.
-        val recordedBroadcast = DataChange(1, DataDomain.entries.toSet(), null, null)
-        feed.events.emit(recordedBroadcast)
+        feed.events.publish(DataDomain.entries.toSet())
         runCurrent()
         assertEquals(2, a.loads)
         assertEquals(2, b.loads)
         assertEquals(2, themeLoads)
 
-        feed.events.emit(DataChange(2, setOf(DataDomain.CALLERS), setOf("100"), null))
+        feed.events.publish(setOf(DataDomain.CALLERS), setOf(DataDomain.CALLERS).filter { it in setOf(DataDomain.CALLERS, DataDomain.CALLS, DataDomain.REPORTS) }.associateWith { setOf("100") })
         runCurrent()
         assertEquals(3, a.loads)
         assertEquals(2, b.loads)
