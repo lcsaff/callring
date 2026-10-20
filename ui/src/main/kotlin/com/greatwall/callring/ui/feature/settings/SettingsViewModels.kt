@@ -15,8 +15,8 @@ class SettingsSummaryViewModel(private val api: CallringUiApi) : SnapshotViewMod
     fun overlay(enabled: Boolean) = write({ api.settings.setOverlayEnabled(enabled) })
 }
 
-class QuietViewModel(api: CallringUiApi, @Suppress("UNUSED_PARAMETER") state: SavedStateHandle) : ImmediateEditor<QuietSettings>(
-    api.changes, setOf(DataDomain.QUIET_HOURS), api.settings::getQuietHours, api.edits::quiet
+class QuietViewModel(api: CallringUiApi, @Suppress("UNUSED_PARAMETER") state: SavedStateHandle, testScope: kotlinx.coroutines.CoroutineScope? = null) : ImmediateEditor<QuietSettings>(
+    api.changes, setOf(DataDomain.QUIET_HOURS), api.settings::getQuietHours, api.edits::quiet, testScope
 )
 
 class WorkScheduleViewModel(private val api: CallringUiApi, @Suppress("UNUSED_PARAMETER") state: SavedStateHandle) : ImmediateEditor<WorkScheduleSettings>(

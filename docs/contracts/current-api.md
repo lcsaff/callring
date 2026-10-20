@@ -6,6 +6,9 @@ The facade is `com.greatwall.callring.contracts.CallringUiApi` in `CallringApi.k
 
 ## Approved internal signature changes
 
+T05b adds the internal cumulative change protocol (`InvalidationSnapshot`, domain-local entity revisions, subscriptions and projected tokens). `ChangeFeed.snapshots()` returns an optional `StateFlow` during migration; production `CallringBackend` and its command-bound facade supply the same real cumulative flow. Quiet consumers use that flow directly. Legacy/fake implementations may temporarily return null; the remaining producers/consumers and removal of this nullable transition belong to T11. Legacy `observe()` is adapted per collector from cumulative snapshots and conservatively reports only domains changed since that collector last resumed. The external 81-tool schema, D domains, persisted values and frozen v1 API snapshot are unchanged.
+
+
 These are repository-internal changes approved by the layer-boundaries specification. `docs/contracts/CallringUiApi.kt` and `current-api-baseline.md` remain historical snapshots; they are not current source requirements.
 
 - All public protocol packages move from `application.api` into the domain packages above; no long-term aliases are provided.
@@ -160,11 +163,20 @@ T03 architecture guards cover dependency direction in every source set, includin
     ]
   },
   "change/CallringUiApi.kt": {
-    "sha256": "f73aee46871e3445f747fd32667f45b6f26804599fb039b6c3a5d410736cd49f",
+    "sha256": "c80cb9314f7277d26a90b8c9ccfc3c846301e7936ef10bf2f2830df26b70d292",
     "declarations": [
       "ChangeFeed",
       "DataDomain",
       "DataChange"
+    ]
+  },
+  "change/InvalidationSnapshot.kt": {
+    "sha256": "06e9d4e2496ca79346d7269c0db13bfd23bab46a92805e45e8267cb433644ad1",
+    "declarations": [
+      "DomainInvalidation",
+      "InvalidationSnapshot",
+      "ChangeSubscription",
+      "InvalidationToken"
     ]
   },
   "command/CommandContext.kt": {

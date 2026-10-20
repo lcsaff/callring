@@ -65,31 +65,14 @@ internal fun createSettingsApi(context: BackendContext): SettingsApi =
                 mutate { it.overlayEnabled = enabled }
             }
 
-            override suspend fun getQuietHours(): ApiResult<QuietSettings> = io {
-                read { quietCopy(it.quiet).toContract() }
-            }
+            override suspend fun getQuietHours(): ApiResult<QuietSettings> = quietService.get()
 
             override suspend fun saveQuietHours(settings: QuietSettings): ApiResult<QuietSettings> =
-                write {
-                    validateQuiet(settings)
-                    val copy = quietCopy(settings)
-                    mutate {
-                        updateQuiet(it, copy.toDomain()).toContract()
-                    }
-                }
+                quietService.save(settings)
 
-            override suspend fun setQuietMode(mode: QuietMode): ApiResult<QuietSettings> = write {
-                mutate { s ->
-                    val q = s.quiet.copy(mode = mode.toDomain())
-                    updateQuiet(s, q).toContract()
-                }
-            }
+            override suspend fun setQuietMode(mode: QuietMode): ApiResult<QuietSettings> = quietService.mode(mode)
 
-            override suspend fun setQuietEnabled(enabled: Boolean): ApiResult<QuietSettings> = write {
-                mutate { s ->
-                    updateQuiet(s, s.quiet.copy(mode = if (enabled) resumedQuietMode(s) else QuietMode.OFF.toDomain())).toContract()
-                }
-            }
+            override suspend fun setQuietEnabled(enabled: Boolean): ApiResult<QuietSettings> = quietService.enabled(enabled)
 
             override suspend fun getPositions(): ApiResult<PositionSettings> = io {
                 read { PositionSettings(options(it), it.myPositionId) }

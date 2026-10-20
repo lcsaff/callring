@@ -8,17 +8,24 @@ import com.greatwall.callring.domain.BackendState
 /** Android persistence adapter; all business rules live behind the BackendStore port. */
 class SqliteBackendStore
 @JvmOverloads
-constructor(context: Context, databaseName: String = "callring.db", sqlAccessProbe: SqlAccessProbe? = null) : BackendStore, AutoCloseable {
+constructor(context: Context, databaseName: String = "callring.db", sqlAccessProbe: SqlAccessProbe? = null) : BackendStore, com.greatwall.callring.application.ports.store.CoreStorageResource {
     private val helper = CallringDatabase(context.applicationContext, databaseName)
     private val db: SQLiteDatabase
     private val sql: SqlAccess
     val stateLoads = java.util.concurrent.atomic.AtomicLong()
+    override val legacy: BackendStore get() = this
+    override val fullSnapshot: com.greatwall.callring.application.ports.store.FullSnapshotReader get() = this
+    private val sessionsDelegate = lazy { SqliteCoreUnitOfWork(db, sql) }
+    override val sessions: com.greatwall.callring.application.ports.store.CoreUnitOfWork get() = sessionsDelegate.value
+    override fun narrowAccessCounts(): Map<String, Long> = if (sessionsDelegate.isInitialized()) mapOf("quietReads" to sessionsDelegate.value.quietReads.get(), "quietWrites" to sessionsDelegate.value.quietWrites.get()) else emptyMap()
+    override val scoped: com.greatwall.callring.application.ports.ScopedReadPort by lazy { SqliteScopedReadAdapter(db, { 0L }, sql = sql) }
+    override fun stateLoadCount() = stateLoads.get()
     fun scopedReads(coordinator:com.greatwall.callring.application.BusinessRevisionCoordinator):com.greatwall.callring.application.ports.ScopedReadPort =
         SqliteScopedReadAdapter(db,{coordinator.capture().values.getValue("core")}, sql = sql)
 
     init {
         helper.setWriteAheadLoggingEnabled(true)
-        db = helper.writableDatabase
+        db = try { helper.writableDatabase } catch (failure: Throwable) { helper.close(); throw failure }
         sql = SqlAccess(db, sqlAccessProbe)
     }
 

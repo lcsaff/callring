@@ -18,7 +18,16 @@ class HomeQuietViewModel(
     testScope: CoroutineScope? = null,
 ) : UiViewModel(testScope) {
     private val loader = RequestLoader<QuietSettings>(scope)
-    val state = loader.state
+    private val cumulative = changes.snapshots() != null
+    private val mutableState = MutableStateFlow(LoadState<QuietSettings>())
+    val state = if (cumulative) mutableState.asStateFlow() else loader.state
+    private val observation = ChangeObserver(changes, ChangeSubscription(setOf(DataDomain.QUIET_HOURS)))
+    private val refreshCoordinator = RefreshCoordinator(scope, observation::token, api::getQuietHours, { result ->
+        when (result) {
+            is ApiResult.Success -> mutableState.value = LoadState(result.value, loaded = true)
+            is ApiResult.Failure -> mutableState.value = mutableState.value.copy(error = result.error)
+        }
+    }, { loading -> mutableState.value = mutableState.value.copy(loading = loading) })
     private val writer = MutationRunner(scope)
     val mutation = writer.state
     private val mutableOpen = MutableStateFlow(savedState?.get<Boolean>("quiet.open") ?: false)
@@ -28,12 +37,12 @@ class HomeQuietViewModel(
 
     init { observeChanges(changes, setOf(DataDomain.QUIET_HOURS), refresh = ::refresh) }
 
-    fun refresh() = loader.load { api.getQuietHours() }
+    fun refresh() { if (cumulative) refreshCoordinator.request() else loader.load { api.getQuietHours() } }
 
     fun setEnabled(enabled: Boolean) {
         if (state.value.data == null || mutableOpen.value) return
         writer.run({ api.setQuietEnabled(enabled) }, "免打扰已更新") { saved ->
-            loader.load { ApiResult.Success(saved) }
+            if (!cumulative) loader.load { ApiResult.Success(saved) }
         }
     }
 
@@ -57,7 +66,7 @@ class HomeQuietViewModel(
         val value = mutableDraft.value ?: return
         if (!mutableOpen.value || !validQuietDraft(value)) return
         writer.run({ api.saveQuietHours(value) }, "免打扰已保存") { saved ->
-            loader.load { ApiResult.Success(saved) }
+            if (!cumulative) loader.load { ApiResult.Success(saved) }
             dismiss()
         }
     }

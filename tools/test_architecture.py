@@ -33,6 +33,13 @@ class ArchitectureTests(unittest.TestCase):
     def test_domain_other_source_set_is_checked(self):
         self.check_bad(lambda r: self.domain_source(r, "import com.greatwall.callring.contracts.settings.TimeWindow", "test"))
     def test_valid_tree(self): self.assertEqual([], check_architecture.check(self.tree()))
+    def test_concrete_backend_store_cast_is_rejected(self):
+        for value in ('store as SqliteBackendStore', 'store as? com.greatwall.callring.data.SqliteBackendStore', 'store.asSqliteBackendStore()', '(SqliteBackendStore) store'):
+            with self.subTest(value=value):
+                self.check_bad(lambda r: (r/'app/src/main/kotlin/Bad.kt').write_text('val source = ' + value))
+    def test_other_sealed_or_keystore_casts_are_allowed(self):
+        root = self.tree(lambda r: (r/'app/src/main/kotlin/Good.kt').write_text('val json = value as? AiJson.Obj\nval key = value as java.security.KeyStore'))
+        self.assertEqual([], check_architecture.check(root))
     def test_contract_project_dependency(self): self.check_bad(lambda r: (r/'contracts/build.gradle').write_text("api project(':backend')"))
     def test_contract_android_import(self): self.check_bad(lambda r: (r/'contracts/src/main/kotlin/Bad.kt').write_text('import android.net.Uri'))
     def test_ui_test_backend_dependency(self): self.check_bad(lambda r: (r/'ui/build.gradle').write_text("testImplementation project(':backend')"))

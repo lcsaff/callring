@@ -18,12 +18,13 @@ class ConversationFixtures {
     var appearance = AppearanceSettings(ThemeSelection.PRESET, "default", null, ColorMode.FOLLOW_SYSTEM)
     var ringtone = RingtoneSettings(false, AudioSource.BUILT_IN, "built-in", 8)
     var now = 100000000L
-    val backend = CallringBackend(
-        object : BackendStore {
+    private val store = object : BackendStore {
             override fun <T> read(block: (BackendState) -> T) = block(state)
             override fun <T> transaction(block: (BackendState) -> T) = block(state)
             override fun <T> captureFull(block: (BackendState, List<AuditRecord>) -> T) = block(state, emptyList())
-        },
+        }
+    val backend = CallringBackend(
+        store,
         object : PreferenceStore {
             override fun getAppearance() = appearance
             override fun saveAppearance(settings: AppearanceSettings) { appearance = settings }
@@ -50,6 +51,6 @@ class ConversationFixtures {
             override fun stopPlayback() = Unit
         },
         object : SyncScheduler { override fun requestSync(atEpochMillis: Long) = SyncRequestReceipt(SyncRequestState.QUEUED, atEpochMillis) },
-        Clock.fixed(Instant.ofEpochMilli(now), ZoneOffset.UTC), coordinator = coordinator,
+        Clock.fixed(Instant.ofEpochMilli(now), ZoneOffset.UTC), coordinator = coordinator, quietTransactions = MemoryQuietTransactions(store),
     )
 }

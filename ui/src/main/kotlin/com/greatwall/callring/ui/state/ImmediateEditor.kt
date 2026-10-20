@@ -38,34 +38,26 @@ open class ImmediateEditor<T : Any>(
     private val queue = ArrayDeque<Request<T>>()
     private var writing = false
     private var debounce: Job? = null
-    private var loadJob: Job? = null
-    private var loadRevision = 0L
     private var refreshRequested = false
+    private val observation = ChangeObserver(changes, ChangeSubscription(domains))
+    private val refreshCoordinator = RefreshCoordinator(scope, observation::token, { attempt { load() } }, { result ->
+        when (result) {
+            is ApiResult.Failure -> mutableState.value = mutableState.value.copy(loading = false, error = result.error)
+            is ApiResult.Success -> {
+                mutableState.value = LoadState(result.value, loaded = true)
+                val previous = base
+                base = result.value
+                if (!writing && queue.isEmpty() && (mutableDraft.value == null || mutableDraft.value == previous)) mutableDraft.value = result.value
+            }
+        }
+    }, { loading -> mutableState.value = mutableState.value.copy(loading = loading) })
 
     init { observeChanges(changes, domains, refresh = ::refresh) }
 
     fun refresh() {
         if (writing) { refreshRequested = true; return }
-        val ticket = ++loadRevision
-        loadJob?.cancel()
-        mutableState.value = mutableState.value.copy(loading = true, error = null)
-        loadJob = scope.launch {
-            when (val result = attempt { load() }) {
-                is ApiResult.Failure -> if (ticket == loadRevision) {
-                    mutableState.value = mutableState.value.copy(loading = false, error = result.error)
-                }
-                is ApiResult.Success -> if (ticket == loadRevision) {
-                    mutableState.value = LoadState(result.value, loaded = true)
-                    val previous = base
-                    base = result.value
-                    // Adopt external changes only when the screen has nothing uncommitted to keep.
-                    if (!writing && queue.isEmpty() &&
-                        (mutableDraft.value == null || mutableDraft.value == previous)) {
-                        mutableDraft.value = result.value
-                    }
-                }
-            }
-        }
+        // Legacy feeds have no cumulative token: each accepted refresh must invalidate an in-flight read.
+        refreshCoordinator.request(force = observation.token() == null)
     }
 
     /** A discrete change (switch, chip, picker) is committed as soon as the shared writer is free. */

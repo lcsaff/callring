@@ -44,7 +44,7 @@ class BackendGraph(
     private val recoveryLifetime = Any()
     private val callWorkLease = AndroidCallWorkLease(application)
     @Volatile private var closed = false
-    private val store = LazyBackendStore {
+    private val store = StorageResources {
         SqliteBackendStore(application, configuration.databaseName, configuration.sqlAccessProbe)
     }
     val playbackState = PlaybackStateTracker()
@@ -117,6 +117,7 @@ class BackendGraph(
             configuration.dispatcher,
             HolidayCalendarSource(configuration.clock),
             coordinator,
+            store,
         )
     }
     val backend: CallringBackend
@@ -144,7 +145,7 @@ class BackendGraph(
     },configuration.clock)}
     val queries:QueryService get()=queriesDelegate.value
     /** Safe aggregate counters; reading them neither opens a store nor probes platform state. */
-    fun businessReadCounters():Map<String,Long> = mapOf("coreStateLoads" to store.stateLoadCount(),"completeCaptures" to store.completeCaptures.get(),"sourceQueries" to if(queriesDelegate.isInitialized())queries.sourceQueries.get()else 0L,"classifications" to com.greatwall.callring.domain.WorkClassifier.evaluations.get(),"runtimeProbes" to AndroidRuntimeProbe.observations.get())
+    fun businessReadCounters():Map<String,Long> = mapOf("coreStateLoads" to store.stateLoadCount(),"completeCaptures" to store.completeCaptures.get(),"sourceQueries" to if(queriesDelegate.isInitialized())queries.sourceQueries.get()else 0L,"classifications" to com.greatwall.callring.domain.WorkClassifier.evaluations.get(),"runtimeProbes" to AndroidRuntimeProbe.observations.get(), "quietReads" to 0L, "quietWrites" to 0L) + store.narrowAccessCounts()
     private val snapshotsDelegate = lazy { ensureOpen(); completeSnapshotApi(backend, recordings, diagnostics, coordinator, resources, configuration.clock) }
     private val conversationDelegate = lazy { ensureOpen(); ConversationService({ api }, queries, { recordings.store.settings() }, coordinator, { CompatibleConversationClient() }, resources = resources,documentWriteVerified={documents.verifyWrite(it)}) }
     private val updateDelegate = lazy { ensureOpen(); com.greatwall.callring.platform.update.AndroidAppUpdate(application) }

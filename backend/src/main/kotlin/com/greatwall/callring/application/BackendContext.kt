@@ -32,6 +32,7 @@ internal class BackendContext(
     internal val coordinator: BusinessRevisionCoordinator = BusinessRevisionCoordinator(),
     internal val commandContext: CommandContext? = null,
     internal val decisions: AtomicReference<DecisionSnapshot?> = AtomicReference(null),
+    internal val quietTransactions: com.greatwall.callring.application.ports.store.QuietTransactions = com.greatwall.callring.application.ports.store.UnavailableQuietTransactions,
 ) {
     internal val lock = coordinator.fence
     internal val revision get() = coordinator.changes.value.dataRevision
@@ -39,10 +40,13 @@ internal class BackendContext(
     // Conflation retains a complete invalidation, so slow collectors never lose a changed domain.
     internal val events get() = coordinator.changes
 
-    fun bound(command: CommandContext) = BackendContext(store, preferences, documents, runtimeProbe, audio, syncScheduler, clock, dispatcher, calendarSource, coordinator, command, decisions)
+    fun bound(command: CommandContext) = BackendContext(store, preferences, documents, runtimeProbe, audio, syncScheduler, clock, dispatcher, calendarSource, coordinator, command, decisions, quietTransactions)
+    internal val quietService = com.greatwall.callring.application.settings.QuietSettingsService(quietTransactions, coordinator, dispatcher, { quiet ->
+        decisions.get()?.let { current -> decisions.set(DecisionSnapshot.capture(current.inputs.copy(quiet = quiet))) }
+    }, commandContext)
 
     fun observe(): Flow<DataChange> =
-        events.onStart { emit(synchronized(lock) { DataChange(revision, allDomains, null, null) }) }
+        coordinator.observe()
 
     fun checkNumber(raw: String): NumberCheck {
         val identity = com.greatwall.callring.domain.model.NumberIdentity.parse(raw)

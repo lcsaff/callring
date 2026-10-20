@@ -1,0 +1,62 @@
+{
+  "task": "T05b",
+  "business_base": "faaf3b0",
+  "status": "verification, both reviews and fix re-reviews passed",
+  "contracts_test": "NO-SOURCE",
+  "device_execution": false,
+  "junit": {
+    "backend": {
+      "tests": 245,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "ui": {
+      "tests": 290,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "app": {
+      "tests": 233,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    }
+  },
+  "guards": {
+    "architecture": 17,
+    "backend_boundaries": 4,
+    "failures": 0
+  },
+  "logs": {
+    "build/qa/layer-boundaries/t05b-review-final.log": {
+      "sha256": "c95217addc566bb90db6d299f4c61a8b02e72733caf43dc613d28c0658fddce5",
+      "bytes": 9491
+    },
+    "build/qa/layer-boundaries/t05b-quiet-red.log": {
+      "sha256": "24da5d557c51258a14f658b3ee58d62221ec23c5ab4250a25ac7248f0414bcad",
+      "bytes": 4713
+    },
+    "build/qa/layer-boundaries/t05b-resources-red.log": {
+      "sha256": "85368eb311e8fbac6cfd69694a636ccbe8e1a069e1ba9eedab3930a88e22f909",
+      "bytes": 4726
+    },
+    "build/qa/layer-boundaries/t05b-tracker-red.log": {
+      "sha256": "ab746b08487b78daa336f60332e4c73b08a2cffb2854d609b004316bdd21ca2b",
+      "bytes": 4225
+    },
+    "build/qa/layer-boundaries/t05b-edge-red.log": {
+      "sha256": "924431a14b8a21374d15605feb94bf49b3ed0827c0b0131c9ea29ed639379674",
+      "bytes": 5080
+    },
+    "build/qa/layer-boundaries/t05b-null-feed-red.log": {
+      "sha256": "bca83aafd1d1063a1f49b9e7f4cdc38b12aa57cd4cb9ba4288bbd8320cf328e9",
+      "bytes": 3323
+    },
+    "build/qa/layer-boundaries/t05b-null-feed-green.log": {
+      "sha256": "139a2067175ab37f49da959bc47789f1cb50e335c26ba272acd04a9711d521df",
+      "bytes": 2773
+    }
+  }
+}

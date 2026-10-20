@@ -135,14 +135,14 @@ UT = ui/src/test/kotlin/com/greatwall/callring/ui
 
 **创建：** 第 2 节 CoreUnitOfWork/窄端口、MutationDelta/CommandCommitter/InvalidationTracker、SQLite 会话、StorageResources、contracts/change 和 UI ChangeObserver/RefreshCoordinator。
 
-- [ ] 在 `BT/coordination/InvalidationTrackerTest.kt` 验证累计域/实体令牌、StateFlow 跳帧、每域 1024 项超限安全降级、epoch 切换、无操作零失效。
-- [ ] 在 `AT/data/ScopedTransactionTest.kt` 验证同连接读快照、跨表回滚、变更仅提交后出现、失败不提升修订、同库单提交单次逻辑修订。
-- [ ] 在 `AT/bootstrap/StorageResourcesTest.kt` 使用非 SQLite 假资源验证 scoped query、计数不打开库、首次 IO 唯一实例、并发关闭/开启、重复 close 和关闭后各端口一致拒绝。
-- [ ] 实现 fence→SQL 固定顺序、后台准备与可取消阶段、短小不可取消提交/发布；禁止 SQL 回调反向取得 fence。
-- [ ] 定义读令牌前后复核和单航班 pending 行为；旧 DataChange 消费者通过明确过渡适配接入，已迁移路径不得走全域通知兜底。
-- [ ] 用 T06 所需最小接口验证完整链路；此阶段不提前编写未使用的通用 repository 框架。
+- [x] 在 `BT/coordination/InvalidationTrackerTest.kt` 验证累计域/实体令牌、StateFlow 跳帧、每域 1024 项超限安全降级、epoch 切换、无操作零失效。
+- [x] 在 `AT/data/ScopedTransactionTest.kt` 验证同连接读快照、跨表回滚、变更仅提交后出现、失败不提升修订、同库单提交单次逻辑修订。
+- [x] 在 `AT/bootstrap/StorageResourcesTest.kt` 使用非 SQLite 假资源验证 scoped query、计数不打开库、首次 IO 唯一实例、并发关闭/开启、重复 close 和关闭后各端口一致拒绝。
+- [x] 实现 fence→SQL 固定顺序、后台准备与可取消阶段、短小不可取消提交/发布；禁止 SQL 回调反向取得 fence。
+- [x] 定义读令牌前后复核和单航班 pending 行为；旧 DataChange 消费者通过明确过渡适配接入，已迁移路径不得走全域通知兜底。
+- [x] 用 T06 所需最小接口验证完整链路；此阶段不提前编写未使用的通用 repository 框架。
 - [x] 在更改任何存储行为前补齐从 T01 分拆的 SQL 表/消费行探针并跑旧实现记录范围（T05a完成）；消费行不等于数据库扫描量；未完成前不得推进 T06 的存储改造。该顺序调整只允许 contracts/模型边界先行，不放宽 A1 的最终证据要求。
-- [ ] T05b 接入窄事务时增加各窄端口调用计数，复用同一 SQL 探针及夹具验证新适配器；旧 SQL 基线存在不代表新窄端口已验收。
+- [x] T05b 接入窄事务时增加各窄端口调用计数，复用同一 SQL 探针及夹具验证新适配器；旧 SQL 基线存在不代表新窄端口已验收。
 
 **门：** P5 的替换能力成立；后续片可在不取得 BackendState 的条件下完成读写。覆盖 A1/A2/A3/A6/A7。
 

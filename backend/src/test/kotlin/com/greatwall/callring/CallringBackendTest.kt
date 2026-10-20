@@ -234,6 +234,7 @@ class CallringBackendTest {
             Clock.fixed(Instant.ofEpochMilli(now), ZoneOffset.UTC),
             Dispatchers.Unconfined,
             CalendarSource { annualCalendar() },
+            quietTransactions = MemoryQuietTransactions(store),
         )
 
     @Test
@@ -614,6 +615,7 @@ class CallringBackendTest {
 
     @Test
     fun customQuietIsValidatedAndWhitelistAlwaysBypassesIt() = runBlocking {
+        api.refreshDecisionSnapshot()
         assertEquals(
             ErrorCode.VALIDATION,
             (api.settings.setQuietMode(QuietMode.CUSTOM) as ApiResult.Failure).error.code,

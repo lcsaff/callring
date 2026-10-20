@@ -11,9 +11,14 @@ class LazyBackendStoreTest {
         var opened = 0
         var closed = 0
         val state = BackendState()
-        val store = LazyBackendStore {
+        val store = StorageResources {
             opened++
-            object : BackendStore, AutoCloseable {
+            object : BackendStore, com.greatwall.callring.application.ports.store.CoreStorageResource {
+                override val legacy: BackendStore get() = this
+                override val fullSnapshot: com.greatwall.callring.application.ports.store.FullSnapshotReader get() = this
+                override val sessions: com.greatwall.callring.application.ports.store.CoreUnitOfWork get() = error("unused")
+                override val scoped: ScopedReadPort get() = error("unused")
+                override fun stateLoadCount() = 0L
                 override fun <T> read(block: (BackendState) -> T) = block(state)
 
                 override fun <T> transaction(block: (BackendState) -> T) = block(state)
@@ -36,7 +41,7 @@ class LazyBackendStoreTest {
 
     @Test
     fun closingUnusedFixtureDoesNotCreateItsDatabase() {
-        val store = LazyBackendStore { error("must_not_open") }
+        val store = StorageResources { error("must_not_open") }
         store.close()
     }
 }

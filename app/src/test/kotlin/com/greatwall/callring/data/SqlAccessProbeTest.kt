@@ -117,7 +117,8 @@ class SqlAccessProbeTest {
             } catch (_: IllegalStateException) { }
             finally { db.endTransaction() }
             assertEquals(0L, sql.longForQuery(QueryTag.AGGREGATE, setOf(SqlTable.CALLS), "SELECT count(*) FROM calls", null))
-            // Observations describe reads, including reads of uncommitted data. No write/commit metric exists.
+            // This test writes through raw db and observes reads, including uncommitted data.
+            // SqlAccess writtenRows elsewhere measures statement effects, never transaction commits.
             assertEquals(2L, probe.snapshot().single { it.tag == QueryTag.AGGREGATE }.consumedRows)
             assertFalse(probe.snapshot().toString().contains("secret_column"))
         }

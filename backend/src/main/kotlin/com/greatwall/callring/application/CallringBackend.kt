@@ -32,6 +32,7 @@ class CallringBackend(
         throw BackendFailure(ApiError(ErrorCode.SYSTEM_UNAVAILABLE, "calendar.sync_unavailable", retryable = true))
     },
     val coordinator: BusinessRevisionCoordinator = BusinessRevisionCoordinator(),
+    quietTransactions: com.greatwall.callring.application.ports.store.QuietTransactions = com.greatwall.callring.application.ports.store.UnavailableQuietTransactions,
 ) : CallringUiApi {
     private val context =
         BackendContext(
@@ -45,6 +46,7 @@ class CallringBackend(
             dispatcher,
             calendarSource,
             coordinator,
+            quietTransactions = quietTransactions,
         )
     override val conversation: ConversationApi = UnavailableConversationApi
     override val aiSettings: AiSettingsApi = UnavailableAiSettingsApi
@@ -63,6 +65,7 @@ class CallringBackend(
     override val changes: ChangeFeed =
         object : ChangeFeed {
             override fun observe(): Flow<DataChange> = context.observe()
+            override fun snapshots() = coordinator.invalidations.snapshots
         }
 
     override fun checkNumber(raw: String): NumberCheck = context.checkNumber(raw)

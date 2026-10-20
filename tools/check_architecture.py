@@ -23,6 +23,8 @@ def check(root=ROOT):
             if path.suffix not in ('.kt','.java'):continue
             source=without_comments(path.read_text(encoding='utf-8'))
             references=re.sub(r'"(?:\\.|[^"\\])*"', '""', source)
+            if re.search(r'\bas\s*\??\s*(?:com\.greatwall\.callring\.data\.)?SqliteBackendStore\b|\basSqliteBackendStore\s*\(|\(\s*(?:com\.greatwall\.callring\.data\.)?SqliteBackendStore\s*\)', references):
+                errors.append(f'{path.relative_to(root)}: concrete backend store cast; inject explicit resource capabilities')
             if module in ('contracts','backend') and re.search(r'\b(?:android|androidx)\.|\bcom\.greatwall\.callring\.ui\.',source):errors.append(f'{path.relative_to(root)}: Android/UI dependency')
             if module=='backend' and re.search(r'\bpackage\s+com\.greatwall\.callring\.domain\b', references):
                 if re.search(r'\bcom\.greatwall\.callring\.(?:contracts|application)\b|\b(?:kotlinx\.coroutines|java\.io|java\.nio\.file|java\.sql|javax\.sql|java\.net\.(?!URI\b))', references): errors.append(f'{path.relative_to(root)}: domain implementation/transport/IO dependency')

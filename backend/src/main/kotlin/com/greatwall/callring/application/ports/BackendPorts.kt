@@ -16,8 +16,8 @@ import java.io.OutputStream
  * Implementations serialize reads and writes, use one SQL snapshot, and roll back on exceptions.
  * State belongs to the callback only; it must never escape or be reused by the adapter.
  */
-interface BackendStore {
-    fun <T> captureFull(block: (BackendState, List<AuditRecord>) -> T): T =
+interface BackendStore : com.greatwall.callring.application.ports.store.FullSnapshotReader {
+    override fun <T> captureFull(block: (BackendState, List<AuditRecord>) -> T): T =
         throw BackendFailure(ApiError(ErrorCode.SYSTEM_UNAVAILABLE, "snapshot.core_unavailable"))
     fun <T> read(block: (BackendState) -> T): T
 

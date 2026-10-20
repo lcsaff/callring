@@ -4,6 +4,8 @@ import kotlinx.coroutines.flow.Flow
 
 interface ChangeFeed {
     fun observe(): Flow<DataChange>
+    /** Legacy/fake implementations may omit this during the internal Kotlin migration. */
+    fun snapshots(): kotlinx.coroutines.flow.StateFlow<InvalidationSnapshot>? = null
 }
 
 enum class DataDomain {

@@ -23,12 +23,7 @@ internal fun createUiEditsApi(context: BackendContext): UiEditsApi = with(contex
             }
         },profileDirty(base,value).mapTo(linkedSetOf("profile:${checkNumber(value.number).normalized}:exists")){"profile:${checkNumber(value.number).normalized}:$it"}) { c, v -> createCallersApi(c).saveProfile(v) }
 
-        override suspend fun quiet(base: QuietSettings, value: QuietSettings) = edit({
-            read { s -> s.quiet.toContract().let { current -> QuietSettings(
-                merge("mode", base.mode, value.mode, current.mode),
-                merge("allNumbers", base.allNumbers, value.allNumbers, current.allNumbers),
-                merge("weeklyWindows", base.weeklyWindows, value.weeklyWindows, current.weeklyWindows)) } }
-        }) { c, v -> createSettingsApi(c).saveQuietHours(v) }
+        override suspend fun quiet(base: QuietSettings, value: QuietSettings) = quietService.edit(base, value)
 
         override suspend fun work(base: WorkScheduleSettings, value: WorkScheduleSettings) = edit({
             read { s -> currentSchedule(s).toContract().let { current -> SaveWorkSchedule(
