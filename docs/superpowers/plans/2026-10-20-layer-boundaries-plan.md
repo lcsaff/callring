@@ -216,6 +216,10 @@ UT = ui/src/test/kotlin/com/greatwall/callring/ui
 
 执行拆为T10a配置及剩余小服务、T10b录音/身份/组合删除、T10c装配收口三个检查点。T10a迁AI设置及Runtime/Ringtone/Widget窄服务、真实delta唯一发布；T10b迁录音业务和单号码metadata/音频端口、目标call查找、组合顺序及generation/tombstone；T10c拆Core/Recording/Conversation/UiBridgeAssembly并删除BackendContext及最后旧工厂/默认能力。各片分别验证和双审；最后消费者提前迁出时立即删旧设施，不等T10c。全部通过才关闭T10，T11继续删除旧通知协议而不是延迟首次准确发布。
 
+T10a已于c188167完成并双审通过。T10b实施前按真实闭包进一步拆成三个独立验证和双审检查点：T10b1窄目标call查询、历史归档metadata/号码/最近时段/pending/due读取、AudioReference与必需tombstone；T10b2录音facade/身份解析/导入attach播放删除、平台窄能力及归档唯一发布；T10b3唯一组合删除与身份采用、集合冲突保护，并删除CoreNumberDeletionApi及app重复业务。T10c的最终装配删除范围保持。各片只允许仍有真实后续调用方的旧设施继续存在，并登记最后删除门，不引入迁移转发或测试专用生产fallback；三个b片全部通过才关闭T10b。
+
+T10b1须区别温热派生投影与未索引历史：不改v4 schema/持久编码，不以raw号码等号代替任意分隔/Char.isDigit匹配，不将只提取metadata的记录标为D16全文索引完成。若历史或格式匹配确需最小投影流式访问，记录实际读行/字节及冷热范围，禁止用warm夹具常量掩盖cold成本；无关归档全文不得被完整解码或保留。其它录音业务与组合语义验收仍按下列完整T10要求执行。
+
 - [ ] 在 `BT/recording/AiSettingsMergeTest.kt`、`BT/callers/NumberDeletionWorkflowTest.kt` 用窄假端口覆盖密钥修改、复制、权限、字段冲突、busy、数量变化、部分失败与重试。
 - [ ] 单号码归档/绑定查询与音频大小端口替代全归档扫描和 backend File 调用；保留录音→核心→绑定顺序、实际部分成功通知和 continueOwnCommits 语义。
 - [ ] AI 配置和录音业务 facade 移 backend，Android Context、MediaPlayer、目录、录音/网络 IO 留平台；生产能力由装配显式补齐。
