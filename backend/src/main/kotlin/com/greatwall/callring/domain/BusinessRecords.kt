@@ -1,7 +1,7 @@
 package com.greatwall.callring.domain
 
-import com.greatwall.callring.contracts.callers.*
-import com.greatwall.callring.contracts.settings.*
+import com.greatwall.callring.domain.model.*
+
 import java.time.LocalDate
 
 data class ProfileRecord(

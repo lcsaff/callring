@@ -41,6 +41,6 @@ class ToolOperationCoverageTest {
         fixture.backend.settings.setQuietMode(QuietMode.NON_WORK)
         val receipt = executor.execute(ConversationToolCall("call", "settings_setQuietEnabled", aiObject("enabled" to aiBool(false))), ToolExecutionContext("s", "t", 1, CommandContext("op", old, 1) { true }))
         assertEquals(ToolStatus.FAILED, receipt.status)
-        assertEquals(QuietMode.NON_WORK, fixture.state.quiet.mode)
+        assertEquals(com.greatwall.callring.domain.model.QuietMode.NON_WORK, fixture.state.quiet.mode)
     }
 }

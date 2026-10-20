@@ -1,5 +1,6 @@
 package com.greatwall.callring.application
 
+import com.greatwall.callring.application.mapping.*
 import com.greatwall.callring.contracts.common.*
 import com.greatwall.callring.contracts.callers.*
 import com.greatwall.callring.application.ports.*
@@ -18,11 +19,11 @@ internal fun createHomeApi(context: BackendContext): HomeApi =
                     HomeData(
                         ring,
                         runtime,
-                        WorkClassifier.status(s, clock.millis()),
+                        WorkClassifier.status(s, clock.millis()).toContract(),
                         latest(s),
                         stats(s),
                         s.overlayEnabled,
-                        s.quiet.mode,
+                        s.quiet.mode.toContract(),
                         meta(),
                     )
                 }

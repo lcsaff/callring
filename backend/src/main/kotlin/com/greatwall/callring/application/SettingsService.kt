@@ -1,5 +1,6 @@
 package com.greatwall.callring.application
 
+import com.greatwall.callring.application.mapping.*
 import com.greatwall.callring.contracts.common.*
 import com.greatwall.callring.contracts.settings.*
 import com.greatwall.callring.contracts.runtime.*
@@ -18,10 +19,10 @@ internal fun createSettingsApi(context: BackendContext): SettingsApi =
                     SettingsSummary(
                         stats(s),
                         s.overlayEnabled,
-                        s.quiet.mode,
+                        s.quiet.mode.toContract(),
                         s.positions[s.myPositionId]?.let { option(s, it) },
                         currentSchedule(s).zoneId,
-                        s.score,
+                        s.score.toContract(),
                         appearance,
                         meta(),
                     )
@@ -65,7 +66,7 @@ internal fun createSettingsApi(context: BackendContext): SettingsApi =
             }
 
             override suspend fun getQuietHours(): ApiResult<QuietSettings> = io {
-                read { quietCopy(it.quiet) }
+                read { quietCopy(it.quiet).toContract() }
             }
 
             override suspend fun saveQuietHours(settings: QuietSettings): ApiResult<QuietSettings> =
@@ -73,20 +74,20 @@ internal fun createSettingsApi(context: BackendContext): SettingsApi =
                     validateQuiet(settings)
                     val copy = quietCopy(settings)
                     mutate {
-                        updateQuiet(it, copy)
+                        updateQuiet(it, copy.toDomain()).toContract()
                     }
                 }
 
             override suspend fun setQuietMode(mode: QuietMode): ApiResult<QuietSettings> = write {
                 mutate { s ->
-                    val q = s.quiet.copy(mode = mode)
-                    updateQuiet(s, q)
+                    val q = s.quiet.copy(mode = mode.toDomain())
+                    updateQuiet(s, q).toContract()
                 }
             }
 
             override suspend fun setQuietEnabled(enabled: Boolean): ApiResult<QuietSettings> = write {
                 mutate { s ->
-                    updateQuiet(s, s.quiet.copy(mode = if (enabled) resumedQuietMode(s) else QuietMode.OFF))
+                    updateQuiet(s, s.quiet.copy(mode = if (enabled) resumedQuietMode(s) else QuietMode.OFF.toDomain())).toContract()
                 }
             }
 
@@ -134,7 +135,7 @@ internal fun createSettingsApi(context: BackendContext): SettingsApi =
             }
 
             override suspend fun getWorkSchedule(): ApiResult<WorkScheduleSettings> = io {
-                read { scheduleCopy(currentSchedule(it)) }
+                read { scheduleCopy(currentSchedule(it)).toContract() }
             }
 
             override suspend fun saveWorkSchedule(
@@ -160,13 +161,13 @@ internal fun createSettingsApi(context: BackendContext): SettingsApi =
                                 effective,
                             )
                         )
-                    s.schedules += c
+                    s.schedules += c.toDomain()
                     c
                 }
             }
 
             override suspend fun resetWorkSchedule(): ApiResult<WorkScheduleSettings> {
-                val defaults = defaultWorkSchedule()
+                val defaults = defaultWorkSchedule().toContract()
                 return saveWorkSchedule(
                     SaveWorkSchedule(defaults.zoneId, defaults.weekly, defaults.makeup)
                 )
@@ -195,14 +196,8 @@ internal fun createSettingsApi(context: BackendContext): SettingsApi =
 
             override suspend fun saveDateOverride(command: DateOverride): ApiResult<CalendarInfo> =
                 write {
-                    validateWindows(command.windows, "windows")
-                    requireField(
-                        if (command.kind == DateOverrideKind.REST) command.windows.isEmpty()
-                        else command.windows.isNotEmpty(),
-                        "windows",
-                        "override.windows.invalid",
-                    )
-                    val copy = command.copy(windows = frozenList(command.windows))
+                    requireIssues(com.greatwall.callring.domain.model.SettingsRules.overrideWindows(command.toDomain()))
+                    val copy = command.copy(windows = frozenList(command.windows)).toDomain()
                     mutate { s ->
                         if (s.overrides[copy.date] != copy) {
                             s.overrides[copy.date] = copy
@@ -253,11 +248,7 @@ internal fun createSettingsApi(context: BackendContext): SettingsApi =
                             Pair(period.startInclusiveEpochMillis, period.endExclusiveEpochMillis)
                         is LeavePeriod.AllDay -> {
                             validateZone(period.zoneId, "period.zoneId")
-                            requireField(
-                                !period.endDateInclusive.isBefore(period.startDate),
-                                "period.endDateInclusive",
-                                "range.order.invalid",
-                            )
+                            requireIssues(com.greatwall.callring.domain.model.SettingsRules.dateOrder(period.startDate, period.endDateInclusive, "period.endDateInclusive"))
                             val zone = ZoneId.of(period.zoneId)
                             Pair(
                                 period.startDate.atStartOfDay(zone).toInstant().toEpochMilli(),
@@ -269,7 +260,7 @@ internal fun createSettingsApi(context: BackendContext): SettingsApi =
                             )
                         }
                     }
-                requireField(bounds.second > bounds.first, "period", "leave.range.invalid")
+                requireIssues(com.greatwall.callring.domain.model.SettingsRules.leaveBounds(bounds.first, bounds.second))
                 mutate { s ->
                     if (command.id != null && command.id !in s.leaves)
                         fail(ErrorCode.NOT_FOUND, "leave.not_found")
@@ -302,22 +293,15 @@ internal fun createSettingsApi(context: BackendContext): SettingsApi =
             }
 
             override suspend fun getScoreSettings(): ApiResult<ScoreSettings> = io {
-                read { it.score }
+                read { it.score.toContract() }
             }
 
             override suspend fun saveScoreSettings(
                 settings: ScoreSettings
             ): ApiResult<ScoreSettings> = write {
-                requireField(settings.offHoursWeight >= 0, "offHoursWeight", "weight.invalid")
-                requireField(settings.repeatWeight >= 0, "repeatWeight", "weight.invalid")
-                requireField(settings.repeatMinutes > 0, "repeatMinutes", "repeat_minutes.invalid")
-                requireField(
-                    settings.observationDays > 0,
-                    "observationDays",
-                    "observation_days.invalid",
-                )
+                requireIssues(com.greatwall.callring.domain.model.SettingsRules.score(settings.toDomain()))
                 mutate {
-                    it.score = settings
+                    it.score = settings.toDomain()
                     settings
                 }
             }

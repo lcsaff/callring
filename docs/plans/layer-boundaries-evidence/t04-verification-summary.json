@@ -1,0 +1,68 @@
+{
+  "task": "T04",
+  "code_base": "339ccd0",
+  "status": "final verification, specification review and quality review passed",
+  "contracts_test": "NO-SOURCE",
+  "junit": {
+    "backend": {
+      "tests": 238,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "suites": 49
+    },
+    "ui": {
+      "tests": 283,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "suites": 68
+    },
+    "app": {
+      "tests": 220,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "suites": 46
+    }
+  },
+  "logs": {
+    "build/qa/layer-boundaries/t04-full-gate-final.log": {
+      "sha256": "c2811f67ecda500e01bacad10f327f6b57191c7978d758d479ec51305be5e902",
+      "bytes": 7958
+    },
+    "build/qa/layer-boundaries/t04-source-sets.log": {
+      "sha256": "d8ece386439becb3a6fb82f5dcffed6d0e0f9f64d6fecb8f8772bc30f4f42af1",
+      "bytes": 13990
+    },
+    "build/qa/layer-boundaries/t04-red-domain.log": {
+      "sha256": "74cc64d71674fbc09802c9a1659159b113a5d0f77bc1d6e6befa119364cbcb5e",
+      "bytes": 1816
+    },
+    "build/qa/layer-boundaries/t04-red-validation.log": {
+      "sha256": "e56dd87976a5c33ecd8754af7f2165d419cb0576ce9b068e2d88424435f3c1b0",
+      "bytes": 1847
+    },
+    "build/qa/layer-boundaries/t04-red-mapping-mutation.log": {
+      "sha256": "4450be5a95646bd4ec0e424b522709409f40897c71b349e2a0833dc7b9917e74",
+      "bytes": 1838
+    }
+  },
+  "guards": {
+    "architecture": 15,
+    "backend_boundaries": 4,
+    "failures": 0
+  },
+  "device_execution": false,
+  "lint": {
+    "ui": {
+      "Warning": 31,
+      "Hint": 3,
+      "Error": 0
+    },
+    "app": {
+      "Warning": 6,
+      "Error": 0
+    }
+  }
+}

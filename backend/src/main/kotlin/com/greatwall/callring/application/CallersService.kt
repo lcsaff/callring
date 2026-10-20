@@ -1,5 +1,8 @@
 package com.greatwall.callring.application
 
+import com.greatwall.callring.domain.model.saturatedAdd
+import com.greatwall.callring.domain.model.saturatedSubtract
+import com.greatwall.callring.application.mapping.*
 import com.greatwall.callring.application.recording.policy.*
 import com.greatwall.callring.contracts.common.*
 import com.greatwall.callring.contracts.callers.*
@@ -66,8 +69,8 @@ internal fun createCallersApi(context: BackendContext): CallersApi =
                         score(s, calls, range),
                         calls.count { it.counted }.toLong(),
                         calls.firstOrNull(),
-                        WorkClassifier.status(s, query.workAtEpochMillis ?: clock.millis()),
-                        s.quiet.mode,
+                        WorkClassifier.status(s, query.workAtEpochMillis ?: clock.millis()).toContract(),
+                        s.quiet.mode.toContract(),
                         checkNumber(n),
                         quality(s, calls, status),
                         meta(),

@@ -1,5 +1,6 @@
 package com.greatwall.callring.data
 
+import com.greatwall.callring.application.mapping.*
 import com.greatwall.callring.application.BusinessRevisionCoordinator
 import com.greatwall.callring.application.requiredValue
 import com.greatwall.callring.contracts.common.*
@@ -39,7 +40,7 @@ class SqliteScopedReadTest {
             val original=ClassificationFact(false,WorkReason.OUTSIDE_WORK_HOURS,null,true,"UTC",1,null,0)
             store.transaction{s->
                 s.profiles["31234"]=ProfileRecord("31234")
-                listOf(1000L,9000L,9000L).forEachIndexed{i,time->val current=original.copy(working=i>0,reason=if(i==1)WorkReason.MAKEUP_WORKING else if(i==2)WorkReason.WORKING else WorkReason.OUTSIDE_WORK_HOURS);s.calls[i+1L]=RawCallRecord(i+1L,"31234",time,30,if(i==1)CallResult.MISSED else CallResult.ANSWERED,CallDecision.NORMAL_RINGING,CallSource.SYSTEM_CALL_LOG,null,null,true,current,original)}
+                listOf(1000L,9000L,9000L).forEachIndexed{i,time->val current=original.copy(working=i>0,reason=if(i==1)WorkReason.MAKEUP_WORKING else if(i==2)WorkReason.WORKING else WorkReason.OUTSIDE_WORK_HOURS);s.calls[i+1L]=RawCallRecord(i+1L,"31234",time,30,(if(i==1)CallResult.MISSED else CallResult.ANSWERED).toDomain(),CallDecision.NORMAL_RINGING.toDomain(),CallSource.SYSTEM_CALL_LOG.toDomain(),null,null,true,current.toDomain(),original.toDomain())}
                 s.nextCallId=4
             }
             val q=QueryService(listOf(store.scopedReads(BusinessRevisionCoordinator())))
@@ -51,7 +52,7 @@ class SqliteScopedReadTest {
     @Test @Config(sdk=[29]) fun minimumApiTimeOrderCursorAlsoSurvivesByteLimitedPages()=runBlocking {
         SqliteBackendStore(RuntimeEnvironment.getApplication(),"scoped_cursor_minimum.db").use{store->
             val fact=ClassificationFact(false,WorkReason.OUTSIDE_WORK_HOURS,null,true,"UTC",1,null,0)
-            store.transaction{s->s.profiles["31234"]=ProfileRecord("31234");listOf(1000L,9000L,9000L).forEachIndexed{i,time->s.calls[i+1L]=RawCallRecord(i+1L,"31234",time,30,CallResult.ANSWERED,CallDecision.NORMAL_RINGING,CallSource.SYSTEM_CALL_LOG,null,null,true,fact,fact)};s.nextCallId=4}
+            store.transaction{s->s.profiles["31234"]=ProfileRecord("31234");listOf(1000L,9000L,9000L).forEachIndexed{i,time->s.calls[i+1L]=RawCallRecord(i+1L,"31234",time,30,CallResult.ANSWERED.toDomain(),CallDecision.NORMAL_RINGING.toDomain(),CallSource.SYSTEM_CALL_LOG.toDomain(),null,null,true,fact.toDomain(),fact.toDomain())};s.nextCallId=4}
             val q=QueryService(listOf(store.scopedReads(BusinessRevisionCoordinator())))
             val bytes=q.query(QuerySpec(AiDomain.D04,limit=1)).requiredValue().items.single().encode().toByteArray(Charsets.UTF_8).size+1
             val ids=mutableListOf<Long>();var cursor:String?=null
@@ -64,7 +65,7 @@ class SqliteScopedReadTest {
             val fact=ClassificationFact(false,WorkReason.OUTSIDE_WORK_HOURS,null,true,"UTC",1,null,0)
             store.transaction{s->
                 s.profiles["31234"]=ProfileRecord("31234")
-                listOf(1000L,61000L,900000L).forEachIndexed{i,at->s.calls[i+1L]=RawCallRecord(i+1L,"31234",at,if(i==2)null else 60L,if(i==2)CallResult.MISSED else CallResult.ANSWERED,CallDecision.NORMAL_RINGING,CallSource.SYSTEM_CALL_LOG,null,null,true,fact.copy(working=i==1),fact)}
+                listOf(1000L,61000L,900000L).forEachIndexed{i,at->s.calls[i+1L]=RawCallRecord(i+1L,"31234",at,if(i==2)null else 60L,(if(i==2)CallResult.MISSED else CallResult.ANSWERED).toDomain(),CallDecision.NORMAL_RINGING.toDomain(),CallSource.SYSTEM_CALL_LOG.toDomain(),null,null,true,fact.copy(working=i==1).toDomain(),fact.toDomain())}
                 s.nextCallId=4
             }
             val api=QueryService(listOf(store.scopedReads(BusinessRevisionCoordinator())))

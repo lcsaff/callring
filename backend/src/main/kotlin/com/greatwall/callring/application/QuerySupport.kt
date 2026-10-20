@@ -15,7 +15,7 @@ internal fun <T> BackendContext.paged(rows: List<T>, p: PageRequest, meta: Snaps
     return Page(frozenList(result), p.pageIndex, p.pageSize, rows.size.toLong(), meta)
 }
 
-internal fun BackendContext.csvCell(value: String): String {
+internal fun csvCell(value: String): String {
     val first = value.trimStart().firstOrNull()
     val safe =
         if (first in listOf('=', '+', '-', '@') || value.startsWith('\t') || value.startsWith('\r'))
@@ -23,9 +23,3 @@ internal fun BackendContext.csvCell(value: String): String {
         else value
     return "\"${safe.replace("\"","\"\"")}\""
 }
-
-internal fun BackendContext.saturatedAdd(a: Long, b: Long): Long =
-    if (b > 0 && a > Long.MAX_VALUE - b) Long.MAX_VALUE else a + b
-
-internal fun BackendContext.saturatedSubtract(a: Long, b: Long): Long =
-    if (b > 0 && a < Long.MIN_VALUE + b) Long.MIN_VALUE else a - b

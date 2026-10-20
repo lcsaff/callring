@@ -1,11 +1,12 @@
 package com.greatwall.callring.application
 
-import com.greatwall.callring.contracts.settings.*
+import com.greatwall.callring.application.mapping.*
+import com.greatwall.callring.domain.model.*
 import com.greatwall.callring.domain.BackendState
 
 /** All mode writes share one remembered setting; disabling never destroys the time windows. */
 internal fun BackendContext.updateQuiet(state: BackendState, value: QuietSettings): QuietSettings {
-    validateQuiet(value)
+    validateQuiet(value.toContract())
     val copy = quietCopy(value)
     if (state.quiet.mode != QuietMode.OFF) state.lastQuietMode = state.quiet.mode
     if (copy.mode != QuietMode.OFF) state.lastQuietMode = copy.mode

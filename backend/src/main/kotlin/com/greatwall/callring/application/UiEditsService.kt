@@ -6,6 +6,7 @@ import com.greatwall.callring.contracts.callers.*
 import com.greatwall.callring.contracts.settings.*
 import com.greatwall.callring.contracts.command.*
 import java.util.UUID
+import com.greatwall.callring.application.mapping.*
 
 /** Merge only dirty fields, then use the original validator and guarded publication path. */
 internal fun createUiEditsApi(context: BackendContext): UiEditsApi = with(context) {
@@ -23,14 +24,14 @@ internal fun createUiEditsApi(context: BackendContext): UiEditsApi = with(contex
         },profileDirty(base,value).mapTo(linkedSetOf("profile:${checkNumber(value.number).normalized}:exists")){"profile:${checkNumber(value.number).normalized}:$it"}) { c, v -> createCallersApi(c).saveProfile(v) }
 
         override suspend fun quiet(base: QuietSettings, value: QuietSettings) = edit({
-            read { s -> s.quiet.let { current -> QuietSettings(
+            read { s -> s.quiet.toContract().let { current -> QuietSettings(
                 merge("mode", base.mode, value.mode, current.mode),
                 merge("allNumbers", base.allNumbers, value.allNumbers, current.allNumbers),
                 merge("weeklyWindows", base.weeklyWindows, value.weeklyWindows, current.weeklyWindows)) } }
         }) { c, v -> createSettingsApi(c).saveQuietHours(v) }
 
         override suspend fun work(base: WorkScheduleSettings, value: WorkScheduleSettings) = edit({
-            read { s -> currentSchedule(s).let { current -> SaveWorkSchedule(
+            read { s -> currentSchedule(s).toContract().let { current -> SaveWorkSchedule(
                 merge("zoneId", base.zoneId, value.zoneId, current.zoneId),
                 merge("weekly", base.weekly, value.weekly, current.weekly),
                 merge("makeup", base.makeup, value.makeup, current.makeup)) } }

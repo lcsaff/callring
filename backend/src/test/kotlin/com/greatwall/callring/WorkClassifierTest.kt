@@ -1,5 +1,15 @@
 package com.greatwall.callring
 
+import com.greatwall.callring.domain.model.WorkScheduleSettings
+import com.greatwall.callring.domain.model.CalendarYear
+import com.greatwall.callring.domain.model.DateOverride
+import com.greatwall.callring.domain.model.TimeWindow
+import com.greatwall.callring.domain.model.CallResult
+import com.greatwall.callring.domain.model.CallDecision
+import com.greatwall.callring.domain.model.CallSource
+import com.greatwall.callring.domain.model.WorkReason
+import com.greatwall.callring.domain.model.WorkDayKind
+import com.greatwall.callring.domain.model.DateOverrideKind
 import com.greatwall.callring.contracts.callers.*
 import com.greatwall.callring.contracts.settings.*
 import com.greatwall.callring.domain.BackendState

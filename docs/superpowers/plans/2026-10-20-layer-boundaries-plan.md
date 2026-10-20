@@ -121,11 +121,11 @@ UT = ui/src/test/kotlin/com/greatwall/callring/ui
 
 **创建：** `B/domain/model/DecisionInputs.kt`、领域原生设置/分类/配置类型、`B/application/mapping/ContractMappings.kt`、`B/application/coordination/UseCaseRunner.kt`。
 
-- [ ] 在 `BT/domain/DomainIsolationTest.kt` 和契约映射回归中固定号码、分类、评分、时区、旧枚举含义与深不可变行为。
-- [ ] 将领域类型与对外 DTO 分开，领域不再 import contracts/application；映射放 application，SQL 映射不夹带显示文案。
-- [ ] 将厂商/思考策略、连接校验归纯业务模型；HTTP endpoint/协议编码归平台，安全视图与密钥输入语义保留。
-- [ ] 抽出号码、分页、CSV、范围和校验 helper 的合适归属；UseCaseRunner 只负责调度、取消和错误映射。
-- [ ] 引入最小 DecisionInputs，不复制 calls/archives；保留按实际时间分类和原来电准备/提交协议。
+- [x] 在 `BT/domain/DomainIsolationTest.kt` 和契约映射回归中固定号码、分类、评分、时区、旧枚举含义与深不可变行为。
+- [x] 将领域类型与对外 DTO 分开，领域不再 import contracts/application；映射放 application，SQL 映射不夹带显示文案。
+- [x] 将厂商/思考策略、连接校验归纯业务模型；HTTP endpoint/协议编码归平台，安全视图与密钥输入语义保留。
+- [x] 抽出号码、分页、CSV、范围和校验 helper 的合适归属；UseCaseRunner 只负责调度、取消和错误映射。
+- [x] 引入最小 DecisionInputs，不复制 calls/archives；保留按实际时间分类和原来电准备/提交协议。
 
 **门：** 领域边界检查通过，现有算法样本结果一致；不以复制全部 API 类型替代模型划分。覆盖 A0/A2/A5/A7。
 

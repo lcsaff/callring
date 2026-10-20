@@ -1,5 +1,6 @@
 package com.greatwall.callring
 
+import com.greatwall.callring.application.mapping.*
 import com.greatwall.callring.contracts.command.*
 import com.greatwall.callring.contracts.callers.*
 import com.greatwall.callring.contracts.ai.*
@@ -16,7 +17,7 @@ class NumberDeletionToolTest {
         val f = ConversationFixtures()
         val fact = WorkClassifier.classify(f.state, f.now)
         f.backend.callers.saveProfile(SaveCallerProfile("31234", "name", "dept", null, false)).requiredValue()
-        f.state.calls[1] = RawCallRecord(1, "31234", f.now, 0, CallResult.ANSWERED, CallDecision.NORMAL_RINGING, CallSource.SCREENING, null, null, true, fact, fact)
+        f.state.calls[1] = RawCallRecord(1, "31234", f.now, 0, CallResult.ANSWERED.toDomain(), CallDecision.NORMAL_RINGING.toDomain(), CallSource.SCREENING.toDomain(), null, null, true, fact, fact)
         val foreground = ForegroundActionService(checkCommand = { command -> command == null || runCatching { f.coordinator.guard(command) {} }.isSuccess })
         val host = foreground.attachHost()
         val executor = ToolExecutor({ f.backend }, f.coordinator, foreground, ForegroundResourceRegistry())

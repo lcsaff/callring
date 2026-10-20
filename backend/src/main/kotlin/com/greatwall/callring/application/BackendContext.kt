@@ -1,5 +1,8 @@
 package com.greatwall.callring.application
 
+import com.greatwall.callring.domain.model.saturatedAdd
+import com.greatwall.callring.domain.model.saturatedSubtract
+import com.greatwall.callring.application.mapping.*
 import com.greatwall.callring.application.recording.policy.*
 import com.greatwall.callring.contracts.command.*
 import com.greatwall.callring.contracts.common.*
@@ -8,7 +11,6 @@ import com.greatwall.callring.contracts.callers.*
 import com.greatwall.callring.contracts.runtime.*
 import com.greatwall.callring.application.ports.*
 import com.greatwall.callring.domain.*
-import java.io.IOException
 import java.time.*
 import java.util.concurrent.atomic.AtomicReference
 import kotlinx.coroutines.*
@@ -43,35 +45,13 @@ internal class BackendContext(
         events.onStart { emit(synchronized(lock) { DataChange(revision, allDomains, null, null) }) }
 
     fun checkNumber(raw: String): NumberCheck {
-        val normalized =
-            raw.filterNot {
-                it == '-' ||
-                    it == '(' ||
-                    it == ')' ||
-                    it.isWhitespace() ||
-                    Character.isSpaceChar(it)
-            }
-        return NumberCheck(
-            normalized,
-            normalized.matches(Regex("\\+?[0-9]{1,30}")),
-            normalized.matches(Regex("3[0-9]{4}")),
-        )
+        val identity = com.greatwall.callring.domain.model.NumberIdentity.parse(raw)
+        return NumberCheck(identity.normalized, identity.validProfileNumber, identity.matchesRule)
     }
 
-    internal suspend fun <T> io(block: () -> T): ApiResult<T> =
-        try {
-            withContext(dispatcher) { ApiResult.Success(block()) }
-        } catch (cancelled: CancellationException) {
-            throw cancelled
-        } catch (failure: BackendFailure) {
-            ApiResult.Failure(failure.error)
-        } catch (_: IOException) {
-            ApiResult.Failure(ApiError(ErrorCode.IO_FAILURE, "io.failure", retryable = true))
-        } catch (_: Exception) {
-            ApiResult.Failure(
-                ApiError(ErrorCode.STORAGE_FAILURE, "storage.failure", retryable = true)
-            )
-        }
+    private val runner = com.greatwall.callring.application.coordination.UseCaseRunner(dispatcher)
+
+    internal suspend fun <T> io(block: () -> T): ApiResult<T> = runner.io(block)
 
     internal fun fail(code: ErrorCode, message: String, field: String? = null): Nothing =
         throw BackendFailure(
@@ -160,14 +140,14 @@ internal class BackendContext(
                             normalized,
                             at,
                             null,
-                            CallResult.PENDING,
-                            decision,
-                            CallSource.SCREENING,
+                            CallResult.PENDING.toDomain(),
+                            decision.toDomain(),
+                            CallSource.SCREENING.toDomain(),
                             null,
                             key,
                             true,
                             current,
-                            originalFacts ?: current,
+                            originalFacts?.toDomain() ?: current,
                             knownAccount,
                         )
                     CallCorrelation.reconcile(s, normalized, at)
@@ -183,8 +163,8 @@ internal class BackendContext(
             val changed =
                 coreTransaction { s ->
                     val call = s.calls[id] ?: return@coreTransaction false
-                    if (call.decision == decision) return@coreTransaction false
-                    s.calls[id] = call.copy(decision = decision, legacyDecision = null)
+                    if (call.decision == decision.toDomain()) return@coreTransaction false
+                    s.calls[id] = call.copy(decision = decision.toDomain(), legacyDecision = null)
                     true
                 }
             if (changed) notifyChanged()
@@ -250,8 +230,8 @@ internal class BackendContext(
                                     record.startedAtEpochMillis,
                                     record.durationSeconds,
                                     record.result,
-                                    CallDecision.SYSTEM_LOG_ONLY,
-                                    CallSource.SYSTEM_CALL_LOG,
+                                    CallDecision.SYSTEM_LOG_ONLY.toDomain(),
+                                    CallSource.SYSTEM_CALL_LOG.toDomain(),
                                     record.logId,
                                     null,
                                     true,
@@ -308,10 +288,7 @@ internal class BackendContext(
     }
 
     /** Once a write starts, commit and its notification survive caller cancellation. */
-    internal suspend fun <T> write(block: () -> T): ApiResult<T> {
-        currentCoroutineContext().ensureActive()
-        return withContext(NonCancellable) { io(block) }
-    }
+    internal suspend fun <T> write(block: () -> T): ApiResult<T> = runner.write(block)
 
     internal fun runtimeStatus(): RuntimeStatus {
         val status = runtimeProbe.getStatus()

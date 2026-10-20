@@ -1,6 +1,7 @@
 package com.greatwall.callring.domain
 
-import com.greatwall.callring.contracts.callers.CallResult
+import com.greatwall.callring.domain.model.*
+
 
 data class SystemCallRecord(
     val logId: String,

@@ -1,5 +1,9 @@
 package com.greatwall.callring.data
 
+import com.greatwall.callring.domain.model.WorkScheduleSettings
+import com.greatwall.callring.domain.model.CalendarYear
+import com.greatwall.callring.domain.model.DateOverride
+import com.greatwall.callring.domain.model.DateOverrideKind
 import android.database.sqlite.SQLiteDatabase
 import com.greatwall.callring.contracts.settings.*
 import com.greatwall.callring.contracts.ai.*

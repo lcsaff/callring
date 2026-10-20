@@ -3,7 +3,6 @@ package com.greatwall.callring.application.recording.model
 import com.greatwall.callring.contracts.common.*
 import com.greatwall.callring.contracts.recording.*
 import com.greatwall.callring.contracts.ai.*
-import java.net.URI
 import com.greatwall.callring.application.recording.policy.*
 
 data class AiConnection(
@@ -14,11 +13,7 @@ data class AiConnection(
     val thinkingMode: ThinkingMode = ThinkingMode.DISABLED,
 ) {
     fun validate() {
-        val parsed = URI(url.trim())
-        require(parsed.scheme == "https" && !parsed.host.isNullOrBlank() && parsed.rawUserInfo == null &&
-            parsed.rawQuery == null && parsed.rawFragment == null) { "ai.invalid_url" }
-        require(apiKey.isNotBlank() && '\r' !in apiKey && '\n' !in apiKey) { "ai.invalid_key" }
-        require(model.isNotBlank() && model.length <= 256) { "ai.invalid_model" }
+        domainSpec().validate()
     }
     fun endpoint(path: String): String = url.trim().trimEnd('/') + "/" + path
     override fun toString() = "AiConnection(protocol=$protocol, url=$url, apiKey=[redacted], model=$model, thinkingMode=$thinkingMode)"

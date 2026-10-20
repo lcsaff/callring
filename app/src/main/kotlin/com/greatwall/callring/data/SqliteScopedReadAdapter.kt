@@ -1,5 +1,13 @@
 package com.greatwall.callring.data
 
+import com.greatwall.callring.domain.model.CalendarYear
+import com.greatwall.callring.domain.model.DateOverride
+import com.greatwall.callring.domain.model.ScoreSettings
+import com.greatwall.callring.domain.model.CallResult
+import com.greatwall.callring.domain.model.WorkStatus
+import com.greatwall.callring.domain.model.DateOverrideKind
+import com.greatwall.callring.domain.model.TimeRange
+import com.greatwall.callring.application.mapping.*
 import com.greatwall.callring.application.recording.policy.*
 import android.database.Cursor
 import android.database.DatabaseUtils
@@ -10,8 +18,8 @@ import com.greatwall.callring.contracts.settings.*
 import com.greatwall.callring.contracts.ai.*
 import com.greatwall.callring.application.ports.*
 import com.greatwall.callring.application.safeValue
-import com.greatwall.callring.application.StreamingReportAccumulator
-import com.greatwall.callring.application.ReportTotalsAccumulator
+import com.greatwall.callring.domain.report.StreamingReportAccumulator
+import com.greatwall.callring.domain.report.ReportTotalsAccumulator
 import com.greatwall.callring.domain.*
 import com.greatwall.callring.platform.ai.parseConversationJson
 import java.time.*
@@ -150,7 +158,7 @@ internal class SqliteScopedReadAdapter(private val db:SQLiteDatabase,private val
         val value=groups.values.singleOrNull()?.let(::result)?:aiObject("totals" to safeValue(totals.value()),"range" to safeValue(range),"scoreRequiresNumber" to aiBool(true))
         return AiJson.Obj(value.fields+mapOf("scanned" to aiNumber(scanned),"hasUnverifiedCalendar" to aiBool(unverified),"hasUnresolvedRecords" to aiBool(unresolved),"runtimeQualitySource" to aiString("D19"),"ruleVersion" to aiString("shared-score-v1")))
     }
-    private fun workStatus():WorkStatus {
+    private fun workStatus():com.greatwall.callring.contracts.callers.WorkStatus {
         val at=clock();val s=BackendState()
         db.rawQuery("SELECT id,effective,snapshot FROM config_versions WHERE effective<=? ORDER BY effective DESC,id DESC LIMIT 1",arrayOf(at.toString())).use{c->if(c.moveToFirst())s.schedules+=WorkConfigCodec.decode(c.getString(2),c.getLong(0),c.getLong(1))}
         if(s.schedules.isEmpty())db.rawQuery("SELECT id,effective,snapshot FROM config_versions ORDER BY effective,id LIMIT 1",null).use{c->if(c.moveToFirst())s.schedules+=WorkConfigCodec.decode(c.getString(2),c.getLong(0),c.getLong(1))}
@@ -161,6 +169,6 @@ internal class SqliteScopedReadAdapter(private val db:SQLiteDatabase,private val
         db.rawQuery("SELECT date,windows FROM overrides WHERE date BETWEEN ? AND ?",arrayOf(date.minusDays(1).toString(),date.plusDays(10).toString())).use{c->while(c.moveToNext()){val d=LocalDate.parse(c.getString(0));val w=WorkConfigCodec.windows(JSONArray(c.getString(1)));s.overrides[d]=DateOverride(d,if(w.isEmpty())DateOverrideKind.REST else DateOverrideKind.WORK,w)}}
         db.rawQuery("SELECT id,start,end FROM leaves WHERE start<=? AND end>=?",arrayOf(end.toString(),at.toString())).use{c->while(c.moveToNext()){val l=LeaveRecord(c.getLong(0),c.getLong(1),c.getLong(2),"");s.leaves[l.id]=l}}
         s.leaveVersion=DatabaseUtils.stringForQuery(db,"SELECT coalesce((SELECT value FROM settings WHERE key='leave_revision'),'0')",null).toLong()
-        return WorkClassifier.status(s,at)
+        return WorkClassifier.status(s,at).toContract()
     }
 }

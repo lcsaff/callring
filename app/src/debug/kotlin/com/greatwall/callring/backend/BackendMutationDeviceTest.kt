@@ -1,5 +1,6 @@
 package com.greatwall.callring.backend
 
+import com.greatwall.callring.application.mapping.*
 import android.database.sqlite.SQLiteDatabase
 import android.os.Bundle
 import android.os.SystemClock
@@ -303,7 +304,7 @@ class BackendMutationDeviceTest : InstrumentationTestCase() {
                     "31234",
                     at + 1000,
                     10,
-                    CallResult.ANSWERED,
+                    CallResult.ANSWERED.toDomain(),
                     "account-a",
                 )
             assertEquals(setOf("31234"), importCalls(listOf(provider)))
@@ -353,7 +354,7 @@ class BackendMutationDeviceTest : InstrumentationTestCase() {
                     "31234",
                     at + 2000,
                     20,
-                    CallResult.MISSED,
+                    CallResult.MISSED.toDomain(),
                     "account-a",
                 )
             importCalls(listOf(candidate))
@@ -459,7 +460,7 @@ class BackendMutationDeviceTest : InstrumentationTestCase() {
                         "31234",
                         at + index * 60000L,
                         1,
-                        CallResult.ANSWERED,
+                        CallResult.ANSWERED.toDomain(),
                         "bulk-account",
                     )
                 }

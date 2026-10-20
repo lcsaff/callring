@@ -1,5 +1,10 @@
 package com.greatwall.callring.data
 
+import com.greatwall.callring.domain.model.ClassificationFact
+import com.greatwall.callring.domain.model.WorkReason
+import com.greatwall.callring.domain.model.CallResult
+import com.greatwall.callring.domain.model.CallDecision
+import com.greatwall.callring.domain.model.CallSource
 import com.greatwall.callring.contracts.callers.*
 import com.greatwall.callring.domain.BackendState
 import com.greatwall.callring.domain.CallCorrelation
@@ -18,9 +23,9 @@ class StoragePolicyCharacterization {
             "31234",
             at,
             if (screen) null else 5,
-            if (screen) CallResult.PENDING else CallResult.ANSWERED,
-            if (screen) CallDecision.WHITELIST_ALLOWED else CallDecision.SYSTEM_LOG_ONLY,
-            if (screen) CallSource.SCREENING else CallSource.SYSTEM_CALL_LOG,
+            (if (screen) CallResult.PENDING else CallResult.ANSWERED),
+            (if (screen) CallDecision.WHITELIST_ALLOWED else CallDecision.SYSTEM_LOG_ONLY),
+            (if (screen) CallSource.SCREENING else CallSource.SYSTEM_CALL_LOG),
             if (screen) null else "$id",
             if (screen) "31234:$at" else null,
             true,

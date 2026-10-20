@@ -1,5 +1,8 @@
 package com.greatwall.callring.data
 
+import com.greatwall.callring.domain.model.WorkScheduleSettings
+import com.greatwall.callring.domain.model.CalendarYear
+import com.greatwall.callring.domain.model.TimeWindow
 import com.greatwall.callring.contracts.settings.*
 import com.greatwall.callring.contracts.ai.*
 import com.greatwall.callring.domain.CalendarImport

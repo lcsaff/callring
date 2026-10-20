@@ -1,5 +1,7 @@
 package com.greatwall.callring.data
 
+import com.greatwall.callring.domain.model.CallDecision
+import com.greatwall.callring.domain.model.ClassificationFact
 import android.content.ContentValues
 import android.database.Cursor
 import android.database.sqlite.SQLiteDatabase

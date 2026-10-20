@@ -1,5 +1,6 @@
 package com.greatwall.callring.platform.ai
 
+import com.greatwall.callring.domain.ai.ThinkingContract
 import com.greatwall.callring.application.AiClient
 import com.greatwall.callring.application.AiFailure
 import com.greatwall.callring.contracts.recording.*

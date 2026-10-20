@@ -1,8 +1,7 @@
 package com.greatwall.callring.domain
 
-import com.greatwall.callring.contracts.callers.*
-import com.greatwall.callring.contracts.settings.*
-import com.greatwall.callring.contracts.ai.*
+import com.greatwall.callring.domain.model.*
+
 import java.time.ZoneId
 import java.util.Collections
 
@@ -16,20 +15,14 @@ data class IncomingDecision(
 )
 
 /** Detached and deeply frozen. No live database references and no cached "working now" boolean. */
-class DecisionSnapshot private constructor(private val state: BackendState) {
+class DecisionSnapshot private constructor(val inputs: DecisionInputs) {
     fun evaluate(number: String, at: Long): IncomingDecision {
-        val normalized =
-            number.filterNot {
-                it == '-' ||
-                    it == '(' ||
-                    it == ')' ||
-                    it.isWhitespace() ||
-                    Character.isSpaceChar(it)
-            }
-        val matched = normalized.matches(Regex("3[0-9]{4}"))
-        val white = state.profiles[normalized]?.whitelisted ?: false
-        val classification = WorkClassifier.classify(state, at)
-        val quiet = state.quiet
+        val identity = NumberIdentity.parse(number)
+        val normalized = identity.normalized
+        val matched = identity.matchesRule
+        val white = normalized in inputs.whitelistedNumbers
+        val classification = WorkClassifier.classify(inputs, at)
+        val quiet = inputs.quiet
         val silence =
             !white &&
                 (matched || quiet.allNumbers) &&
@@ -48,9 +41,9 @@ class DecisionSnapshot private constructor(private val state: BackendState) {
             matched,
             white,
             silence,
-            matched && state.overlayEnabled,
+            matched && inputs.overlayEnabled,
             matched &&
-                state.statisticsIntervals.any {
+                inputs.statisticsIntervals.any {
                     at >= it.startMillis && (it.endMillis == null || at < it.endMillis)
                 },
             classification,
@@ -58,28 +51,27 @@ class DecisionSnapshot private constructor(private val state: BackendState) {
     }
 
     companion object {
-        fun capture(source: BackendState): DecisionSnapshot {
-            val copy = BackendState()
-            copy.profiles.putAll(source.profiles.filterValues { it.whitelisted })
-            copy.schedules.addAll(
-                source.schedules.map {
-                    it.copy(weekly = freezeWindows(it.weekly), makeup = freeze(it.makeup))
-                }
-            )
-            copy.calendarYears.putAll(source.calendarYears)
-            copy.holidays.putAll(source.holidays)
-            copy.makeupDates.addAll(source.makeupDates)
-            copy.overrides.putAll(
-                source.overrides.mapValues { it.value.copy(windows = freeze(it.value.windows)) }
-            )
-            copy.leaves.putAll(source.leaves)
-            copy.statisticsIntervals.addAll(source.statisticsIntervals)
-            copy.leaveVersion = source.leaveVersion
-            copy.quiet =
-                source.quiet.copy(weeklyWindows = freezeWindows(source.quiet.weeklyWindows))
-            copy.overlayEnabled = source.overlayEnabled
-            return DecisionSnapshot(copy)
-        }
+        fun capture(source: BackendState): DecisionSnapshot = capture(DecisionInputs(
+            source.schedules, source.calendarYears, source.holidays, source.makeupDates,
+            source.overrides, source.leaves, source.leaveVersion,
+            source.profiles.filterValues { it.whitelisted }.keys,
+            source.quiet, source.statisticsIntervals, source.overlayEnabled,
+        ))
+
+        fun capture(source: DecisionInputs): DecisionSnapshot = DecisionSnapshot(source.copy(
+            schedules = freeze(source.schedules.map { it.copy(weekly = freezeWindows(it.weekly), makeup = freeze(it.makeup)) }),
+            calendarYears = freezeMap(source.calendarYears),
+            holidays = freezeMap(source.holidays),
+            makeupDates = Collections.unmodifiableSet(LinkedHashSet(source.makeupDates)),
+            overrides = freezeMap(source.overrides.mapValues { it.value.copy(windows = freeze(it.value.windows)) }),
+            leaves = freezeMap(source.leaves),
+            whitelistedNumbers = Collections.unmodifiableSet(LinkedHashSet(source.whitelistedNumbers)),
+            quiet = source.quiet.copy(weeklyWindows = freezeWindows(source.quiet.weeklyWindows)),
+            statisticsIntervals = freeze(source.statisticsIntervals),
+        ))
+
+        private fun <K, V> freezeMap(map: Map<K, V>): Map<K, V> =
+            Collections.unmodifiableMap(LinkedHashMap(map))
 
         private fun <T> freeze(list: List<T>): List<T> =
             Collections.unmodifiableList(ArrayList(list))

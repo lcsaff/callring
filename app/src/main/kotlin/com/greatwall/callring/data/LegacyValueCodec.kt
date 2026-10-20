@@ -1,5 +1,10 @@
 package com.greatwall.callring.data
 
+import com.greatwall.callring.domain.model.CallResult
+import com.greatwall.callring.domain.model.CallDecision
+import com.greatwall.callring.domain.model.CallSource
+import com.greatwall.callring.domain.model.ClassificationFact
+import com.greatwall.callring.domain.model.WorkReason
 import com.greatwall.callring.contracts.callers.*
 
 /** The sole compatibility boundary for human-readable values in schema versions 1–3. */

@@ -1,5 +1,6 @@
 package com.greatwall.callring.platform.calling
 
+import com.greatwall.callring.application.mapping.*
 import com.greatwall.callring.contracts.callers.*
 import com.greatwall.callring.domain.IncomingDecision
 import java.util.PriorityQueue
@@ -399,7 +400,7 @@ class ScreeningControllerTest {
                 silence,
                 true,
                 true,
-                ClassificationFact(false, WorkReason.REST_DAY, null, true, "UTC", 1, "fixture", 0),
+                ClassificationFact(false, WorkReason.REST_DAY, null, true, "UTC", 1, "fixture", 0).toDomain(),
             )
     }
 }

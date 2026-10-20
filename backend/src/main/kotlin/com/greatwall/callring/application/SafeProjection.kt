@@ -1,5 +1,6 @@
 package com.greatwall.callring.application
 
+import com.greatwall.callring.application.mapping.*
 import com.greatwall.callring.application.recording.policy.*
 import com.greatwall.callring.contracts.common.*
 import com.greatwall.callring.contracts.callers.*
@@ -16,11 +17,29 @@ import java.time.LocalDate
 fun safeValue(v: Any?): AiJson {
     fun obj(vararg fields: Pair<String, Any?>) = AiJson.Obj(fields.associate { it.first to safeValue(it.second) })
     return when (v) {
+        is com.greatwall.callring.domain.model.WorkScheduleSettings -> safeValue(v.toContract())
+        is com.greatwall.callring.domain.model.CalendarYear -> safeValue(v.toContract())
+        is com.greatwall.callring.domain.model.DateOverride -> safeValue(v.toContract())
+        is com.greatwall.callring.domain.model.QuietSettings -> safeValue(v.toContract())
+        is com.greatwall.callring.domain.model.ScoreSettings -> safeValue(v.toContract())
+        is com.greatwall.callring.domain.model.TimeWindow -> safeValue(v.toContract())
+        is com.greatwall.callring.domain.model.ClassificationFact -> safeValue(v.toContract())
+        is com.greatwall.callring.domain.model.WorkStatus -> safeValue(v.toContract())
+        is com.greatwall.callring.domain.model.TimeRange -> safeValue(v.toContract())
+        is com.greatwall.callring.domain.model.ScoreSummary -> safeValue(v.toContract())
+        is com.greatwall.callring.domain.model.ReportTotals -> safeValue(v.toContract())
         null, Unit -> AiJson.Null
         is AiJson -> v
         is String -> AiJson.Str(v)
         is Boolean -> AiJson.Bool(v)
         is Number -> AiJson.Num(v.toString())
+        is com.greatwall.callring.domain.model.QuietMode -> safeValue(v.toContract())
+        is com.greatwall.callring.domain.model.CallResult -> safeValue(v.toContract())
+        is com.greatwall.callring.domain.model.CallDecision -> safeValue(v.toContract())
+        is com.greatwall.callring.domain.model.CallSource -> safeValue(v.toContract())
+        is com.greatwall.callring.domain.model.WorkReason -> safeValue(v.toContract())
+        is com.greatwall.callring.domain.model.WorkDayKind -> safeValue(v.toContract())
+        is com.greatwall.callring.domain.model.DateOverrideKind -> safeValue(v.toContract())
         is Enum<*> -> AiJson.Str(v.name)
         is LocalDate -> AiJson.Str(v.toString())
         is Map<*, *> -> AiJson.Obj(v.entries.associate { it.key.toString() to safeValue(it.value) })

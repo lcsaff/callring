@@ -1,5 +1,6 @@
 package com.greatwall.callring.data
 
+import com.greatwall.callring.application.mapping.*
 import com.greatwall.callring.contracts.callers.*
 import com.greatwall.callring.domain.*
 import java.time.Instant
@@ -31,8 +32,8 @@ internal object LocalAccessFixture {
                 val id = index + 1L
                 state.calls[id] = RawCallRecord(
                     id, if (index == 0) TARGET else UNRELATED, at + index * 1_000L, 30,
-                    CallResult.ANSWERED, CallDecision.SYSTEM_LOG_ONLY, CallSource.SYSTEM_CALL_LOG,
-                    "synthetic-$id", null, true, fact, original,
+                    CallResult.ANSWERED.toDomain(), CallDecision.SYSTEM_LOG_ONLY.toDomain(), CallSource.SYSTEM_CALL_LOG.toDomain(),
+                    "synthetic-$id", null, true, fact.toDomain(), original.toDomain(),
                     legacyResult = if (index == unrelatedCalls) "synthetic-legacy-result" else null,
                 )
             }

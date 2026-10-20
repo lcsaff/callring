@@ -15,6 +15,23 @@ class ArchitectureTests(unittest.TestCase):
         return root
     def check_bad(self, mutation):
         self.assertTrue(check_architecture.check(self.tree(mutation)))
+    def test_domain_contract_import(self): self.check_bad(lambda r: (r/'backend/src/main/kotlin/Bad.kt').write_text('package com.greatwall.callring.domain\nimport com.greatwall.callring.contracts.settings.TimeWindow'))
+    def test_domain_application_import(self): self.check_bad(lambda r: (r/'backend/src/main/kotlin/Bad.kt').write_text('package com.greatwall.callring.domain.model\nimport com.greatwall.callring.application.Bad'))
+    def domain_source(self, root, text, source_set="main"):
+        path = root/f"backend/src/{source_set}/kotlin/Domain.kt"
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text("package com.greatwall.callring.domain.model\n" + text)
+    def test_domain_native_values_and_uri_are_allowed(self):
+        root = self.tree(lambda r: self.domain_source(r, "import java.time.ZoneId\nimport java.net.URI\nimport com.greatwall.callring.domain.model.TimeWindow"))
+        self.assertEqual([], check_architecture.check(root))
+    def test_domain_io_is_rejected(self):
+        for dependency in ("java.io.File", "java.net.URL", "java.nio.file.Files", "java.sql.Connection", "kotlinx.coroutines.Dispatchers"):
+            with self.subTest(dependency=dependency):
+                self.check_bad(lambda r: self.domain_source(r, "import " + dependency))
+    def test_domain_fully_qualified_contract_is_rejected(self):
+        self.check_bad(lambda r: self.domain_source(r, "val value: com.greatwall.callring.contracts.settings.TimeWindow? = null"))
+    def test_domain_other_source_set_is_checked(self):
+        self.check_bad(lambda r: self.domain_source(r, "import com.greatwall.callring.contracts.settings.TimeWindow", "test"))
     def test_valid_tree(self): self.assertEqual([], check_architecture.check(self.tree()))
     def test_contract_project_dependency(self): self.check_bad(lambda r: (r/'contracts/build.gradle').write_text("api project(':backend')"))
     def test_contract_android_import(self): self.check_bad(lambda r: (r/'contracts/src/main/kotlin/Bad.kt').write_text('import android.net.Uri'))

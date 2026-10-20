@@ -3,7 +3,7 @@ package com.greatwall.callring
 import com.greatwall.callring.application.recording.policy.*
 import com.greatwall.callring.contracts.ai.*
 import com.greatwall.callring.contracts.ai.AiProtocol
-import com.greatwall.callring.application.recording.policy.ThinkingContract
+import com.greatwall.callring.domain.ai.ThinkingContract
 import com.greatwall.callring.contracts.ai.ThinkingMode
 import com.greatwall.callring.application.recording.policy.ThinkingPolicyResolver
 import com.greatwall.callring.contracts.ai.ThinkingSupport

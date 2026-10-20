@@ -1,4 +1,4 @@
-"""T03 module boundaries. T04 will tighten backend domain-to-application rules."""
+"""Compile/module directions and pure domain boundaries across all source sets."""
 from pathlib import Path
 import re
 import sys
@@ -24,6 +24,8 @@ def check(root=ROOT):
             source=without_comments(path.read_text(encoding='utf-8'))
             references=re.sub(r'"(?:\\.|[^"\\])*"', '""', source)
             if module in ('contracts','backend') and re.search(r'\b(?:android|androidx)\.|\bcom\.greatwall\.callring\.ui\.',source):errors.append(f'{path.relative_to(root)}: Android/UI dependency')
+            if module=='backend' and re.search(r'\bpackage\s+com\.greatwall\.callring\.domain\b', references):
+                if re.search(r'\bcom\.greatwall\.callring\.(?:contracts|application)\b|\b(?:kotlinx\.coroutines|java\.io|java\.nio\.file|java\.sql|javax\.sql|java\.net\.(?!URI\b))', references): errors.append(f'{path.relative_to(root)}: domain implementation/transport/IO dependency')
             if module=='contracts':
                 if re.search(r'\bcom\.greatwall\.callring\.(?!contracts\b)',source):errors.append(f'{path.relative_to(root)}: contracts implementation dependency')
                 if re.search(r'\b(?:java\.sql|java\.net|javax\.sql)\.|\b(?:AiConnection|RecordingSettings|ThinkingPolicyResolver|Unavailable\w+Api)\b|\bfun\s+validate\s*\(',source):errors.append(f'{path.relative_to(root)}: implementation/policy/secret in contracts')

@@ -1,22 +1,23 @@
 package com.greatwall.callring.domain
 
-import com.greatwall.callring.contracts.settings.*
+import com.greatwall.callring.domain.model.*
+
 import java.time.LocalDate
 import java.time.ZoneId
 
 /**
  * Raw persistence facts only. The application derives relation, scores, quality and presentation.
  */
-class BackendState {
+class BackendState : WorkInputs {
     val profiles: MutableMap<String, ProfileRecord> = linkedMapOf()
     val positions: MutableMap<Long, PositionRecord> = linkedMapOf()
     val calls: MutableMap<Long, RawCallRecord> = linkedMapOf()
-    val schedules: MutableList<WorkScheduleSettings> = mutableListOf()
-    val calendarYears: MutableMap<Int, CalendarYear> = linkedMapOf()
-    val holidays: MutableMap<LocalDate, String> = linkedMapOf()
-    val makeupDates: MutableSet<LocalDate> = linkedSetOf()
-    val overrides: MutableMap<LocalDate, DateOverride> = linkedMapOf()
-    val leaves: MutableMap<Long, LeaveRecord> = linkedMapOf()
+    override val schedules: MutableList<WorkScheduleSettings> = mutableListOf()
+    override val calendarYears: MutableMap<Int, CalendarYear> = linkedMapOf()
+    override val holidays: MutableMap<LocalDate, String> = linkedMapOf()
+    override val makeupDates: MutableSet<LocalDate> = linkedSetOf()
+    override val overrides: MutableMap<LocalDate, DateOverride> = linkedMapOf()
+    override val leaves: MutableMap<Long, LeaveRecord> = linkedMapOf()
     val statisticsIntervals: MutableList<StatisticsInterval> = mutableListOf()
     val pendingAudits: MutableList<AuditRecord> = mutableListOf()
     var myPositionId: Long? = null
@@ -24,7 +25,7 @@ class BackendState {
     var lastQuietMode: QuietMode = QuietMode.NON_WORK
     var score: ScoreSettings = ScoreSettings(5, 2, 10, 30)
     var overlayEnabled: Boolean = false
-    var leaveVersion: Long = 0
+    override var leaveVersion: Long = 0
     /** Loaded from max(sqlite_sequence, existing IDs); incremented even when rows are deleted. */
     var nextPositionId: Long = 1
     var nextLeaveId: Long = 1

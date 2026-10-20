@@ -1,5 +1,6 @@
 package com.greatwall.callring.platform.calling
 
+import com.greatwall.callring.application.mapping.*
 import com.greatwall.callring.application.recording.policy.*
 import com.greatwall.callring.application.CallringBackend
 import com.greatwall.callring.contracts.callers.*
@@ -123,7 +124,7 @@ class IncomingCallCoordinator(
                                         at,
                                         initial,
                                         account,
-                                        assessment.classification,
+                                        assessment.classification.toContract(),
                                     ).also { id ->
                                         try { afterRecorded(id, number, at) } catch (_: Exception) { safeFailure() }
                                         if (id > 0) onStatisticsRecorded?.let { sink -> observe { sink(sessionId, id) } }

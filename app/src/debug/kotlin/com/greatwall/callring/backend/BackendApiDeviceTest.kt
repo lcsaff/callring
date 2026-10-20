@@ -1,5 +1,6 @@
 package com.greatwall.callring.backend
 
+import com.greatwall.callring.application.mapping.*
 import com.greatwall.callring.application.recording.policy.*
 import android.database.sqlite.SQLiteDatabase
 import android.os.SystemClock
@@ -166,10 +167,10 @@ class BackendApiDeviceTest : InstrumentationTestCase() {
         val times = listOf("10:59:59.999", "11:00:00", "11:59:59.999", "12:00:00")
         withContext(Dispatchers.IO) {
             fixture.graph.backend.importSystemCalls(times.mapIndexed { index, time ->
-                SystemCallRecord("endpoint-$index", "31234", millis("2026-06-01T${time}Z"), 1, CallResult.ANSWERED, "fixture-account")
+                SystemCallRecord("endpoint-$index", "31234", millis("2026-06-01T${time}Z"), 1, CallResult.ANSWERED.toDomain(), "fixture-account")
             } + listOf(
-                SystemCallRecord("same-time-a", "31234", millis("2026-06-01T12:30:00Z"), 2, CallResult.ANSWERED, "fixture-account"),
-                SystemCallRecord("same-time-b", "31234", millis("2026-06-01T12:30:00Z"), 3, CallResult.MISSED, "fixture-account"),
+                SystemCallRecord("same-time-a", "31234", millis("2026-06-01T12:30:00Z"), 2, CallResult.ANSWERED.toDomain(), "fixture-account"),
+                SystemCallRecord("same-time-b", "31234", millis("2026-06-01T12:30:00Z"), 3, CallResult.MISSED.toDomain(), "fixture-account"),
             ))
         }
         val report = report()
@@ -184,7 +185,7 @@ class BackendApiDeviceTest : InstrumentationTestCase() {
         configureWorkingDay()
         val at = millis("2026-06-01T10:00:00Z")
         withContext(Dispatchers.IO) {
-            fixture.graph.backend.importSystemCalls(listOf(SystemCallRecord("first-provider", "31234", at + 1000, 12, CallResult.ANSWERED, "fixture-account")))
+            fixture.graph.backend.importSystemCalls(listOf(SystemCallRecord("first-provider", "31234", at + 1000, 12, CallResult.ANSWERED.toDomain(), "fixture-account")))
         }
         val first = record("31234", at)
         assertTrue(first > 0)
@@ -324,7 +325,7 @@ class BackendApiDeviceTest : InstrumentationTestCase() {
                         "31234",
                         at + 1000,
                         23,
-                        CallResult.ANSWERED,
+                        CallResult.ANSWERED.toDomain(),
                         "fixture-account",
                     )
                 )

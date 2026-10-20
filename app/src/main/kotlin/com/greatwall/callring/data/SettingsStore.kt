@@ -1,5 +1,8 @@
 package com.greatwall.callring.data
 
+import com.greatwall.callring.domain.model.QuietSettings
+import com.greatwall.callring.domain.model.QuietMode
+import com.greatwall.callring.domain.model.ScoreSettings
 import android.database.sqlite.SQLiteDatabase
 import com.greatwall.callring.contracts.settings.*
 import com.greatwall.callring.contracts.ai.*

@@ -1,6 +1,7 @@
 package com.greatwall.callring.domain
 
-import com.greatwall.callring.contracts.callers.CallResult
+import com.greatwall.callring.domain.model.*
+
 
 /** Candidate degrees always use the complete number index, beyond the bounded write set. */
 object CallCorrelation {

@@ -1,8 +1,8 @@
 package com.greatwall.callring.platform
 
+import com.greatwall.callring.domain.model.CalendarYear
 import com.greatwall.callring.application.ports.CalendarSource
 import com.greatwall.callring.domain.CalendarImport
-import com.greatwall.callring.contracts.settings.CalendarYear
 import com.greatwall.callring.data.WorkConfigCodec
 import java.io.IOException
 import java.net.URI

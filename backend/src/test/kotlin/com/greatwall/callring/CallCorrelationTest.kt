@@ -1,5 +1,10 @@
 package com.greatwall.callring
 
+import com.greatwall.callring.domain.model.CallResult
+import com.greatwall.callring.domain.model.CallDecision
+import com.greatwall.callring.domain.model.CallSource
+import com.greatwall.callring.domain.model.ClassificationFact
+import com.greatwall.callring.domain.model.WorkReason
 import com.greatwall.callring.contracts.callers.*
 import com.greatwall.callring.domain.BackendState
 import com.greatwall.callring.domain.CallCorrelation

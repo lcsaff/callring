@@ -1,5 +1,6 @@
 package com.greatwall.callring.data
 
+import com.greatwall.callring.application.mapping.*
 import android.database.sqlite.SQLiteDatabase
 import android.test.InstrumentationTestCase
 import com.greatwall.callring.contracts.callers.*
@@ -54,9 +55,9 @@ class SqliteBackendStoreDeviceTest : InstrumentationTestCase() {
                     "31234",
                     1780275600000L,
                     0,
-                    CallResult.ANSWERED,
-                    CallDecision.SYSTEM_LOG_ONLY,
-                    CallSource.SYSTEM_CALL_LOG,
+                    CallResult.ANSWERED.toDomain(),
+                    CallDecision.SYSTEM_LOG_ONLY.toDomain(),
+                    CallSource.SYSTEM_CALL_LOG.toDomain(),
                     "one",
                     null,
                     true,
@@ -113,7 +114,7 @@ class SqliteBackendStoreDeviceTest : InstrumentationTestCase() {
             )
         }
         try {
-            store.transaction { it.score = ScoreSettings(7, 3, 15, 45) }
+            store.transaction { it.score = ScoreSettings(7, 3, 15, 45).toDomain() }
             fail("Ignored insert accepted")
         } catch (expected: IllegalStateException) {}
         assertEquals(ScoreSettings(5, 2, 10, 30), store.read { it.score })
@@ -129,9 +130,9 @@ class SqliteBackendStoreDeviceTest : InstrumentationTestCase() {
                     "31234",
                     1780275600000L,
                     null,
-                    CallResult.UNKNOWN,
-                    CallDecision.UNKNOWN,
-                    CallSource.UNKNOWN,
+                    CallResult.UNKNOWN.toDomain(),
+                    CallDecision.UNKNOWN.toDomain(),
+                    CallSource.UNKNOWN.toDomain(),
                     "legacy",
                     null,
                     true,
@@ -201,9 +202,9 @@ class SqliteBackendStoreDeviceTest : InstrumentationTestCase() {
                     "31234",
                     at,
                     null,
-                    CallResult.PENDING,
-                    CallDecision.WHITELIST_ALLOWED,
-                    CallSource.SCREENING,
+                    CallResult.PENDING.toDomain(),
+                    CallDecision.WHITELIST_ALLOWED.toDomain(),
+                    CallSource.SCREENING.toDomain(),
                     null,
                     "31234:$at",
                     true,
@@ -242,7 +243,7 @@ class SqliteBackendStoreDeviceTest : InstrumentationTestCase() {
             assertTrue(screen.hidden)
             assertEquals(original, screen.originalClassification)
             assertTrue(screen.classification.working)
-            assertEquals(CallDecision.WHITELIST_ALLOWED, screen.decision)
+            assertEquals(com.greatwall.callring.domain.model.CallDecision.WHITELIST_ALLOWED, screen.decision)
             val provider = state.calls.values.single { it.logId != null }
             assertEquals(at + 1000, provider.time)
             assertEquals(1L, provider.linkedScreenId)
@@ -269,9 +270,9 @@ class SqliteBackendStoreDeviceTest : InstrumentationTestCase() {
                     "31234",
                     at,
                     null,
-                    CallResult.PENDING,
-                    CallDecision.WHITELIST_ALLOWED,
-                    CallSource.SCREENING,
+                    CallResult.PENDING.toDomain(),
+                    CallDecision.WHITELIST_ALLOWED.toDomain(),
+                    CallSource.SCREENING.toDomain(),
                     null,
                     "31234:$at",
                     true,
@@ -298,7 +299,7 @@ class SqliteBackendStoreDeviceTest : InstrumentationTestCase() {
         store.transaction { state ->
             state.holidays.remove(date)
             state.makeupDates.add(date)
-            state.calendarYears[2026] = CalendarYear(2026, "replacement", "2026-01-01", "test")
+            state.calendarYears[2026] = CalendarYear(2026, "replacement", "2026-01-01", "test").toDomain()
             state.pendingAudits.add(AuditRecord("calendar", "2026", "exact raw document", 10))
         }
         fixture().use { db ->
@@ -404,9 +405,9 @@ class SqliteBackendStoreDeviceTest : InstrumentationTestCase() {
                     "31234",
                     at,
                     null,
-                    CallResult.PENDING,
-                    CallDecision.NORMAL_RINGING,
-                    CallSource.SCREENING,
+                    CallResult.PENDING.toDomain(),
+                    CallDecision.NORMAL_RINGING.toDomain(),
+                    CallSource.SCREENING.toDomain(),
                     null,
                     "31234:$at",
                     true,

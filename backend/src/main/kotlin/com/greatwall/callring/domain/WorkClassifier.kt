@@ -1,7 +1,7 @@
 package com.greatwall.callring.domain
 
-import com.greatwall.callring.contracts.callers.*
-import com.greatwall.callring.contracts.settings.*
+import com.greatwall.callring.domain.model.*
+
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
@@ -12,7 +12,7 @@ import java.time.ZoneId
  */
 object WorkClassifier {
     val evaluations=java.util.concurrent.atomic.AtomicLong()
-    fun schedule(state: BackendState, at: Long): WorkScheduleSettings =
+    fun schedule(state: WorkInputs, at: Long): WorkScheduleSettings =
         state.schedules
             .filter { it.effectiveFromEpochMillis <= at }
             .maxWithOrNull(
@@ -22,7 +22,7 @@ object WorkClassifier {
             ?: state.schedules.minByOrNull { it.effectiveFromEpochMillis }
             ?: defaultWorkSchedule()
 
-    fun classify(state: BackendState, at: Long): ClassificationFact {
+    fun classify(state: WorkInputs, at: Long): ClassificationFact {
         evaluations.incrementAndGet()
         val config = schedule(state, at)
         val local = Instant.ofEpochMilli(at).atZone(ZoneId.of(config.zoneId))
@@ -60,7 +60,7 @@ object WorkClassifier {
         }
     }
 
-    fun status(state: BackendState, at: Long): WorkStatus {
+    fun status(state: WorkInputs, at: Long): WorkStatus {
         val current = classify(state, at)
         val config = schedule(state, at)
         val zone = ZoneId.of(config.zoneId)
@@ -121,7 +121,7 @@ object WorkClassifier {
         val holiday: String? = null,
     )
 
-    private fun plan(state: BackendState, config: WorkScheduleSettings, date: LocalDate): Plan {
+    private fun plan(state: WorkInputs, config: WorkScheduleSettings, date: LocalDate): Plan {
         state.overrides[date]?.let {
             return Plan(
                 it.windows,

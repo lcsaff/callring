@@ -1,5 +1,7 @@
 package com.greatwall.callring.application
 
+import com.greatwall.callring.domain.report.*
+import com.greatwall.callring.application.mapping.*
 import com.greatwall.callring.contracts.common.*
 import com.greatwall.callring.contracts.callers.*
 import com.greatwall.callring.contracts.report.*
@@ -11,11 +13,7 @@ import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.*
 
 internal fun BackendContext.timeRange(s: BackendState, range: DateRange): TimeRange {
-    requireField(
-        !range.endDateInclusive.isBefore(range.startDate),
-        "range.endDateInclusive",
-        "range.order.invalid",
-    )
+    requireIssues(com.greatwall.callring.domain.model.SettingsRules.dateOrder(range.startDate, range.endDateInclusive, "range.endDateInclusive"))
     val zone =
         try {
             ZoneId.of(range.zoneId ?: currentSchedule(s).zoneId)
@@ -23,11 +21,7 @@ internal fun BackendContext.timeRange(s: BackendState, range: DateRange): TimeRa
             fail(ErrorCode.VALIDATION, "zone.invalid", "range.zoneId")
         }
     return try {
-        TimeRange(
-            range.startDate.atStartOfDay(zone).toInstant().toEpochMilli(),
-            range.endDateInclusive.plusDays(1).atStartOfDay(zone).toInstant().toEpochMilli(),
-            zone.id,
-        )
+        com.greatwall.callring.domain.model.calendarRange(range.startDate, range.endDateInclusive, zone).toContract()
     } catch (_: Exception) {
         fail(ErrorCode.VALIDATION, "range.invalid", "range.endDateInclusive")
     }
@@ -39,9 +33,9 @@ internal fun BackendContext.score(
     range: TimeRange,
     includeSaturatedMax: Boolean = false,
 ): ScoreSummary {
-    val accumulator=StreamingReportAccumulator(s.score,range,includeSaturatedMax)
-    calls.sortedBy{it.startedAtEpochMillis}.forEach{accumulator.accept(it.startedAtEpochMillis,it.counted,it.classification.working,it.durationSeconds,it.result)}
-    return accumulator.score()
+    val accumulator=StreamingReportAccumulator(s.score,range.toDomain(),includeSaturatedMax)
+    calls.sortedBy{it.startedAtEpochMillis}.forEach{accumulator.accept(it.startedAtEpochMillis,it.counted,it.classification.working,it.durationSeconds,it.result.toDomain())}
+    return accumulator.score().toContract()
 }
 
 internal fun BackendContext.quality(
@@ -96,6 +90,6 @@ internal fun BackendContext.report(
 
 internal fun BackendContext.reportTotals(rows: List<CallDetail>, summary: ScoreSummary): ReportTotals {
     val accumulator=ReportTotalsAccumulator()
-    rows.forEach{accumulator.accept(it.counted,it.classification.working,it.durationSeconds,it.result)}
-    return accumulator.value(summary.offHoursCalls)
+    rows.forEach{accumulator.accept(it.counted,it.classification.working,it.durationSeconds,it.result.toDomain())}
+    return accumulator.value(summary.offHoursCalls).toContract()
 }

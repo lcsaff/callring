@@ -1,5 +1,6 @@
 package com.greatwall.callring.platform.calling
 
+import com.greatwall.callring.application.mapping.*
 import com.greatwall.callring.contracts.callers.*
 import com.greatwall.callring.domain.IncomingDecision
 import java.io.Closeable
@@ -69,7 +70,7 @@ class IncomingCallCoordinatorTest {
         override fun normalize(raw: String) = raw
 
         override fun evaluate(number: String, at: Long) =
-            IncomingDecision(true, false, true, true, statisticsEnabled, fact)
+            IncomingDecision(true, false, true, true, statisticsEnabled, fact.toDomain())
 
         override fun record(
             number: String,

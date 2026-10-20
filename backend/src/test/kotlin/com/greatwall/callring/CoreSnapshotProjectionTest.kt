@@ -1,5 +1,6 @@
 package com.greatwall.callring
 
+import com.greatwall.callring.application.mapping.*
 import com.greatwall.callring.application.*
 import com.greatwall.callring.contracts.callers.*
 import com.greatwall.callring.contracts.ai.*
@@ -12,8 +13,8 @@ class CoreSnapshotProjectionTest {
     @Test fun saturatedAllTimeStatisticsStillCountBothExtremeTimestamps() = runBlocking {
         val fixture = ConversationFixtures()
         val fact = ClassificationFact(true,WorkReason.WORKING,null,false,"UTC",1,null,0)
-        fixture.state.calls[1] = RawCallRecord(1,"999",Long.MIN_VALUE,1,CallResult.ANSWERED,CallDecision.NORMAL_RINGING,CallSource.SCREENING,null,null,true,fact,fact)
-        fixture.state.calls[2] = RawCallRecord(2,"999",Long.MAX_VALUE,2,CallResult.ANSWERED,CallDecision.NORMAL_RINGING,CallSource.SCREENING,null,null,true,fact,fact)
+        fixture.state.calls[1] = RawCallRecord(1,"999",Long.MIN_VALUE,1,CallResult.ANSWERED.toDomain(),CallDecision.NORMAL_RINGING.toDomain(),CallSource.SCREENING.toDomain(),null,null,true,fact.toDomain(),fact.toDomain())
+        fixture.state.calls[2] = RawCallRecord(2,"999",Long.MAX_VALUE,2,CallResult.ANSWERED.toDomain(),CallDecision.NORMAL_RINGING.toDomain(),CallSource.SCREENING.toDomain(),null,null,true,fact.toDomain(),fact.toDomain())
         val snapshot = fixture.backend.captureCore(fixture.now).requiredValue()
         val statistics = snapshot.getValue("D05") as AiJson.Obj
         val number = (statistics["numbers"] as AiJson.Arr).values.single() as AiJson.Obj

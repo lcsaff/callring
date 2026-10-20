@@ -1,5 +1,6 @@
 package com.greatwall.callring
 
+import com.greatwall.callring.application.mapping.*
 import com.greatwall.callring.application.*
 import com.greatwall.callring.contracts.common.*
 import com.greatwall.callring.contracts.settings.*
@@ -34,7 +35,7 @@ class ConversationFixtures {
         object : DocumentStore {
             override fun <T> read(source: DocumentRef, block: (InputStream) -> T) = ByteArrayInputStream(byteArrayOf()).use(block)
             override fun <T> write(destination: DocumentRef, block: (OutputStream) -> T) = ByteArrayOutputStream().use(block)
-            override fun readCalendar(source: DocumentRef) = CalendarImport(CalendarYear(2026, "fixture", "2026-01-01", "1"), emptyMap(), emptySet())
+            override fun readCalendar(source: DocumentRef) = CalendarImport(CalendarYear(2026, "fixture", "2026-01-01", "1").toDomain(), emptyMap(), emptySet())
         },
         object : RuntimeProbe {
             override fun getStatus() = RuntimeStatus(Capability.values().associateWith { AccessState.GRANTED }, Audibility.AUDIBLE, PhoneActivity.IDLE, PlaybackStatus(PlaybackMode.NONE, PlaybackState.IDLE), true, now)

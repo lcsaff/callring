@@ -1,5 +1,6 @@
 package com.greatwall.callring.application
 
+import com.greatwall.callring.application.mapping.*
 import com.greatwall.callring.contracts.common.*
 import com.greatwall.callring.contracts.settings.*
 import com.greatwall.callring.application.ports.*
@@ -13,51 +14,29 @@ internal fun BackendContext.stats(s: BackendState) =
 
 internal fun BackendContext.currentSchedule(s: BackendState) =
     s.schedules.maxWithOrNull(
-        compareBy<WorkScheduleSettings> { it.effectiveFromEpochMillis }.thenBy { it.configVersion }
+        compareBy<com.greatwall.callring.domain.model.WorkScheduleSettings> { it.effectiveFromEpochMillis }.thenBy { it.configVersion }
     ) ?: defaultWorkSchedule()
 
-internal fun BackendContext.validateWeekly(weekly: Map<Int, List<TimeWindow>>, field: String) {
-    weekly.forEach { (day, windows) ->
-        requireField(day in 1..7, field, "weekday.invalid")
-        validateWindows(windows, "$field.$day")
-    }
+/** Preserve the original first-error API behavior while domain emits ordinary ordered issues. */
+internal fun BackendContext.requireIssues(issues: List<com.greatwall.callring.domain.model.SettingsIssue>) {
+    issues.firstOrNull()?.let { fail(ErrorCode.VALIDATION, it.message, it.path) }
 }
-
-internal fun BackendContext.validateWindows(windows: List<TimeWindow>, field: String) {
-    windows.forEachIndexed { index, w ->
-        requireField(w.startMinute in 0..1439, "$field.$index.startMinute", "minute.invalid")
-        requireField(
-            w.endMinute in 0..1439 && w.endMinute != w.startMinute,
-            "$field.$index.endMinute",
-            "window.invalid",
-        )
-    }
-}
-
-internal fun BackendContext.validateQuiet(q: QuietSettings) {
-    validateWeekly(q.weeklyWindows, "weeklyWindows")
-    requireField(
-        q.mode != QuietMode.CUSTOM || q.weeklyWindows.values.any { it.isNotEmpty() },
-        "weeklyWindows",
-        "quiet.windows.required",
-    )
-}
-
-internal fun BackendContext.validateZone(zone: String, field: String = "zoneId") {
-    try {
-        ZoneId.of(zone)
-    } catch (_: Exception) {
-        fail(ErrorCode.VALIDATION, "zone.invalid", field)
-    }
-}
+internal fun BackendContext.validateWeekly(weekly: Map<Int, List<TimeWindow>>, field: String) =
+    requireIssues(com.greatwall.callring.domain.model.SettingsRules.weekly(weekly.mapValues { (_, windows) -> windows.map { it.toDomain() } }, field))
+internal fun BackendContext.validateWindows(windows: List<TimeWindow>, field: String) =
+    requireIssues(com.greatwall.callring.domain.model.SettingsRules.windows(windows.map { it.toDomain() }, field))
+internal fun BackendContext.validateQuiet(q: QuietSettings) =
+    requireIssues(com.greatwall.callring.domain.model.SettingsRules.quiet(q.toDomain()))
+internal fun BackendContext.validateZone(zone: String, field: String = "zoneId") =
+    requireIssues(com.greatwall.callring.domain.model.SettingsRules.zone(zone, field))
 
 internal fun BackendContext.calendar(s: BackendState) =
     CalendarInfo(
-        frozenList(s.calendarYears.values.sortedBy { it.year }),
+        frozenList(s.calendarYears.values.sortedBy { it.year }.map { it.toContract() }),
         frozenList(
             s.overrides.values
                 .sortedBy { it.date }
-                .map { it.copy(windows = frozenList(it.windows)) }
+                .map { it.toContract().let { dto -> dto.copy(windows = frozenList(dto.windows)) } }
         ),
     )
 
@@ -88,3 +67,6 @@ internal fun BackendContext.scheduleCopy(s: WorkScheduleSettings) =
 
 internal fun BackendContext.windowsCopy(map: Map<Int, List<TimeWindow>>) =
     frozenMap(map.mapValues { frozenList(it.value) })
+
+internal fun BackendContext.quietCopy(q: com.greatwall.callring.domain.model.QuietSettings) = q.toContract().let { quietCopy(it) }.toDomain()
+internal fun BackendContext.scheduleCopy(s: com.greatwall.callring.domain.model.WorkScheduleSettings) = s.toContract().let { scheduleCopy(it) }.toDomain()

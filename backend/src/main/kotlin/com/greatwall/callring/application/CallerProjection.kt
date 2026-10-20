@@ -1,5 +1,6 @@
 package com.greatwall.callring.application
 
+import com.greatwall.callring.application.mapping.*
 import com.greatwall.callring.contracts.common.*
 import com.greatwall.callring.contracts.callers.*
 import com.greatwall.callring.contracts.settings.*
@@ -51,12 +52,12 @@ internal fun BackendContext.detail(s: BackendState, raw: RawCallRecord): CallDet
         raw.time,
         screen?.time ?: raw.time.takeIf { raw.logId == null },
         raw.duration,
-        raw.result,
-        screen?.decision ?: raw.decision,
-        if (screen != null) CallSource.MERGED else raw.source,
+        raw.result.toContract(),
+        (screen?.decision ?: raw.decision).toContract(),
+        if (screen != null) CallSource.MERGED else raw.source.toContract(),
         raw.counted,
-        raw.classification,
-        original,
+        raw.classification.toContract(),
+        original.toContract(),
         raw.classification != original,
         screen?.decisionNote ?: raw.decisionNote,
     )
