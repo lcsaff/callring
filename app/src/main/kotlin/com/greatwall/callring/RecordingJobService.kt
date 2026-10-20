@@ -22,10 +22,7 @@ class RecordingJobService : JobService() {
             var next: Long? = null
             try {
                 val runtime = BackendProvider.from(this).backendGraph.recordings
-                // Folder access can fail independently; already imported work must still run.
-                try { if (!token.get()) runtime.discoverSystemRecordings() } catch (_: Exception) {}
-                if (!token.get()) runtime.process { token.get() }
-                next = runtime.workflow.nextRunAt()
+                next = runtime.service.runScheduled { token.get() }
             } catch (_: Exception) { retry = true }
             Handler(Looper.getMainLooper()).post {
                 if (!token.get()) {

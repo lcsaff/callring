@@ -1,5 +1,6 @@
 package com.greatwall.callring.platform.ai
 
+import com.greatwall.callring.bootstrap.RecordingAssembly
 import com.greatwall.callring.data.codec.parseAiJson
 
 import com.greatwall.callring.application.mapping.*
@@ -67,7 +68,7 @@ class ToolBusinessIntegrationTest {
             override fun getInstalledWidgets() = WidgetInstallState(listOf(1),AccessState.GRANTED)
         },audio,object : SyncScheduler { override fun requestSync(atEpochMillis: Long) = SyncRequestReceipt(SyncRequestState.QUEUED,atEpochMillis) },Clock.fixed(Instant.ofEpochMilli(now),ZoneOffset.UTC),calendarSource = CalendarSource { year -> CalendarImport(CalendarYear(year,"fixture","2026-01-01","v1").toDomain(),mapOf(LocalDate.of(year,1,1) to "fixture holiday"),emptySet()) },coordinator = coordinator, coreTransactions = store.sessions)
         val recordingStore = AndroidRecordingStore(context,namespace,object : RecordingCipher { override fun encrypt(value: String) = java.util.Base64.getEncoder().encodeToString(value.toByteArray()); override fun decrypt(value: String) = String(java.util.Base64.getDecoder().decode(value)) }, recordingVersion = { coordinator.capture().values.getValue("recording") })
-        val runtime = AndroidRecordingRuntime(context,namespace,{ null },{ null },{}, { recordingStore },metadataReader = { 1000L to "wav" },coordinator = coordinator,clientFactory = { client })
+        val runtime = RecordingAssembly(context,namespace,{ null },{ null },{}, { recordingStore },metadataReader = { 1000L to "wav" },coordinator = coordinator,clientFactory = { client })
         var recordingId = -1L
         val resources = ForegroundResourceRegistry()
         val foreground = ForegroundActionService(checkCommand = { cmd -> cmd == null || coordinator.committed(cmd.operationId) != null || runCatching { coordinator.guard(cmd.copy(mayCommit = { true })) {} }.isSuccess })
@@ -86,7 +87,7 @@ class ToolBusinessIntegrationTest {
                 override val home = spy(HomeApi::class.java,"home",base.home)
                 override val widgets = spy(WidgetBindingsApi::class.java,"widgets",base.widgets)
                 override val runtime = spy(RuntimeApi::class.java,"runtime",base.runtime)
-                override val recordings = spy(RecordingApi::class.java,"recordings",command?.let(this@Fixture.runtime::bound) ?: this@Fixture.runtime)
+                override val recordings = spy(RecordingApi::class.java,"recordings",command?.let(this@Fixture.runtime.service::bound) ?: this@Fixture.runtime.service)
                 override val aiSettings = spy(AiSettingsApi::class.java,"ai",command?.let(this@Fixture.runtime.aiSettings::bound) ?: this@Fixture.runtime.aiSettings)
                 override fun commandApi(context: CommandContext) = api(context)
                 override fun checkNumber(raw: String): NumberCheck { calls += "root.checkNumber"; return base.checkNumber(raw) }
@@ -104,9 +105,9 @@ class ToolBusinessIntegrationTest {
             backend.widgets.saveBinding(1,"31234").requiredValue()
             val connection = AiConnection(url = "https://example.com/v1",apiKey = "fixture-secret-one",model = "fixture")
             recordingStore.persistSettings(RecordingSettings(recordingEnabled = true,analysis = connection,transcription = connection.copy(apiKey = "fixture-secret-two")))
-            val identity = runtime.observeIncoming("session","31234",now,null)!!
+            val identity = runtime.service.observeIncoming("session","31234",now,null)!!
             recordingId = identity.id
-            runtime.importRecording(identity.id,identity.number,identity.startedAt,DocumentRef("content://tool-fixture/audio")).requiredValue()
+            runtime.service.importRecording(identity.id,identity.number,identity.startedAt,DocumentRef("content://tool-fixture/audio")).requiredValue()
             val archive = recordingStore.get(recordingId)!!
             recordingStore.compareAndSet(recordingId,archive.generation,archive.copy(generation = archive.generation+1,transcript = "FULL-TAIL",analysis = CallAnalysis(name = "self",organization = "new unit",inferredIdentity = "inference")))
             foreground.attachHost()
@@ -149,7 +150,7 @@ class ToolBusinessIntegrationTest {
             f.runtime.archiveCommands.compareAndSet(old.callId,old.generation,old.copy(generation=old.generation+1,analysis=CallAnalysis(name=name,organization=department)), null, false)
             if(kind=="legacy-unindexed")android.database.sqlite.SQLiteDatabase.openDatabase(context.getDatabasePath("${f.namespace}_recording.db").path,null,android.database.sqlite.SQLiteDatabase.OPEN_READWRITE).use{db->listOf("archive_projection","archive_text_fields","archive_text_chunks").forEach{db.delete(it,null,null)}}
             val requested=if(kind in setOf("linked-positive","changed-linked-after-disclosure")){f.recordingStore.insertStatisticsLink(1,"session");1L}else f.recordingId
-            if(kind=="deleted")f.runtime.delete(f.recordingId).requiredValue()
+            if(kind=="deleted")f.runtime.service.delete(f.recordingId).requiredValue()
             val root=f.api()
             val wrapped=object:CallringUiApi by root {
                 override fun commandApi(command:CommandContext):CallringUiApi {
@@ -274,7 +275,7 @@ class ToolBusinessIntegrationTest {
                     override val domains=setOf(AiDomain.D19)
                     override fun version(domain:AiDomain)=0L
                     override fun query(spec:QuerySpec,after:String?)=error("unused")
-                    override fun get(domain:AiDomain,key:String,projection:String)=SourceRow(key,aiObject("recordingPlayback" to fixture.runtime.playbackSnapshot()))
+                    override fun get(domain:AiDomain,key:String,projection:String)=SourceRow(key,aiObject("recordingPlayback" to fixture.runtime.service.playbackSnapshot()))
                 }))
                 assertEquals("Authoritative readback ${definition.index}",VerificationStatus.VERIFIED,ReceiptVerifier(queries).verify(definition.index,call,receipt).verification)
             }

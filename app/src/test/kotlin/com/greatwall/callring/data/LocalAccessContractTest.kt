@@ -86,7 +86,7 @@ class LocalAccessContractTest {
             )
             assertTrue("recording identity is independent of positive statistics IDs", recording.id < 0)
             graph.recordings.store.insertStatisticsLink(1L, "synthetic-access-session")
-            val identity = graph.recordings.getIdentity(recording.id).requiredValue()
+            val identity = graph.recordings.service.getIdentity(recording.id).requiredValue()
             assertEquals(LocalAccessFixture.TARGET, identity.number)
             suspend fun measure(name: String, operation: suspend () -> Unit) {
                 val sqlBefore = sqlProbe.snapshot().associateBy { it.tag to it.tables }

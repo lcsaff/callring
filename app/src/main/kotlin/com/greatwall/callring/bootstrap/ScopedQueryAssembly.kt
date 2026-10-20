@@ -13,13 +13,12 @@ import com.greatwall.callring.application.requiredValue
 import com.greatwall.callring.application.safeValue
 import com.greatwall.callring.platform.AndroidPreferences
 import com.greatwall.callring.platform.AndroidDiagnosticsStore
-import com.greatwall.callring.platform.ai.AndroidRecordingRuntime
 import com.greatwall.callring.platform.ai.SystemRecordingSource
 import java.time.Clock
 import kotlinx.coroutines.runBlocking
 
 /** Register lazy source adapters. Constructing this registry performs no business source reads. */
-fun scopedQueryApi(core:ScopedReadPort,recordings:()->AndroidRecordingRuntime,api:()->CallringUiApi,preferences:()->AndroidPreferences,diagnostics:()->AndroidDiagnosticsStore,directory:SystemRecordingSource,coordinator:BusinessRevisionCoordinator,resources:ForegroundResourceRegistry,playback:()->PlaybackStatus,installed:()->WidgetInstallState,jobs:()->AiJson,clock:Clock):QueryService {
+fun scopedQueryApi(core:ScopedReadPort,recordings:()->RecordingAssembly,api:()->CallringUiApi,preferences:()->AndroidPreferences,diagnostics:()->AndroidDiagnosticsStore,directory:SystemRecordingSource,coordinator:BusinessRevisionCoordinator,resources:ForegroundResourceRegistry,playback:()->PlaybackStatus,installed:()->WidgetInstallState,jobs:()->AiJson,clock:Clock):QueryService {
     val recordingSource=object:ScopedReadPort {
         override val domains=setOf(AiDomain.D15,AiDomain.D16)
         override fun version(domain:AiDomain)=coordinator.sourceVersion(domain)
@@ -45,7 +44,7 @@ fun scopedQueryApi(core:ScopedReadPort,recordings:()->AndroidRecordingRuntime,ap
                 AiDomain.D12->aiObject("settings" to runBlocking{safeValue(api().ringtone.getSettings().requiredValue())},"playback" to safeValue(playback()))
                 AiDomain.D13->runBlocking{safeValue(recordings().aiSettings.getRecordingView().requiredValue())}
                 AiDomain.D14->runBlocking{safeValue(recordings().aiSettings.getAiView().requiredValue())}
-                AiDomain.D19->aiObject("runtime" to runBlocking{safeValue(api().runtime.getStatus().requiredValue())},"recordingPlayback" to recordings().playbackSnapshot(),"processing" to recordings().workflow.activitySnapshot(),"scheduledJobs" to jobs())
+                AiDomain.D19->aiObject("runtime" to runBlocking{safeValue(api().runtime.getStatus().requiredValue())},"recordingPlayback" to recordings().service.playbackSnapshot(),"processing" to recordings().workflow.activitySnapshot(),"scheduledJobs" to jobs())
                 else->error("ai.query_not_implemented")
             }
             sequenceOf(SourceRow("current",value as AiJson.Obj))

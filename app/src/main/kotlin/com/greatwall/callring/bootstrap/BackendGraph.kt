@@ -18,7 +18,6 @@ import com.greatwall.callring.platform.calling.AndroidCallWorkLease
 import com.greatwall.callring.platform.calling.BackendIncomingCallEngine
 import com.greatwall.callring.platform.calling.IncomingCallCoordinator
 import java.io.Closeable
-import com.greatwall.callring.platform.ai.AndroidRecordingRuntime
 import com.greatwall.callring.application.RecordingCall
 import com.greatwall.callring.application.IncomingRecordingSession
 import com.greatwall.callring.application.findRecordingCall
@@ -129,7 +128,7 @@ class BackendGraph(
     val recordingSession = IncomingRecordingSession()
     private val recordingDelegate = lazy {
         ensureOpen()
-        AndroidRecordingRuntime(application, configuration.databaseName,
+        RecordingAssembly(application, configuration.databaseName,
             findCall = { id -> findRecordingCall(store, id) },
             activeCallId = { recordingSession.activeCandidate(configuration.clock.millis()) },
             schedule = { delay -> RecordingJobService.schedule(application, delay) }, coordinator = coordinator)
@@ -154,10 +153,10 @@ class BackendGraph(
         }
     private val apiDelegate by lazy {
         object : CallringUiApi by backend {
-            override val recordings: RecordingApi get() = this@BackendGraph.recordings
+            override val recordings: RecordingApi get() = this@BackendGraph.recordings.service
             override val aiSettings: AiSettingsApi get() = this@BackendGraph.recordings.aiSettings
             override val numberDeletion: NumberDeletionApi get() =
-                com.greatwall.callring.platform.callers.NumberDeletionService(backend.callers, this@BackendGraph.recordings, backend.widgets, this@BackendGraph.recordings::numberArchives)
+                com.greatwall.callring.platform.callers.NumberDeletionService(backend.callers, this@BackendGraph.recordings.service, backend.widgets, this@BackendGraph.recordings.service::numberArchives)
             override val snapshots: AiSnapshotApi get() = snapshotsDelegate.value
             override val conversation: ConversationApi get() = conversationDelegate.value
             override val update: AppUpdateApi get() = this@BackendGraph.update
@@ -166,7 +165,7 @@ class BackendGraph(
         }
     }
     private fun boundApi(command: CommandContext): CallringUiApi = object : CallringUiApi by backend.commandApi(command) {
-        override val recordings: RecordingApi get() = this@BackendGraph.recordings.bound(command)
+        override val recordings: RecordingApi get() = this@BackendGraph.recordings.service.bound(command)
         override val aiSettings: AiSettingsApi get() = this@BackendGraph.recordings.aiSettings.bound(command)
         override val numberDeletion: NumberDeletionApi
             get() {
@@ -174,9 +173,9 @@ class BackendGraph(
                 val boundBackend = backend.commandApi(deletionCommand)
                 return com.greatwall.callring.platform.callers.NumberDeletionService(
                     boundBackend.callers,
-                    this@BackendGraph.recordings.bound(deletionCommand),
+                    this@BackendGraph.recordings.service.bound(deletionCommand),
                     boundBackend.widgets,
-                    this@BackendGraph.recordings::numberArchives,
+                    this@BackendGraph.recordings.service::numberArchives,
                 )
             }
         override val snapshots: AiSnapshotApi get() = snapshotsDelegate.value
@@ -193,7 +192,7 @@ class BackendGraph(
             incomingCallUi,
             workLease = { callWorkLease.acquire() },
             onIncoming = { sessionId, number, at, account ->
-                recordings.observeIncoming(sessionId, number, at, account)?.let { call ->
+                recordings.service.observeIncoming(sessionId, number, at, account)?.let { call ->
                     recordingSession.register(call.id, call.startedAt)
                     // A fast answer can precede background persistence. Recheck this same live
                     // session once its independent identity is durable; IDLE clears it first.
@@ -201,7 +200,7 @@ class BackendGraph(
                         com.greatwall.callring.CallCaptureService.phoneState(application, true)
                 }
             },
-            onStatisticsRecorded = { sessionId, id -> recordings.linkStatistics(sessionId, id) },
+            onStatisticsRecorded = { sessionId, id -> recordings.service.linkStatistics(sessionId, id) },
             afterCompletion = {
                 synchronized(recoveryLifetime) {
                     if (

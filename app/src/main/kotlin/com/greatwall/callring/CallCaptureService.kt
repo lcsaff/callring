@@ -1,6 +1,5 @@
 package com.greatwall.callring
 
-import com.greatwall.callring.contracts.recording.*
 import android.Manifest
 import android.app.Notification
 import android.app.NotificationChannel
@@ -12,7 +11,6 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.media.MediaRecorder
 import android.os.IBinder
-import com.greatwall.callring.contracts.recording.CaptureMode
 import com.greatwall.callring.bootstrap.BackendProvider
 import com.greatwall.callring.application.RecordingCall
 import java.io.File
@@ -42,22 +40,19 @@ class CallCaptureService : Service() {
             try { synchronized(this) {
                 if (destroyed || recorder != null) return@execute
                 val runtime = BackendProvider.from(this).backendGraph.recordings
-                val config = runtime.store.settings()
-                val candidate = runtime.captureCandidate()
-                if (!config.recordingEnabled || candidate == null) { stopSelf(); return@execute }
-                call = candidate
                 val privileged = checkSelfPermission("android.permission.CAPTURE_AUDIO_OUTPUT") == PackageManager.PERMISSION_GRANTED
-                if (!privileged && (config.captureMode != CaptureMode.MICROPHONE_EXPERIMENTAL ||
-                        checkSelfPermission(Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED)) {
-                    runtime.captureFailure(candidate, "recording.permission_required"); stopSelf(); return@execute
-                }
+                val plan = runtime.service.capturePlan(privileged,
+                    checkSelfPermission(Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED, false)
+                if (plan == null) { stopSelf(); return@execute }
+                val candidate = plan.call
+                call = candidate
                 try {
                     check(runtime.directory.isDirectory || runtime.directory.mkdirs())
                     val target = File(runtime.directory, UUID.randomUUID().toString() + ".m4a")
                     file = target
                     @Suppress("DEPRECATION") val next = MediaRecorder()
                     recorder = next
-                    next.setAudioSource(if (privileged) MediaRecorder.AudioSource.VOICE_CALL else MediaRecorder.AudioSource.MIC)
+                    next.setAudioSource(if (plan.voiceCall) MediaRecorder.AudioSource.VOICE_CALL else MediaRecorder.AudioSource.MIC)
                     next.setOutputFormat(MediaRecorder.OutputFormat.MPEG_4)
                     next.setAudioEncoder(MediaRecorder.AudioEncoder.AAC)
                     next.setAudioEncodingBitRate(64000); next.setAudioSamplingRate(16000)
@@ -68,7 +63,7 @@ class CallCaptureService : Service() {
                     next.prepare(); next.start()
                 } catch (_: Exception) {
                     recorder?.release(); recorder = null; file?.delete(); file = null
-                    runtime.captureFailure(candidate, "recording.capture_restricted"); stopSelf()
+                    runtime.service.captureFailure(candidate, "recording.capture_restricted"); stopSelf()
                 }
             } } catch (_: Exception) { stopSelf() }
         }
@@ -86,9 +81,9 @@ class CallCaptureService : Service() {
                 if (audio != null && candidate != null) {
                     val runtime = BackendProvider.from(this).backendGraph.recordings
                     try {
-                        if (valid) runtime.attachCapture(candidate, audio)
-                        else { audio.delete(); runtime.captureFailure(candidate, "recording.capture_restricted") }
-                    } catch (_: Exception) { audio.delete(); runtime.captureFailure(candidate, "recording.capture_restricted") }
+                        if (valid) runtime.service.attachCapture(candidate, com.greatwall.callring.application.AudioReference(audio.absolutePath))
+                        else { audio.delete(); runtime.service.captureFailure(candidate, "recording.capture_restricted") }
+                    } catch (_: Exception) { audio.delete(); runtime.service.captureFailure(candidate, "recording.capture_restricted") }
                 }
             }
         }
@@ -102,18 +97,12 @@ class CallCaptureService : Service() {
         fun phoneState(context: Context, active: Boolean) {
             if (!active) { context.stopService(Intent(context, CallCaptureService::class.java)); return }
             val runtime = BackendProvider.from(context).backendGraph.recordings
-            val settings = runtime.store.settings()
-            if (!settings.recordingEnabled) return
-            val call = runtime.captureCandidate() ?: return
-            runtime.noteMissing(call)
-            val privileged = context.checkSelfPermission("android.permission.CAPTURE_AUDIO_OUTPUT") == PackageManager.PERMISSION_GRANTED
-            if (privileged || settings.captureMode == CaptureMode.MICROPHONE_EXPERIMENTAL) {
-                if (context.checkSelfPermission(Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
-                    runtime.captureFailure(call, "recording.permission_required"); return
-                }
-                try { context.startForegroundService(Intent(context, CallCaptureService::class.java)) }
-                catch (_: Exception) { runtime.captureFailure(call, "recording.capture_restricted") }
-            }
+            val plan = runtime.service.capturePlan(
+                context.checkSelfPermission("android.permission.CAPTURE_AUDIO_OUTPUT") == PackageManager.PERMISSION_GRANTED,
+                context.checkSelfPermission(Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED, true) ?: return
+            val call = plan.call
+            try { context.startForegroundService(Intent(context, CallCaptureService::class.java)) }
+            catch (_: Exception) { runtime.service.captureFailure(call, "recording.capture_restricted") }
         }
     }
 }

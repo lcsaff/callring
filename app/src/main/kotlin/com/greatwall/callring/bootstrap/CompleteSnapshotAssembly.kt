@@ -9,14 +9,13 @@ import com.greatwall.callring.contracts.ai.*
 import com.greatwall.callring.contracts.common.*
 import com.greatwall.callring.contracts.runtime.*
 import com.greatwall.callring.platform.AndroidDiagnosticsStore
-import com.greatwall.callring.platform.ai.AndroidRecordingRuntime
 import java.time.Clock
 import kotlinx.coroutines.*
 
 fun completeSnapshotApi(
     backend: CallringBackend,
     fullReader: FullSnapshotReader,
-    recordings: AndroidRecordingRuntime,
+    recordings: RecordingAssembly,
     diagnostics: AndroidDiagnosticsStore,
     coordinator: BusinessRevisionCoordinator,
     resources: ForegroundResourceRegistry,
@@ -103,7 +102,7 @@ fun completeSnapshotApi(
                                 "recording.permission_required",
                             ),
                         )
-                    val files = recordings.systemRecordings().requiredValue()
+                    val files = recordings.service.systemRecordings().requiredValue()
                     mapOf(
                         "D17" to
                             resources.snapshotPart(
@@ -127,7 +126,7 @@ fun completeSnapshotApi(
                                 safeValue(
                                     mapOf(
                                         "runtime" to backend.runtime.getStatus().requiredValue(),
-                                        "recordingPlayback" to recordings.playbackStatus(),
+                                        "recordingPlayback" to recordings.service.playbackStatus(),
                                     ),
                                 ),
                                 scope = "live_probe",

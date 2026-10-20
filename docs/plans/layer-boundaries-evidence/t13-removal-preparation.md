@@ -23,6 +23,8 @@ stateLoads/stateLoadCount/businessReadCounters 属于迁移观测；最终保留
 
 建议顺序：来电/关联/预热→报表/source/full snapshot→recording findCall→初始化/升级专用SQL→fixture迁移→旧模型/Store/session/overload/空壳计数全部删除→精确符号负例防回流。独立codec、原schema/约束、sqlite_sequence与历史协议数据仍由唯一实现正确处理。
 
+文件清单收口须以真实源码集合核对，不能只机械勾选原227项：2026-10-20-layer-boundaries-file-map.md目前仍是设计基线和未勾选状态，T13回填每个原文件的实际唯一目标/删除位置及证据，再覆盖新增contracts与拆分文件。保留基线日期/数量作为历史，不把当前数量冒充原统计；当前app/ui/backend/contracts所有src/main Kotlin/Java必须有明确归属，无丢失、重复或仍指向已删包装的条目。迁移目录后的生产和测试package/import、Manifest、runner、工具脚本与文档链接一起检查。
+
 ## 根组件薄壳补充（b1bf4b0只读预查）
 
 RuleScreeningService已把截止时间业务委托ScreeningController；其Android Call/ResultReceiver/Handler适配仍可留壳。SyncJobService、CalendarSyncJobService、RecordingJobService、RuntimeReceiver还包含任务/事件编排，应各归entrypoint/jobs或entrypoint/runtime控制器；CallCaptureService、RingPlaybackService依文件清单拆出录音/播放控制器，系统组件FQCN保持。纯移动不顺带重写生命周期算法。

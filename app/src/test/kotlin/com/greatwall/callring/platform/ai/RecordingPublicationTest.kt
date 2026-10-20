@@ -1,5 +1,6 @@
 package com.greatwall.callring.platform.ai
 
+import com.greatwall.callring.bootstrap.RecordingAssembly
 import com.greatwall.callring.application.BusinessRevisionCoordinator
 import com.greatwall.callring.application.requiredValue
 import com.greatwall.callring.application.recording.RecordingArchiveCommands
@@ -19,6 +20,57 @@ import org.robolectric.annotation.Config
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [33], manifest = Config.NONE)
 class RecordingPublicationTest {
+    @Test fun assemblyCloseDoesNotOpenUnusedStoreOrClient() {
+        val runtime = RecordingAssembly(RuntimeEnvironment.getApplication(), "lazy-close", { null }, { null }, {},
+            storeFactory = { error("unused store opened") }, clientFactory = { error("unused AI client opened") })
+        runtime.close()
+    }
+    @Test fun identityReadAndCloseDoNotCreateUnusedAiClient() = runBlocking {
+        val store = AndroidRecordingStore(RuntimeEnvironment.getApplication(), "lazy-identity", recordingVersion = { 0L })
+        store.compareAndSet(1, null, CallArchive(1, "31234", 1, 1))
+        val runtime = RecordingAssembly(RuntimeEnvironment.getApplication(), "lazy-identity", { null }, { null }, {},
+            storeFactory = { store }, clientFactory = { error("unused AI client opened") })
+        runtime.service.getIdentity(1).requiredValue()
+        runtime.close()
+    }
+    @Test fun stoppingWithoutAPlayerDoesNotPublish() = runBlocking {
+        val coordinator = BusinessRevisionCoordinator()
+        val runtime = RecordingAssembly(RuntimeEnvironment.getApplication(), "stop-noop", { null }, { null }, {}, coordinator = coordinator)
+        try {
+            runtime.service.stop().requiredValue()
+            runtime.service.stop().requiredValue()
+            assertEquals("No native playback changed", 0L, coordinator.marker())
+        } finally { runtime.close() }
+    }
+
+    @Test fun nativeCompletionReleasesPlayerLockBeforePublishingAndStopIsThenNoop() = runBlocking {
+        val coordinator = BusinessRevisionCoordinator()
+        val store = AndroidRecordingStore(RuntimeEnvironment.getApplication(), "native-completion", recordingVersion = { 0L })
+        val runtime = RecordingAssembly(RuntimeEnvironment.getApplication(), "native-completion", { null }, { null }, {}, { store }, coordinator = coordinator)
+        runtime.directory.mkdirs()
+        val audio = File(runtime.directory, "play.wav").apply { writeBytes(ByteArray(32)) }
+        store.compareAndSet(-1, null, CallArchive(-1, "31234", 1, 1, audioPath = audio.absolutePath))
+        lateinit var shadow: org.robolectric.shadows.ShadowMediaPlayer
+        org.robolectric.shadows.ShadowMediaPlayer.setCreateListener { _, value -> shadow = value }
+        org.robolectric.shadows.ShadowMediaPlayer.setMediaInfoProvider { org.robolectric.shadows.ShadowMediaPlayer.MediaInfo(10000, 0) }
+        val executor = java.util.concurrent.Executors.newSingleThreadExecutor()
+        try {
+            runtime.service.play(-1).requiredValue()
+            val before = coordinator.marker()
+            val completion = coordinator.guard {
+                val future = executor.submit { shadow.invokeCompletionListener() }
+                val deadline = System.nanoTime() + java.util.concurrent.TimeUnit.SECONDS.toNanos(2)
+                while (runtime.service.playbackStatus().mode != com.greatwall.callring.contracts.runtime.PlaybackMode.NONE && System.nanoTime() < deadline) Thread.yield()
+                assertEquals(com.greatwall.callring.contracts.runtime.PlaybackMode.NONE, runtime.service.playbackStatus().mode)
+                future
+            }
+            completion.get(3, java.util.concurrent.TimeUnit.SECONDS)
+            assertEquals(before + 1, coordinator.marker())
+            assertEquals(org.robolectric.shadows.ShadowMediaPlayer.State.END, shadow.state)
+            runtime.service.stop().requiredValue()
+            assertEquals(before + 1, coordinator.marker())
+        } finally { executor.shutdownNow(); runtime.close() }
+    }
     @Test fun firstNegativeArchiveIsReportedAndIndexedEvenWhenItsRowIdIsMinusOne() {
         val coordinator = BusinessRevisionCoordinator()
         val cipher = object : RecordingCipher { override fun encrypt(value: String) = value; override fun decrypt(value: String) = value }
@@ -63,7 +115,7 @@ class RecordingPublicationTest {
         val context = RuntimeEnvironment.getApplication()
         val namespace = "failed-capture-cas"
         val store = AndroidRecordingStore(context, namespace, cipher, recordingVersion = { coordinator.capture().values.getValue("recording") })
-        val runtime = AndroidRecordingRuntime(context, namespace, { null }, { null }, {}, { store }, metadataReader = { 1000L to "wav" }, coordinator = coordinator)
+        val runtime = RecordingAssembly(context, namespace, { null }, { null }, {}, { store }, metadataReader = { 1000L to "wav" }, coordinator = coordinator)
         runtime.directory.mkdirs()
         val oldAudio = File(runtime.directory, "old.wav").apply { writeText("old contents") }
         val newAudio = File(runtime.directory, "new.wav").apply { writeText("new contents") }
@@ -71,12 +123,12 @@ class RecordingPublicationTest {
         store.compareAndSet(-1, null, archive)
         org.robolectric.shadows.ShadowMediaPlayer.setMediaInfoProvider { org.robolectric.shadows.ShadowMediaPlayer.MediaInfo(10000, 0) }
         try {
-            runtime.play(-1).requiredValue()
+            runtime.service.play(-1).requiredValue()
             val before = coordinator.marker()
             android.database.sqlite.SQLiteDatabase.openDatabase(context.getDatabasePath(namespace + "_recording.db").path, null,
                 android.database.sqlite.SQLiteDatabase.OPEN_READWRITE).use { db ->
                 db.execSQL("CREATE TRIGGER reject_capture BEFORE UPDATE ON archives BEGIN SELECT RAISE(ABORT,'forced failure'); END")
-                assertTrue(runCatching { runtime.attachCapture(com.greatwall.callring.application.RecordingCall(-1, "31234", 1, null), newAudio) }.isFailure)
+                assertTrue(runCatching { runtime.service.attachCapture(com.greatwall.callring.application.RecordingCall(-1, "31234", 1, null), com.greatwall.callring.application.AudioReference(newAudio.absolutePath)) }.isFailure)
             }
             assertEquals(before + 1, coordinator.marker())
             assertEquals(setOf(DataDomain.RUNTIME), coordinator.changes.value.domains)
@@ -92,15 +144,15 @@ class RecordingPublicationTest {
         val cipher = object : RecordingCipher { override fun encrypt(value: String) = value; override fun decrypt(value: String) = value }
         val context = RuntimeEnvironment.getApplication()
         val store = AndroidRecordingStore(context, "delete-playing", cipher, recordingVersion = { coordinator.capture().values.getValue("recording") })
-        val runtime = AndroidRecordingRuntime(context, "delete-playing", { null }, { null }, {}, { store }, coordinator = coordinator)
+        val runtime = RecordingAssembly(context, "delete-playing", { null }, { null }, {}, { store }, coordinator = coordinator)
         runtime.directory.mkdirs()
         val file = File(runtime.directory, "owned.wav").apply { writeBytes(ByteArray(32)) }
         store.compareAndSet(-1, null, CallArchive(-1, "31234", 1, 1, audioPath = file.absolutePath))
         org.robolectric.shadows.ShadowMediaPlayer.setMediaInfoProvider { org.robolectric.shadows.ShadowMediaPlayer.MediaInfo(10000, 0) }
         try {
-            runtime.play(-1).requiredValue()
+            runtime.service.play(-1).requiredValue()
             val before = coordinator.marker()
-            runtime.delete(-1).requiredValue()
+            runtime.service.delete(-1).requiredValue()
             assertEquals(before + 1, coordinator.marker())
             assertEquals(setOf(DataDomain.RECORDING_ARCHIVES, DataDomain.RUNTIME), coordinator.changes.value.domains)
             assertEquals(coordinator.marker(), coordinator.lastChange(setOf("runtime:recordingPlayback")))
@@ -114,16 +166,16 @@ class RecordingPublicationTest {
         val cipher = object : RecordingCipher { override fun encrypt(value: String) = value; override fun decrypt(value: String) = value }
         val context = RuntimeEnvironment.getApplication()
         val store = AndroidRecordingStore(context, "failed-delete-playing", cipher, recordingVersion = { coordinator.capture().values.getValue("recording") })
-        val runtime = AndroidRecordingRuntime(context, "failed-delete-playing", { null }, { null }, {}, { store }, coordinator = coordinator)
+        val runtime = RecordingAssembly(context, "failed-delete-playing", { null }, { null }, {}, { store }, coordinator = coordinator)
         runtime.directory.mkdirs()
         val blocked = File(runtime.directory, "owned.wav").apply { mkdirs(); File(this, "child").writeText("retained") }
         val archive = CallArchive(-1, "31234", 1, 1, audioPath = blocked.absolutePath)
         store.compareAndSet(-1, null, archive)
         org.robolectric.shadows.ShadowMediaPlayer.setMediaInfoProvider { org.robolectric.shadows.ShadowMediaPlayer.MediaInfo(10000, 0) }
         try {
-            runtime.play(-1).requiredValue()
+            runtime.service.play(-1).requiredValue()
             val before = coordinator.marker()
-            assertTrue(runtime.delete(-1) is ApiResult.Failure)
+            assertTrue(runtime.service.delete(-1) is ApiResult.Failure)
             assertEquals(before + 1, coordinator.marker())
             assertEquals(setOf(DataDomain.RUNTIME), coordinator.changes.value.domains)
             assertEquals(0L, coordinator.capture().values.getValue("recording"))
@@ -173,17 +225,17 @@ class RecordingPublicationTest {
         val cipher = object : RecordingCipher { override fun encrypt(value: String) = value; override fun decrypt(value: String) = value }
         val store = AndroidRecordingStore(RuntimeEnvironment.getApplication(), "one-marker", cipher, recordingVersion = { coordinator.capture().values.getValue("recording") })
         store.persistSettings(com.greatwall.callring.application.recording.model.RecordingSettings(recordingEnabled = true))
-        val runtime = AndroidRecordingRuntime(RuntimeEnvironment.getApplication(), "one-marker", { null }, { null }, {}, { store }, coordinator = coordinator)
+        val runtime = RecordingAssembly(RuntimeEnvironment.getApplication(), "one-marker", { null }, { null }, {}, { store }, coordinator = coordinator)
         try {
-            val call = runtime.observeIncoming("one", "31234", 1000, null)!!
+            val call = runtime.service.observeIncoming("one", "31234", 1000, null)!!
             assertEquals("One logical registration has one marker", 1L, coordinator.marker())
             assertEquals(setOf(DataDomain.RECORDING_ARCHIVES), coordinator.changes.value.domains)
             assertEquals(setOf(call.id.toString()), coordinator.invalidations.snapshots.value.domains.getValue(DataDomain.RECORDING_ARCHIVES).entityRevisions.keys)
-            runtime.observeIncoming("one", "31234", 1000, null)
+            runtime.service.observeIncoming("one", "31234", 1000, null)
             assertEquals(1L, coordinator.marker())
-            runtime.linkStatistics("one", 42)
+            runtime.service.linkStatistics("one", 42)
             assertEquals(2L, coordinator.marker())
-            runtime.linkStatistics("one", 42)
+            runtime.service.linkStatistics("one", 42)
             assertEquals(2L, coordinator.marker())
         } finally { runtime.close() }
     }

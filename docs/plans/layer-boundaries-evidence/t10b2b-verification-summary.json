@@ -1,0 +1,312 @@
+{
+  "baseline": "a5e2a8ffc91f0e1f3229b1cc5e44b2f40f61f79f",
+  "sourceCandidateSha256": "f4f8c485cc37d724b619045ae606a5e1c30a632231efd8183bb0910ed41e5398",
+  "sourcePaths": 20,
+  "algorithm": "sorted relative path + LF + raw bytes (or DELETED) + LF",
+  "verification": {
+    "path": "build/qa/layer-boundaries/t10b2b-verification.json",
+    "sha256": "d8b13f5d3fa952c39a909962746cbe1bdb478318c932c965cf8d5696fe17d120",
+    "modifiedUtc": "2026-10-20T21:08:30.733671+00:00"
+  },
+  "fullGate": {
+    "command": ".\\gradlew.bat :contracts:test :backend:test :ui:testDebugUnitTest :app:testDebugUnitTest :app:assembleDebug :ui:lintDebug :app:lintDebug :app:compileBackendQaKotlin :ui:compileDebugAndroidTestKotlin --console=plain",
+    "exitCode": 0,
+    "duration": "1m 20s",
+    "tasks": 147,
+    "executed": 23,
+    "upToDate": 124,
+    "contractsTest": "NO-SOURCE"
+  },
+  "modules": {
+    "backend": {
+      "task": ":backend:test",
+      "execution": "executed in this full gate",
+      "suites": 65,
+      "tests": 334,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "xmlAggregateSha256": "58720449d66995159048599c5abec0106462444e9dd39d95bd025be366cf6697"
+    },
+    "ui": {
+      "task": ":ui:testDebugUnitTest",
+      "execution": "UP-TO-DATE (existing XML)",
+      "suites": 70,
+      "tests": 298,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "xmlAggregateSha256": "c5f06c6cfff1c5d766a46ffeba700f002a3d39880089cc42cffca0961e5854e7"
+    },
+    "app": {
+      "task": ":app:testDebugUnitTest",
+      "execution": "executed in this full gate",
+      "suites": 63,
+      "tests": 317,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "xmlAggregateSha256": "a37c7564bc9d46432f1fae7e2bbd88b73c07b454626a15f6581710f969439f07"
+    }
+  },
+  "lint": {
+    "ui": {
+      "path": "ui/build/reports/lint-results-debug.xml",
+      "sha256": "ad7372970e17f998564b5a8435ae38566096153b4d80e61b307ef3174722110b",
+      "modifiedUtc": "2026-10-20T18:11:22.273684+00:00",
+      "counts": {
+        "Warning": 31,
+        "Hint": 3
+      }
+    },
+    "app": {
+      "path": "app/build/reports/lint-results-debug.xml",
+      "sha256": "870f75067afdbd0613d441d5411e734123f76480f1f3cf8b5a91c11e1e5e993a",
+      "modifiedUtc": "2026-10-20T21:08:00.816169+00:00",
+      "counts": {
+        "Warning": 6
+      }
+    }
+  },
+  "architecture": {
+    "jvmSources": 113,
+    "negativeTests": [
+      17,
+      4
+    ],
+    "exitCode": 0
+  },
+  "logs": {
+    "stop-red": {
+      "path": "build/qa/layer-boundaries/t10b2b-stop-red.log",
+      "sha256": "c7fd72d0d22e4a05797e8f4f24f7ba355fcd25324e2efb766160e749332db398",
+      "modifiedUtc": "2026-10-20T20:54:56.379200+00:00",
+      "exitCode": 1
+    },
+    "cancel-red": {
+      "path": "build/qa/layer-boundaries/t10b2b-cancel-red.log",
+      "sha256": "17f49f2b23b14556e08ffad974ced6ebe15a2111c9bf2b8192341bab9df6edd0",
+      "modifiedUtc": "2026-10-20T20:59:25.053484+00:00",
+      "exitCode": 1
+    },
+    "job-cancel-red": {
+      "path": "build/qa/layer-boundaries/t10b2b-job-cancel-red.log",
+      "sha256": "ea068435961fefe875a774385cb6cd3f6b74c5500c556b5bc21ee17fc0a0bea8",
+      "modifiedUtc": "2026-10-20T21:05:20.923287+00:00",
+      "exitCode": 1
+    },
+    "cancel-stop-green": {
+      "path": "build/qa/layer-boundaries/t10b2b-cancel-stop-green.log",
+      "sha256": "931e34dd7887a61e0b7a240828fb2a26bb15f591f933c028ac31152ac279cc49",
+      "modifiedUtc": "2026-10-20T20:59:55.212751+00:00",
+      "exitCode": 0
+    },
+    "backend-service-2": {
+      "path": "build/qa/layer-boundaries/t10b2b-backend-service-2.log",
+      "sha256": "b63c2e81d63ead888b2ecf58db80c8175d03640d12b498140f25b4ae3c24bbff",
+      "modifiedUtc": "2026-10-20T21:01:53.493033+00:00",
+      "exitCode": 0
+    },
+    "regression-1": {
+      "path": "build/qa/layer-boundaries/t10b2b-regression-1.log",
+      "sha256": "51cbceefa533d58db225f175f9d1624a229ee02b74000338796299b071554f24",
+      "modifiedUtc": "2026-10-20T21:03:47.487641+00:00",
+      "exitCode": 0
+    },
+    "final-targeted": {
+      "path": "build/qa/layer-boundaries/t10b2b-final-targeted.log",
+      "sha256": "8f7872e66f262c7a28003ad0713bbf0ac9be1aaa1ac8b595e48d18c0fed9c3ab",
+      "modifiedUtc": "2026-10-20T21:05:59.152836+00:00",
+      "exitCode": 0
+    },
+    "full-gate": {
+      "path": "build/qa/layer-boundaries/t10b2b-full-gate.log",
+      "sha256": "e07cb520b88819c0a6f5ae3e77ae62e4881604cdcd76b0465f0eeea068d969dc",
+      "modifiedUtc": "2026-10-20T21:08:01.205147+00:00",
+      "exitCode": 0
+    },
+    "architecture": {
+      "path": "build/qa/layer-boundaries/t10b2b-architecture.log",
+      "sha256": "0cbadb4a487baba1cc3efd3147eaf02ac2e0d9521f78e44e3da29c6df5ba9944",
+      "modifiedUtc": "2026-10-20T21:07:11.208644+00:00",
+      "exitCode": 0
+    },
+    "cancel-redXml": {
+      "path": "build/qa/layer-boundaries/t10b2b-cancel-red.xml",
+      "sha256": "b68983126805b4c217077c101794115c32b2c88fc0abfc690ae7f3ce9f155e94",
+      "modifiedUtc": "2026-10-20T20:59:24.668488+00:00"
+    },
+    "job-cancel-redXml": {
+      "path": "build/qa/layer-boundaries/t10b2b-job-cancel-red.xml",
+      "sha256": "908c649fbaa9968af674de8c80c298382519c1d5b741a9f3172922717749d586",
+      "modifiedUtc": "2026-10-20T21:05:20.506642+00:00"
+    }
+  },
+  "safeCounters": {
+    "t10b1-call-1000.json": {
+      "values": {
+        "unrelatedCalls": 1000,
+        "targetCallConsumedRows": 1,
+        "coreStateLoads": 0,
+        "hiddenCallConsumedRows": 2
+      },
+      "copy": {
+        "path": "build/qa/layer-boundaries/t10b2b-call-1000.json",
+        "sha256": "c5183847f7f4e9d1a365b4f8532e679363d58289040ad1c96a7fa0a21d1bcd80",
+        "modifiedUtc": "2026-10-20T21:08:30.708107+00:00"
+      }
+    },
+    "t10b1-call-10000.json": {
+      "values": {
+        "unrelatedCalls": 10000,
+        "targetCallConsumedRows": 1,
+        "coreStateLoads": 0,
+        "hiddenCallConsumedRows": 2
+      },
+      "copy": {
+        "path": "build/qa/layer-boundaries/t10b2b-call-10000.json",
+        "sha256": "8f3893c75aa37f7541b0d63ac5d8c8431206f49375c34cfbbfc0ef6cb9458b52",
+        "modifiedUtc": "2026-10-20T21:08:30.710107+00:00"
+      }
+    },
+    "t10b1-metadata-cold-1000.json": {
+      "values": {
+        "sourceChunkQueries": 8008,
+        "metadataCharacters": 20020,
+        "payloadMetadataRows": 4004,
+        "coldIdentityRows": 4004,
+        "maxSourceChunkBytes": 209,
+        "sourceBytes": 832404
+      },
+      "copy": {
+        "path": "build/qa/layer-boundaries/t10b2b-metadata-cold-1000.json",
+        "sha256": "d5cfd42e4848139e2c68e37ab7689996d7ab6e03c124f7806f0fb5183dc3aa8b",
+        "modifiedUtc": "2026-10-20T21:08:30.711107+00:00"
+      }
+    },
+    "t10b1-metadata-cold-10000.json": {
+      "values": {
+        "sourceChunkQueries": 80008,
+        "metadataCharacters": 200020,
+        "payloadMetadataRows": 40004,
+        "coldIdentityRows": 40004,
+        "maxSourceChunkBytes": 210,
+        "sourceBytes": 8356408
+      },
+      "copy": {
+        "path": "build/qa/layer-boundaries/t10b2b-metadata-cold-10000.json",
+        "sha256": "20e500d34ceb6a9e176224dd86cd59af3d71386b49d0503ad3672c0397f711d6",
+        "modifiedUtc": "2026-10-20T21:08:30.713108+00:00"
+      }
+    },
+    "t10b1-metadata-cold.json": {
+      "values": {
+        "sourceChunkQueries": 3060,
+        "metadataCharacters": 25,
+        "payloadMetadataRows": 5,
+        "coldIdentityRows": 5,
+        "maxSourceChunkBytes": 4096,
+        "sourceBytes": 12501125
+      },
+      "copy": {
+        "path": "build/qa/layer-boundaries/t10b2b-metadata-cold.json",
+        "sha256": "a7c26ebbf49f591912dd85495b91d2860387cec665f6122a09e8cfaf1c2693b2",
+        "modifiedUtc": "2026-10-20T21:08:30.714106+00:00"
+      }
+    },
+    "t10b1-metadata-warm-1000.json": {
+      "values": {
+        "warmMetadataRows": 4,
+        "sourceChunkQueries": 197,
+        "metadataCharacters": 194,
+        "projectionMetadataBytes": 1532,
+        "payloadMetadataRows": 1,
+        "maxSourceChunkBytes": 4096,
+        "warmNumberRows": 1001,
+        "targetMetadataRows": 1,
+        "sourceBytes": 800435
+      },
+      "copy": {
+        "path": "build/qa/layer-boundaries/t10b2b-metadata-warm-1000.json",
+        "sha256": "bd4ac2d2cdebd5681a52934ce728809c73ec9e23057ac9a7a79408cf2801bf48",
+        "modifiedUtc": "2026-10-20T21:08:30.715107+00:00"
+      }
+    },
+    "t10b1-metadata-warm-10000.json": {
+      "values": {
+        "warmMetadataRows": 4,
+        "sourceChunkQueries": 197,
+        "metadataCharacters": 194,
+        "projectionMetadataBytes": 1532,
+        "payloadMetadataRows": 1,
+        "maxSourceChunkBytes": 4096,
+        "warmNumberRows": 10001,
+        "targetMetadataRows": 1,
+        "sourceBytes": 800435
+      },
+      "copy": {
+        "path": "build/qa/layer-boundaries/t10b2b-metadata-warm-10000.json",
+        "sha256": "cfd32f7b88cd859a4c44bb5c8ad11a1d6c2b5a9957f1aefd887a997e86c74e9e",
+        "modifiedUtc": "2026-10-20T21:08:30.716107+00:00"
+      }
+    },
+    "t10b1-pagination-1000.json": {
+      "values": {
+        "warmMetadataRows": 968,
+        "sourceChunkQueries": 1940,
+        "metadataCharacters": 4840,
+        "projectionMetadataBytes": 364224,
+        "payloadMetadataRows": 968,
+        "coldIdentityRows": 968,
+        "maxSourceChunkBytes": 4096,
+        "sourceBytes": 234176
+      },
+      "copy": {
+        "path": "build/qa/layer-boundaries/t10b2b-pagination-1000.json",
+        "sha256": "aab3c0ca519af5f2d95ac5b09d1ef15ab06a8941140c119fcca428b870cc144a",
+        "modifiedUtc": "2026-10-20T21:08:30.718109+00:00"
+      }
+    },
+    "t10b1-pagination-10000.json": {
+      "values": {
+        "warmMetadataRows": 9968,
+        "sourceChunkQueries": 19940,
+        "metadataCharacters": 49840,
+        "projectionMetadataBytes": 3760696,
+        "payloadMetadataRows": 9968,
+        "coldIdentityRows": 9968,
+        "maxSourceChunkBytes": 4096,
+        "sourceBytes": 2235644
+      },
+      "copy": {
+        "path": "build/qa/layer-boundaries/t10b2b-pagination-10000.json",
+        "sha256": "e2386b609247db8f722ca848a015ceb924e452af2c6ede29b691917d4bced17b",
+        "modifiedUtc": "2026-10-20T21:08:30.719725+00:00"
+      }
+    },
+    "t10b1-pagination-future.json": {
+      "values": {
+        "warmMetadataRows": 175,
+        "sourceChunkQueries": 350,
+        "metadataCharacters": 875,
+        "projectionMetadataBytes": 65813,
+        "payloadMetadataRows": 175,
+        "coldIdentityRows": 175,
+        "maxSourceChunkBytes": 223,
+        "sourceBytes": 38679
+      },
+      "copy": {
+        "path": "build/qa/layer-boundaries/t10b2b-pagination-future.json",
+        "sha256": "f1cf41f7ee1f0d76f94ab05a9d71979b373918d58c2d5e9b9e3ce5830240c919",
+        "modifiedUtc": "2026-10-20T21:08:30.727495+00:00"
+      }
+    }
+  },
+  "remainingGates": [
+    "T10b3 combination deletion/adoption",
+    "T10c root composition and unavailable capabilities",
+    "T11 old feed",
+    "T13 legacy storage/component mechanics"
+  ],
+  "device": "not run"
+}

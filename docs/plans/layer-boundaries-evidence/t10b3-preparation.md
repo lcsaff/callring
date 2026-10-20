@@ -1,0 +1,30 @@
+# T10b3 组合删除与身份采用准备（非验收）
+
+2026-10-21，基于a5e2a8f只读核对；b2b实施中。本文件补充t10-preparation，不表示本片已实施。
+
+## 唯一业务与窄能力
+
+当前app/platform/callers/NumberDeletionService和backend/CoreNumberDeletionApi重复删除规则；后者假定archiveCount=0并返回unsupported。T10b3只保留backend application/callers/NumberDeletionService这一份真实组合实现，所有装配明确提供录音、核心和绑定能力；测试可注入测试专用空资源，生产不保留“非Android核心版本”或Unavailable兼容路径。
+
+SharedBusinessCommands只为adoptIdentity而依赖整个CallringUiApi，迁为recording/IdentityAdoptionService，仅声明目标归档、档案编辑读取和dirty-merge提交能力。Graph不再自写UUID/bound/shared业务编排。requiredValue另有真实消费者，可以独立保留；不能为保留该扩展而保留无用类。服务不要再注入整个BackendGraph或另一个万能Context。
+
+绑定预览/删除只需目标号码的已保存绑定，不需installed widgets和全量listing DTO。增加实际目标读取能力并同步app preferences实现，保留既有sameRecordingNumber的任意分隔及Char.isDigit语义；不能用原字符串等号漏历史格式。若SharedPreferences物理布局要求枚举键/号码投影，应如实记实际范围，不把平台枚举隐藏成SQL常量查询。不将小组件安装状态访问放进组合删除。
+
+## 删除行为与并发门
+
+- 预览包含profile/calls、archiveCount/audioBytes/busy及bindingCount；录音只用b1窄metadata和平台音频大小能力，不解码所有文本，不调用显式listArchives。
+- 保持NOT_FOUND、expected三种计数冲突、busy QUEUED/TRANSCRIBING/ANALYZING以及错误key语义。profile或call为零但仍有归档/绑定的remnant允许清理。
+- 严格录音（started降序/id升序）→核心单事务→绑定顺序。任一步失败立即返回，前面真实成功保留并准确发布，后面不执行；跨文件和数据库不冒称原子事务，不通过自动重放掩盖部分完成。
+- 同一逻辑操作共享continueOwnCommits上下文，录音、核心和绑定的成功记录在对应最终提交fence里；不能在yield后重新capture并把外来修改吸成自有基线。集合成员变化要有collection scope保护，只有数量相同不能证明是同一批目标。保留现有81号工具要求的recording/preferences集合scope，不可削弱为只检查已知实体。
+- 预览之后、第二次读取之前和每步成功之后均可能有外来提交：归档替换/新归档、profile编辑、新call、widget改绑/增减都不能被后续旧计划误删。GUI无显式command的入口也必须有合理的一致性与实际目标复核，不能仅让AI绑定入口安全。
+- 现有真实集成断言包括：archive删除途中失败保持原顺序并停止；外来profile修改在录音清理后保存；widget在第二次读取后被改绑仍保留；集合scope变化拒绝；owned音频删除失败可重试。迁窄能力后应改变测试挂钩位置来触发同一时序，不能以“现在只读一次”删掉这些并发断言。
+
+## 身份采用
+
+只采用analysis.name与organization，空值保持原name/department，不采用推断身份或其它字段；保留档案草稿dirty merge。expectedGeneration不匹配在profile读取/写入之前拒绝。目标archive在读取后、profile最终提交前变化也必须被guard拒绝，不给旧analysis授权新的profile提交。UI和工具通过同一服务，确认后的archive identity/generation与最终命令闭包保持。
+
+## 验证和删除
+
+backend窄假端口测试覆盖顺序、计数/busy/notfound、失败部分完成/重试和generation/dirtymerge；app实际资源集成覆盖音频、集合冲突与外来修改，保留原NumberDeletion/SharedBusinessCommands/Tool/Graph行为断言。1k/10k目标访问计数与无installed查询需要真实证明。
+
+本片结束删除app旧NumberDeletionService、CoreNumberDeletionApi、SharedBusinessCommands类及其专用fallback/旧装配分支，所有真实消费者和测试一起迁移。完整门和双审后才能登记完成；T10c总装配与T11通知退场仍继续。

@@ -56,7 +56,7 @@ class KeystoreRecordingCipher(private val alias: String) : RecordingCipher {
 class AndroidRecordingStore(context: Context, namespace: String,
     private val cipher: RecordingCipher = KeystoreRecordingCipher("callring.recording.$namespace"),
     private val recordingVersion: () -> Long,
-) : RecordingArchiveState, RecordingArchiveMutations, RecordingWorkflowReads, RecordingSettingsStore, RecordingRegistrationStore, AutoCloseable {
+) : RecordingIdentityReads, RecordingArchiveState, RecordingArchiveMutations, RecordingWorkflowReads, RecordingSettingsStore, RecordingRegistrationStore, AutoCloseable {
     val readCounters = RecordingReadCounters()
     private val preferences = context.getSharedPreferences(namespace + "_recording", Context.MODE_PRIVATE)
     private val helper = object : SQLiteOpenHelper(context, namespace + "_recording.db", null, 4) {
@@ -104,7 +104,7 @@ class AndroidRecordingStore(context: Context, namespace: String,
             return RecordingRegistration(call, eventInserted, archiveInserted)
         } finally { db.endTransaction() }
     }
-    @Synchronized fun findRecording(id: Long): RecordingCall? {
+    @Synchronized override fun findRecording(id: Long): RecordingCall? {
         if (id >= 0 || id == Long.MIN_VALUE) return null
         return helper.readableDatabase.rawQuery("SELECT id,number,started FROM recording_events WHERE id=?", arrayOf((-id).toString())).use {
             if (it.moveToFirst()) RecordingCall(-it.getLong(0), it.getString(1), it.getLong(2), null) else null
@@ -119,7 +119,7 @@ class AndroidRecordingStore(context: Context, namespace: String,
         "SELECT id,number,started FROM recording_events WHERE session_id=?", arrayOf(sessionId)).use {
             if (it.moveToFirst()) RecordingCall(-it.getLong(0), it.getString(1), it.getLong(2), null) else null
         }
-    @Synchronized fun linkedRecording(statisticsId: Long): RecordingCall? = helper.readableDatabase.rawQuery(
+    @Synchronized override fun linkedRecording(statisticsId: Long): RecordingCall? = helper.readableDatabase.rawQuery(
         "SELECT e.id,e.number,e.started FROM recording_events e JOIN recording_statistics_links l ON e.session_id=l.session_id WHERE l.statistics_id=?",
         arrayOf(statisticsId.toString())).use { if (it.moveToFirst()) RecordingCall(-it.getLong(0), it.getString(1), it.getLong(2), null) else null }
     @Synchronized override fun isDeleted(callId: Long): Boolean = helper.readableDatabase.rawQuery(
@@ -132,9 +132,9 @@ class AndroidRecordingStore(context: Context, namespace: String,
     }
     @Synchronized override fun get(callId: Long): CallArchive? = helper.readableDatabase.query("archives", arrayOf("payload"),
         "call_id=?", arrayOf(callId.toString()), null, null, null).use { if (it.moveToFirst()) RecordingJson.archive(JSONObject(it.getString(0))).also { readCounters.add("fullArchiveDecodes") } else null }
-    @Synchronized fun listArchives(): List<CallArchive> = helper.readableDatabase.query("archives", arrayOf("payload"),
+    @Synchronized override fun listArchives(): List<CallArchive> = helper.readableDatabase.query("archives", arrayOf("payload"),
         null, null, null, null, "call_id").use { cursor -> buildList { while (cursor.moveToNext()) add(RecordingJson.archive(JSONObject(cursor.getString(0))).also { readCounters.add("listArchiveDecodes") }) } }
-    @Synchronized fun metadata(callId: Long, cancelled: () -> Boolean) =
+    @Synchronized override fun metadata(callId: Long, cancelled: () -> Boolean) =
         RecordingMetadataReads(helper.readableDatabase, readCounters, cancelled).metadata(callId)
     @Synchronized override fun generation(callId: Long): Long? = helper.readableDatabase.rawQuery(
         "SELECT generation FROM archives WHERE call_id=?", arrayOf(callId.toString())).use { if (it.moveToFirst()) it.getLong(0) else null }
@@ -142,9 +142,9 @@ class AndroidRecordingStore(context: Context, namespace: String,
         RecordingMetadataReads(helper.readableDatabase, readCounters, cancelled).earliestPendingAt()
     @Synchronized override fun dueCandidates(at: Long, afterId: Long?, limit: Int, cancelled: () -> Boolean) =
         RecordingMetadataReads(helper.readableDatabase, readCounters, cancelled).dueCandidates(at, afterId, limit)
-    @Synchronized fun recentMetadata(since: Long, cancelled: () -> Boolean) =
+    @Synchronized override fun recentMetadata(since: Long, cancelled: () -> Boolean) =
         RecordingMetadataReads(helper.readableDatabase, readCounters, cancelled).recentMetadata(since)
-    @Synchronized fun numberMetadata(number: String, cancelled: () -> Boolean) =
+    @Synchronized override fun numberMetadata(number: String, cancelled: () -> Boolean) =
         RecordingMetadataReads(helper.readableDatabase, readCounters, cancelled).numberMetadata(number)
     @Synchronized fun captureRecordingText(): Map<String, AiJson> {
         val db = helper.readableDatabase
