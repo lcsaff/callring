@@ -27,6 +27,7 @@ override实际变化才audit/reclassify，直接影响目标本地日和次日�
 
 - calendar/work/leave更新与audit、current事实在同库单事务可见，不能拆多次提交以躲开批处理。
 - ScheduleStore保留已有makeup day的working-name，不统一替换默认文案；保留config/leaves/interval/audit自增和唯一约束。
+- 当前classification写入应按实际字段差异定向更新，保留未触及raw编码。尤其旧CallStore.putFact在reason与holidayName均未变时保留原始reason字符串；不能仅因leaveVersion推进就把未知reason强制改写成默认“未知”。original列不进入历史更正UPDATE。
 - work/score/position/leave的dirty merge移最终事务，保持draft.field_changed/deleted/identity_changed区别；未改period沿用当前值。
 - 建议顺序score/overlay→statistics→appearance→positions/myPosition→append schedule→override/calendar→leaves；用旧新样本对照original/legacy/DST/跨午夜。
 
