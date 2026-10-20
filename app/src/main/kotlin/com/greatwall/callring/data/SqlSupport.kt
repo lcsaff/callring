@@ -32,25 +32,21 @@ internal fun values(vararg entries: Pair<String, Any?>): ContentValues =
         }
     }
 
+// Compatibility helper for standalone database diagnostics; production operations use SqlAccess.
 internal fun SQLiteDatabase.scalar(sql: String, parameters: Array<String>? = null): Long =
     rawQuery(sql, parameters).use { if (it.moveToFirst() && !it.isNull(0)) it.getLong(0) else 0 }
-
-internal fun SQLiteDatabase.nextId(table: String): Long =
-    maxOf(
-        scalar("SELECT COALESCE(MAX(id),0) FROM $table"),
-        scalar("SELECT seq FROM sqlite_sequence WHERE name=?", args(table)),
-    ) + 1
 
 /** Captures original SQL values, preserving unknown legacy strings for untouched fields. */
 internal class TableSnapshot(
     private val db: SQLiteDatabase,
     private val table: String,
     private val key: String,
+    private val sql: SqlAccess = SqlAccess(db),
 ) {
     private val original = linkedMapOf<String, ContentValues>()
 
     init {
-        db.query(table, null, null, null, null, null, null).use { cursor ->
+        sql.query(QueryTag.SNAPSHOT_ROWS, table, null, null, null, null, null, null).use { cursor ->
             while (cursor.moveToNext()) {
                 // DatabaseUtils.cursorRowToContentValues converts every non-blob value to String.
                 // Keep SQLite types so unchanged numeric columns stay out of UPDATE statements.

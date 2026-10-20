@@ -5,12 +5,12 @@ import com.greatwall.callring.domain.BackendState
 import com.greatwall.callring.domain.PositionRecord
 import com.greatwall.callring.domain.ProfileRecord
 
-internal class ProfileStore(private val db: SQLiteDatabase) {
-    private val positions = TableSnapshot(db, "positions", "id")
-    private val profiles = TableSnapshot(db, "callers", "number")
+internal class ProfileStore(private val db: SQLiteDatabase, private val sql: SqlAccess = SqlAccess(db)) {
+    private val positions = TableSnapshot(db, "positions", "id", sql)
+    private val profiles = TableSnapshot(db, "callers", "number", sql)
 
     fun load(state: BackendState) {
-        db.query("positions", null, null, null, null, null, "id").use { cursor ->
+        sql.query(QueryTag.LOAD_ROWS, "positions", null, null, null, null, null, "id").use { cursor ->
             while (cursor.moveToNext()) {
                 val row =
                     PositionRecord(
@@ -22,7 +22,7 @@ internal class ProfileStore(private val db: SQLiteDatabase) {
                 state.positions[row.id] = row
             }
         }
-        db.query("callers", null, null, null, null, null, "number").use { cursor ->
+        sql.query(QueryTag.LOAD_ROWS, "callers", null, null, null, null, null, "number").use { cursor ->
             while (cursor.moveToNext()) {
                 val row =
                     ProfileRecord(
@@ -35,7 +35,7 @@ internal class ProfileStore(private val db: SQLiteDatabase) {
                 state.profiles[row.number] = row
             }
         }
-        state.nextPositionId = db.nextId("positions")
+        state.nextPositionId = sql.nextId("positions")
     }
 
     fun saveReferences(state: BackendState) {

@@ -36,9 +36,11 @@ class LocalAccessContractTest {
         val context = RuntimeEnvironment.getApplication()
         val databaseName = "local-access-$unrelatedCalls.db"
         SqliteBackendStore(context, databaseName).use { LocalAccessFixture.seed(it, unrelatedCalls) }
+        val sqlProbe = SqlAccessProbe()
         val configuration = BackendConfiguration(
             AppearanceSettings(ThemeSelection.PRESET, "default", null, ColorMode.FOLLOW_SYSTEM),
             databaseName = databaseName,
+            sqlAccessProbe = sqlProbe,
             ringPreferencesName = "access_${unrelatedCalls}_ring",
             widgetPreferencesName = "access_${unrelatedCalls}_widgets",
             appearancePreferencesName = "access_${unrelatedCalls}_appearance",
@@ -71,6 +73,9 @@ class LocalAccessContractTest {
             assertNotEquals(unrelatedBefore.second.first().classification.configVersion,
                 unrelatedBefore.second.first().originalClassification.configVersion)
             val observations = JSONObject().put("unrelatedCallCount", unrelatedCalls)
+            val sqlObservations = JSONObject().put("unrelatedCallCount", unrelatedCalls)
+                .put("baselineCodeSha", "a0b420a")
+                .put("measurement", "query calls and successful cursor moves / scalar results; not SQLite scan rows")
             val recording = graph.recordings.store.registerIncoming(
                 "synthetic-access-session", LocalAccessFixture.TARGET, LocalAccessFixture.at, null,
             )
@@ -79,9 +84,22 @@ class LocalAccessContractTest {
             val identity = graph.recordings.getIdentity(recording.id).requiredValue()
             assertEquals(LocalAccessFixture.TARGET, identity.number)
             suspend fun measure(name: String, operation: suspend () -> Unit) {
+                val sqlBefore = sqlProbe.snapshot().associateBy { it.tag to it.tables }
                 val before = graph.businessReadCounters()
                 val beforeRevision = graph.coordinator.marker()
                 operation()
+                val sqlAfter = sqlProbe.snapshot()
+                val sqlWindow = sqlAfter.mapNotNull { row ->
+                    val old = sqlBefore[row.tag to row.tables]
+                    val calls = row.calls - (old?.calls ?: 0)
+                    if (calls == 0L) null else JSONObject()
+                        .put("tag", row.tag.name).put("tables", JSONArray(row.tables.map { it.sqlName }.sorted()))
+                        .put("queryCalls", calls).put("consumedRows", row.consumedRows - (old?.consumedRows ?: 0))
+                        .put("closedCursors", row.closed - (old?.closed ?: 0))
+                        .put("queryOrMovementFailures", row.failures - (old?.failures ?: 0))
+                }
+                assertTrue("$name must observe the real Graph SQL chain", sqlWindow.isNotEmpty())
+                sqlObservations.put(name, JSONArray(sqlWindow))
                 val after = graph.businessReadCounters()
                 val revisionDelta = graph.coordinator.marker() - beforeRevision
                 observations.put(name, JSONObject()
@@ -122,6 +140,7 @@ class LocalAccessContractTest {
             val output = File("build/qa/layer-boundaries/local-access-$unrelatedCalls.json")
             checkNotNull(output.parentFile).mkdirs()
             output.writeText(observations.toString(2))
+            File(output.parentFile, "sql-baseline-$unrelatedCalls.json").writeText(sqlObservations.toString(2))
         } finally {
             graph.close()
         }

@@ -10,10 +10,10 @@ import com.greatwall.callring.domain.BackendState
 import com.greatwall.callring.domain.StatisticsInterval
 import org.json.JSONObject
 
-internal class SettingsStore(private val db: SQLiteDatabase) {
-    private val settings = TableSnapshot(db, "settings", "key")
+internal class SettingsStore(private val db: SQLiteDatabase, private val sql: SqlAccess = SqlAccess(db)) {
+    private val settings = TableSnapshot(db, "settings", "key", sql)
     private val intervalIds = mutableListOf<Long>()
-    private val intervals = TableSnapshot(db, "statistics_intervals", "id")
+    private val intervals = TableSnapshot(db, "statistics_intervals", "id", sql)
     private var initialQuiet = QuietSettings(QuietMode.OFF, false, emptyMap())
     private var initialLastQuietMode = QuietMode.NON_WORK
     private var initialScore = ScoreSettings(5, 2, 10, 30)
@@ -45,7 +45,7 @@ internal class SettingsStore(private val db: SQLiteDatabase) {
             )
         state.overlayEnabled = setting("overlay", "0") == "1"
         state.leaveVersion = setting("leave_revision", "0").toLong()
-        db.query("statistics_intervals", null, null, null, null, null, "id").use { cursor ->
+        sql.query(QueryTag.LOAD_ROWS, "statistics_intervals", null, null, null, null, null, "id").use { cursor ->
             while (cursor.moveToNext()) {
                 intervalIds.add(cursor.long("id"))
                 state.statisticsIntervals.add(
@@ -93,7 +93,7 @@ internal class SettingsStore(private val db: SQLiteDatabase) {
             put("repeat_minutes", state.score.repeatMinutes.toString())
         if (state.score.observationDays != initialScore.observationDays)
             put("score_days", state.score.observationDays.toString())
-        var next = db.nextId("statistics_intervals")
+        var next = sql.nextId("statistics_intervals")
         val kept = mutableSetOf<Long>()
         state.statisticsIntervals.forEachIndexed { index, interval ->
             val id = intervalIds.getOrNull(index) ?: next++

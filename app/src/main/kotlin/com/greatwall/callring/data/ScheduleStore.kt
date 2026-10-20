@@ -12,17 +12,17 @@ import com.greatwall.callring.domain.LeaveRecord
 import java.time.LocalDate
 import org.json.JSONArray
 
-internal class ScheduleStore(private val db: SQLiteDatabase) {
-    private val schedules = TableSnapshot(db, "config_versions", "id")
-    private val years = TableSnapshot(db, "calendar_years", "year")
-    private val days = TableSnapshot(db, "calendar_days", "date")
-    private val overrides = TableSnapshot(db, "overrides", "date")
-    private val leaves = TableSnapshot(db, "leaves", "id")
+internal class ScheduleStore(private val db: SQLiteDatabase, private val sql: SqlAccess = SqlAccess(db)) {
+    private val schedules = TableSnapshot(db, "config_versions", "id", sql)
+    private val years = TableSnapshot(db, "calendar_years", "year", sql)
+    private val days = TableSnapshot(db, "calendar_days", "date", sql)
+    private val overrides = TableSnapshot(db, "overrides", "date", sql)
+    private val leaves = TableSnapshot(db, "leaves", "id", sql)
     private var initialSchedules: Map<Long, WorkScheduleSettings> = emptyMap()
     private var initialOverrides: Map<LocalDate, DateOverride> = emptyMap()
 
     fun load(state: BackendState) {
-        db.query("config_versions", null, null, null, null, null, "effective ASC,id ASC").use {
+        sql.query(QueryTag.LOAD_ROWS, "config_versions", null, null, null, null, null, "effective ASC,id ASC").use {
             cursor ->
             while (cursor.moveToNext()) {
                 state.schedules.add(
@@ -34,7 +34,7 @@ internal class ScheduleStore(private val db: SQLiteDatabase) {
                 )
             }
         }
-        db.query("calendar_years", null, null, null, null, null, "year").use { cursor ->
+        sql.query(QueryTag.LOAD_ROWS, "calendar_years", null, null, null, null, null, "year").use { cursor ->
             while (cursor.moveToNext()) {
                 val row =
                     CalendarYear(
@@ -46,14 +46,14 @@ internal class ScheduleStore(private val db: SQLiteDatabase) {
                 state.calendarYears[row.year] = row
             }
         }
-        db.query("calendar_days", null, null, null, null, null, "date").use { cursor ->
+        sql.query(QueryTag.LOAD_ROWS, "calendar_days", null, null, null, null, null, "date").use { cursor ->
             while (cursor.moveToNext()) {
                 val date = LocalDate.parse(cursor.text("date"))
                 if (cursor.flag("working")) state.makeupDates.add(date)
                 else state.holidays[date] = cursor.text("name")
             }
         }
-        db.query("overrides", null, null, null, null, null, "date").use { cursor ->
+        sql.query(QueryTag.LOAD_ROWS, "overrides", null, null, null, null, null, "date").use { cursor ->
             while (cursor.moveToNext()) {
                 val date = LocalDate.parse(cursor.text("date"))
                 val windows = WorkConfigCodec.windows(JSONArray(cursor.text("windows")))
@@ -65,7 +65,7 @@ internal class ScheduleStore(private val db: SQLiteDatabase) {
                     )
             }
         }
-        db.query("leaves", null, null, null, null, null, "start DESC,id DESC").use { cursor ->
+        sql.query(QueryTag.LOAD_ROWS, "leaves", null, null, null, null, null, "start DESC,id DESC").use { cursor ->
             while (cursor.moveToNext()) {
                 val row =
                     LeaveRecord(
@@ -77,8 +77,8 @@ internal class ScheduleStore(private val db: SQLiteDatabase) {
                 state.leaves[row.id] = row
             }
         }
-        state.nextConfigVersion = db.nextId("config_versions")
-        state.nextLeaveId = db.nextId("leaves")
+        state.nextConfigVersion = sql.nextId("config_versions")
+        state.nextLeaveId = sql.nextId("leaves")
         initialSchedules = state.schedules.associateBy { it.configVersion }
         initialOverrides = state.overrides.toMap()
     }

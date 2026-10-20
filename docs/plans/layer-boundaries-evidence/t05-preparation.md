@@ -47,3 +47,5 @@ T04 a0b420a 已通过双审：DecisionSnapshot.inputs 是深冻结 DecisionInput
 新提交一次推进 core 版本、domainMarker、冲突键及累计失效时，保留 quiet 与 coarse core 的观察保护。不要删掉 coarse 版本而使未迁移的无 scoped 命令漏检；也不要据此更新所有细粒度冲突键。命令 record 在发布后进行，no-op 亦保留完成记录。
 
 ImmediateEditor 目前在写入期间记录 refreshRequested，完成后才重载；HomeQuiet 则在成功回调直接 loader.load(Success(saved))。迁移时应沿用草稿/队列/冲突恢复语义，消除旧保存结果覆盖更晚 feed 结果的窗口，不以重写所有编辑状态机扩大当前切片。其余旧消费者可通过每订阅者累计差异适配继续工作；第一精确 quiet 提交不应为了兼容旧消费者再次发布全领域。
+
+窄 session 的事务作用域需要可执行边界：回调结束后保存的 reader/writer 不能继续查询，亦不返回活 Cursor 或延迟数据库 Sequence。可用会话活动标记在每个能力方法检查并于 finally 失效，加入逃逸后使用的负例。把接口写成“不可逃逸”注释不能代替资源/一致性保证。

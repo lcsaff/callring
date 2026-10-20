@@ -13,12 +13,12 @@ import com.greatwall.callring.domain.RawCallRecord
 /**
  * Stores independent screening/provider rows. Joining screening facts belongs to the application.
  */
-internal class CallStore(private val db: SQLiteDatabase) {
-    private val calls = TableSnapshot(db, "calls", "id")
+internal class CallStore(private val db: SQLiteDatabase, private val sql: SqlAccess = SqlAccess(db)) {
+    private val calls = TableSnapshot(db, "calls", "id", sql)
     private val initial = linkedMapOf<Long, RawCallRecord>()
 
     fun load(state: BackendState) {
-        db.query("calls", null, null, null, null, null, "id").use { cursor ->
+        sql.query(QueryTag.LOAD_ROWS, "calls", null, null, null, null, null, "id").use { cursor ->
             while (cursor.moveToNext()) {
                 val rawResult = cursor.text("result")
                 val rawDecision = cursor.text("decision")
@@ -55,7 +55,7 @@ internal class CallStore(private val db: SQLiteDatabase) {
                 initial[row.id] = row
             }
         }
-        state.nextCallId = db.nextId("calls")
+        state.nextCallId = sql.nextId("calls")
     }
 
     fun save(state: BackendState) {

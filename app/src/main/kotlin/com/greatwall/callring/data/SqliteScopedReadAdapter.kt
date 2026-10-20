@@ -10,7 +10,6 @@ import com.greatwall.callring.domain.model.TimeRange
 import com.greatwall.callring.application.mapping.*
 import com.greatwall.callring.application.recording.policy.*
 import android.database.Cursor
-import android.database.DatabaseUtils
 import android.database.sqlite.SQLiteDatabase
 import com.greatwall.callring.contracts.common.*
 import com.greatwall.callring.contracts.callers.*
@@ -26,10 +25,23 @@ import java.time.*
 import org.json.JSONArray
 
 /** SELECT-only projections. No BackendStore.read/StorageSession, no coordinator access in a transaction. */
-internal class SqliteScopedReadAdapter(private val db:SQLiteDatabase,private val versionProvider:()->Long,private val clock:()->Long=System::currentTimeMillis):ScopedReadPort {
+internal class SqliteScopedReadAdapter(private val db:SQLiteDatabase,private val versionProvider:()->Long,private val clock:()->Long=System::currentTimeMillis, private val sql:SqlAccess=SqlAccess(db)):ScopedReadPort {
     override val domains=(AiDomain.entries.take(10)+AiDomain.D21).toSet()
     override fun version(domain:AiDomain)=versionProvider()
-    private data class Table(val sql:String,val columns:List<String>,val texts:Set<String> = emptySet(),val structured:Set<String> = emptySet(),val searchable:Set<String> = texts)
+    private data class Table(val sql:String,val columns:List<String>,val texts:Set<String> = emptySet(),val structured:Set<String> = emptySet(),val searchable:Set<String> = texts,val tables:Set<SqlTable> = emptySet())
+    private fun dependencies(domain:AiDomain,projection:String):Set<SqlTable> = when(domain) {
+        AiDomain.D01 -> setOf(SqlTable.CALLERS,SqlTable.CALLS,SqlTable.POSITIONS)
+        AiDomain.D02 -> if(projection=="current")setOf(SqlTable.SETTINGS) else setOf(SqlTable.POSITIONS,SqlTable.SETTINGS)
+        AiDomain.D03,AiDomain.D04 -> setOf(SqlTable.CALLS)
+        AiDomain.D05 -> setOf(SqlTable.STATISTICS_INTERVALS)
+        AiDomain.D06 -> setOf(SqlTable.CONFIG_VERSIONS)
+        AiDomain.D07 -> when(projection){"years"->setOf(SqlTable.CALENDAR_YEARS);"days"->setOf(SqlTable.CALENDAR_DAYS);else->setOf(SqlTable.CALENDAR_YEARS,SqlTable.CALENDAR_DAYS)}
+        AiDomain.D08 -> setOf(SqlTable.OVERRIDES)
+        AiDomain.D09 -> setOf(SqlTable.LEAVES)
+        AiDomain.D10 -> setOf(SqlTable.SETTINGS,SqlTable.STATISTICS_INTERVALS)
+        AiDomain.D21 -> setOf(SqlTable.CALENDAR_AUDIT)
+        else -> emptySet()
+    }
     private fun table(domain:AiDomain,projection:String):Table {
         val projections=when(domain){AiDomain.D02->setOf("default","current");AiDomain.D04->setOf("default","counted","visible");AiDomain.D05->setOf("default","intervals");AiDomain.D06->setOf("default","history","current","work");AiDomain.D07->setOf("default","years","days");else->setOf("default")}
         require(projection in projections)
@@ -56,7 +68,7 @@ internal class SqliteScopedReadAdapter(private val db:SQLiteDatabase,private val
             }
             AiDomain.D21 -> Table("SELECT printf('%020d',id) entity_key,id,kind,target,raw,created FROM calendar_audit",listOf("id","kind","target","raw","created"),setOf("target","raw"))
             else -> throw BackendFailure(ApiError(ErrorCode.INTERNAL,"ai.query_not_implemented"))
-        }
+        }.copy(tables=dependencies(domain,projection))
     }
     private fun where(t:Table,f:QueryFilter):Pair<String,List<String>> {
         val clauses=mutableListOf<String>();val args=mutableListOf<String>()
@@ -98,23 +110,23 @@ internal class SqliteScopedReadAdapter(private val db:SQLiteDatabase,private val
     override fun query(spec:QuerySpec,after:String?):SourcePage=read {
         if(spec.domain==AiDomain.D06&&spec.projection=="work")return@read SourcePage(listOf(SourceRow("work",safeValue(workStatus()) as AiJson.Obj)),1)
         val t=table(spec.domain,spec.projection);val (filter,args)=where(t,spec.filter)
-        val total=DatabaseUtils.longForQuery(db,"SELECT count(*) FROM (${t.sql}) WHERE $filter",args.toTypedArray())
+        val total=sql.longForQuery(QueryTag.AGGREGATE,t.tables,"SELECT count(*) FROM (${t.sql}) WHERE $filter",args.toTypedArray())
         val calls=spec.domain in setOf(AiDomain.D03,AiDomain.D04)
         val tail=if(after==null)emptyList() else if(calls){val parts=after.split('|');require(parts.size==2);listOf(parts[0],parts[0],parts[1])}else listOf(after)
         val continuation=if(after==null)"" else if(calls)" AND (time<? OR (time=? AND id<?))" else " AND entity_key>?"
         val order=if(calls)"time DESC,id DESC" else "entity_key"
-        val rows=db.rawQuery("SELECT ${selection(t).joinToString(",")} FROM (${t.sql}) WHERE ($filter)$continuation ORDER BY $order LIMIT ?",(args+tail+(spec.limit+1).toString()).toTypedArray()).use{c->buildList{while(c.moveToNext()){val r=row(c,t);add(if(calls)r.copy(cursorKey="${r.value["time"].long()}|${r.value["id"].long()}")else r)}}}
+        val rows=sql.rawQuery(QueryTag.SCOPED_ROWS,t.tables,"SELECT ${selection(t).joinToString(",")} FROM (${t.sql}) WHERE ($filter)$continuation ORDER BY $order LIMIT ?",(args+tail+(spec.limit+1).toString()).toTypedArray()).use{c->buildList{while(c.moveToNext()){val r=row(c,t);add(if(calls)r.copy(cursorKey="${r.value["time"].long()}|${r.value["id"].long()}")else r)}}}
         val page=rows.take(spec.limit)
         SourcePage(page,total,if(rows.size>spec.limit)page.last().cursorKey else null)
     }
     override fun get(domain:AiDomain,key:String,projection:String):SourceRow?=read {
         val t=table(domain,projection)
         val normalized=if(domain==AiDomain.D10&&key=="current")"configuration" else if("id" in t.columns) key.toLongOrNull()?.let{"%020d".format(it)}?:key else key
-        db.rawQuery("SELECT ${selection(t).joinToString(",")} FROM (${t.sql}) WHERE entity_key=?",arrayOf(normalized)).use{c->if(c.moveToFirst())row(c,t) else null}
+        sql.rawQuery(QueryTag.SCOPED_ROWS,t.tables,"SELECT ${selection(t).joinToString(",")} FROM (${t.sql}) WHERE entity_key=?",arrayOf(normalized)).use{c->if(c.moveToFirst())row(c,t) else null}
     }
     override fun text(domain:AiDomain,key:String,field:String,start:Long,maxChars:Int):SourceText=read {
         val t=table(domain,"default");require(field in t.texts&&start>=0)
-        db.rawQuery("SELECT substr($field,?,?),length($field) FROM (${t.sql}) WHERE entity_key=?",arrayOf((start+1).toString(),maxChars.toString(),key)).use{c->
+        sql.rawQuery(QueryTag.SCOPED_TEXT,t.tables,"SELECT substr($field,?,?),length($field) FROM (${t.sql}) WHERE entity_key=?",arrayOf((start+1).toString(),maxChars.toString(),key)).use{c->
             if(!c.moveToFirst())throw BackendFailure(ApiError(ErrorCode.NOT_FOUND,"ai.not_found"))
             val text=c.getString(0).orEmpty();val end=start+text.codePointCount(0,text.length)
             SourceText(text,start,end,c.getLong(1))
@@ -128,21 +140,21 @@ internal class SqliteScopedReadAdapter(private val db:SQLiteDatabase,private val
             return@read statistics(spec,t,filter,args)
         }
         val effectiveFilter=if(spec.domain==AiDomain.D05)"($filter) AND counted=1" else filter
-        if(spec.groupBy==null)aiObject("count" to aiNumber(DatabaseUtils.longForQuery(db,"SELECT count(*) FROM (${t.sql}) WHERE $effectiveFilter",args.toTypedArray())))
-        else {require(spec.groupBy in t.columns);AiJson.Arr(db.rawQuery("SELECT ${spec.groupBy},count(*) FROM (${t.sql}) WHERE $effectiveFilter GROUP BY ${spec.groupBy} ORDER BY ${spec.groupBy} LIMIT 201",args.toTypedArray()).use{c->buildList{while(c.moveToNext()){if(size==200)throw BackendFailure(ApiError(ErrorCode.SYSTEM_RESTRICTED,"ai.aggregate_incomplete"));add(aiObject("group" to aiString(c.getString(0).orEmpty()),"count" to aiNumber(c.getLong(1))))}}})}
+        if(spec.groupBy==null)aiObject("count" to aiNumber(sql.longForQuery(QueryTag.AGGREGATE,t.tables,"SELECT count(*) FROM (${t.sql}) WHERE $effectiveFilter",args.toTypedArray())))
+        else {require(spec.groupBy in t.columns);AiJson.Arr(sql.rawQuery(QueryTag.AGGREGATE,t.tables,"SELECT ${spec.groupBy},count(*) FROM (${t.sql}) WHERE $effectiveFilter GROUP BY ${spec.groupBy} ORDER BY ${spec.groupBy} LIMIT 201",args.toTypedArray()).use{c->buildList{while(c.moveToNext()){if(size==200)throw BackendFailure(ApiError(ErrorCode.SYSTEM_RESTRICTED,"ai.aggregate_incomplete"));add(aiObject("group" to aiString(c.getString(0).orEmpty()),"count" to aiNumber(c.getLong(1))))}}})}
     }
     private fun statistics(spec:AggregateSpec,t:Table,filter:String,args:List<String>):AiJson {
         require(spec.groupBy==null||spec.groupBy=="number")
         require(spec.metric!="score"||spec.filter.number!=null||spec.groupBy=="number")
-        fun setting(key:String,default:String)=DatabaseUtils.stringForQuery(db,"SELECT coalesce((SELECT value FROM settings WHERE key=?),?)",arrayOf(key,default))
+        fun setting(key:String,default:String)=sql.stringForQuery(QueryTag.SCOPED_SETTING,setOf(SqlTable.SETTINGS),"SELECT coalesce((SELECT value FROM settings WHERE key=?),?)",arrayOf(key,default))
         val settings=ScoreSettings(setting("off_weight","5").toInt(),setting("repeat_weight","2").toInt(),setting("repeat_minutes","10").toInt(),setting("score_days","30").toInt())
-        val zone=spec.filter.zone?:db.rawQuery("SELECT snapshot FROM config_versions ORDER BY effective DESC,id DESC LIMIT 1",null).use{c->if(c.moveToFirst())org.json.JSONObject(c.getString(0)).getString("zone") else "UTC"}
+        val zone=spec.filter.zone?:sql.rawQuery(QueryTag.WORK_ROWS,setOf(SqlTable.CONFIG_VERSIONS),"SELECT snapshot FROM config_versions ORDER BY effective DESC,id DESC LIMIT 1",null).use{c->if(c.moveToFirst())org.json.JSONObject(c.getString(0)).getString("zone") else "UTC"}
         ZoneId.of(zone)
         val range=TimeRange(spec.filter.start?:Long.MIN_VALUE,spec.filter.end?:Long.MAX_VALUE,zone)
         val totals=ReportTotalsAccumulator();val groups=linkedMapOf<String,StreamingReportAccumulator>()
         val deadline=System.nanoTime()+5_000_000_000L
         var scanned=0L;var unverified=false;var unresolved=false
-        db.rawQuery("SELECT number,time,counted,working,duration,result,verified FROM (${t.sql}) WHERE $filter ORDER BY number,time,id",args.toTypedArray()).use{c->while(c.moveToNext()){
+        sql.rawQuery(QueryTag.SCOPED_ROWS,t.tables,"SELECT number,time,counted,working,duration,result,verified FROM (${t.sql}) WHERE $filter ORDER BY number,time,id",args.toTypedArray()).use{c->while(c.moveToNext()){
             if(System.nanoTime()>deadline||Thread.currentThread().isInterrupted)throw BackendFailure(ApiError(ErrorCode.SYSTEM_RESTRICTED,"ai.aggregate_incomplete"))
             scanned++;val number=c.getString(0);val at=c.getLong(1);val counted=c.getInt(2)!=0;val working=c.getInt(3)!=0;val duration=if(c.isNull(4))null else c.getLong(4);val result=LegacyValueCodec.result(c.getString(5))
             totals.accept(counted,working,duration,result)
@@ -160,15 +172,15 @@ internal class SqliteScopedReadAdapter(private val db:SQLiteDatabase,private val
     }
     private fun workStatus():com.greatwall.callring.contracts.callers.WorkStatus {
         val at=clock();val s=BackendState()
-        db.rawQuery("SELECT id,effective,snapshot FROM config_versions WHERE effective<=? ORDER BY effective DESC,id DESC LIMIT 1",arrayOf(at.toString())).use{c->if(c.moveToFirst())s.schedules+=WorkConfigCodec.decode(c.getString(2),c.getLong(0),c.getLong(1))}
-        if(s.schedules.isEmpty())db.rawQuery("SELECT id,effective,snapshot FROM config_versions ORDER BY effective,id LIMIT 1",null).use{c->if(c.moveToFirst())s.schedules+=WorkConfigCodec.decode(c.getString(2),c.getLong(0),c.getLong(1))}
+        sql.rawQuery(QueryTag.WORK_ROWS,setOf(SqlTable.CONFIG_VERSIONS),"SELECT id,effective,snapshot FROM config_versions WHERE effective<=? ORDER BY effective DESC,id DESC LIMIT 1",arrayOf(at.toString())).use{c->if(c.moveToFirst())s.schedules+=WorkConfigCodec.decode(c.getString(2),c.getLong(0),c.getLong(1))}
+        if(s.schedules.isEmpty())sql.rawQuery(QueryTag.WORK_ROWS,setOf(SqlTable.CONFIG_VERSIONS),"SELECT id,effective,snapshot FROM config_versions ORDER BY effective,id LIMIT 1",null).use{c->if(c.moveToFirst())s.schedules+=WorkConfigCodec.decode(c.getString(2),c.getLong(0),c.getLong(1))}
         val zone=ZoneId.of(WorkClassifier.schedule(s,at).zoneId);val date=Instant.ofEpochMilli(at).atZone(zone).toLocalDate();val end=date.plusDays(10).atStartOfDay(zone).toInstant().toEpochMilli()
-        db.rawQuery("SELECT id,effective,snapshot FROM config_versions WHERE effective>? AND effective<=? ORDER BY effective,id",arrayOf(at.toString(),end.toString())).use{c->while(c.moveToNext())s.schedules+=WorkConfigCodec.decode(c.getString(2),c.getLong(0),c.getLong(1))}
-        db.rawQuery("SELECT year,source,published,version FROM calendar_years WHERE year BETWEEN ? AND ?",arrayOf(date.minusDays(1).year.toString(),date.plusDays(10).year.toString())).use{c->while(c.moveToNext()){val y=CalendarYear(c.getInt(0),c.getString(1),c.getString(2),c.getString(3));s.calendarYears[y.year]=y}}
-        db.rawQuery("SELECT date,working,name FROM calendar_days WHERE date BETWEEN ? AND ?",arrayOf(date.minusDays(1).toString(),date.plusDays(10).toString())).use{c->while(c.moveToNext()){val d=LocalDate.parse(c.getString(0));if(c.getInt(1)==1)s.makeupDates+=d else s.holidays[d]=c.getString(2)}}
-        db.rawQuery("SELECT date,windows FROM overrides WHERE date BETWEEN ? AND ?",arrayOf(date.minusDays(1).toString(),date.plusDays(10).toString())).use{c->while(c.moveToNext()){val d=LocalDate.parse(c.getString(0));val w=WorkConfigCodec.windows(JSONArray(c.getString(1)));s.overrides[d]=DateOverride(d,if(w.isEmpty())DateOverrideKind.REST else DateOverrideKind.WORK,w)}}
-        db.rawQuery("SELECT id,start,end FROM leaves WHERE start<=? AND end>=?",arrayOf(end.toString(),at.toString())).use{c->while(c.moveToNext()){val l=LeaveRecord(c.getLong(0),c.getLong(1),c.getLong(2),"");s.leaves[l.id]=l}}
-        s.leaveVersion=DatabaseUtils.stringForQuery(db,"SELECT coalesce((SELECT value FROM settings WHERE key='leave_revision'),'0')",null).toLong()
+        sql.rawQuery(QueryTag.WORK_ROWS,setOf(SqlTable.CONFIG_VERSIONS),"SELECT id,effective,snapshot FROM config_versions WHERE effective>? AND effective<=? ORDER BY effective,id",arrayOf(at.toString(),end.toString())).use{c->while(c.moveToNext())s.schedules+=WorkConfigCodec.decode(c.getString(2),c.getLong(0),c.getLong(1))}
+        sql.rawQuery(QueryTag.WORK_ROWS,setOf(SqlTable.CALENDAR_YEARS),"SELECT year,source,published,version FROM calendar_years WHERE year BETWEEN ? AND ?",arrayOf(date.minusDays(1).year.toString(),date.plusDays(10).year.toString())).use{c->while(c.moveToNext()){val y=CalendarYear(c.getInt(0),c.getString(1),c.getString(2),c.getString(3));s.calendarYears[y.year]=y}}
+        sql.rawQuery(QueryTag.WORK_ROWS,setOf(SqlTable.CALENDAR_DAYS),"SELECT date,working,name FROM calendar_days WHERE date BETWEEN ? AND ?",arrayOf(date.minusDays(1).toString(),date.plusDays(10).toString())).use{c->while(c.moveToNext()){val d=LocalDate.parse(c.getString(0));if(c.getInt(1)==1)s.makeupDates+=d else s.holidays[d]=c.getString(2)}}
+        sql.rawQuery(QueryTag.WORK_ROWS,setOf(SqlTable.OVERRIDES),"SELECT date,windows FROM overrides WHERE date BETWEEN ? AND ?",arrayOf(date.minusDays(1).toString(),date.plusDays(10).toString())).use{c->while(c.moveToNext()){val d=LocalDate.parse(c.getString(0));val w=WorkConfigCodec.windows(JSONArray(c.getString(1)));s.overrides[d]=DateOverride(d,if(w.isEmpty())DateOverrideKind.REST else DateOverrideKind.WORK,w)}}
+        sql.rawQuery(QueryTag.WORK_ROWS,setOf(SqlTable.LEAVES),"SELECT id,start,end FROM leaves WHERE start<=? AND end>=?",arrayOf(end.toString(),at.toString())).use{c->while(c.moveToNext()){val l=LeaveRecord(c.getLong(0),c.getLong(1),c.getLong(2),"");s.leaves[l.id]=l}}
+        s.leaveVersion=sql.stringForQuery(QueryTag.SCOPED_SETTING,setOf(SqlTable.SETTINGS),"SELECT coalesce((SELECT value FROM settings WHERE key='leave_revision'),'0')",null).toLong()
         return WorkClassifier.status(s,at).toContract()
     }
 }

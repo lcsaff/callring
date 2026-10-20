@@ -45,7 +45,7 @@ class BackendGraph(
     private val callWorkLease = AndroidCallWorkLease(application)
     @Volatile private var closed = false
     private val store = LazyBackendStore {
-        SqliteBackendStore(application, configuration.databaseName)
+        SqliteBackendStore(application, configuration.databaseName, configuration.sqlAccessProbe)
     }
     val playbackState = PlaybackStateTracker()
     val playbackCommands by lazy {

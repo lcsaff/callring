@@ -19,6 +19,7 @@ data class BackendConfiguration(
     val audioDirectory: File? = null,
     val clock: Clock = Clock.systemUTC(),
     val dispatcher: CoroutineDispatcher = Dispatchers.IO,
+    val sqlAccessProbe: com.greatwall.callring.data.SqlAccessProbe? = null,
 ) {
     init {
         require(

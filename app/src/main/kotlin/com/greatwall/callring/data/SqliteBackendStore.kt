@@ -8,16 +8,18 @@ import com.greatwall.callring.domain.BackendState
 /** Android persistence adapter; all business rules live behind the BackendStore port. */
 class SqliteBackendStore
 @JvmOverloads
-constructor(context: Context, databaseName: String = "callring.db") : BackendStore, AutoCloseable {
+constructor(context: Context, databaseName: String = "callring.db", sqlAccessProbe: SqlAccessProbe? = null) : BackendStore, AutoCloseable {
     private val helper = CallringDatabase(context.applicationContext, databaseName)
     private val db: SQLiteDatabase
+    private val sql: SqlAccess
     val stateLoads = java.util.concurrent.atomic.AtomicLong()
     fun scopedReads(coordinator:com.greatwall.callring.application.BusinessRevisionCoordinator):com.greatwall.callring.application.ports.ScopedReadPort =
-        SqliteScopedReadAdapter(db,{coordinator.capture().values.getValue("core")})
+        SqliteScopedReadAdapter(db,{coordinator.capture().values.getValue("core")}, sql = sql)
 
     init {
         helper.setWriteAheadLoggingEnabled(true)
         db = helper.writableDatabase
+        sql = SqlAccess(db, sqlAccessProbe)
     }
 
     @Synchronized
@@ -25,7 +27,7 @@ constructor(context: Context, databaseName: String = "callring.db") : BackendSto
         db.beginTransactionNonExclusive()
         try {
             stateLoads.incrementAndGet()
-            val state = StorageSession(db).load()
+            val state = StorageSession(db, sql).load()
             val result = block(state)
             db.setTransactionSuccessful()
             return result
@@ -37,10 +39,10 @@ constructor(context: Context, databaseName: String = "callring.db") : BackendSto
     @Synchronized override fun <T> captureFull(block: (BackendState, List<com.greatwall.callring.domain.AuditRecord>) -> T): T {
         db.beginTransactionNonExclusive()
         try {
-            checkSnapshotSize(db)
+            checkSnapshotSize(db, sql)
             stateLoads.incrementAndGet()
-            val state = StorageSession(db).load()
-            val audits = db.rawQuery("SELECT kind,target,raw,created FROM calendar_audit ORDER BY id", null).use { c ->
+            val state = StorageSession(db, sql).load()
+            val audits = sql.rawQuery(QueryTag.AUDIT_ROWS, setOf(SqlTable.CALENDAR_AUDIT), "SELECT kind,target,raw,created FROM calendar_audit ORDER BY id", null).use { c ->
                 buildList { while (c.moveToNext()) add(com.greatwall.callring.domain.AuditRecord(c.getString(0), c.getString(1), c.getString(2), c.getLong(3))) }
             }
             return block(state, audits).also { db.setTransactionSuccessful() }
@@ -52,7 +54,7 @@ constructor(context: Context, databaseName: String = "callring.db") : BackendSto
         // Capture after acquiring SQLite's transaction lock, including across separate adapters.
         db.beginTransaction()
         try {
-            val session = StorageSession(db)
+            val session = StorageSession(db, sql)
             stateLoads.incrementAndGet()
             val state = session.load()
             val result = block(state)
@@ -71,11 +73,11 @@ constructor(context: Context, databaseName: String = "callring.db") : BackendSto
 }
 
 /** Coordinates table adapters and foreign-key ordering, without implementing business decisions. */
-internal class StorageSession(private val db: SQLiteDatabase) {
-    private val profiles = ProfileStore(db)
-    private val settings = SettingsStore(db)
-    private val schedules = ScheduleStore(db)
-    private val calls = CallStore(db)
+internal class StorageSession(private val db: SQLiteDatabase, private val sql: SqlAccess = SqlAccess(db)) {
+    private val profiles = ProfileStore(db, sql)
+    private val settings = SettingsStore(db, sql)
+    private val schedules = ScheduleStore(db, sql)
+    private val calls = CallStore(db, sql)
 
     fun load(): BackendState =
         BackendState().also {
@@ -135,9 +137,9 @@ internal class StorageSession(private val db: SQLiteDatabase) {
 
     private fun advanceSequence(table: String, next: Long) {
         val sequence = next - 1
-        if (sequence <= db.scalar("SELECT seq FROM sqlite_sequence WHERE name=?", args(table)))
+        if (sequence <= sql.scalar(QueryTag.SEQUENCE, setOf(SqlTable.SQLITE_SEQUENCE), "SELECT seq FROM sqlite_sequence WHERE name=?", args(table)))
             return
-        val existing = db.scalar("SELECT COUNT(*) FROM sqlite_sequence WHERE name=?", args(table))
+        val existing = sql.scalar(QueryTag.AGGREGATE, setOf(SqlTable.SQLITE_SEQUENCE), "SELECT COUNT(*) FROM sqlite_sequence WHERE name=?", args(table))
         check(existing <= 1L) { "Duplicate sequence rows for $table" }
         if (existing == 0L)
             check(

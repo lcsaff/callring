@@ -1,0 +1,993 @@
+{
+  "unrelatedCallCount": 1000,
+  "baselineCodeSha": "a0b420a",
+  "measurement": "query calls and successful cursor moves \/ scalar results; not SQLite scan rows",
+  "quietRead": [
+    {
+      "tag": "SNAPSHOT_ROWS",
+      "tables": [
+        "positions"
+      ],
+      "queryCalls": 1,
+      "consumedRows": 1,
+      "closedCursors": 1,
+      "queryOrMovementFailures": 0
+    },
+    {
+      "tag": "SNAPSHOT_ROWS",
+      "tables": [
+        "callers"
+      ],
+      "queryCalls": 1,
+      "consumedRows": 2,
+      "closedCursors": 1,
+      "queryOrMovementFailures": 0
+    },
+    {
+      "tag": "SNAPSHOT_ROWS",
+      "tables": [
+        "settings"
+      ],
+      "queryCalls": 1,
+      "consumedRows": 0,
+      "closedCursors": 1,
+      "queryOrMovementFailures": 0
+    },
+    {
+      "tag": "SNAPSHOT_ROWS",
+      "tables": [
+        "statistics_intervals"
+      ],
+      "queryCalls": 1,
+      "consumedRows": 1,
+      "closedCursors": 1,
+      "queryOrMovementFailures": 0
+    },
+    {
+      "tag": "SNAPSHOT_ROWS",
+      "tables": [
+        "config_versions"
+      ],
+      "queryCalls": 1,
+      "consumedRows": 2,
+      "closedCursors": 1,
+      "queryOrMovementFailures": 0
+    },
+    {
+      "tag": "SNAPSHOT_ROWS",
+      "tables": [
+        "calendar_years"
+      ],
+      "queryCalls": 1,
+      "consumedRows": 1,
+      "closedCursors": 1,
+      "queryOrMovementFailures": 0
+    },
+    {
+      "tag": "SNAPSHOT_ROWS",
+      "tables": [
+        "calendar_days"
+      ],
+      "queryCalls": 1,
+      "consumedRows": 39,
+      "closedCursors": 1,
+      "queryOrMovementFailures": 0
+    },
+    {
+      "tag": "SNAPSHOT_ROWS",
+      "tables": [
+        "overrides"
+      ],
+      "queryCalls": 1,
+      "consumedRows": 0,
+      "closedCursors": 1,
+      "queryOrMovementFailures": 0
+    },
+    {
+      "tag": "SNAPSHOT_ROWS",
+      "tables": [
+        "leaves"
+      ],
+      "queryCalls": 1,
+      "consumedRows": 0,
+      "closedCursors": 1,
+      "queryOrMovementFailures": 0
+    },
+    {
+      "tag": "SNAPSHOT_ROWS",
+      "tables": [
+        "calls"
+      ],
+      "queryCalls": 1,
+      "consumedRows": 1001,
+      "closedCursors": 1,
+      "queryOrMovementFailures": 0
+    },
+    {
+      "tag": "LOAD_ROWS",
+      "tables": [
+        "positions"
+      ],
+      "queryCalls": 1,
+      "consumedRows": 1,
+      "closedCursors": 1,
+      "queryOrMovementFailures": 0
+    },
+    {
+      "tag": "LOAD_ROWS",
+      "tables": [
+        "callers"
+      ],
+      "queryCalls": 1,
+      "consumedRows": 2,
+      "closedCursors": 1,
+      "queryOrMovementFailures": 0
+    },
+    {
+      "tag": "NEXT_ID_MAX",
+      "tables": [
+        "positions"
+      ],
+      "queryCalls": 1,
+      "consumedRows": 1,
+      "closedCursors": 1,
+      "queryOrMovementFailures": 0
+    },
+    {
+      "tag": "SEQUENCE",
+      "tables": [
+        "sqlite_sequence"
+      ],
+      "queryCalls": 4,
+      "consumedRows": 3,
+      "closedCursors": 4,
+      "queryOrMovementFailures": 0
+    },
+    {
+      "tag": "LOAD_ROWS",
+      "tables": [
+        "statistics_intervals"
+      ],
+      "queryCalls": 1,
+      "consumedRows": 1,
+      "closedCursors": 1,
+      "queryOrMovementFailures": 0
+    },
+    {
+      "tag": "LOAD_ROWS",
+      "tables": [
+        "config_versions"
+      ],
+      "queryCalls": 1,
+      "consumedRows": 2,
+      "closedCursors": 1,
+      "queryOrMovementFailures": 0
+    },
+    {
+      "tag": "LOAD_ROWS",
+      "tables": [
+        "calendar_years"
+      ],
+      "queryCalls": 1,
+      "consumedRows": 1,
+      "closedCursors": 1,
+      "queryOrMovementFailures": 0
+    },
+    {
+      "tag": "LOAD_ROWS",
+      "tables": [
+        "calendar_days"
+      ],
+      "queryCalls": 1,
+      "consumedRows": 39,
+      "closedCursors": 1,
+      "queryOrMovementFailures": 0
+    },
+    {
+      "tag": "LOAD_ROWS",
+      "tables": [
+        "overrides"
+      ],
+      "queryCalls": 1,
+      "consumedRows": 0,
+      "closedCursors": 1,
+      "queryOrMovementFailures": 0
+    },
+    {
+      "tag": "LOAD_ROWS",
+      "tables": [
+        "leaves"
+      ],
+      "queryCalls": 1,
+      "consumedRows": 0,
+      "closedCursors": 1,
+      "queryOrMovementFailures": 0
+    },
+    {
+      "tag": "NEXT_ID_MAX",
+      "tables": [
+        "config_versions"
+      ],
+      "queryCalls": 1,
+      "consumedRows": 1,
+      "closedCursors": 1,
+      "queryOrMovementFailures": 0
+    },
+    {
+      "tag": "NEXT_ID_MAX",
+      "tables": [
+        "leaves"
+      ],
+      "queryCalls": 1,
+      "consumedRows": 1,
+      "closedCursors": 1,
+      "queryOrMovementFailures": 0
+    },
+    {
+      "tag": "LOAD_ROWS",
+      "tables": [
+        "calls"
+      ],
+      "queryCalls": 1,
+      "consumedRows": 1001,
+      "closedCursors": 1,
+      "queryOrMovementFailures": 0
+    },
+    {
+      "tag": "NEXT_ID_MAX",
+      "tables": [
+        "calls"
+      ],
+      "queryCalls": 1,
+      "consumedRows": 1,
+      "closedCursors": 1,
+      "queryOrMovementFailures": 0
+    }
+  ],
+  "targetProfileWrite": [
+    {
+      "tag": "SNAPSHOT_ROWS",
+      "tables": [
+        "positions"
+      ],
+      "queryCalls": 1,
+      "consumedRows": 1,
+      "closedCursors": 1,
+      "queryOrMovementFailures": 0
+    },
+    {
+      "tag": "SNAPSHOT_ROWS",
+      "tables": [
+        "callers"
+      ],
+      "queryCalls": 1,
+      "consumedRows": 2,
+      "closedCursors": 1,
+      "queryOrMovementFailures": 0
+    },
+    {
+      "tag": "SNAPSHOT_ROWS",
+      "tables": [
+        "settings"
+      ],
+      "queryCalls": 1,
+      "consumedRows": 0,
+      "closedCursors": 1,
+      "queryOrMovementFailures": 0
+    },
+    {
+      "tag": "SNAPSHOT_ROWS",
+      "tables": [
+        "statistics_intervals"
+      ],
+      "queryCalls": 1,
+      "consumedRows": 1,
+      "closedCursors": 1,
+      "queryOrMovementFailures": 0
+    },
+    {
+      "tag": "SNAPSHOT_ROWS",
+      "tables": [
+        "config_versions"
+      ],
+      "queryCalls": 1,
+      "consumedRows": 2,
+      "closedCursors": 1,
+      "queryOrMovementFailures": 0
+    },
+    {
+      "tag": "SNAPSHOT_ROWS",
+      "tables": [
+        "calendar_years"
+      ],
+      "queryCalls": 1,
+      "consumedRows": 1,
+      "closedCursors": 1,
+      "queryOrMovementFailures": 0
+    },
+    {
+      "tag": "SNAPSHOT_ROWS",
+      "tables": [
+        "calendar_days"
+      ],
+      "queryCalls": 1,
+      "consumedRows": 39,
+      "closedCursors": 1,
+      "queryOrMovementFailures": 0
+    },
+    {
+      "tag": "SNAPSHOT_ROWS",
+      "tables": [
+        "overrides"
+      ],
+      "queryCalls": 1,
+      "consumedRows": 0,
+      "closedCursors": 1,
+      "queryOrMovementFailures": 0
+    },
+    {
+      "tag": "SNAPSHOT_ROWS",
+      "tables": [
+        "leaves"
+      ],
+      "queryCalls": 1,
+      "consumedRows": 0,
+      "closedCursors": 1,
+      "queryOrMovementFailures": 0
+    },
+    {
+      "tag": "SNAPSHOT_ROWS",
+      "tables": [
+        "calls"
+      ],
+      "queryCalls": 1,
+      "consumedRows": 1001,
+      "closedCursors": 1,
+      "queryOrMovementFailures": 0
+    },
+    {
+      "tag": "LOAD_ROWS",
+      "tables": [
+        "positions"
+      ],
+      "queryCalls": 1,
+      "consumedRows": 1,
+      "closedCursors": 1,
+      "queryOrMovementFailures": 0
+    },
+    {
+      "tag": "LOAD_ROWS",
+      "tables": [
+        "callers"
+      ],
+      "queryCalls": 1,
+      "consumedRows": 2,
+      "closedCursors": 1,
+      "queryOrMovementFailures": 0
+    },
+    {
+      "tag": "NEXT_ID_MAX",
+      "tables": [
+        "positions"
+      ],
+      "queryCalls": 1,
+      "consumedRows": 1,
+      "closedCursors": 1,
+      "queryOrMovementFailures": 0
+    },
+    {
+      "tag": "SEQUENCE",
+      "tables": [
+        "sqlite_sequence"
+      ],
+      "queryCalls": 9,
+      "consumedRows": 7,
+      "closedCursors": 9,
+      "queryOrMovementFailures": 0
+    },
+    {
+      "tag": "LOAD_ROWS",
+      "tables": [
+        "statistics_intervals"
+      ],
+      "queryCalls": 1,
+      "consumedRows": 1,
+      "closedCursors": 1,
+      "queryOrMovementFailures": 0
+    },
+    {
+      "tag": "LOAD_ROWS",
+      "tables": [
+        "config_versions"
+      ],
+      "queryCalls": 1,
+      "consumedRows": 2,
+      "closedCursors": 1,
+      "queryOrMovementFailures": 0
+    },
+    {
+      "tag": "LOAD_ROWS",
+      "tables": [
+        "calendar_years"
+      ],
+      "queryCalls": 1,
+      "consumedRows": 1,
+      "closedCursors": 1,
+      "queryOrMovementFailures": 0
+    },
+    {
+      "tag": "LOAD_ROWS",
+      "tables": [
+        "calendar_days"
+      ],
+      "queryCalls": 1,
+      "consumedRows": 39,
+      "closedCursors": 1,
+      "queryOrMovementFailures": 0
+    },
+    {
+      "tag": "LOAD_ROWS",
+      "tables": [
+        "overrides"
+      ],
+      "queryCalls": 1,
+      "consumedRows": 0,
+      "closedCursors": 1,
+      "queryOrMovementFailures": 0
+    },
+    {
+      "tag": "LOAD_ROWS",
+      "tables": [
+        "leaves"
+      ],
+      "queryCalls": 1,
+      "consumedRows": 0,
+      "closedCursors": 1,
+      "queryOrMovementFailures": 0
+    },
+    {
+      "tag": "NEXT_ID_MAX",
+      "tables": [
+        "config_versions"
+      ],
+      "queryCalls": 1,
+      "consumedRows": 1,
+      "closedCursors": 1,
+      "queryOrMovementFailures": 0
+    },
+    {
+      "tag": "NEXT_ID_MAX",
+      "tables": [
+        "leaves"
+      ],
+      "queryCalls": 1,
+      "consumedRows": 1,
+      "closedCursors": 1,
+      "queryOrMovementFailures": 0
+    },
+    {
+      "tag": "LOAD_ROWS",
+      "tables": [
+        "calls"
+      ],
+      "queryCalls": 1,
+      "consumedRows": 1001,
+      "closedCursors": 1,
+      "queryOrMovementFailures": 0
+    },
+    {
+      "tag": "NEXT_ID_MAX",
+      "tables": [
+        "calls"
+      ],
+      "queryCalls": 1,
+      "consumedRows": 1,
+      "closedCursors": 1,
+      "queryOrMovementFailures": 0
+    },
+    {
+      "tag": "NEXT_ID_MAX",
+      "tables": [
+        "statistics_intervals"
+      ],
+      "queryCalls": 1,
+      "consumedRows": 1,
+      "closedCursors": 1,
+      "queryOrMovementFailures": 0
+    }
+  ],
+  "targetReport": [
+    {
+      "tag": "SNAPSHOT_ROWS",
+      "tables": [
+        "positions"
+      ],
+      "queryCalls": 1,
+      "consumedRows": 1,
+      "closedCursors": 1,
+      "queryOrMovementFailures": 0
+    },
+    {
+      "tag": "SNAPSHOT_ROWS",
+      "tables": [
+        "callers"
+      ],
+      "queryCalls": 1,
+      "consumedRows": 2,
+      "closedCursors": 1,
+      "queryOrMovementFailures": 0
+    },
+    {
+      "tag": "SNAPSHOT_ROWS",
+      "tables": [
+        "settings"
+      ],
+      "queryCalls": 1,
+      "consumedRows": 0,
+      "closedCursors": 1,
+      "queryOrMovementFailures": 0
+    },
+    {
+      "tag": "SNAPSHOT_ROWS",
+      "tables": [
+        "statistics_intervals"
+      ],
+      "queryCalls": 1,
+      "consumedRows": 1,
+      "closedCursors": 1,
+      "queryOrMovementFailures": 0
+    },
+    {
+      "tag": "SNAPSHOT_ROWS",
+      "tables": [
+        "config_versions"
+      ],
+      "queryCalls": 1,
+      "consumedRows": 2,
+      "closedCursors": 1,
+      "queryOrMovementFailures": 0
+    },
+    {
+      "tag": "SNAPSHOT_ROWS",
+      "tables": [
+        "calendar_years"
+      ],
+      "queryCalls": 1,
+      "consumedRows": 1,
+      "closedCursors": 1,
+      "queryOrMovementFailures": 0
+    },
+    {
+      "tag": "SNAPSHOT_ROWS",
+      "tables": [
+        "calendar_days"
+      ],
+      "queryCalls": 1,
+      "consumedRows": 39,
+      "closedCursors": 1,
+      "queryOrMovementFailures": 0
+    },
+    {
+      "tag": "SNAPSHOT_ROWS",
+      "tables": [
+        "overrides"
+      ],
+      "queryCalls": 1,
+      "consumedRows": 0,
+      "closedCursors": 1,
+      "queryOrMovementFailures": 0
+    },
+    {
+      "tag": "SNAPSHOT_ROWS",
+      "tables": [
+        "leaves"
+      ],
+      "queryCalls": 1,
+      "consumedRows": 0,
+      "closedCursors": 1,
+      "queryOrMovementFailures": 0
+    },
+    {
+      "tag": "SNAPSHOT_ROWS",
+      "tables": [
+        "calls"
+      ],
+      "queryCalls": 1,
+      "consumedRows": 1001,
+      "closedCursors": 1,
+      "queryOrMovementFailures": 0
+    },
+    {
+      "tag": "LOAD_ROWS",
+      "tables": [
+        "positions"
+      ],
+      "queryCalls": 1,
+      "consumedRows": 1,
+      "closedCursors": 1,
+      "queryOrMovementFailures": 0
+    },
+    {
+      "tag": "LOAD_ROWS",
+      "tables": [
+        "callers"
+      ],
+      "queryCalls": 1,
+      "consumedRows": 2,
+      "closedCursors": 1,
+      "queryOrMovementFailures": 0
+    },
+    {
+      "tag": "NEXT_ID_MAX",
+      "tables": [
+        "positions"
+      ],
+      "queryCalls": 1,
+      "consumedRows": 1,
+      "closedCursors": 1,
+      "queryOrMovementFailures": 0
+    },
+    {
+      "tag": "SEQUENCE",
+      "tables": [
+        "sqlite_sequence"
+      ],
+      "queryCalls": 4,
+      "consumedRows": 3,
+      "closedCursors": 4,
+      "queryOrMovementFailures": 0
+    },
+    {
+      "tag": "LOAD_ROWS",
+      "tables": [
+        "statistics_intervals"
+      ],
+      "queryCalls": 1,
+      "consumedRows": 1,
+      "closedCursors": 1,
+      "queryOrMovementFailures": 0
+    },
+    {
+      "tag": "LOAD_ROWS",
+      "tables": [
+        "config_versions"
+      ],
+      "queryCalls": 1,
+      "consumedRows": 2,
+      "closedCursors": 1,
+      "queryOrMovementFailures": 0
+    },
+    {
+      "tag": "LOAD_ROWS",
+      "tables": [
+        "calendar_years"
+      ],
+      "queryCalls": 1,
+      "consumedRows": 1,
+      "closedCursors": 1,
+      "queryOrMovementFailures": 0
+    },
+    {
+      "tag": "LOAD_ROWS",
+      "tables": [
+        "calendar_days"
+      ],
+      "queryCalls": 1,
+      "consumedRows": 39,
+      "closedCursors": 1,
+      "queryOrMovementFailures": 0
+    },
+    {
+      "tag": "LOAD_ROWS",
+      "tables": [
+        "overrides"
+      ],
+      "queryCalls": 1,
+      "consumedRows": 0,
+      "closedCursors": 1,
+      "queryOrMovementFailures": 0
+    },
+    {
+      "tag": "LOAD_ROWS",
+      "tables": [
+        "leaves"
+      ],
+      "queryCalls": 1,
+      "consumedRows": 0,
+      "closedCursors": 1,
+      "queryOrMovementFailures": 0
+    },
+    {
+      "tag": "NEXT_ID_MAX",
+      "tables": [
+        "config_versions"
+      ],
+      "queryCalls": 1,
+      "consumedRows": 1,
+      "closedCursors": 1,
+      "queryOrMovementFailures": 0
+    },
+    {
+      "tag": "NEXT_ID_MAX",
+      "tables": [
+        "leaves"
+      ],
+      "queryCalls": 1,
+      "consumedRows": 1,
+      "closedCursors": 1,
+      "queryOrMovementFailures": 0
+    },
+    {
+      "tag": "LOAD_ROWS",
+      "tables": [
+        "calls"
+      ],
+      "queryCalls": 1,
+      "consumedRows": 1001,
+      "closedCursors": 1,
+      "queryOrMovementFailures": 0
+    },
+    {
+      "tag": "NEXT_ID_MAX",
+      "tables": [
+        "calls"
+      ],
+      "queryCalls": 1,
+      "consumedRows": 1,
+      "closedCursors": 1,
+      "queryOrMovementFailures": 0
+    }
+  ],
+  "incomingRegistration": [
+    {
+      "tag": "SNAPSHOT_ROWS",
+      "tables": [
+        "positions"
+      ],
+      "queryCalls": 1,
+      "consumedRows": 1,
+      "closedCursors": 1,
+      "queryOrMovementFailures": 0
+    },
+    {
+      "tag": "SNAPSHOT_ROWS",
+      "tables": [
+        "callers"
+      ],
+      "queryCalls": 1,
+      "consumedRows": 2,
+      "closedCursors": 1,
+      "queryOrMovementFailures": 0
+    },
+    {
+      "tag": "SNAPSHOT_ROWS",
+      "tables": [
+        "settings"
+      ],
+      "queryCalls": 1,
+      "consumedRows": 0,
+      "closedCursors": 1,
+      "queryOrMovementFailures": 0
+    },
+    {
+      "tag": "SNAPSHOT_ROWS",
+      "tables": [
+        "statistics_intervals"
+      ],
+      "queryCalls": 1,
+      "consumedRows": 1,
+      "closedCursors": 1,
+      "queryOrMovementFailures": 0
+    },
+    {
+      "tag": "SNAPSHOT_ROWS",
+      "tables": [
+        "config_versions"
+      ],
+      "queryCalls": 1,
+      "consumedRows": 2,
+      "closedCursors": 1,
+      "queryOrMovementFailures": 0
+    },
+    {
+      "tag": "SNAPSHOT_ROWS",
+      "tables": [
+        "calendar_years"
+      ],
+      "queryCalls": 1,
+      "consumedRows": 1,
+      "closedCursors": 1,
+      "queryOrMovementFailures": 0
+    },
+    {
+      "tag": "SNAPSHOT_ROWS",
+      "tables": [
+        "calendar_days"
+      ],
+      "queryCalls": 1,
+      "consumedRows": 39,
+      "closedCursors": 1,
+      "queryOrMovementFailures": 0
+    },
+    {
+      "tag": "SNAPSHOT_ROWS",
+      "tables": [
+        "overrides"
+      ],
+      "queryCalls": 1,
+      "consumedRows": 0,
+      "closedCursors": 1,
+      "queryOrMovementFailures": 0
+    },
+    {
+      "tag": "SNAPSHOT_ROWS",
+      "tables": [
+        "leaves"
+      ],
+      "queryCalls": 1,
+      "consumedRows": 0,
+      "closedCursors": 1,
+      "queryOrMovementFailures": 0
+    },
+    {
+      "tag": "SNAPSHOT_ROWS",
+      "tables": [
+        "calls"
+      ],
+      "queryCalls": 1,
+      "consumedRows": 1001,
+      "closedCursors": 1,
+      "queryOrMovementFailures": 0
+    },
+    {
+      "tag": "LOAD_ROWS",
+      "tables": [
+        "positions"
+      ],
+      "queryCalls": 1,
+      "consumedRows": 1,
+      "closedCursors": 1,
+      "queryOrMovementFailures": 0
+    },
+    {
+      "tag": "LOAD_ROWS",
+      "tables": [
+        "callers"
+      ],
+      "queryCalls": 1,
+      "consumedRows": 2,
+      "closedCursors": 1,
+      "queryOrMovementFailures": 0
+    },
+    {
+      "tag": "NEXT_ID_MAX",
+      "tables": [
+        "positions"
+      ],
+      "queryCalls": 1,
+      "consumedRows": 1,
+      "closedCursors": 1,
+      "queryOrMovementFailures": 0
+    },
+    {
+      "tag": "SEQUENCE",
+      "tables": [
+        "sqlite_sequence"
+      ],
+      "queryCalls": 9,
+      "consumedRows": 7,
+      "closedCursors": 9,
+      "queryOrMovementFailures": 0
+    },
+    {
+      "tag": "LOAD_ROWS",
+      "tables": [
+        "statistics_intervals"
+      ],
+      "queryCalls": 1,
+      "consumedRows": 1,
+      "closedCursors": 1,
+      "queryOrMovementFailures": 0
+    },
+    {
+      "tag": "LOAD_ROWS",
+      "tables": [
+        "config_versions"
+      ],
+      "queryCalls": 1,
+      "consumedRows": 2,
+      "closedCursors": 1,
+      "queryOrMovementFailures": 0
+    },
+    {
+      "tag": "LOAD_ROWS",
+      "tables": [
+        "calendar_years"
+      ],
+      "queryCalls": 1,
+      "consumedRows": 1,
+      "closedCursors": 1,
+      "queryOrMovementFailures": 0
+    },
+    {
+      "tag": "LOAD_ROWS",
+      "tables": [
+        "calendar_days"
+      ],
+      "queryCalls": 1,
+      "consumedRows": 39,
+      "closedCursors": 1,
+      "queryOrMovementFailures": 0
+    },
+    {
+      "tag": "LOAD_ROWS",
+      "tables": [
+        "overrides"
+      ],
+      "queryCalls": 1,
+      "consumedRows": 0,
+      "closedCursors": 1,
+      "queryOrMovementFailures": 0
+    },
+    {
+      "tag": "LOAD_ROWS",
+      "tables": [
+        "leaves"
+      ],
+      "queryCalls": 1,
+      "consumedRows": 0,
+      "closedCursors": 1,
+      "queryOrMovementFailures": 0
+    },
+    {
+      "tag": "NEXT_ID_MAX",
+      "tables": [
+        "config_versions"
+      ],
+      "queryCalls": 1,
+      "consumedRows": 1,
+      "closedCursors": 1,
+      "queryOrMovementFailures": 0
+    },
+    {
+      "tag": "NEXT_ID_MAX",
+      "tables": [
+        "leaves"
+      ],
+      "queryCalls": 1,
+      "consumedRows": 1,
+      "closedCursors": 1,
+      "queryOrMovementFailures": 0
+    },
+    {
+      "tag": "LOAD_ROWS",
+      "tables": [
+        "calls"
+      ],
+      "queryCalls": 1,
+      "consumedRows": 1001,
+      "closedCursors": 1,
+      "queryOrMovementFailures": 0
+    },
+    {
+      "tag": "NEXT_ID_MAX",
+      "tables": [
+        "calls"
+      ],
+      "queryCalls": 1,
+      "consumedRows": 1,
+      "closedCursors": 1,
+      "queryOrMovementFailures": 0
+    },
+    {
+      "tag": "NEXT_ID_MAX",
+      "tables": [
+        "statistics_intervals"
+      ],
+      "queryCalls": 1,
+      "consumedRows": 1,
+      "closedCursors": 1,
+      "queryOrMovementFailures": 0
+    }
+  ]
+}
