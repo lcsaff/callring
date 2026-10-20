@@ -22,7 +22,6 @@ import com.greatwall.callring.application.RecordingCall
 import com.greatwall.callring.application.IncomingRecordingSession
 import com.greatwall.callring.application.findRecordingCall
 import com.greatwall.callring.RecordingJobService
-import com.greatwall.callring.application.SharedBusinessCommands
 import com.greatwall.callring.application.conversation.*
 import com.greatwall.callring.platform.ai.CompatibleConversationClient
 
@@ -116,6 +115,12 @@ class BackendGraph(
             HolidayCalendarSource(configuration.clock),
             coordinator,
             store,
+            object : com.greatwall.callring.application.callers.NumberDeletionRecordings {
+                override suspend fun archives(number: String) = recordings.service.numberArchives(number)
+                override suspend fun delete(callId: Long, expectedGeneration: Long, command: CommandContext) = recordings.service.delete(callId, expectedGeneration, command)
+            },
+            { recordings.service.getArchive(it) },
+            { !closed },
         )
     }
     val backend: CallringBackend
@@ -155,33 +160,18 @@ class BackendGraph(
         object : CallringUiApi by backend {
             override val recordings: RecordingApi get() = this@BackendGraph.recordings.service
             override val aiSettings: AiSettingsApi get() = this@BackendGraph.recordings.aiSettings
-            override val numberDeletion: NumberDeletionApi get() =
-                com.greatwall.callring.platform.callers.NumberDeletionService(backend.callers, this@BackendGraph.recordings.service, backend.widgets, this@BackendGraph.recordings.service::numberArchives)
             override val snapshots: AiSnapshotApi get() = snapshotsDelegate.value
             override val conversation: ConversationApi get() = conversationDelegate.value
             override val update: AppUpdateApi get() = this@BackendGraph.update
             override fun commandApi(context: CommandContext): CallringUiApi = boundApi(context)
-            override suspend fun adoptIdentity(callId: Long, expectedGeneration: Long): ApiResult<CallerProfile> = boundApi(CommandContext(java.util.UUID.randomUUID().toString(), coordinator.capture(), 0) { !closed }).adoptIdentity(callId, expectedGeneration)
         }
     }
     private fun boundApi(command: CommandContext): CallringUiApi = object : CallringUiApi by backend.commandApi(command) {
         override val recordings: RecordingApi get() = this@BackendGraph.recordings.service.bound(command)
         override val aiSettings: AiSettingsApi get() = this@BackendGraph.recordings.aiSettings.bound(command)
-        override val numberDeletion: NumberDeletionApi
-            get() {
-                val deletionCommand = command.copy(continueOwnCommits = true)
-                val boundBackend = backend.commandApi(deletionCommand)
-                return com.greatwall.callring.platform.callers.NumberDeletionService(
-                    boundBackend.callers,
-                    this@BackendGraph.recordings.service.bound(deletionCommand),
-                    boundBackend.widgets,
-                    this@BackendGraph.recordings.service::numberArchives,
-                )
-            }
         override val snapshots: AiSnapshotApi get() = snapshotsDelegate.value
         override val conversation: ConversationApi get() = conversationDelegate.value
         override val update: AppUpdateApi get() = this@BackendGraph.update
-        override suspend fun adoptIdentity(callId: Long, expectedGeneration: Long) = SharedBusinessCommands(this).adoptIdentity(callId, expectedGeneration)
     }
     val api: CallringUiApi get() = apiDelegate
 

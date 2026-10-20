@@ -53,6 +53,16 @@ class WidgetBindingsService(
             coordinator.record(command)
         }
     }
+    suspend fun bindingsForNumber(number: String) = runner.io { bindings.bindingsForNumber(number) }
+    suspend fun removeStoredBinding(expected: WidgetBinding) = runner.write {
+        coordinator.guard(command) {
+            if (bindings.getBinding(expected.widgetId) != expected)
+                throw BackendFailure(ApiError(ErrorCode.CONFLICT, "business.changed", retryable = true))
+            bindings.removeBinding(expected.widgetId)
+            publish(expected.widgetId)
+            coordinator.record(command)
+        }
+    }
     private fun publish(id: Int) = coordinator.publishResource("preferences", setOf("widgets", "widget:$id"),
         ChangeImpact(mapOf(DataDomain.WIDGET_BINDINGS to setOf(id.toString()))))
 }

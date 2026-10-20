@@ -101,6 +101,11 @@ class AndroidPreferences(
         updatePreferences(widgets, mapOf("number_$widgetId" to null))
     }
 
+    @Synchronized override fun bindingsForNumber(number: String): List<WidgetBinding> = widgets.all.entries
+        .asSequence().filter { it.key.startsWith("number_") }
+        .filter { com.greatwall.callring.application.sameRecordingNumber(it.value as? String ?: throw IllegalStateException("snapshot.binding_invalid"), number) }
+        .map { WidgetBinding(it.key.removePrefix("number_").toInt(), it.value as String) }.sortedBy { it.widgetId }.toList()
+
     @Synchronized override fun listBindings(): List<WidgetBinding> = widgets.all.entries.filter { it.key.startsWith("number_") }.map {
         val id = it.key.removePrefix("number_").toIntOrNull() ?: throw IllegalStateException("snapshot.binding_invalid")
         WidgetBinding(id, it.value as? String ?: throw IllegalStateException("snapshot.binding_invalid"))

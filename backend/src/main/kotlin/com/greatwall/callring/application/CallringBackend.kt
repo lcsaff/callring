@@ -35,6 +35,9 @@ class CallringBackend(
     },
     val coordinator: BusinessRevisionCoordinator = BusinessRevisionCoordinator(),
     coreTransactions: com.greatwall.callring.application.ports.store.CoreUnitOfWork,
+    private val numberRecordings: com.greatwall.callring.application.callers.NumberDeletionRecordings,
+    private val identityArchive: suspend (Long) -> ApiResult<CallArchive?>,
+    private val operationActive: () -> Boolean,
 ) : CallringUiApi {
     private val context =
         BackendContext(
@@ -82,7 +85,16 @@ class CallringBackend(
     override val ringtone: RingtoneApi = ringtoneService
     override val runtime: RuntimeApi = runtimeService
     override val widgets: WidgetBindingsApi = widgetService
-    override val numberDeletion: NumberDeletionApi = CoreNumberDeletionApi(callers, widgets)
+    private fun deletion(command: CommandContext? = null) = com.greatwall.callring.application.callers.NumberDeletionService(
+        callers::numberDataImpact,
+        { number, count, cmd -> context.bound(cmd).callersApi.deleteNumberCore(number, count) },
+        numberRecordings, widgetService::bindingsForNumber,
+        { binding, cmd -> widgetService.bound(cmd).removeStoredBinding(binding) }, coordinator, command, operationActive)
+    private fun adoption(command: CommandContext? = null) = com.greatwall.callring.application.recording.IdentityAdoptionService(
+        identityArchive, { callers.getEditor(it) },
+        { base, value, cmd -> createUiEditsApi(context.bound(cmd)).profile(base, value) }, coordinator, command, operationActive)
+    override val numberDeletion: NumberDeletionApi = deletion()
+    override suspend fun adoptIdentity(callId: Long, expectedGeneration: Long) = adoption().adoptIdentity(callId, expectedGeneration)
     override val changes: ChangeFeed =
         object : ChangeFeed {
             override fun observe(): Flow<DataChange> = context.observe()
@@ -94,14 +106,13 @@ class CallringBackend(
 
     override fun commandApi(context: CommandContext): CallringUiApi {
         val bound = this.context.bound(context)
-        val deletion = this.context.bound(context.copy(continueOwnCommits = true))
         return object : CallringUiApi by this {
             override val callers = bound.callersApi
             override val settings = createSettingsApi(bound)
             override val edits = createUiEditsApi(bound)
             override val widgets = widgetService.bound(context)
-            override val numberDeletion =
-                CoreNumberDeletionApi(deletion.callersApi, widgetService.bound(context.copy(continueOwnCommits = true)))
+            override val numberDeletion = deletion(context)
+            override suspend fun adoptIdentity(callId: Long, expectedGeneration: Long) = adoption(context).adoptIdentity(callId, expectedGeneration)
             override val ringtone = ringtoneService.bound(context)
             override val runtime = runtimeService.bound(context)
         }

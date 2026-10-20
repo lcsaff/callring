@@ -23,7 +23,7 @@ class RecordingService(
     private val activeCallId: () -> Long?,
     private val schedule: (Long) -> Unit,
     private val coordinator: BusinessRevisionCoordinator,
-) : RecordingApi {
+) : RecordingApi, com.greatwall.callring.application.callers.NumberDeletionRecordings {
     private val playbackGeneration = AtomicLong()
     private suspend fun <T> result(block: suspend () -> T): ApiResult<T> = withContext(Dispatchers.IO) {
         try { ApiResult.Success(block()) }
@@ -55,6 +55,8 @@ class RecordingService(
         val caller = kotlinx.coroutines.currentCoroutineContext()[kotlinx.coroutines.Job]
         reads.numberMetadata(number) { caller?.isActive == false }
     }
+    override suspend fun archives(number: String) = numberArchives(number)
+    override suspend fun delete(callId: Long, expectedGeneration: Long, command: CommandContext) = deleteWith(callId, command, expectedGeneration)
     override suspend fun getArchive(callId: Long) = result { state.get(archiveId(callId)) }
     override suspend fun importRecording(callId: Long, number: String, startedAt: Long, document: DocumentRef, source: RecordingSource) = result {
         val caller = currentCoroutineContext()
@@ -145,7 +147,9 @@ class RecordingService(
         runCatching { schedule(0) }; Unit
     }
     override suspend fun delete(callId: Long) = deleteWith(callId, null)
-    private suspend fun deleteWith(callId: Long, command: CommandContext?) = result { coordinator.guard(command) {
+    private suspend fun deleteWith(callId: Long, command: CommandContext?, expectedGeneration: Long? = null) = result { coordinator.guard(command) {
+        if (expectedGeneration != null && state.generation(callId) != expectedGeneration)
+            throw BackendFailure(ApiError(ErrorCode.CONFLICT, "recording.changed", retryable = true))
         playbackGeneration.incrementAndGet()
         val playbackStopped = playback.stop()
         try {

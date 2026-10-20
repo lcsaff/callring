@@ -28,6 +28,7 @@ class SmallServiceCapabilitiesTest {
         var fail = false
         var installedReads = 0
         val store = object : WidgetBindingStore {
+            override fun bindingsForNumber(number: String) = listBindings().filter { com.greatwall.callring.application.sameRecordingNumber(it.number, number) }
             override fun listBindings() = rows.values.toList()
             override fun getBinding(widgetId: Int) = rows[widgetId]
             override fun saveBinding(binding: WidgetBinding) {

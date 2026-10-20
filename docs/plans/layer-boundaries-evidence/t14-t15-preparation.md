@@ -29,6 +29,7 @@ verify_backend 需校验单 APK metadata、输出目录内路径、aapt package 
 
 - BackendContext、旧 BackendStore/BackendState、全量 StorageSession.load/save、coreScopeValues、LazyBackendStore、资源 .legacy 投影。
 - DataChange/旧 observe、nullable/default snapshots、同查询双 loader/兼容开关、unsupported 默认装配。
+- contracts中被c删除的缺能力默认体（aiUnavailable、commandApi直接return this等）及生产CapabilityFallbacks同义替代；用具体声明/函数体负例，保留参数产品默认值和测试专用fake合法正例。
 - 全库前后差异、双发布兜底、普通业务调用完整快照，以及工具 numeric index/ordinal 行为分派。
 
 保留合法 sealed/JSON/Keystore 类型处理、单一平台适配器创建并消费的opaque媒体token、纯 URI、codec、显式 operationCode/legacyIndex/displayOrder 数据正例。存储抽象被强转具体Sqlite资源与适配器内部识别自有prepared token是不同边界，不能用泛化as正则误拒后者。不得按 legacy/fallback 单词或全部 File 类型一刀切。

@@ -134,6 +134,6 @@ class HistorySettingsSqlTest {
         val runtime = java.lang.reflect.Proxy.newProxyInstance(RuntimeProbe::class.java.classLoader,arrayOf(RuntimeProbe::class.java)) { _,_,_ -> error("unused") } as RuntimeProbe
         val audio = java.lang.reflect.Proxy.newProxyInstance(AudioController::class.java.classLoader,arrayOf(AudioController::class.java)) { _,_,_ -> error("unused") } as AudioController
         val sync = object : SyncScheduler { override fun requestSync(atEpochMillis: Long) = com.greatwall.callring.contracts.runtime.SyncRequestReceipt(com.greatwall.callring.contracts.runtime.SyncRequestState.QUEUED,atEpochMillis) }
-        return CallringBackend(store,prefs,unsupported,runtime,audio,sync,Clock.fixed(Instant.parse("2026-10-21T00:00:00Z"),ZoneOffset.UTC),Dispatchers.Unconfined,coordinator=coordinator,coreTransactions=store.sessions)
+        return CallringBackend(store,prefs,unsupported,runtime,audio,sync,Clock.fixed(Instant.parse("2026-10-21T00:00:00Z"),ZoneOffset.UTC),Dispatchers.Unconfined,coordinator=coordinator,coreTransactions=store.sessions, numberRecordings = com.greatwall.callring.EmptyNumberRecordings, identityArchive = { com.greatwall.callring.contracts.common.ApiResult.Success(null) }, operationActive = { true })
     }
 }

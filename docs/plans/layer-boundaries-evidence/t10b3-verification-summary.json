@@ -1,0 +1,136 @@
+{
+  "baseline": "119e2082846917c168991bb771960ece7a4286d4",
+  "sourceCandidate": {
+    "path": "build/qa/layer-boundaries/t10b3-source-candidate.json",
+    "sha256": "5b3569ef358d597383ddb4f636ec2e121dee5fde3dc37c7cf8f3caa3bb481979",
+    "paths": 27,
+    "manifestSha256": "556d63b0a7b780fd91e10cd77ad1bb8b25c72f6231395fb1978678ea2476eccf"
+  },
+  "verification": {
+    "path": "build/qa/layer-boundaries/t10b3-verification.json",
+    "sha256": "1b7822c09a1a0a152d8aa435289b6cd9daf81b0def5507787d8890219973e897"
+  },
+  "gate": {
+    "command": ".\\gradlew.bat :contracts:test :backend:test :ui:testDebugUnitTest :app:testDebugUnitTest :app:assembleDebug :ui:lintDebug :app:lintDebug :app:compileBackendQaKotlin :ui:compileDebugAndroidTestKotlin --console=plain",
+    "exit": 0,
+    "log": "build/qa/layer-boundaries/t10b3-full-gate.log",
+    "sha256": "21f8e23ae4b2572eabc4ce6651f672824a7c9ec96157aa60f9d2f55307362cb7",
+    "summary": [
+      "BUILD SUCCESSFUL in 1m 57s",
+      "147 actionable tasks: 16 executed, 131 up-to-date"
+    ]
+  },
+  "tests": {
+    "backend": {
+      "taskState": "EXECUTED",
+      "xmlGlob": "backend/build/test-results/test/TEST-*.xml",
+      "xmlFiles": 66,
+      "aggregateXmlSha256": "cfab5911f4cb8d4d1aa0da11b94175586758de846fb4de27e61d8a4c686897c7",
+      "timestampMin": "2026-10-20T21:25:27.389Z",
+      "timestampMax": "2026-10-20T21:25:29.662Z",
+      "tests": 343,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "ui": {
+      "taskState": "UP-TO-DATE",
+      "xmlGlob": "ui/build/test-results/testDebugUnitTest/TEST-*.xml",
+      "xmlFiles": 70,
+      "aggregateXmlSha256": "c5f06c6cfff1c5d766a46ffeba700f002a3d39880089cc42cffca0961e5854e7",
+      "timestampMin": "2026-10-20T20:05:30.272Z",
+      "timestampMax": "2026-10-20T20:06:03.891Z",
+      "tests": 298,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "app": {
+      "taskState": "EXECUTED",
+      "xmlGlob": "app/build/test-results/testDebugUnitTest/TEST-*.xml",
+      "xmlFiles": 63,
+      "aggregateXmlSha256": "c0888975b37043bdfec08ce0854ab95d14c64eb33803f1cd8f12c2d7947f61f5",
+      "timestampMin": "2026-10-20T21:25:33.956Z",
+      "timestampMax": "2026-10-20T21:26:29.796Z",
+      "tests": 321,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "contracts": {
+      "taskState": "NO-SOURCE"
+    }
+  },
+  "lint": {
+    "app": {
+      "path": "app/build/reports/lint-results-debug.xml",
+      "sha256": "870f75067afdbd0613d441d5411e734123f76480f1f3cf8b5a91c11e1e5e993a",
+      "severities": {
+        "Warning": 6
+      },
+      "analyzeTaskState": "EXECUTED",
+      "reportTaskState": "UP-TO-DATE"
+    },
+    "ui": {
+      "path": "ui/build/reports/lint-results-debug.xml",
+      "sha256": "ad7372970e17f998564b5a8435ae38566096153b4d80e61b307ef3174722110b",
+      "severities": {
+        "Warning": 31,
+        "Hint": 3
+      },
+      "analyzeTaskState": "UP-TO-DATE",
+      "reportTaskState": "UP-TO-DATE"
+    }
+  },
+  "access": {
+    "1000": {
+      "path": "app/build/qa/layer-boundaries/t10b3-number-access-1000.json",
+      "sha256": "869709dd4ac4698c7a54a581109442e9d6ab522722630256dad2cf2957b6a979",
+      "counts": {
+        "sourceChunkQueries": 343,
+        "metadataCharacters": 234,
+        "payloadMetadataRows": 1,
+        "maxSourceChunkBytes": 4096,
+        "warmNumberRows": 1001,
+        "targetMetadataRows": 1,
+        "sourceBytes": 1400476,
+        "storedBindingEntriesPerEnumeration": 1002,
+        "previewBindingEnumerations": 1,
+        "installedWidgetReads": 0,
+        "returnedBindings": 1
+      }
+    },
+    "10000": {
+      "path": "app/build/qa/layer-boundaries/t10b3-number-access-10000.json",
+      "sha256": "eade40031320b8c556c33eabc1237439eaf2e16cca769c41219eb4a62c9287fc",
+      "counts": {
+        "sourceChunkQueries": 343,
+        "metadataCharacters": 235,
+        "payloadMetadataRows": 1,
+        "maxSourceChunkBytes": 4096,
+        "warmNumberRows": 10001,
+        "targetMetadataRows": 1,
+        "sourceBytes": 1400477,
+        "storedBindingEntriesPerEnumeration": 10002,
+        "previewBindingEnumerations": 1,
+        "installedWidgetReads": 0,
+        "returnedBindings": 1
+      }
+    }
+  },
+  "architecture": {
+    "exits": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "negativeCases": [
+      17,
+      4
+    ],
+    "jvmSources": 114
+  },
+  "device": "not run",
+  "review": "frozen pending independent spec then quality review"
+}

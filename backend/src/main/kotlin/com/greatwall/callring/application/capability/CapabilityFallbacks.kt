@@ -43,14 +43,6 @@ object UnavailableConversationApi : ConversationApi {
     override suspend fun newSession(expectedSessionId: String) = aiUnavailable()
 }
 
-object UnavailableNumberDeletionApi : NumberDeletionApi {
-    private fun unavailable() = ApiResult.Failure(ApiError(ErrorCode.SYSTEM_UNAVAILABLE, "number.delete_unavailable"))
-    override suspend fun impact(number: String) = unavailable()
-    override suspend fun delete(command: DeleteNumberCommand) = unavailable()
-}
-
-/** 核心数据（档案 + 通话记录）的删除影响，由 backend 计算。 */
-
 object UnavailableRecordingApi : RecordingApi {
     private fun unavailable() = ApiResult.Failure(ApiError(ErrorCode.SYSTEM_UNAVAILABLE, "recording.unavailable"))
     override suspend fun getArchive(callId: Long) = unavailable()
@@ -62,5 +54,3 @@ object UnavailableRecordingApi : RecordingApi {
     override suspend fun setSystemFolder(document: DocumentRef) = unavailable()
     override suspend fun systemRecordings() = unavailable()
 }
-
-object UnavailableUiEditsApi : UiEditsApi

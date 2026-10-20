@@ -30,6 +30,7 @@ class ConversationFixtures {
             override fun getBinding(widgetId: Int) = bindings[widgetId]
             override fun saveBinding(binding: WidgetBinding) { bindings[binding.widgetId] = binding }
             override fun removeBinding(widgetId: Int) { bindings.remove(widgetId) }
+            override fun bindingsForNumber(number: String) = listBindings().filter { com.greatwall.callring.application.sameRecordingNumber(it.number, number) }
             override fun listBindings() = bindings.values.toList()
         },
         object : DocumentStore {
@@ -60,6 +61,5 @@ class ConversationFixtures {
             override fun stopPlayback() = Unit
         },
         object : SyncScheduler { override fun requestSync(atEpochMillis: Long) = SyncRequestReceipt(SyncRequestState.QUEUED, atEpochMillis) },
-        Clock.fixed(Instant.ofEpochMilli(now), ZoneOffset.UTC), coordinator = coordinator, coreTransactions = MemoryQuietTransactions(store),
-    )
+        Clock.fixed(Instant.ofEpochMilli(now), ZoneOffset.UTC), coordinator = coordinator, coreTransactions = MemoryQuietTransactions(store), numberRecordings = com.greatwall.callring.EmptyNumberRecordings, identityArchive = { com.greatwall.callring.contracts.common.ApiResult.Success(null) }, operationActive = { true })
 }

@@ -104,6 +104,7 @@ class CallringBackendTest {
     }
 
     private class Prefs : PreferenceStore {
+        override fun bindingsForNumber(number: String) = listBindings().filter { com.greatwall.callring.application.sameRecordingNumber(it.number, number) }
         override fun listBindings() = bindings.values.toList()
         @Volatile
         var appearanceValue =
@@ -231,8 +232,7 @@ class CallringBackendTest {
             Clock.fixed(Instant.ofEpochMilli(now), ZoneOffset.UTC),
             Dispatchers.Unconfined,
             CalendarSource { annualCalendar() },
-            coreTransactions = MemoryQuietTransactions(store),
-        )
+            coreTransactions = MemoryQuietTransactions(store), numberRecordings = com.greatwall.callring.EmptyNumberRecordings, identityArchive = { com.greatwall.callring.contracts.common.ApiResult.Success(null) }, operationActive = { true })
 
     @Test fun unchangedRingtoneSettingDoesNotPublish() = runBlocking {
         api.ringtone.setEnabled(false).value()
