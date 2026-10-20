@@ -2,20 +2,15 @@ package com.greatwall.callring.domain
 
 import com.greatwall.callring.domain.model.*
 
-
 /** Candidate degrees always use the complete number index, beyond the bounded write set. */
 object CallCorrelation {
-    fun reconcile(state: BackendState, number: String, at: Long? = null) {
-        reconcileIndexed(state, number, at?.let { listOf(it) })
-    }
-
-    /** Shares one complete candidate index for every affected center in an import batch. */
-    fun reconcile(state: BackendState, number: String, centers: Collection<Long>) {
-        if (centers.isNotEmpty()) reconcileIndexed(state, number, centers)
-    }
-
-    private fun reconcileIndexed(state: BackendState, number: String, centers: Collection<Long>?) {
-        val rows = state.calls.values.filter { it.number == number }.sortedBy { it.time }
+    fun reconcile(
+        calls: List<RawCallRecord>,
+        centers: Collection<Long>? = null,
+    ): List<Pair<RawCallRecord, RawCallRecord>> {
+        if (centers != null && centers.isEmpty()) return emptyList()
+        require(calls.map { it.number }.distinct().size <= 1)
+        val rows = calls.sortedWith(compareBy<RawCallRecord> { it.time }.thenBy { it.id })
         val screens = rows.filter { it.logId == null }
         val providers = rows.filter { it.logId != null }
         val cache = HashMap<Long, List<RawCallRecord>>()
@@ -54,29 +49,31 @@ object CallCorrelation {
                     ) intervalIndex++
                     intervalIndex < intervals.size && row.time >= intervals[intervalIndex].first
                 }
-        for (row in affected) {
-            val matches = candidates(row)
-            val linked = matches.size == 1 && candidates(matches[0]).size == 1
-            val changed =
-                if (row.logId != null)
-                    row.copy(linkedScreenId = if (linked) matches[0].id else null)
-                else
-                    row.copy(
-                        hidden = linked,
-                        counted = matches.isEmpty(),
-                        result =
-                            if (matches.isEmpty() || linked) CallResult.PENDING
-                            else CallResult.UNRESOLVED,
-                        legacyResult =
-                            if (
-                                row.result ==
-                                    (if (matches.isEmpty() || linked) CallResult.PENDING
-                                    else CallResult.UNRESOLVED)
-                            )
-                                row.legacyResult
-                            else null,
-                    )
-            if (changed != row) state.calls[row.id] = changed
+        return buildList {
+            for (row in affected) {
+                val matches = candidates(row)
+                val linked = matches.size == 1 && candidates(matches[0]).size == 1
+                val changed =
+                    if (row.logId != null)
+                        row.copy(linkedScreenId = if (linked) matches[0].id else null)
+                    else
+                        row.copy(
+                            hidden = linked,
+                            counted = matches.isEmpty(),
+                            result =
+                                if (matches.isEmpty() || linked) CallResult.PENDING
+                                else CallResult.UNRESOLVED,
+                            legacyResult =
+                                if (
+                                    row.result ==
+                                        (if (matches.isEmpty() || linked) CallResult.PENDING
+                                        else CallResult.UNRESOLVED)
+                                )
+                                    row.legacyResult
+                                else null,
+                        )
+                if (changed != row) add(row to changed)
+            }
         }
     }
 

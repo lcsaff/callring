@@ -1,7 +1,6 @@
 package com.greatwall.callring.domain
 
 import com.greatwall.callring.domain.model.*
-
 import java.time.ZoneId
 import java.util.Collections
 
@@ -51,24 +50,37 @@ class DecisionSnapshot private constructor(val inputs: DecisionInputs) {
     }
 
     companion object {
-        fun capture(source: BackendState): DecisionSnapshot = capture(DecisionInputs(
-            source.schedules, source.calendarYears, source.holidays, source.makeupDates,
-            source.overrides, source.leaves, source.leaveVersion,
-            source.profiles.filterValues { it.whitelisted }.keys,
-            source.quiet, source.statisticsIntervals, source.overlayEnabled,
-        ))
-
-        fun capture(source: DecisionInputs): DecisionSnapshot = DecisionSnapshot(source.copy(
-            schedules = freeze(source.schedules.map { it.copy(weekly = freezeWindows(it.weekly), makeup = freeze(it.makeup)) }),
-            calendarYears = freezeMap(source.calendarYears),
-            holidays = freezeMap(source.holidays),
-            makeupDates = Collections.unmodifiableSet(LinkedHashSet(source.makeupDates)),
-            overrides = freezeMap(source.overrides.mapValues { it.value.copy(windows = freeze(it.value.windows)) }),
-            leaves = freezeMap(source.leaves),
-            whitelistedNumbers = Collections.unmodifiableSet(LinkedHashSet(source.whitelistedNumbers)),
-            quiet = source.quiet.copy(weeklyWindows = freezeWindows(source.quiet.weeklyWindows)),
-            statisticsIntervals = freeze(source.statisticsIntervals),
-        ))
+        fun capture(source: DecisionInputs): DecisionSnapshot =
+            DecisionSnapshot(
+                source.copy(
+                    schedules =
+                        freeze(
+                            source.schedules.map {
+                                it.copy(
+                                    weekly = freezeWindows(it.weekly),
+                                    makeup = freeze(it.makeup),
+                                )
+                            },
+                        ),
+                    calendarYears = freezeMap(source.calendarYears),
+                    holidays = freezeMap(source.holidays),
+                    makeupDates = Collections.unmodifiableSet(LinkedHashSet(source.makeupDates)),
+                    overrides =
+                        freezeMap(
+                            source.overrides.mapValues {
+                                it.value.copy(windows = freeze(it.value.windows))
+                            },
+                        ),
+                    leaves = freezeMap(source.leaves),
+                    whitelistedNumbers =
+                        Collections.unmodifiableSet(LinkedHashSet(source.whitelistedNumbers)),
+                    quiet =
+                        source.quiet.copy(
+                            weeklyWindows = freezeWindows(source.quiet.weeklyWindows),
+                        ),
+                    statisticsIntervals = freeze(source.statisticsIntervals),
+                ),
+            )
 
         private fun <K, V> freezeMap(map: Map<K, V>): Map<K, V> =
             Collections.unmodifiableMap(LinkedHashMap(map))

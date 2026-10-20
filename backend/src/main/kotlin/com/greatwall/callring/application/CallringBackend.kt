@@ -1,18 +1,18 @@
 package com.greatwall.callring.application
 
-import com.greatwall.callring.contracts.common.*
-import com.greatwall.callring.contracts.change.*
-import com.greatwall.callring.contracts.callers.*
-import com.greatwall.callring.contracts.settings.*
-import com.greatwall.callring.contracts.report.*
-import com.greatwall.callring.contracts.runtime.*
-import com.greatwall.callring.contracts.widget.*
-import com.greatwall.callring.contracts.recording.*
-import com.greatwall.callring.contracts.ai.*
-import com.greatwall.callring.contracts.command.*
-import com.greatwall.callring.contracts.*
 import com.greatwall.callring.application.capability.*
 import com.greatwall.callring.application.ports.*
+import com.greatwall.callring.contracts.*
+import com.greatwall.callring.contracts.ai.*
+import com.greatwall.callring.contracts.callers.*
+import com.greatwall.callring.contracts.change.*
+import com.greatwall.callring.contracts.command.*
+import com.greatwall.callring.contracts.common.*
+import com.greatwall.callring.contracts.recording.*
+import com.greatwall.callring.contracts.report.*
+import com.greatwall.callring.contracts.runtime.*
+import com.greatwall.callring.contracts.settings.*
+import com.greatwall.callring.contracts.widget.*
 import com.greatwall.callring.domain.*
 import java.time.*
 import kotlinx.coroutines.*
@@ -29,7 +29,9 @@ class CallringBackend(
     clock: Clock = Clock.systemUTC(),
     dispatcher: CoroutineDispatcher = Dispatchers.IO,
     calendarSource: CalendarSource = CalendarSource {
-        throw BackendFailure(ApiError(ErrorCode.SYSTEM_UNAVAILABLE, "calendar.sync_unavailable", retryable = true))
+        throw BackendFailure(
+            ApiError(ErrorCode.SYSTEM_UNAVAILABLE, "calendar.sync_unavailable", retryable = true),
+        )
     },
     val coordinator: BusinessRevisionCoordinator = BusinessRevisionCoordinator(),
     coreTransactions: com.greatwall.callring.application.ports.store.CoreUnitOfWork,
@@ -65,6 +67,7 @@ class CallringBackend(
     override val changes: ChangeFeed =
         object : ChangeFeed {
             override fun observe(): Flow<DataChange> = context.observe()
+
             override fun snapshots() = coordinator.invalidations.snapshots
         }
 
@@ -78,15 +81,16 @@ class CallringBackend(
             override val settings = createSettingsApi(bound)
             override val edits = createUiEditsApi(bound)
             override val widgets = createWidgetBindingsApi(bound)
-            override val numberDeletion = CoreNumberDeletionApi(deletion.callersApi, createWidgetBindingsApi(deletion))
+            override val numberDeletion =
+                CoreNumberDeletionApi(deletion.callersApi, createWidgetBindingsApi(deletion))
             override val ringtone = createRingtoneApi(bound)
             override val runtime = createRuntimeApi(bound)
         }
     }
 
-    fun refreshDecisionSnapshot(): DecisionSnapshot = context.refreshDecisionSnapshot()
+    fun refreshDecisionSnapshot(): DecisionSnapshot = context.decisionQueries.refresh()
 
-    fun decisionSnapshot(): DecisionSnapshot = context.decisionSnapshot()
+    fun decisionSnapshot(): DecisionSnapshot = context.decisionQueries.snapshot()
 
     @JvmOverloads
     fun recordIncoming(
@@ -95,15 +99,20 @@ class CallringBackend(
         decision: CallDecision,
         account: String? = null,
         originalFacts: ClassificationFact? = null,
-    ): Long = context.recordIncoming(number, at, decision, account, originalFacts)
+    ): Long = context.incomingCalls.record(number, at, decision, account, originalFacts)
 
-    fun updateDecision(id: Long, decision: CallDecision) = context.updateDecision(id, decision)
+    fun updateDecision(id: Long, decision: CallDecision) =
+        context.incomingCalls.updateDecision(id, decision)
 
     fun importSystemCalls(records: List<SystemCallRecord>): Set<String> =
-        context.importSystemCalls(records)
+        context.callLogImports.import(records)
 
-    fun statisticsStart(): Long = context.statisticsStart()
+    fun statisticsStart(): Long = context.decisionQueries.statisticsStart()
 
-    fun hasRecentPending(nowEpochMillis: Long): Boolean = context.hasRecentPending(nowEpochMillis)
-    suspend fun captureCore(at: Long): ApiResult<Map<String, AiJson>> = context.io { context.captureCore(at) }
+    fun hasRecentPending(nowEpochMillis: Long): Boolean =
+        context.decisionQueries.hasRecentPending(nowEpochMillis)
+
+    suspend fun captureCore(at: Long): ApiResult<Map<String, AiJson>> = context.io {
+        context.captureCore(at)
+    }
 }

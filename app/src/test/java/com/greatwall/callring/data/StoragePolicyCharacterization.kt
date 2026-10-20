@@ -1,14 +1,14 @@
 package com.greatwall.callring.data
 
-import com.greatwall.callring.domain.model.ClassificationFact
-import com.greatwall.callring.domain.model.WorkReason
-import com.greatwall.callring.domain.model.CallResult
-import com.greatwall.callring.domain.model.CallDecision
-import com.greatwall.callring.domain.model.CallSource
 import com.greatwall.callring.contracts.callers.*
 import com.greatwall.callring.domain.BackendState
 import com.greatwall.callring.domain.CallCorrelation
 import com.greatwall.callring.domain.RawCallRecord
+import com.greatwall.callring.domain.model.CallDecision
+import com.greatwall.callring.domain.model.CallResult
+import com.greatwall.callring.domain.model.CallSource
+import com.greatwall.callring.domain.model.ClassificationFact
+import com.greatwall.callring.domain.model.WorkReason
 import java.io.ByteArrayInputStream
 import org.junit.Assert.*
 import org.junit.Test
@@ -40,7 +40,8 @@ class StoragePolicyCharacterization {
         listOf(row(1, 6000, true), row(2, 16000, true), row(3, 11000, false)).forEach {
             state.calls[it.id] = it
         }
-        CallCorrelation.reconcile(state, "31234", 1000)
+        CallCorrelation.reconcile(state.calls.values.filter { it.number == "31234" }, listOf(1000))
+            .forEach { (_, after) -> state.calls[after.id] = after }
         assertNull(state.calls.getValue(3).linkedScreenId)
         assertFalse(state.calls.getValue(1).counted)
     }
@@ -51,7 +52,10 @@ class StoragePolicyCharacterization {
         listOf(row(1, 1000, true), row(2, 1000, false, "a"), row(3, 1000, false, "b")).forEach {
             state.calls[it.id] = it
         }
-        CallCorrelation.reconcile(state, "31234")
+        CallCorrelation.reconcile(state.calls.values.filter { it.number == "31234" }).forEach {
+            (_, after) ->
+            state.calls[after.id] = after
+        }
         assertFalse(state.calls.getValue(1).counted)
         assertEquals(CallResult.UNRESOLVED, state.calls.getValue(1).result)
         assertNull(state.calls.getValue(2).linkedScreenId)
@@ -63,12 +67,14 @@ class StoragePolicyCharacterization {
         val screen = row(1, 1000, true)
         state.calls[1] = screen
         state.calls[2] = row(2, 1100, false)
-        CallCorrelation.reconcile(state, "31234", 1000)
+        CallCorrelation.reconcile(state.calls.values.filter { it.number == "31234" }, listOf(1000))
+            .forEach { (_, after) -> state.calls[after.id] = after }
         assertTrue(state.calls.getValue(1).hidden)
         assertEquals(1L, state.calls.getValue(2).linkedScreenId)
         assertEquals(screen.originalClassification, state.calls.getValue(1).originalClassification)
         state.calls[2] = state.calls.getValue(2).copy(time = 8000)
-        CallCorrelation.reconcile(state, "31234", 1100)
+        CallCorrelation.reconcile(state.calls.values.filter { it.number == "31234" }, listOf(1100))
+            .forEach { (_, after) -> state.calls[after.id] = after }
         assertFalse(state.calls.getValue(1).hidden)
         assertTrue(state.calls.getValue(1).counted)
         assertNull(state.calls.getValue(2).linkedScreenId)
@@ -101,7 +107,11 @@ class StoragePolicyCharacterization {
             )
             .forEach { state.calls[it.id] = it }
         val untouched = state.calls.getValue(5)
-        CallCorrelation.reconcile(state, "31234", listOf(1000, 61000))
+        CallCorrelation.reconcile(
+                state.calls.values.filter { it.number == "31234" },
+                listOf(1000, 61000),
+            )
+            .forEach { (_, after) -> state.calls[after.id] = after }
         assertEquals(1L, state.calls.getValue(2).linkedScreenId)
         assertEquals(3L, state.calls.getValue(4).linkedScreenId)
         assertSame(untouched, state.calls.getValue(5))
@@ -117,7 +127,11 @@ class StoragePolicyCharacterization {
                 row(4, Long.MAX_VALUE - 5000, false),
             )
             .forEach { state.calls[it.id] = it }
-        CallCorrelation.reconcile(state, "31234", listOf(Long.MIN_VALUE, Long.MAX_VALUE))
+        CallCorrelation.reconcile(
+                state.calls.values.filter { it.number == "31234" },
+                listOf(Long.MIN_VALUE, Long.MAX_VALUE),
+            )
+            .forEach { (_, after) -> state.calls[after.id] = after }
         assertEquals(1L, state.calls.getValue(2).linkedScreenId)
         assertEquals(3L, state.calls.getValue(4).linkedScreenId)
     }

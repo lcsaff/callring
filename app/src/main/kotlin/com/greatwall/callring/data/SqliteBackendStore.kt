@@ -8,24 +8,53 @@ import com.greatwall.callring.domain.BackendState
 /** Android persistence adapter; all business rules live behind the BackendStore port. */
 class SqliteBackendStore
 @JvmOverloads
-constructor(context: Context, databaseName: String = "callring.db", sqlAccessProbe: SqlAccessProbe? = null) : BackendStore, com.greatwall.callring.application.ports.store.CoreStorageResource {
+constructor(
+    context: Context,
+    databaseName: String = "callring.db",
+    sqlAccessProbe: SqlAccessProbe? = null,
+) : BackendStore, com.greatwall.callring.application.ports.store.CoreStorageResource {
     private val helper = CallringDatabase(context.applicationContext, databaseName)
     private val db: SQLiteDatabase
     private val sql: SqlAccess
     val stateLoads = java.util.concurrent.atomic.AtomicLong()
-    override val legacy: BackendStore get() = this
-    override val fullSnapshot: com.greatwall.callring.application.ports.store.FullSnapshotReader get() = this
+    override val legacy: BackendStore
+        get() = this
+
+    override val fullSnapshot: com.greatwall.callring.application.ports.store.FullSnapshotReader
+        get() = this
+
     private val sessionsDelegate = lazy { SqliteCoreUnitOfWork(db, sql) }
-    override val sessions: com.greatwall.callring.application.ports.store.CoreUnitOfWork get() = sessionsDelegate.value
-    override fun narrowAccessCounts(): Map<String, Long> = if (sessionsDelegate.isInitialized()) mapOf("quietReads" to sessionsDelegate.value.quietReads.get(), "quietWrites" to sessionsDelegate.value.quietWrites.get()) else emptyMap()
-    override val scoped: com.greatwall.callring.application.ports.ScopedReadPort by lazy { SqliteScopedReadAdapter(db, { 0L }, sql = sql) }
+    override val sessions: com.greatwall.callring.application.ports.store.CoreUnitOfWork
+        get() = sessionsDelegate.value
+
+    override fun narrowAccessCounts(): Map<String, Long> =
+        if (sessionsDelegate.isInitialized())
+            mapOf(
+                "quietReads" to sessionsDelegate.value.quietReads.get(),
+                "quietWrites" to sessionsDelegate.value.quietWrites.get(),
+            ) + sessionsDelegate.value.callingAccessCounts()
+        else emptyMap()
+
+    override val scoped: com.greatwall.callring.application.ports.ScopedReadPort by lazy {
+        SqliteScopedReadAdapter(db, { 0L }, sql = sql)
+    }
+
     override fun stateLoadCount() = stateLoads.get()
-    fun scopedReads(coordinator:com.greatwall.callring.application.BusinessRevisionCoordinator):com.greatwall.callring.application.ports.ScopedReadPort =
-        SqliteScopedReadAdapter(db,{coordinator.capture().values.getValue("core")}, sql = sql)
+
+    fun scopedReads(
+        coordinator: com.greatwall.callring.application.BusinessRevisionCoordinator,
+    ): com.greatwall.callring.application.ports.ScopedReadPort =
+        SqliteScopedReadAdapter(db, { coordinator.capture().values.getValue("core") }, sql = sql)
 
     init {
         helper.setWriteAheadLoggingEnabled(true)
-        db = try { helper.writableDatabase } catch (failure: Throwable) { helper.close(); throw failure }
+        db =
+            try {
+                helper.writableDatabase
+            } catch (failure: Throwable) {
+                helper.close()
+                throw failure
+            }
         sql = SqlAccess(db, sqlAccessProbe)
     }
 
@@ -43,17 +72,38 @@ constructor(context: Context, databaseName: String = "callring.db", sqlAccessPro
         }
     }
 
-    @Synchronized override fun <T> captureFull(block: (BackendState, List<com.greatwall.callring.domain.AuditRecord>) -> T): T {
+    @Synchronized
+    override fun <T> captureFull(
+        block: (BackendState, List<com.greatwall.callring.domain.AuditRecord>) -> T,
+    ): T {
         db.beginTransactionNonExclusive()
         try {
             checkSnapshotSize(db, sql)
             stateLoads.incrementAndGet()
             val state = StorageSession(db, sql).load()
-            val audits = sql.rawQuery(QueryTag.AUDIT_ROWS, setOf(SqlTable.CALENDAR_AUDIT), "SELECT kind,target,raw,created FROM calendar_audit ORDER BY id", null).use { c ->
-                buildList { while (c.moveToNext()) add(com.greatwall.callring.domain.AuditRecord(c.getString(0), c.getString(1), c.getString(2), c.getLong(3))) }
-            }
+            val audits =
+                sql.rawQuery(
+                        QueryTag.AUDIT_ROWS,
+                        setOf(SqlTable.CALENDAR_AUDIT),
+                        "SELECT kind,target,raw,created FROM calendar_audit ORDER BY id",
+                        null,
+                    )
+                    .use { c ->
+                        buildList {
+                            while (c.moveToNext()) add(
+                                com.greatwall.callring.domain.AuditRecord(
+                                    c.getString(0),
+                                    c.getString(1),
+                                    c.getString(2),
+                                    c.getLong(3),
+                                ),
+                            )
+                        }
+                    }
             return block(state, audits).also { db.setTransactionSuccessful() }
-        } finally { db.endTransaction() }
+        } finally {
+            db.endTransaction()
+        }
     }
 
     @Synchronized
@@ -80,7 +130,10 @@ constructor(context: Context, databaseName: String = "callring.db", sqlAccessPro
 }
 
 /** Coordinates table adapters and foreign-key ordering, without implementing business decisions. */
-internal class StorageSession(private val db: SQLiteDatabase, private val sql: SqlAccess = SqlAccess(db)) {
+internal class StorageSession(
+    private val db: SQLiteDatabase,
+    private val sql: SqlAccess = SqlAccess(db),
+) {
     private val profiles = ProfileStore(db, sql)
     private val settings = SettingsStore(db, sql)
     private val schedules = ScheduleStore(db, sql)
@@ -107,10 +160,6 @@ internal class StorageSession(private val db: SQLiteDatabase, private val sql: S
         advanceSequence("config_versions", state.nextConfigVersion)
     }
 
-    fun saveCalls(state: BackendState) {
-        calls.save(state)
-    }
-
     private fun validateKeys(state: BackendState) {
         require(state.positions.all { (id, row) -> id > 0 && id == row.id }) {
             "Invalid position primary key"
@@ -126,7 +175,7 @@ internal class StorageSession(private val db: SQLiteDatabase, private val sql: S
         }
         require(
             state.schedules.all { it.configVersion > 0 } &&
-                state.schedules.map { it.configVersion }.toSet().size == state.schedules.size
+                state.schedules.map { it.configVersion }.toSet().size == state.schedules.size,
         ) {
             "Invalid configuration primary key"
         }
@@ -144,9 +193,23 @@ internal class StorageSession(private val db: SQLiteDatabase, private val sql: S
 
     private fun advanceSequence(table: String, next: Long) {
         val sequence = next - 1
-        if (sequence <= sql.scalar(QueryTag.SEQUENCE, setOf(SqlTable.SQLITE_SEQUENCE), "SELECT seq FROM sqlite_sequence WHERE name=?", args(table)))
+        if (
+            sequence <=
+                sql.scalar(
+                    QueryTag.SEQUENCE,
+                    setOf(SqlTable.SQLITE_SEQUENCE),
+                    "SELECT seq FROM sqlite_sequence WHERE name=?",
+                    args(table),
+                )
+        )
             return
-        val existing = sql.scalar(QueryTag.AGGREGATE, setOf(SqlTable.SQLITE_SEQUENCE), "SELECT COUNT(*) FROM sqlite_sequence WHERE name=?", args(table))
+        val existing =
+            sql.scalar(
+                QueryTag.AGGREGATE,
+                setOf(SqlTable.SQLITE_SEQUENCE),
+                "SELECT COUNT(*) FROM sqlite_sequence WHERE name=?",
+                args(table),
+            )
         check(existing <= 1L) { "Duplicate sequence rows for $table" }
         if (existing == 0L)
             check(
@@ -154,13 +217,13 @@ internal class StorageSession(private val db: SQLiteDatabase, private val sql: S
                     "sqlite_sequence",
                     null,
                     values("name" to table, "seq" to sequence),
-                ) != -1L
+                ) != -1L,
             ) {
                 "Sequence insert was ignored for $table"
             }
         else
             check(
-                db.update("sqlite_sequence", values("seq" to sequence), "name=?", args(table)) == 1
+                db.update("sqlite_sequence", values("seq" to sequence), "name=?", args(table)) == 1,
             ) {
                 "Sequence update was ignored for $table"
             }

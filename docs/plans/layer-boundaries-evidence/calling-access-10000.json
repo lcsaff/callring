@@ -1,0 +1,183 @@
+{
+  "unrelatedCallCount": 10000,
+  "record": {
+    "revisionDelta": 1,
+    "ports": {
+      "statisticsContains": 1,
+      "statisticsStart": 0,
+      "hasRecentPending": 0,
+      "callingWorkHistory": 1,
+      "screeningCall": 1,
+      "callingCall": 0,
+      "providerCalls": 0,
+      "correlationCalls": 1,
+      "ensureCallingProfile": 1,
+      "insertCallingCall": 1,
+      "updateCallingCalls": 1,
+      "decisionInputs": 0
+    },
+    "fullStateLoads": 0
+  },
+  "duplicate": {
+    "revisionDelta": 0,
+    "ports": {
+      "statisticsContains": 1,
+      "statisticsStart": 0,
+      "hasRecentPending": 0,
+      "callingWorkHistory": 0,
+      "screeningCall": 1,
+      "callingCall": 0,
+      "providerCalls": 0,
+      "correlationCalls": 0,
+      "ensureCallingProfile": 0,
+      "insertCallingCall": 0,
+      "updateCallingCalls": 0,
+      "decisionInputs": 0
+    },
+    "fullStateLoads": 0
+  },
+  "decision": {
+    "revisionDelta": 1,
+    "ports": {
+      "statisticsContains": 0,
+      "statisticsStart": 0,
+      "hasRecentPending": 0,
+      "callingWorkHistory": 0,
+      "screeningCall": 0,
+      "callingCall": 1,
+      "providerCalls": 0,
+      "correlationCalls": 0,
+      "ensureCallingProfile": 0,
+      "insertCallingCall": 0,
+      "updateCallingCalls": 1,
+      "decisionInputs": 0
+    },
+    "fullStateLoads": 0
+  },
+  "decisionNoop": {
+    "revisionDelta": 0,
+    "ports": {
+      "statisticsContains": 0,
+      "statisticsStart": 0,
+      "hasRecentPending": 0,
+      "callingWorkHistory": 0,
+      "screeningCall": 0,
+      "callingCall": 1,
+      "providerCalls": 0,
+      "correlationCalls": 0,
+      "ensureCallingProfile": 0,
+      "insertCallingCall": 0,
+      "updateCallingCalls": 0,
+      "decisionInputs": 0
+    },
+    "fullStateLoads": 0
+  },
+  "import": {
+    "revisionDelta": 1,
+    "ports": {
+      "statisticsContains": 1,
+      "statisticsStart": 0,
+      "hasRecentPending": 0,
+      "callingWorkHistory": 1,
+      "screeningCall": 0,
+      "callingCall": 0,
+      "providerCalls": 1,
+      "correlationCalls": 1,
+      "ensureCallingProfile": 1,
+      "insertCallingCall": 1,
+      "updateCallingCalls": 1,
+      "decisionInputs": 0
+    },
+    "fullStateLoads": 0
+  },
+  "statisticsStart": {
+    "revisionDelta": 0,
+    "ports": {
+      "statisticsContains": 0,
+      "statisticsStart": 1,
+      "hasRecentPending": 0,
+      "callingWorkHistory": 0,
+      "screeningCall": 0,
+      "callingCall": 0,
+      "providerCalls": 0,
+      "correlationCalls": 0,
+      "ensureCallingProfile": 0,
+      "insertCallingCall": 0,
+      "updateCallingCalls": 0,
+      "decisionInputs": 0
+    },
+    "fullStateLoads": 0
+  },
+  "pending": {
+    "revisionDelta": 0,
+    "ports": {
+      "statisticsContains": 0,
+      "statisticsStart": 0,
+      "hasRecentPending": 1,
+      "callingWorkHistory": 0,
+      "screeningCall": 0,
+      "callingCall": 0,
+      "providerCalls": 0,
+      "correlationCalls": 0,
+      "ensureCallingProfile": 0,
+      "insertCallingCall": 0,
+      "updateCallingCalls": 0,
+      "decisionInputs": 0
+    },
+    "fullStateLoads": 0
+  },
+  "coldDecisionInputs": {
+    "revisionDelta": 0,
+    "ports": {
+      "statisticsContains": 0,
+      "statisticsStart": 0,
+      "hasRecentPending": 0,
+      "callingWorkHistory": 1,
+      "screeningCall": 0,
+      "callingCall": 0,
+      "providerCalls": 0,
+      "correlationCalls": 0,
+      "ensureCallingProfile": 0,
+      "insertCallingCall": 0,
+      "updateCallingCalls": 0,
+      "decisionInputs": 1
+    },
+    "fullStateLoads": 0
+  },
+  "warmDecisionUnchanged": {
+    "revisionDelta": 1,
+    "ports": {
+      "statisticsContains": 0,
+      "statisticsStart": 0,
+      "hasRecentPending": 0,
+      "callingWorkHistory": 0,
+      "screeningCall": 0,
+      "callingCall": 1,
+      "providerCalls": 0,
+      "correlationCalls": 0,
+      "ensureCallingProfile": 0,
+      "insertCallingCall": 0,
+      "updateCallingCalls": 1,
+      "decisionInputs": 0
+    },
+    "fullStateLoads": 0
+  },
+  "importNoop": {
+    "revisionDelta": 0,
+    "ports": {
+      "statisticsContains": 1,
+      "statisticsStart": 0,
+      "hasRecentPending": 0,
+      "callingWorkHistory": 0,
+      "screeningCall": 0,
+      "callingCall": 0,
+      "providerCalls": 1,
+      "correlationCalls": 0,
+      "ensureCallingProfile": 0,
+      "insertCallingCall": 0,
+      "updateCallingCalls": 1,
+      "decisionInputs": 0
+    },
+    "fullStateLoads": 0
+  }
+}

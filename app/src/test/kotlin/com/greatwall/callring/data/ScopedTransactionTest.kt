@@ -12,7 +12,8 @@ import org.robolectric.annotation.Config
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [33], manifest = Config.NONE)
 class ScopedTransactionTest {
-    @Test fun disablingLegacyCustomWithoutRememberedKeyStillPersistsResumeMode() {
+    @Test
+    fun disablingLegacyCustomWithoutRememberedKeyStillPersistsResumeMode() {
         val context = RuntimeEnvironment.getApplication()
         val name = "scoped-legacy-custom.db"
         SqliteBackendStore(context, name).close()
@@ -29,13 +30,21 @@ class ScopedTransactionTest {
             assertEquals(QuietMode.CUSTOM, store.sessions.readQuiet { it.quiet().lastMode })
         }
     }
-    @Test fun quietAndStatisticsUseOneTransactionAndRollbackTogether() {
+
+    @Test
+    fun quietAndStatisticsUseOneTransactionAndRollbackTogether() {
         SqliteBackendStore(RuntimeEnvironment.getApplication(), "scoped-rollback.db").use { store ->
             val sessions = store.sessions
             val before = sessions.readSession { it.quiet() to it.statisticsHead() }
             assertThrows(IllegalStateException::class.java) {
                 sessions.writeSession { session ->
-                    session.saveQuiet(session.quiet().copy(settings = session.quiet().settings.copy(mode = QuietMode.NON_WORK)))
+                    session.saveQuiet(
+                        session
+                            .quiet()
+                            .copy(
+                                settings = session.quiet().settings.copy(mode = QuietMode.NON_WORK),
+                            ),
+                    )
                     session.openStatistics(123L)
                     assertEquals(QuietMode.NON_WORK, session.quiet().settings.mode)
                     assertEquals(123L, session.statisticsHead().open!!.interval.startMillis)
@@ -44,34 +53,63 @@ class ScopedTransactionTest {
             }
             assertEquals(before, sessions.readSession { it.quiet() to it.statisticsHead() })
             sessions.writeSession { session ->
-                session.saveQuiet(session.quiet().copy(settings = session.quiet().settings.copy(mode = QuietMode.NON_WORK)))
+                session.saveQuiet(
+                    session
+                        .quiet()
+                        .copy(settings = session.quiet().settings.copy(mode = QuietMode.NON_WORK)),
+                )
                 session.openStatistics(456L)
             }
             assertEquals(QuietMode.NON_WORK, sessions.readSession { it.quiet().settings.mode })
-            assertEquals(456L, sessions.readSession { it.statisticsHead().open!!.interval.startMillis })
+            assertEquals(
+                456L,
+                sessions.readSession { it.statisticsHead().open!!.interval.startMillis },
+            )
             assertEquals(0L, store.stateLoads.get())
         }
     }
-    @Test fun simpleSettingsShareRollbackAndSqliteAutoincrementNeverReusesDeletedPosition() {
-        SqliteBackendStore(RuntimeEnvironment.getApplication(), "simple-shared-rollback.db").use { store ->
+
+    @Test
+    fun simpleSettingsShareRollbackAndSqliteAutoincrementNeverReusesDeletedPosition() {
+        SqliteBackendStore(RuntimeEnvironment.getApplication(), "simple-shared-rollback.db").use {
+            store ->
             val original = store.sessions.readSession { it.score() to it.overlay() }
             assertThrows(IllegalStateException::class.java) {
                 store.sessions.writeSession { writer ->
                     writer.saveScore(writer.score().copy(repeatWeight = 3))
                     writer.saveOverlay(true)
-                    val role = writer.putPosition(com.greatwall.callring.domain.PositionRecord(0, "Transient", 1, true), true)
+                    val role =
+                        writer.putPosition(
+                            com.greatwall.callring.domain.PositionRecord(0, "Transient", 1, true),
+                            true,
+                        )
                     writer.saveMyPosition(role.id)
                     writer.openStatistics(100)
                     error("rollback")
                 }
             }
             assertEquals(original, store.sessions.readSession { it.score() to it.overlay() })
-            assertEquals(emptyList<com.greatwall.callring.domain.PositionRecord>(), store.sessions.readSession { it.positions() })
+            assertEquals(
+                emptyList<com.greatwall.callring.domain.PositionRecord>(),
+                store.sessions.readSession { it.positions() },
+            )
             assertNull(store.sessions.readSession { it.myPositionId() })
             assertNull(store.sessions.readSession { it.statisticsHead().open })
-            val first = store.sessions.writePositions { it.putPosition(com.greatwall.callring.domain.PositionRecord(0, "First", 1, true), true) }
+            val first =
+                store.sessions.writePositions {
+                    it.putPosition(
+                        com.greatwall.callring.domain.PositionRecord(0, "First", 1, true),
+                        true,
+                    )
+                }
             store.sessions.writePositions { it.deletePosition(first.id) }
-            val second = store.sessions.writePositions { it.putPosition(com.greatwall.callring.domain.PositionRecord(0, "Second", 1, true), true) }
+            val second =
+                store.sessions.writePositions {
+                    it.putPosition(
+                        com.greatwall.callring.domain.PositionRecord(0, "Second", 1, true),
+                        true,
+                    )
+                }
             assertTrue(second.id > first.id)
             store.sessions.writePositions { it.saveMyPosition(second.id) }
             assertThrows(android.database.sqlite.SQLiteConstraintException::class.java) {
@@ -81,10 +119,24 @@ class ScopedTransactionTest {
             assertEquals(0L, store.stateLoads.get())
         }
     }
-    @Test fun escapedReaderAndWriterRejectUseAfterSuccessAndFailure() {
+
+    @Test
+    fun escapedReaderAndWriterRejectUseAfterSuccessAndFailure() {
         SqliteBackendStore(RuntimeEnvironment.getApplication(), "scoped-escape.db").use { store ->
             val reader = store.sessions.readSession { it }
             val value = store.sessions.readQuiet { it.quiet() }
+            assertThrows(IllegalStateException::class.java) { reader.statisticsContains(123) }
+            assertThrows(IllegalStateException::class.java) { reader.statisticsStart() }
+            assertThrows(IllegalStateException::class.java) { reader.hasRecentPending(0, 1) }
+            assertThrows(IllegalStateException::class.java) { reader.callingWorkHistory() }
+            assertThrows(IllegalStateException::class.java) { reader.callingCall(1) }
+            assertThrows(IllegalStateException::class.java) { reader.screeningCall("unused") }
+            assertThrows(IllegalStateException::class.java) {
+                reader.providerCalls(setOf("unused"))
+            }
+            assertThrows(IllegalStateException::class.java) { reader.providerCalls(emptySet()) }
+            assertThrows(IllegalStateException::class.java) { reader.correlationCalls("unused") }
+            assertThrows(IllegalStateException::class.java) { reader.decisionInputs() }
             assertThrows(IllegalStateException::class.java) { reader.quiet() }
             assertThrows(IllegalStateException::class.java) { reader.statisticsHead() }
             assertThrows(IllegalStateException::class.java) { reader.score() }
@@ -93,10 +145,21 @@ class ScopedTransactionTest {
             assertThrows(IllegalStateException::class.java) { reader.settingsSummary() }
             lateinit var writer: CoreWriteSession
             assertThrows(IllegalStateException::class.java) {
-                store.sessions.writeSession { writer = it; error("failure") }
+                store.sessions.writeSession {
+                    writer = it
+                    error("failure")
+                }
+            }
+            assertThrows(IllegalStateException::class.java) {
+                writer.ensureCallingProfile("unused")
+            }
+            assertThrows(IllegalStateException::class.java) {
+                writer.updateCallingCalls(emptyList())
             }
             assertThrows(IllegalStateException::class.java) { writer.quiet() }
-            assertThrows(IllegalStateException::class.java) { writer.saveScore(com.greatwall.callring.domain.model.ScoreSettings(5, 2, 10, 30)) }
+            assertThrows(IllegalStateException::class.java) {
+                writer.saveScore(com.greatwall.callring.domain.model.ScoreSettings(5, 2, 10, 30))
+            }
             assertThrows(IllegalStateException::class.java) { writer.saveOverlay(true) }
             assertThrows(IllegalStateException::class.java) { writer.openStatistics(123) }
             assertThrows(IllegalStateException::class.java) { writer.saveMyPosition(null) }

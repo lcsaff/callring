@@ -1,0 +1,401 @@
+{
+  "unrelatedCallCount": 10000,
+  "record": [
+    {
+      "tag": "AGGREGATE",
+      "tables": [
+        "statistics_intervals"
+      ],
+      "queryCalls": 1,
+      "consumedRows": 1,
+      "writtenRows": 0
+    },
+    {
+      "tag": "SCOPED_ROWS",
+      "tables": [
+        "calls"
+      ],
+      "queryCalls": 2,
+      "consumedRows": 2,
+      "writtenRows": 0
+    },
+    {
+      "tag": "AGGREGATE",
+      "tables": [
+        "callers"
+      ],
+      "queryCalls": 1,
+      "consumedRows": 1,
+      "writtenRows": 0
+    },
+    {
+      "tag": "WORK_ROWS",
+      "tables": [
+        "config_versions"
+      ],
+      "queryCalls": 1,
+      "consumedRows": 2,
+      "writtenRows": 0
+    },
+    {
+      "tag": "WORK_ROWS",
+      "tables": [
+        "calendar_days"
+      ],
+      "queryCalls": 1,
+      "consumedRows": 39,
+      "writtenRows": 0
+    },
+    {
+      "tag": "WORK_ROWS",
+      "tables": [
+        "calendar_years"
+      ],
+      "queryCalls": 1,
+      "consumedRows": 1,
+      "writtenRows": 0
+    },
+    {
+      "tag": "WORK_ROWS",
+      "tables": [
+        "overrides"
+      ],
+      "queryCalls": 1,
+      "consumedRows": 0,
+      "writtenRows": 0
+    },
+    {
+      "tag": "WORK_ROWS",
+      "tables": [
+        "leaves"
+      ],
+      "queryCalls": 1,
+      "consumedRows": 0,
+      "writtenRows": 0
+    },
+    {
+      "tag": "WORK_ROWS",
+      "tables": [
+        "settings"
+      ],
+      "queryCalls": 1,
+      "consumedRows": 0,
+      "writtenRows": 0
+    },
+    {
+      "tag": "DIRECT_INSERT",
+      "tables": [
+        "calls"
+      ],
+      "queryCalls": 1,
+      "consumedRows": 0,
+      "writtenRows": 1
+    },
+    {
+      "tag": "DIRECT_UPDATE",
+      "tables": [
+        "calls"
+      ],
+      "queryCalls": 2,
+      "consumedRows": 0,
+      "writtenRows": 2
+    }
+  ],
+  "duplicate": [
+    {
+      "tag": "AGGREGATE",
+      "tables": [
+        "statistics_intervals"
+      ],
+      "queryCalls": 1,
+      "consumedRows": 1,
+      "writtenRows": 0
+    },
+    {
+      "tag": "SCOPED_ROWS",
+      "tables": [
+        "calls"
+      ],
+      "queryCalls": 1,
+      "consumedRows": 1,
+      "writtenRows": 0
+    }
+  ],
+  "decision": [
+    {
+      "tag": "SCOPED_ROWS",
+      "tables": [
+        "calls"
+      ],
+      "queryCalls": 1,
+      "consumedRows": 1,
+      "writtenRows": 0
+    },
+    {
+      "tag": "DIRECT_UPDATE",
+      "tables": [
+        "calls"
+      ],
+      "queryCalls": 1,
+      "consumedRows": 0,
+      "writtenRows": 1
+    }
+  ],
+  "decisionNoop": [
+    {
+      "tag": "SCOPED_ROWS",
+      "tables": [
+        "calls"
+      ],
+      "queryCalls": 1,
+      "consumedRows": 1,
+      "writtenRows": 0
+    }
+  ],
+  "import": [
+    {
+      "tag": "AGGREGATE",
+      "tables": [
+        "statistics_intervals"
+      ],
+      "queryCalls": 1,
+      "consumedRows": 1,
+      "writtenRows": 0
+    },
+    {
+      "tag": "SCOPED_ROWS",
+      "tables": [
+        "calls"
+      ],
+      "queryCalls": 2,
+      "consumedRows": 3,
+      "writtenRows": 0
+    },
+    {
+      "tag": "AGGREGATE",
+      "tables": [
+        "callers"
+      ],
+      "queryCalls": 1,
+      "consumedRows": 1,
+      "writtenRows": 0
+    },
+    {
+      "tag": "WORK_ROWS",
+      "tables": [
+        "config_versions"
+      ],
+      "queryCalls": 1,
+      "consumedRows": 2,
+      "writtenRows": 0
+    },
+    {
+      "tag": "WORK_ROWS",
+      "tables": [
+        "calendar_days"
+      ],
+      "queryCalls": 1,
+      "consumedRows": 39,
+      "writtenRows": 0
+    },
+    {
+      "tag": "WORK_ROWS",
+      "tables": [
+        "calendar_years"
+      ],
+      "queryCalls": 1,
+      "consumedRows": 1,
+      "writtenRows": 0
+    },
+    {
+      "tag": "WORK_ROWS",
+      "tables": [
+        "overrides"
+      ],
+      "queryCalls": 1,
+      "consumedRows": 0,
+      "writtenRows": 0
+    },
+    {
+      "tag": "WORK_ROWS",
+      "tables": [
+        "leaves"
+      ],
+      "queryCalls": 1,
+      "consumedRows": 0,
+      "writtenRows": 0
+    },
+    {
+      "tag": "WORK_ROWS",
+      "tables": [
+        "settings"
+      ],
+      "queryCalls": 1,
+      "consumedRows": 0,
+      "writtenRows": 0
+    },
+    {
+      "tag": "DIRECT_INSERT",
+      "tables": [
+        "calls"
+      ],
+      "queryCalls": 1,
+      "consumedRows": 0,
+      "writtenRows": 1
+    },
+    {
+      "tag": "DIRECT_UPDATE",
+      "tables": [
+        "calls"
+      ],
+      "queryCalls": 2,
+      "consumedRows": 0,
+      "writtenRows": 2
+    }
+  ],
+  "statisticsStart": [
+    {
+      "tag": "AGGREGATE",
+      "tables": [
+        "statistics_intervals"
+      ],
+      "queryCalls": 1,
+      "consumedRows": 1,
+      "writtenRows": 0
+    }
+  ],
+  "pending": [
+    {
+      "tag": "AGGREGATE",
+      "tables": [
+        "calls"
+      ],
+      "queryCalls": 1,
+      "consumedRows": 1,
+      "writtenRows": 0
+    }
+  ],
+  "coldDecisionInputs": [
+    {
+      "tag": "SCOPED_ROWS",
+      "tables": [
+        "callers"
+      ],
+      "queryCalls": 1,
+      "consumedRows": 0,
+      "writtenRows": 0
+    },
+    {
+      "tag": "SCOPED_SETTING",
+      "tables": [
+        "settings"
+      ],
+      "queryCalls": 2,
+      "consumedRows": 0,
+      "writtenRows": 0
+    },
+    {
+      "tag": "WORK_ROWS",
+      "tables": [
+        "config_versions"
+      ],
+      "queryCalls": 1,
+      "consumedRows": 2,
+      "writtenRows": 0
+    },
+    {
+      "tag": "WORK_ROWS",
+      "tables": [
+        "calendar_days"
+      ],
+      "queryCalls": 1,
+      "consumedRows": 39,
+      "writtenRows": 0
+    },
+    {
+      "tag": "WORK_ROWS",
+      "tables": [
+        "calendar_years"
+      ],
+      "queryCalls": 1,
+      "consumedRows": 1,
+      "writtenRows": 0
+    },
+    {
+      "tag": "WORK_ROWS",
+      "tables": [
+        "overrides"
+      ],
+      "queryCalls": 1,
+      "consumedRows": 0,
+      "writtenRows": 0
+    },
+    {
+      "tag": "WORK_ROWS",
+      "tables": [
+        "leaves"
+      ],
+      "queryCalls": 1,
+      "consumedRows": 0,
+      "writtenRows": 0
+    },
+    {
+      "tag": "WORK_ROWS",
+      "tables": [
+        "settings"
+      ],
+      "queryCalls": 1,
+      "consumedRows": 0,
+      "writtenRows": 0
+    },
+    {
+      "tag": "SCOPED_ROWS",
+      "tables": [
+        "statistics_intervals"
+      ],
+      "queryCalls": 1,
+      "consumedRows": 1,
+      "writtenRows": 0
+    }
+  ],
+  "warmDecisionUnchanged": [
+    {
+      "tag": "SCOPED_ROWS",
+      "tables": [
+        "calls"
+      ],
+      "queryCalls": 1,
+      "consumedRows": 1,
+      "writtenRows": 0
+    },
+    {
+      "tag": "DIRECT_UPDATE",
+      "tables": [
+        "calls"
+      ],
+      "queryCalls": 1,
+      "consumedRows": 0,
+      "writtenRows": 1
+    }
+  ],
+  "importNoop": [
+    {
+      "tag": "AGGREGATE",
+      "tables": [
+        "statistics_intervals"
+      ],
+      "queryCalls": 1,
+      "consumedRows": 1,
+      "writtenRows": 0
+    },
+    {
+      "tag": "SCOPED_ROWS",
+      "tables": [
+        "calls"
+      ],
+      "queryCalls": 1,
+      "consumedRows": 1,
+      "writtenRows": 0
+    }
+  ]
+}

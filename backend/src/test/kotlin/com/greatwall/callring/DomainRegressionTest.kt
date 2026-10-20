@@ -1,17 +1,18 @@
 package com.greatwall.callring
 
-import com.greatwall.callring.application.mapping.*
-import com.greatwall.callring.application.recording.policy.*
 import com.greatwall.callring.application.BackendContext
-import com.greatwall.callring.contracts.common.*
-import com.greatwall.callring.contracts.callers.*
-import com.greatwall.callring.contracts.settings.*
-import com.greatwall.callring.contracts.report.*
+import com.greatwall.callring.application.callers.callerProfile
 import com.greatwall.callring.application.createSettingsApi
 import com.greatwall.callring.application.csvCell
-import com.greatwall.callring.application.callers.callerProfile
+import com.greatwall.callring.application.mapping.*
+import com.greatwall.callring.application.recording.policy.*
 import com.greatwall.callring.application.score
+import com.greatwall.callring.contracts.callers.*
+import com.greatwall.callring.contracts.common.*
+import com.greatwall.callring.contracts.report.*
+import com.greatwall.callring.contracts.settings.*
 import com.greatwall.callring.domain.*
+import com.greatwall.callring.domain.model.WorkReason
 import java.lang.reflect.Proxy
 import java.time.Clock
 import java.time.Instant
@@ -24,7 +25,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.*
 import org.junit.Test
-import com.greatwall.callring.domain.model.WorkReason
 
 /**
  * Regression partitions carried from the retired Java policies into their production replacements.
@@ -37,15 +37,24 @@ class DomainRegressionTest {
         val state = state()
         val weekly = mapOf(5 to listOf(TimeWindow(1320, 120)))
         setWeekly(state, weekly)
-        for ((local, expected) in listOf(
-            "2026-10-16T01:00:00" to false,
-            "2026-10-16T21:59:59" to false,
-            "2026-10-16T22:00:00" to true,
-            "2026-10-17T01:59:59" to true,
-            "2026-10-17T02:00:00" to false,
-        )) {
+        for ((local, expected) in
+            listOf(
+                "2026-10-16T01:00:00" to false,
+                "2026-10-16T21:59:59" to false,
+                "2026-10-16T22:00:00" to true,
+                "2026-10-17T01:59:59" to true,
+                "2026-10-17T02:00:00" to false,
+            )) {
             assertEquals(local, expected, work(state, local).working)
-            assertEquals(local, expected, WorkClassifier.inWeekly(weekly.mapValues { (_, windows) -> windows.map { it.toDomain() } }, zone, at(local)))
+            assertEquals(
+                local,
+                expected,
+                WorkClassifier.inWeekly(
+                    weekly.mapValues { (_, windows) -> windows.map { it.toDomain() } },
+                    zone,
+                    at(local),
+                ),
+            )
         }
     }
 
@@ -54,7 +63,8 @@ class DomainRegressionTest {
         val state = state()
         state.calendarYears[2027] = CalendarYear(2027, "source", "2026-01-01", "2027.1").toDomain()
         val date = LocalDate.parse("2026-12-31")
-        state.overrides[date] = DateOverride(date, DateOverrideKind.WORK, listOf(TimeWindow(1320, 120))).toDomain()
+        state.overrides[date] =
+            DateOverride(date, DateOverrideKind.WORK, listOf(TimeWindow(1320, 120))).toDomain()
         for (local in listOf("2026-12-31T23:59:59", "2027-01-01T00:00:00", "2027-01-01T01:59:59")) {
             val result = work(state, local)
             assertTrue(local, result.working)
@@ -79,14 +89,17 @@ class DomainRegressionTest {
     fun wholeDayAndMultiDayLeavesUseTheNextMidnightAndTimedExclusiveEnds() {
         val state = state()
         val next = LocalDate.parse("2026-10-15")
-        state.overrides[next] = DateOverride(next, DateOverrideKind.WORK, listOf(TimeWindow(0, 60))).toDomain()
-        state.leaves[1] = LeaveRecord(1, at("2026-10-14T00:00:00"), at("2026-10-15T00:00:00"), "whole day")
+        state.overrides[next] =
+            DateOverride(next, DateOverrideKind.WORK, listOf(TimeWindow(0, 60))).toDomain()
+        state.leaves[1] =
+            LeaveRecord(1, at("2026-10-14T00:00:00"), at("2026-10-15T00:00:00"), "whole day")
         for (local in listOf("2026-10-14T00:00:00", "2026-10-14T10:00:00", "2026-10-14T23:59:59")) {
             assertEquals(local, WorkReason.PERSONAL_LEAVE, work(state, local).reason)
         }
         assertTrue(work(state, "2026-10-15T00:00:00").working)
         state.overrides.clear()
-        state.leaves[1] = LeaveRecord(1, at("2026-10-14T10:00:00"), at("2026-10-16T11:00:00"), "multiple days")
+        state.leaves[1] =
+            LeaveRecord(1, at("2026-10-14T10:00:00"), at("2026-10-16T11:00:00"), "multiple days")
         assertTrue(work(state, "2026-10-14T09:59:59").working)
         for (local in listOf("2026-10-14T10:00:00", "2026-10-15T10:00:00", "2026-10-16T10:59:59")) {
             assertEquals(local, WorkReason.PERSONAL_LEAVE, work(state, local).reason)
@@ -98,8 +111,10 @@ class DomainRegressionTest {
     fun overlappingLeaveOrderDoesNotChangeTheActiveUnion() {
         val state = state()
         setWeekly(state, mapOf(3 to listOf(TimeWindow(540, 1080))))
-        state.leaves[1] = LeaveRecord(1, at("2026-10-14T10:00:00"), at("2026-10-14T11:00:00"), "first")
-        state.leaves[2] = LeaveRecord(2, at("2026-10-14T10:30:00"), at("2026-10-14T12:00:00"), "second")
+        state.leaves[1] =
+            LeaveRecord(1, at("2026-10-14T10:00:00"), at("2026-10-14T11:00:00"), "first")
+        state.leaves[2] =
+            LeaveRecord(2, at("2026-10-14T10:30:00"), at("2026-10-14T12:00:00"), "second")
         for (reverse in listOf(false, true)) {
             if (reverse) {
                 val reversed = state.leaves.values.reversed()
@@ -107,7 +122,13 @@ class DomainRegressionTest {
                 reversed.forEach { state.leaves[it.id] = it }
             }
             assertTrue(work(state, "2026-10-14T09:59:59").working)
-            for (local in listOf("2026-10-14T10:00:00", "2026-10-14T10:30:00", "2026-10-14T11:00:00", "2026-10-14T11:59:59")) {
+            for (local in
+                listOf(
+                    "2026-10-14T10:00:00",
+                    "2026-10-14T10:30:00",
+                    "2026-10-14T11:00:00",
+                    "2026-10-14T11:59:59",
+                )) {
                 assertEquals(local, WorkReason.PERSONAL_LEAVE, work(state, local).reason)
             }
             assertTrue(work(state, "2026-10-14T12:00:00").working)
@@ -119,11 +140,16 @@ class DomainRegressionTest {
         val api = createSettingsApi(calculations)
         for ((start, end) in listOf(-1 to 60, 60 to -1, 1440 to 60, 60 to 1440, 60 to 60)) {
             val window = TimeWindow(start, end)
-            val failures = listOf(
-                api.saveWorkSchedule(SaveWorkSchedule("UTC", mapOf(1 to listOf(window)), emptyList())),
-                api.saveWorkSchedule(SaveWorkSchedule("UTC", emptyMap(), listOf(window))),
-                api.saveQuietHours(QuietSettings(QuietMode.CUSTOM, false, mapOf(1 to listOf(window)))),
-            )
+            val failures =
+                listOf(
+                    api.saveWorkSchedule(
+                        SaveWorkSchedule("UTC", mapOf(1 to listOf(window)), emptyList()),
+                    ),
+                    api.saveWorkSchedule(SaveWorkSchedule("UTC", emptyMap(), listOf(window))),
+                    api.saveQuietHours(
+                        QuietSettings(QuietMode.CUSTOM, false, mapOf(1 to listOf(window))),
+                    ),
+                )
             failures.forEach {
                 assertTrue("$window: $it", it is ApiResult.Failure)
                 assertEquals(ErrorCode.VALIDATION, (it as ApiResult.Failure).error.code)
@@ -135,7 +161,8 @@ class DomainRegressionTest {
     fun nonpositivePositionLevelsAreRejectedBeforeStorageAccess() = runBlocking {
         val api = createSettingsApi(calculations)
         for (level in listOf(0, -1)) {
-            val result = api.savePosition(SavePosition(name = "invalid", level = level, active = true))
+            val result =
+                api.savePosition(SavePosition(name = "invalid", level = level, active = true))
             assertTrue(result is ApiResult.Failure)
             assertEquals(ErrorCode.VALIDATION, (result as ApiResult.Failure).error.code)
             assertTrue(result.error.fieldErrors.containsKey("level"))
@@ -168,18 +195,19 @@ class DomainRegressionTest {
     fun incomingSnapshotUsesTheSameNumberFormattingMatrixAndNormalizedWhitelist() {
         val state = state()
         state.quiet = QuietSettings(QuietMode.NON_WORK, false, emptyMap()).toDomain()
-        val inputs = listOf(
-            " \t(31)-234\n" to true,
-            "3\u00a012\u300034" to true,
-            "30000" to true,
-            "39999" to true,
-            "+86 (31) 234" to false,
-            "0086 31234" to false,
-            "3.12#34" to false,
-            "３１２３４" to false,
-            "" to false,
-        )
-        val snapshot = DecisionSnapshot.capture(state)
+        val inputs =
+            listOf(
+                " \t(31)-234\n" to true,
+                "3\u00a012\u300034" to true,
+                "30000" to true,
+                "39999" to true,
+                "+86 (31) 234" to false,
+                "0086 31234" to false,
+                "3.12#34" to false,
+                "３１２３４" to false,
+                "" to false,
+            )
+        val snapshot = DecisionSnapshot.capture(state.decisionInputs())
         inputs.forEach { (number, matched) ->
             val result = snapshot.evaluate(number, at("2026-10-14T22:00:00"))
             assertEquals(number, matched, result.matched)
@@ -187,7 +215,9 @@ class DomainRegressionTest {
             assertEquals(number, calculations.checkNumber(number).matchesRule, result.matched)
         }
         state.profiles["31234"] = ProfileRecord("31234", whitelisted = true)
-        val white = DecisionSnapshot.capture(state).evaluate("3\u00a012\u300034", at("2026-10-14T22:00:00"))
+        val white =
+            DecisionSnapshot.capture(state.decisionInputs())
+                .evaluate("3\u00a012\u300034", at("2026-10-14T22:00:00"))
         assertTrue(white.whitelisted)
         assertFalse(white.silence)
     }
@@ -227,7 +257,13 @@ class DomainRegressionTest {
         weekly: Map<Int, List<TimeWindow>>,
         makeup: List<TimeWindow> = emptyList(),
     ) {
-        state.schedules[0] = state.schedules.single().copy(weekly = weekly.mapValues { (_, windows) -> windows.map { it.toDomain() } }, makeup = makeup.map { it.toDomain() })
+        state.schedules[0] =
+            state.schedules
+                .single()
+                .copy(
+                    weekly = weekly.mapValues { (_, windows) -> windows.map { it.toDomain() } },
+                    makeup = makeup.map { it.toDomain() },
+                )
     }
 
     private fun work(state: BackendState, local: String) = WorkClassifier.classify(state, at(local))
@@ -263,7 +299,8 @@ class DomainRegressionTest {
         val state = state()
         setWeekly(state, mapOf(5 to listOf(TimeWindow(1320, 120))), listOf(TimeWindow(540, 1080)))
         state.makeupDates += saturday
-        state.overrides[saturday] = DateOverride(saturday, DateOverrideKind.REST, emptyList()).toDomain()
+        state.overrides[saturday] =
+            DateOverride(saturday, DateOverrideKind.REST, emptyList()).toDomain()
         assertEquals(WorkReason.REST_DAY, work(state, "2026-10-17T01:00:00").reason)
         assertEquals(WorkReason.REST_DAY, work(state, "2026-10-17T10:00:00").reason)
         state.overrides.clear()
@@ -297,7 +334,8 @@ class DomainRegressionTest {
         val state = state()
         val newYear = LocalDate.parse("2027-01-01")
         state.overrides[newYear.minusDays(1)] =
-            DateOverride(newYear.minusDays(1), DateOverrideKind.WORK, listOf(TimeWindow(1320, 120))).toDomain()
+            DateOverride(newYear.minusDays(1), DateOverrideKind.WORK, listOf(TimeWindow(1320, 120)))
+                .toDomain()
         state.holidays[newYear] = "unverified new year"
         val before = work(state, "2026-12-31T23:59:59")
         assertTrue(before.working)
@@ -312,7 +350,8 @@ class DomainRegressionTest {
         assertEquals(WorkReason.HOLIDAY, verified.reason)
         assertTrue(verified.calendarVerified)
         assertEquals("2027.1", verified.calendarVersion)
-        state.overrides[newYear] = DateOverride(newYear, DateOverrideKind.REST, emptyList()).toDomain()
+        state.overrides[newYear] =
+            DateOverride(newYear, DateOverrideKind.REST, emptyList()).toDomain()
         assertEquals(WorkReason.REST_DAY, work(state, "2027-01-01T01:00:00").reason)
     }
 
@@ -381,7 +420,8 @@ class DomainRegressionTest {
     fun multiDayLeaveContinuesAcrossYearBoundariesAndStopsAtNextMidnight() {
         val state = state()
         val end = LocalDate.parse("2027-01-02")
-        state.overrides[end] = DateOverride(end, DateOverrideKind.WORK, listOf(TimeWindow(0, 60))).toDomain()
+        state.overrides[end] =
+            DateOverride(end, DateOverrideKind.WORK, listOf(TimeWindow(0, 60))).toDomain()
         state.leaves[1] =
             LeaveRecord(1, at("2026-12-30T10:00:00"), at("2027-01-02T00:00:00"), "multi day")
         assertTrue(work(state, "2026-12-30T09:59:59").working)
@@ -425,7 +465,9 @@ class DomainRegressionTest {
             assertEquals(
                 case.toString(),
                 case.silence,
-                DecisionSnapshot.capture(state).evaluate(case.number, at(time)).silence,
+                DecisionSnapshot.capture(state.decisionInputs())
+                    .evaluate(case.number, at(time))
+                    .silence,
             )
         }
     }
@@ -434,15 +476,18 @@ class DomainRegressionTest {
     fun customQuietOvernightRequiresBothItsWindowAndNonWorkClassification() {
         val state = state()
         state.quiet =
-            QuietSettings(QuietMode.CUSTOM, false, mapOf(3 to listOf(TimeWindow(1320, 120)))).toDomain()
-        val snapshot = DecisionSnapshot.capture(state)
+            QuietSettings(QuietMode.CUSTOM, false, mapOf(3 to listOf(TimeWindow(1320, 120))))
+                .toDomain()
+        val snapshot = DecisionSnapshot.capture(state.decisionInputs())
         assertFalse(snapshot.evaluate("31234", at("2026-10-14T21:59:59")).silence)
         assertTrue(snapshot.evaluate("31234", at("2026-10-14T22:00:00")).silence)
         assertTrue(snapshot.evaluate("31234", at("2026-10-15T01:59:59")).silence)
         assertFalse(snapshot.evaluate("31234", at("2026-10-15T02:00:00")).silence)
         setWeekly(state, mapOf(3 to listOf(TimeWindow(1320, 120))))
         assertFalse(
-            DecisionSnapshot.capture(state).evaluate("31234", at("2026-10-14T22:00:00")).silence
+            DecisionSnapshot.capture(state.decisionInputs())
+                .evaluate("31234", at("2026-10-14T22:00:00"))
+                .silence,
         )
     }
 
@@ -610,11 +655,26 @@ class DomainRegressionTest {
         state.positions[2] = PositionRecord(2, "lower", 3, false)
         state.positions[3] = PositionRecord(3, "same", 2, true)
         state.myPositionId = 1
-        assertEquals(PositionRelation.LOWER, callerProfile("1", null, state.positions[2], state.positions[state.myPositionId]).relation)
-        assertEquals(PositionRelation.SAME, callerProfile("1", null, state.positions[3], state.positions[state.myPositionId]).relation)
-        assertEquals(PositionRelation.UNKNOWN, callerProfile("1", null, null, state.positions[state.myPositionId]).relation)
+        assertEquals(
+            PositionRelation.LOWER,
+            callerProfile("1", null, state.positions[2], state.positions[state.myPositionId])
+                .relation,
+        )
+        assertEquals(
+            PositionRelation.SAME,
+            callerProfile("1", null, state.positions[3], state.positions[state.myPositionId])
+                .relation,
+        )
+        assertEquals(
+            PositionRelation.UNKNOWN,
+            callerProfile("1", null, null, state.positions[state.myPositionId]).relation,
+        )
         state.myPositionId = null
-        assertEquals(PositionRelation.UNKNOWN, callerProfile("1", null, state.positions[2], state.positions[state.myPositionId]).relation)
+        assertEquals(
+            PositionRelation.UNKNOWN,
+            callerProfile("1", null, state.positions[2], state.positions[state.myPositionId])
+                .relation,
+        )
     }
 
     @Test

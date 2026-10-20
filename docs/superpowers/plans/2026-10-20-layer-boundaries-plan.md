@@ -183,11 +183,11 @@ UT = ui/src/test/kotlin/com/greatwall/callring/ui
 
 **目标：** `B/application/calling/{IncomingCallService,CallLogImportService,DecisionQueryService}.kt`、`A/data/calling/SqliteCallStore.kt`。
 
-- [ ] 在 `AT/data/CallAccessContractTest.kt` 验证目标 ID/会话/号码/时间闭包；其他号码数据量变化不扩大登记读取范围。
-- [ ] 为旧 logId、旧新号码/时间/账户变化加载完整候选闭包，保持全局唯一性、重复导入幂等、跨账户不误配；读取该号码全部候选只能在算法确有需要时发生并记录。
-- [ ] 定向插入/更正/合并，保持自增序列、隐藏记录、原始事实和统计启用区间；待补全检查用 EXISTS，最新记录用稳定排序 LIMIT。
-- [ ] 来电决策读取独立镜像，通话结果更新不重建决策镜像；调度/通知在锁外，后台持久化失败沿用现有降级。
-- [ ] 运行 CallCorrelationTest、IncomingCallCoordinatorTest、SessionGate/PreparationGate 与相关系统适配回归。
+- [x] 在 `AT/data/CallAccessContractTest.kt` 验证目标 ID/会话/号码/时间闭包；其他号码数据量变化不扩大登记读取范围。
+- [x] 为旧 logId、旧新号码/时间/账户变化加载完整候选闭包，保持全局唯一性、重复导入幂等、跨账户不误配；读取该号码全部候选只能在算法确有需要时发生并记录。
+- [x] 定向插入/更正/合并，保持自增序列、隐藏记录、原始事实和统计启用区间；待补全检查用 EXISTS，最新记录用稳定排序 LIMIT。
+- [x] 来电决策读取独立镜像，通话结果更新不重建决策镜像；调度/通知在锁外，后台持久化失败沿用现有降级。
+- [x] 运行 CallCorrelationTest、IncomingCallCoordinatorTest、SessionGate/PreparationGate 与相关系统适配回归。
 
 **门：** 来电链路不等待全量业务状态，历史关联语义和期限保护保持。覆盖 P1/P2/P4，A1/A2/A3/A7/A9。
 

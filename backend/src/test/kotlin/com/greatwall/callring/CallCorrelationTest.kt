@@ -1,14 +1,14 @@
 package com.greatwall.callring
 
-import com.greatwall.callring.domain.model.CallResult
-import com.greatwall.callring.domain.model.CallDecision
-import com.greatwall.callring.domain.model.CallSource
-import com.greatwall.callring.domain.model.ClassificationFact
-import com.greatwall.callring.domain.model.WorkReason
 import com.greatwall.callring.contracts.callers.*
 import com.greatwall.callring.domain.BackendState
 import com.greatwall.callring.domain.CallCorrelation
 import com.greatwall.callring.domain.RawCallRecord
+import com.greatwall.callring.domain.model.CallDecision
+import com.greatwall.callring.domain.model.CallResult
+import com.greatwall.callring.domain.model.CallSource
+import com.greatwall.callring.domain.model.ClassificationFact
+import com.greatwall.callring.domain.model.WorkReason
 import org.junit.Assert.*
 import org.junit.Test
 
@@ -56,7 +56,10 @@ class CallCorrelationTest {
         state.calls[2] = screen(2, 11000)
         state.calls[3] = provider(3, 10500)
         val originalFacts = state.calls.mapValues { it.value.originalClassification }
-        CallCorrelation.reconcile(state, "30001")
+        CallCorrelation.reconcile(state.calls.values.filter { it.number == "30001" }).forEach {
+            (_, after) ->
+            state.calls[after.id] = after
+        }
         assertNull(state.calls.getValue(3).linkedScreenId)
         for (id in listOf(1L, 2L)) {
             val call = state.calls.getValue(id)
@@ -73,7 +76,10 @@ class CallCorrelationTest {
         state.calls[1] = screen(1, 10000, null)
         state.calls[2] = provider(2, 10000, "A")
         state.calls[3] = provider(3, 10000, "B")
-        CallCorrelation.reconcile(state, "30001")
+        CallCorrelation.reconcile(state.calls.values.filter { it.number == "30001" }).forEach {
+            (_, after) ->
+            state.calls[after.id] = after
+        }
         val unresolved = state.calls.getValue(1)
         assertEquals(CallResult.UNRESOLVED, unresolved.result)
         assertFalse(unresolved.hidden)
@@ -91,7 +97,10 @@ class CallCorrelationTest {
         state.calls[2] = screen(2, 10000, "B")
         state.calls[3] = provider(3, 10000, "A")
         state.calls[4] = provider(4, 10000, "B")
-        CallCorrelation.reconcile(state, "30001")
+        CallCorrelation.reconcile(state.calls.values.filter { it.number == "30001" }).forEach {
+            (_, after) ->
+            state.calls[after.id] = after
+        }
         assertEquals(1L, state.calls.getValue(3).linkedScreenId)
         assertEquals(2L, state.calls.getValue(4).linkedScreenId)
         assertTrue(state.calls.getValue(1).hidden)
@@ -107,7 +116,8 @@ class CallCorrelationTest {
         state.calls[3] = screen(3, 20000)
         val untouched = state.calls.getValue(3)
         // Center 5000 writes through 15000; screen 20000 still contributes to provider degree.
-        CallCorrelation.reconcile(state, "30001", listOf(5000))
+        CallCorrelation.reconcile(state.calls.values.filter { it.number == "30001" }, listOf(5000))
+            .forEach { (_, after) -> state.calls[after.id] = after }
         assertEquals(CallResult.UNRESOLVED, state.calls.getValue(1).result)
         assertNull(state.calls.getValue(2).linkedScreenId)
         assertEquals(untouched, state.calls.getValue(3))
