@@ -17,10 +17,6 @@ internal fun BackendContext.currentSchedule(s: BackendState) =
         compareBy<com.greatwall.callring.domain.model.WorkScheduleSettings> { it.effectiveFromEpochMillis }.thenBy { it.configVersion }
     ) ?: defaultWorkSchedule()
 
-/** Preserve the original first-error API behavior while domain emits ordinary ordered issues. */
-internal fun BackendContext.requireIssues(issues: List<com.greatwall.callring.domain.model.SettingsIssue>) {
-    issues.firstOrNull()?.let { fail(ErrorCode.VALIDATION, it.message, it.path) }
-}
 internal fun BackendContext.widgetId(id: Int) {
     requireField(id > 0, "widgetId", "widget.id.invalid")
 }

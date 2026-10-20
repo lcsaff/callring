@@ -20,6 +20,8 @@ interface QuietTransactions {
 }
 
 interface CoreReadSession :
+    ReportReader,
+    HomeReader,
     CallingReader,
     DecisionInputsReader,
     QuietReader,
@@ -47,6 +49,8 @@ interface CoreWriteSession :
     CallerProfileWriter {}
 
 interface CoreUnitOfWork :
+    ReportReads,
+    HomeReads,
     CallingTransactions,
     DecisionInputsTransactions,
     QuietTransactions,
@@ -60,6 +64,10 @@ interface CoreUnitOfWork :
     LeaveTransactions,
     CallerTransactions,
     CallerQueryTransactions {
+    override fun <T> readReport(block: (ReportReader) -> T): T = readSession { block(it) }
+
+    override fun <T> readHome(block: (HomeReader) -> T): T = readSession { block(it) }
+
     override fun <T> readCalling(block: (CallingReader) -> T): T = readSession { block(it) }
 
     override fun <T> writeCalling(block: (CallingWriter) -> T): T = writeSession { block(it) }

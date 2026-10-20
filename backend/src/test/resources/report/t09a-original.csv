@@ -1,0 +1,7 @@
+﻿"number","name","department","position","relation","my_position_id","my_position_name","my_position_level","range_start","range_end","zone"
+"'30001","'=2+3","'@department","caller","HIGHER","1","mine","2","1791763200000","1791849600000","UTC"
+"total","working","off_hours","known_duration_seconds","unknown_duration_count","missed_count","rejected_count","pending","score"
+"2","2","0","0","0","1","1","0","98"
+"id","number","started_at","screening_at","duration_seconds","result","decision","source","counted","working","reason","holiday","verified","zone","config_version","calendar_version","leave_version","original_working","original_reason","original_holiday","original_verified","original_zone","original_config_version","original_calendar_version","original_leave_version","corrected","decision_note"
+"2","'30001","1791799200001","","0","BLOCKED","SYSTEM_LOG_ONLY","SYSTEM_CALL_LOG","true","true","WORKING","","false","UTC","1","","0","true","WORKING","","false","UTC","1","","0","false",""
+"1","'30001","1791799200000","","0","MISSED","SYSTEM_LOG_ONLY","SYSTEM_CALL_LOG","true","true","WORKING","","false","UTC","1","","0","true","WORKING","","false","UTC","1","","0","false",""

@@ -1,0 +1,180 @@
+{
+  "measurement": "query invocations \/ consumed rows, not engine scan rows",
+  "report": [
+    {
+      "tag": "SCOPED_SETTING",
+      "tables": [
+        "settings"
+      ],
+      "queryCalls": 2,
+      "consumedRows": 0,
+      "writtenRows": 0
+    },
+    {
+      "tag": "SCOPED_ROWS",
+      "tables": [
+        "calls"
+      ],
+      "queryCalls": 2,
+      "consumedRows": 2,
+      "writtenRows": 0
+    },
+    {
+      "tag": "SCOPED_ROWS",
+      "tables": [
+        "callers"
+      ],
+      "queryCalls": 1,
+      "consumedRows": 1,
+      "writtenRows": 0
+    },
+    {
+      "tag": "SCOPED_ROWS",
+      "tables": [
+        "positions"
+      ],
+      "queryCalls": 1,
+      "consumedRows": 1,
+      "writtenRows": 0
+    },
+    {
+      "tag": "AGGREGATE",
+      "tables": [
+        "statistics_intervals"
+      ],
+      "queryCalls": 1,
+      "consumedRows": 1,
+      "writtenRows": 0
+    }
+  ],
+  "home": [
+    {
+      "tag": "SCOPED_SETTING",
+      "tables": [
+        "settings"
+      ],
+      "queryCalls": 2,
+      "consumedRows": 0,
+      "writtenRows": 0
+    },
+    {
+      "tag": "SCOPED_ROWS",
+      "tables": [
+        "calls"
+      ],
+      "queryCalls": 1,
+      "consumedRows": 1,
+      "writtenRows": 0
+    },
+    {
+      "tag": "AGGREGATE",
+      "tables": [
+        "statistics_intervals"
+      ],
+      "queryCalls": 1,
+      "consumedRows": 1,
+      "writtenRows": 0
+    },
+    {
+      "tag": "WORK_ROWS",
+      "tables": [
+        "config_versions"
+      ],
+      "queryCalls": 1,
+      "consumedRows": 2,
+      "writtenRows": 0
+    },
+    {
+      "tag": "WORK_ROWS",
+      "tables": [
+        "calendar_days"
+      ],
+      "queryCalls": 1,
+      "consumedRows": 39,
+      "writtenRows": 0
+    },
+    {
+      "tag": "WORK_ROWS",
+      "tables": [
+        "calendar_years"
+      ],
+      "queryCalls": 1,
+      "consumedRows": 1,
+      "writtenRows": 0
+    },
+    {
+      "tag": "WORK_ROWS",
+      "tables": [
+        "overrides"
+      ],
+      "queryCalls": 1,
+      "consumedRows": 0,
+      "writtenRows": 0
+    },
+    {
+      "tag": "WORK_ROWS",
+      "tables": [
+        "leaves"
+      ],
+      "queryCalls": 1,
+      "consumedRows": 0,
+      "writtenRows": 0
+    },
+    {
+      "tag": "WORK_ROWS",
+      "tables": [
+        "settings"
+      ],
+      "queryCalls": 1,
+      "consumedRows": 0,
+      "writtenRows": 0
+    }
+  ],
+  "csv": [
+    {
+      "tag": "SCOPED_SETTING",
+      "tables": [
+        "settings"
+      ],
+      "queryCalls": 2,
+      "consumedRows": 0,
+      "writtenRows": 0
+    },
+    {
+      "tag": "SCOPED_ROWS",
+      "tables": [
+        "calls"
+      ],
+      "queryCalls": 2,
+      "consumedRows": 2,
+      "writtenRows": 0
+    },
+    {
+      "tag": "SCOPED_ROWS",
+      "tables": [
+        "callers"
+      ],
+      "queryCalls": 1,
+      "consumedRows": 1,
+      "writtenRows": 0
+    },
+    {
+      "tag": "SCOPED_ROWS",
+      "tables": [
+        "positions"
+      ],
+      "queryCalls": 1,
+      "consumedRows": 1,
+      "writtenRows": 0
+    },
+    {
+      "tag": "AGGREGATE",
+      "tables": [
+        "statistics_intervals"
+      ],
+      "queryCalls": 1,
+      "consumedRows": 1,
+      "writtenRows": 0
+    }
+  ]
+}

@@ -23,4 +23,6 @@ T07 已删除 CallersService、旧 CallerProjection 包装、UiEdits.profile 预
 
 T08 已删除 calling 全状态业务、coreTransaction/coreScopeValues、DecisionSnapshot.capture(BackendState)、CallCorrelation 的 State overload 及无调用 StorageSession.saveCalls。旧 CallStore 与新 calling 复用唯一 codec。普通生产 writer 已全部退出 BackendStore.transaction，剩余接口/转发与 seed fixture 是 T13 必须删除的债；不得声称仍有 calling 消费者。完整旧存储的读/快照尚有 T09、录音 findCall 尚有 T10、onCreate 初始化尚有 T13 真实消费者。notifyChanged 仍有 RingtoneService 三处，changedScopeKeys 仍有 AppearanceService；随对应后续片关闭。
 
+T09a 已删除旧 Home/Reports Context工厂与业务、ReportCalculator.timeRange/report、Context.page/meta/read/lock/revision、QuerySupport.paged和SettingsValidation.requireIssues。Context当前普通消费者仅剩运行状态/铃声/小组件及总装配；CoreSnapshotProjection仍使用score/quality/reportTotals/visible/currentSchedule/stats与复制助手及旧完整状态捕获，T09b迁出即删。CSV及CallerRowCodec均为共享唯一实现，无兼容转发。
+
 最终证据应包含生产与测试符号搜索、编译类路径、架构正反例，以及无旧路径可执行的回归结果。历史基线与审查文档保留原貌，不将历史文字当作当前代码残留。

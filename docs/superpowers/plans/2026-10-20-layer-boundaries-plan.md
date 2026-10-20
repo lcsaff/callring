@@ -199,8 +199,8 @@ UT = ui/src/test/kotlin/com/greatwall/callring/ui
 
 执行时拆为两个可审查检查点：T09a 先迁报表、CSV 与首页的窄读取，保留原评分/分页/导出语义；T09b 再迁 AI 源、完整快照和组合读一致性，完成 D 域版本、目录预算续页及旧状态读闭包收口。两片各自验证、双审；只有两片全部通过才将 T09 认定完成。T09a 尚有完整快照消费者的旧 helper 明确留到 T09b，不新增迁移转发层或完整状态兜底。
 
-- [ ] 在 `AT/data/ReportReadContractTest.kt` 固定范围、过滤、分页总数、重复评分的区间内边界（不引入区间前扣分）、未知时长、本人岗位、CSV 转义/汇总和 DST 样本。
-- [ ] 按号码/时间范围流式取事实；领域累加器唯一实现公式；首页组合最小投影，不载入全部业务状态。
+- [x] 在 `AT/data/ReportReadContractTest.kt` 固定范围、过滤、分页总数、重复评分的区间内边界（不引入区间前扣分）、未知时长、本人岗位、CSV 转义/汇总和 DST 样本。
+- [x] 按号码/时间范围流式取事实；领域累加器唯一实现公式；首页组合最小投影，不载入全部业务状态。
 - [ ] AI SQL 源不直接调用业务服务或 platform.ai JSON 解析器；把持久化 JSON codec 归 data，计算移纯领域/应用查询层，保持 D01–D21、游标、scope/version、完整性语义。
 - [ ] 源版本按 D 域真实依赖推进：同域变化使游标/缓存失效，无关域变化不误失效；QueryStamp.scopeRevision 保持既有披露/冲突语义，不能替换为 UI 观察令牌。
 - [ ] 显式 FullSnapshotReader 取代 BackendStore.captureFull；保持大小限制、审计和秘密脱敏，普通查询/闲聊/发现零完整快照。

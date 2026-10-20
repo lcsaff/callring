@@ -137,6 +137,10 @@ class ScopedTransactionTest {
             assertThrows(IllegalStateException::class.java) { reader.providerCalls(emptySet()) }
             assertThrows(IllegalStateException::class.java) { reader.correlationCalls("unused") }
             assertThrows(IllegalStateException::class.java) { reader.decisionInputs() }
+            assertThrows(IllegalStateException::class.java) { reader.visitReportCalls("unused", 0, 0, true) {} }
+            assertThrows(IllegalStateException::class.java) { reader.latestVisibleReportCall() }
+            assertThrows(IllegalStateException::class.java) { reader.statisticsEnabled() }
+            assertThrows(IllegalStateException::class.java) { reader.homeQuietMode() }
             assertThrows(IllegalStateException::class.java) { reader.quiet() }
             assertThrows(IllegalStateException::class.java) { reader.statisticsHead() }
             assertThrows(IllegalStateException::class.java) { reader.score() }

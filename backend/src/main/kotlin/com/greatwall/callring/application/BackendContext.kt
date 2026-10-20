@@ -205,9 +205,6 @@ internal class BackendContext(
             dispatcher,
             clock,
         )
-    internal val lock = coordinator.fence
-    internal val revision
-        get() = coordinator.changes.value.dataRevision
 
     fun bound(command: CommandContext) =
         BackendContext(
@@ -265,15 +262,6 @@ internal class BackendContext(
             it.normalized
         }
 
-    internal fun page(value: PageRequest) {
-        requireField(value.pageIndex >= 0, "page.pageIndex", "page.index.invalid")
-        requireField(value.pageSize in 1..200, "page.pageSize", "page.size.invalid")
-    }
-
-    internal fun meta() = SnapshotMeta(revision, clock.millis())
-
-    internal fun <T> read(block: (BackendState) -> T): T = synchronized(lock) { store.read(block) }
-
     internal fun notifyChanged() {
         coordinator.changed("core")
     }
@@ -301,17 +289,7 @@ internal class BackendContext(
     /** Once a write starts, commit and its notification survive caller cancellation. */
     internal suspend fun <T> write(block: () -> T): ApiResult<T> = runner.write(block)
 
-    internal fun runtimeStatus(): RuntimeStatus {
-        val status = runtimeProbe.getStatus()
-        return status.copy(
-            capabilities =
-                frozenMap(
-                    Capability.values().associateWith {
-                        status.capabilities[it] ?: AccessState.UNKNOWN
-                    },
-                ),
-        )
-    }
+    internal fun runtimeStatus(): RuntimeStatus = completeRuntimeStatus(runtimeProbe.getStatus())
 
     internal fun capability(capability: Capability, role: Boolean = false) {
         val access = runtimeStatus().capabilities.getValue(capability)

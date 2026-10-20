@@ -1,0 +1,36 @@
+{
+  "unrelatedCallCount": 10000,
+  "report": {
+    "fullStateLoads": 0,
+    "completeCaptures": 0,
+    "revisionDelta": 0,
+    "narrowAccess": {
+      "coreOpens": 1,
+      "runtimeProbes": 1,
+      "reportVisits": 2,
+      "reportStatistics": 1
+    }
+  },
+  "home": {
+    "fullStateLoads": 0,
+    "completeCaptures": 0,
+    "revisionDelta": 0,
+    "narrowAccess": {
+      "classifications": 2,
+      "runtimeProbes": 1,
+      "homeLatest": 1,
+      "reportStatistics": 1,
+      "homeQuietMode": 1
+    }
+  },
+  "csv": {
+    "fullStateLoads": 0,
+    "completeCaptures": 0,
+    "revisionDelta": 0,
+    "narrowAccess": {
+      "runtimeProbes": 1,
+      "reportVisits": 2,
+      "reportStatistics": 1
+    }
+  }
+}

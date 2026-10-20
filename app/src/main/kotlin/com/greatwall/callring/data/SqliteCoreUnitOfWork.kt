@@ -23,6 +23,10 @@ internal class SqliteCoreUnitOfWork(private val db: SQLiteDatabase, private val 
                 "insertCallingCall",
                 "updateCallingCalls",
                 "decisionInputs",
+                "reportVisits",
+                "homeLatest",
+                "reportStatistics",
+                "homeQuietMode",
             )
             .associateWith { java.util.concurrent.atomic.AtomicLong() }
 
@@ -223,6 +227,47 @@ internal class SqliteCoreUnitOfWork(private val db: SQLiteDatabase, private val 
                 intervals,
                 overlay(),
             )
+        }
+
+        private val reportCalls =
+            com.greatwall.callring.data.report.SqliteReportCalls(sql, ::checkActive)
+
+        override fun visitReportCalls(
+            number: String,
+            start: Long,
+            end: Long,
+            ascending: Boolean,
+            accept: (ReportCallFact) -> Unit,
+        ) =
+            callingAccess("reportVisits") {
+                reportCalls.visitReportCalls(number, start, end, ascending, accept)
+            }
+
+        override fun latestVisibleReportCall() =
+            callingAccess("homeLatest") { reportCalls.latestVisibleReportCall() }
+
+        override fun statisticsEnabled(): Boolean {
+            checkActive()
+            callingCounts.getValue("reportStatistics").incrementAndGet()
+            return sql.scalar(
+                QueryTag.AGGREGATE,
+                setOf(SqlTable.STATISTICS_INTERVALS),
+                "SELECT EXISTS(SELECT 1 FROM statistics_intervals WHERE end IS NULL)",
+            ) != 0L
+        }
+
+        override fun homeQuietMode(): QuietMode {
+            checkActive()
+            callingCounts.getValue("homeQuietMode").incrementAndGet()
+            return sql.rawQuery(
+                    QueryTag.SCOPED_SETTING,
+                    setOf(SqlTable.SETTINGS),
+                    "SELECT value FROM settings WHERE key=?",
+                    arrayOf("quiet_mode"),
+                )
+                .use {
+                    QuietMode.valueOf(if (it.moveToFirst()) it.getString(0) else "OFF")
+                }
         }
 
         private val callers =

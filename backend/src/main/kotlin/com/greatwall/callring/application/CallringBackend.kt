@@ -55,9 +55,25 @@ class CallringBackend(
     override val update: AppUpdateApi = UnavailableAppUpdateApi
     override val snapshots: AiSnapshotApi = UnavailableAiSnapshotApi
     override val recordings: RecordingApi = UnavailableRecordingApi
-    override val home: HomeApi = createHomeApi(context)
+    override val home: HomeApi =
+        com.greatwall.callring.application.home.HomeService(
+            coreTransactions,
+            coordinator,
+            dispatcher,
+            clock,
+            { completeRuntimeStatus(runtimeProbe.getStatus()) },
+            audio::getSettings,
+        )
     override val callers: CallersApi = context.callersApi
-    override val reports: ReportsApi = createReportsApi(context)
+    override val reports: ReportsApi =
+        com.greatwall.callring.application.report.ReportService(
+            coreTransactions,
+            coordinator,
+            dispatcher,
+            clock,
+            { completeRuntimeStatus(runtimeProbe.getStatus()) },
+            { destination, write -> documents.write(destination, write) },
+        )
     override val settings: SettingsApi = createSettingsApi(context)
     override val edits: UiEditsApi = createUiEditsApi(context)
     override val ringtone: RingtoneApi = createRingtoneApi(context)

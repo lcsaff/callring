@@ -196,63 +196,14 @@ internal class SqliteCallerStore(private val sql: SqlAccess, private val lease: 
         check(removed == expectedCount) { "storage.caller.calls.delete" }
     }
 
-    private fun fact(c: Cursor, p: String): com.greatwall.callring.domain.model.ClassificationFact {
-        val reason = c.text("${p}reason")
-        return com.greatwall.callring.domain.model.ClassificationFact(
-            c.flag("${p}working"),
-            LegacyValueCodec.reason(reason),
-            LegacyValueCodec.holidayName(reason),
-            c.flag("${p}verified"),
-            c.text("${p}zone"),
-            c.long("${p}config_version"),
-            LegacyValueCodec.calendarVersion(c.text("${p}calendar_version")),
-            c.long("${p}leave_version"),
-        )
-    }
-
-    /**
-     * Read projection only. A writer must preserve screeningKey/account and raw legacy tokens
-     * separately.
-     */
-    private fun raw(c: Cursor): RawCallRecord {
-        val decision = c.text("decision")
-        return RawCallRecord(
-            c.long("id"),
-            c.text("number"),
-            c.long("time"),
-            c.optionalLong("duration"),
-            LegacyValueCodec.result(c.text("result")),
-            LegacyValueCodec.decision(decision),
-            LegacyValueCodec.source(c.text("source")),
-            c.optionalText("log_id"),
-            null,
-            c.flag("counted"),
-            fact(c, ""),
-            fact(c, "original_"),
-            null,
-            c.flag("hidden"),
-            c.optionalLong("linked_screen_id"),
-            decision.takeIf {
-                LegacyValueCodec.decision(it) in
-                    setOf(
-                        com.greatwall.callring.domain.model.CallDecision.SYSTEM_RINGTONE_FALLBACK,
-                        com.greatwall.callring.domain.model.CallDecision.UNKNOWN,
-                    )
-            },
-        )
-    }
-
-    private val callColumns =
-        "id,number,time,duration,result,decision,source,log_id,counted,hidden,linked_screen_id,working,reason,verified,zone,config_version,calendar_version,leave_version,original_working,original_reason,original_verified,original_zone,original_config_version,original_calendar_version,original_leave_version"
-
     private fun one(where: String, params: Array<String>): RawCallRecord? =
         sql.rawQuery(
                 QueryTag.SCOPED_ROWS,
                 setOf(SqlTable.CALLS),
-                "SELECT $callColumns FROM calls $where",
+                "SELECT ${CallerRowCodec.callColumns} FROM calls $where",
                 params,
             )
-            .use { if (it.moveToFirst()) raw(it) else null }
+            .use { if (it.moveToFirst()) CallerRowCodec.raw(it) else null }
 
     override fun callerCall(id: Long): RawCallRecord? {
         lease(false)

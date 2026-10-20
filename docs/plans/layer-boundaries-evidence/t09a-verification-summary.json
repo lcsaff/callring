@@ -1,0 +1,33 @@
+{
+  "phase": "T09a",
+  "date": "2026-10-21",
+  "productionBase": "82a58d6",
+  "specReview": "PASS",
+  "qualityReview": "PASS",
+  "completeGate": {
+    "log": "build/qa/layer-boundaries/t09a-full-gate.log",
+    "sha256": "49e87a51f9139a9c59bc32e1fc8dfe211a391d6bc275cd3879856a9be5f268eb",
+    "result": "BUILD SUCCESSFUL",
+    "seconds": 54,
+    "tasks": 147,
+    "executed": 22,
+    "upToDate": 125,
+    "backendTests": 284,
+    "uiTests": 298,
+    "appTests": 270,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0,
+    "contractsTests": "NO-SOURCE"
+  },
+  "rootIndependentChecks": {"architectureScript": "PASS", "backendBoundariesScript": "PASS", "backendSourceCount": 103, "architectureTests": 17, "backendBoundaryTests": 4, "diffCheck": "PASS"},
+  "lint": {"ui": {"Warning": 31, "Hint": 3}, "app": {"Warning": 6}, "Error": 0},
+  "safeAccessEvidence": ["report-home-access-1000.json", "report-home-access-10000.json", "sql-report-home-1000.json", "sql-report-home-10000.json"],
+  "sameMeasuredClosuresAcrossFixtureScales": true,
+  "ordinaryFullStateLoads": 0,
+  "ordinaryCompleteSnapshots": 0,
+  "sqlMeasurement": "query invocations and consumed result rows; not engine scans",
+  "csvGoldenSha256": "10615668b38d370cf649a56f358214e3ab0a2a821eb4da897022cd3a20eeb66a",
+  "deviceExecuted": false,
+  "remaining": ["T09b source versions, dedicated full snapshot and combination consistency", "T10 recording/composition", "T11 old refresh protocol", "T13 initialization and legacy fixture/storage deletion"]
+}

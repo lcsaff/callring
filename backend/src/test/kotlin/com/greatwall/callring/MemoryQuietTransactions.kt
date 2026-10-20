@@ -8,6 +8,37 @@ import com.greatwall.callring.domain.*
 internal class MemoryQuietTransactions(private val store: BackendStore) : CoreUnitOfWork {
     private fun reader(state: BackendState) =
         object : CoreWriteSession {
+            override fun visitReportCalls(
+                number: String,
+                start: Long,
+                end: Long,
+                ascending: Boolean,
+                accept: (ReportCallFact) -> Unit,
+            ) {
+                val order = compareBy<RawCallRecord> { it.time }.thenBy { it.id }
+                state.calls.values
+                    .filter {
+                        !it.hidden && it.number == number && it.time >= start && it.time < end
+                    }
+                    .sortedWith(if (ascending) order else order.reversed())
+                    .forEach {
+                        accept(ReportCallFact(it, it.linkedScreenId?.let(state.calls::get)))
+                    }
+            }
+
+            override fun statisticsEnabled() =
+                state.statisticsIntervals.any { it.endMillis == null }
+
+            override fun homeQuietMode() = state.quiet.mode
+
+            override fun latestVisibleReportCall(): ReportCallFact? =
+                state.calls.values
+                    .filter { !it.hidden }
+                    .maxWithOrNull(compareBy<RawCallRecord> { it.time }.thenBy { it.id })
+                    ?.let {
+                        ReportCallFact(it, it.linkedScreenId?.let(state.calls::get))
+                    }
+
             override fun decisionInputs() = state.decisionInputs()
 
             override fun statisticsContains(at: Long) =

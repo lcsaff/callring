@@ -718,6 +718,7 @@ class CallringBackendTest {
         docs.beforeWrite = { store.state.myPositionId = caller.id }
         val range = DateRange(LocalDate.parse("2026-10-12"), LocalDate.parse("2026-10-12"), "UTC")
         api.reports.exportCsv(ReportExportQuery("30001", range), DocumentRef("memory")).value()
+        assertArrayEquals(javaClass.getResourceAsStream("/report/t09a-original.csv")!!.use { it.readBytes() }, docs.bytes.toByteArray())
         val lines = docs.bytes.toString("UTF-8").removePrefix("\uFEFF").split("\r\n")
         val headers = csvValues(lines[0])
         val values = csvValues(lines[1])

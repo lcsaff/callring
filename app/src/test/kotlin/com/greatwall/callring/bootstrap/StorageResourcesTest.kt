@@ -31,6 +31,20 @@ class StorageResourcesTest {
             object : CoreUnitOfWork {
                 private val session =
                     object : CoreWriteSession {
+                        override fun visitReportCalls(
+                            number: String,
+                            start: Long,
+                            end: Long,
+                            ascending: Boolean,
+                            accept: (ReportCallFact) -> Unit,
+                        ): Unit = error("unused")
+
+                        override fun statisticsEnabled(): Boolean = error("unused")
+
+                        override fun homeQuietMode(): QuietMode = error("unused")
+
+                        override fun latestVisibleReportCall(): ReportCallFact? = error("unused")
+
                         override fun decisionInputs(): DecisionInputs = error("unused")
 
                         override fun statisticsContains(at: Long): Boolean = error("unused")
