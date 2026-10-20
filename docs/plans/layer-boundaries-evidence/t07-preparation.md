@@ -23,3 +23,11 @@ CallStore.save先清除所有旧linked_screen_id变更，再插入/更新行，�
 基于 db9b9a2 的独立只读复核：UI CallerSearch/Page 无 cursor，paged 使用 Long offset，越界仍返回原请求页号/大小和全部匹配数。空搜索可 SQL COUNT/ORDER BY number/LIMIT/OFFSET；非空 Unicode 精确搜索不能在找到一页后停止，因为还需 totalItems。分批读取 number/name/department 必要投影，使用原 contains(ignoreCase=true) 规则，仅保留本页匹配行，再批读本页岗位，内存 O(pageSize)。不加载全量 CallerProfile 或 calls；这是搜索本身必要的查询形状，不是旧全状态回退。号码排序按既有有效 ASCII 号码路径验证，历史格式也补样本，不能误换按姓名/岗位排序。
 
 UnicodeSearchPattern 当前供 AI GLOB 使用，注释不是与 JVM 字符串匹配等价的证据。补对照：İ/ı、Σ/σ/ς、K/k、ß/ẞ、补充平面；字面 % _ * ? [ ]、trim/组合字符/NUL、多字段去重、页边界/空结果/Int.MAX_VALUE、岗位关系，以及零 calls 查询。不要把 AI 的 callers UNION calls/cursor 协议套到 UI 搜索。
+
+## 删除号码格式候选复核
+
+有效 n 仅包含 +/digits；原 NumberIdentity 仅删除格式/空白字符，不改变保留字符顺序。因此可按 n 生成顺序 GLOB 超集（如 *3*1*2*3*4*），查询 DISTINCT raw number 后用原 NumberIdentity 精确确认，再按确认的变体 count/unlink/delete。独立 Python SQLite 随机2000个有效格式变体均进入候选，是辅助机制验证，不能代替 Android 回归。
+
+前导 * 可能使 SQLite 内部扫描全部 calls；此方案减少返回/解码字段，不能声称数据库内部扫描恒定或命中号码索引。候选逐行精确过滤，仅保留确认变体，不加载 CallRecord。impact 与最终删除必须各自处于一致 session，写事务内重新确认候选和总 count。IN分批时先解除所有目标行自身的 outgoing links，再开始任何批删除；非目标 incoming 引用仍应触发FK失败并回滚。只删除canonical n的profile，保留variant profiles；空call集合仍可删除profile-only。数量用累计Long计数，不用distinct变体数冒充。绑定参数，不拼raw TEXT。
+
+补回归：全部允许Unicode空白/格式符、+与重复数字/最长号码、假阳性的非删除字符、跨变体/跨批linked records、外部FK引用、impact后新增variant的count冲突。

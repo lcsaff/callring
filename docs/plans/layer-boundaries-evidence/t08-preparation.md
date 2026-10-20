@@ -2,6 +2,8 @@
 
 基于b3f4ab7稳定源码，只读预查，未实施。
 
+T06完成后的删除审计补充：StorageMigration.upgrade 仍调用 StorageSession.load/saveCalls，并对 logId==null 的 current 重分类，v1还调用旧 CallCorrelation.reconcile。T08删除旧关联入口时必须同步该真实升级消费者，使用同一原生分类/关联算法和定向存储，保留现有v1/v2→v3迁移行为，不新增schema版本。CallringDatabase.onCreate 也通过 StorageSession.load/save 导入初始日历；T09/T13须改定向初始化，不能在最终旧协议守卫豁免。见legacy-removal-ledger。
+
 - CallCorrelation的候选度数使用完整同号码索引；直接匹配±5000ms且account相等或任一unknown，只有双向各唯一才关联。缓存候选最多两个以判断歧义，不能把LIMIT1误作唯一。
 - 指定center只限制待写集合为±10000ms，候选索引不因此截断。首版可按设计允许读取该号码全部候选，不读其他号码；若要进一步窗口化，必须证明反向候选度数闭包，不可仅加载写窗口。
 - 旧reconcile按time排序，旧SQLite装载按id建立插入顺序；窄查询用time,id稳定顺序保留同时间行为。hidden/count/result/legacyResult仅按原规则变更，不改original事实。
