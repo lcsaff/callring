@@ -1,5 +1,7 @@
 package com.greatwall.callring.platform.ai
 
+import com.greatwall.callring.data.codec.parseAiJson
+
 import android.database.Cursor
 import android.database.DatabaseUtils
 import android.database.sqlite.SQLiteDatabase
@@ -32,7 +34,7 @@ internal class RecordingScopedReadAdapter(private val db:SQLiteDatabase,private 
     private fun archiveRow(id:Long,generation:Long,metadata:String?):SourceRow {
         if(metadata==null)throw BackendFailure(ApiError(ErrorCode.SYSTEM_RESTRICTED,"ai.archive_metadata_capacity"))
         val fields=db.rawQuery("SELECT field,total FROM archive_text_fields WHERE call_id=? AND generation=? ORDER BY field",arrayOf(id.toString(),generation.toString())).use{c->buildMap{while(c.moveToNext())put(c.getString(0),c.getLong(1))}}
-        return SourceRow(id.toString(),parseConversationJson(metadata) as AiJson.Obj,fields)
+        return SourceRow(id.toString(),parseAiJson(metadata) as AiJson.Obj,fields)
     }
     private fun eventSql(projection:String)=when(projection){
         "default","events"->"SELECT id entity_key,id eventId,-id callId,session_id,number,started,account FROM recording_events"

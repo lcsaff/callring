@@ -7,9 +7,20 @@ import com.greatwall.callring.application.ports.BackendFailure
 import java.time.*
 
 /** Legacy names remain callable, but read from source projections rather than UI list loaders. */
-class ScopedToolReader(private val q:AiQueryApi) {
+class ScopedToolReader(private val q:QueryService) {
     companion object {val legacyReads=setOf(2,3,4,5,6,9,11,14,18,22,25,30,33,36,38,44,45,47,50,51,54,61,62,64)}
     suspend fun read(index:Int,a:AiJson.Obj):AiJson {
+        val domains=when(index) {
+            2 -> setOf(AiDomain.D10,AiDomain.D06,AiDomain.D19,AiDomain.D05)
+            4 -> setOf(AiDomain.D01,AiDomain.D02)
+            5 -> setOf(AiDomain.D01,AiDomain.D05,AiDomain.D06,AiDomain.D04)
+            9 -> setOf(AiDomain.D06,AiDomain.D05,AiDomain.D04)
+            51 -> setOf(AiDomain.D13,AiDomain.D14)
+            else -> emptySet()
+        }
+        return if(domains.isEmpty())readSources(index,a)else q.coherent(domains){readSources(index,a)}
+    }
+    private suspend fun readSources(index:Int,a:AiJson.Obj):AiJson {
         fun limit():Int {
             val page=a.optObj("page")
             if((page?.optL("pageIndex")?:0L)!=0L)throw BackendFailure(ApiError(ErrorCode.VALIDATION,"ai.source_cursor_required"))

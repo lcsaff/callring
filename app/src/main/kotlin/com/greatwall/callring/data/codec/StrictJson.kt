@@ -1,4 +1,4 @@
-package com.greatwall.callring.platform
+package com.greatwall.callring.data.codec
 
 /**
  * Android's org.json accepts comments, unquoted keys and duplicate keys. Import files must be

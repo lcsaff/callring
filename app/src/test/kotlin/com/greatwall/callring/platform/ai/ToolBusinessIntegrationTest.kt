@@ -1,5 +1,7 @@
 package com.greatwall.callring.platform.ai
 
+import com.greatwall.callring.data.codec.parseAiJson
+
 import com.greatwall.callring.application.mapping.*
 import android.content.*
 import android.database.*
@@ -251,7 +253,7 @@ class ToolBusinessIntegrationTest {
             } }
             val executor = ToolExecutor({ root },fixture.coordinator,fixture.foreground,fixture.resources,registry,documentWriteVerified={fixture.docs.verifyWrite(it)})
             fun scope(id: String) = ToolExecutionContext("session","turn",1,CommandContext(id,fixture.coordinator.capture(),1) { true })
-            val call = ConversationToolCall("call",definition.name,parseConversationJson(arguments(definition.index,fixture.recordingId)) as AiJson.Obj)
+            val call = ConversationToolCall("call",definition.name,parseAiJson(arguments(definition.index,fixture.recordingId)) as AiJson.Obj)
             val receipt = withTimeout(10000) { executor.execute(call,scope("op")) }
             assertTrue("${definition.id} ${definition.name}: $receipt",receipt.status in setOf(ToolStatus.READ,ToolStatus.COMMITTED,ToolStatus.QUEUED,ToolStatus.LAUNCHED))
             assertNull("${definition.id}: ${receipt.error}",receipt.error)
@@ -298,7 +300,7 @@ class ToolBusinessIntegrationTest {
             val definition = executor.registry.definitions.single { it.index == index }
             for(changed in listOf(false,true)) {
                 val command = CommandContext(java.util.UUID.randomUUID().toString(),fixture.coordinator.capture(),1) { true }
-                val result = async { executor.execute(ConversationToolCall("call",definition.name,parseConversationJson(arguments(index,fixture.recordingId)) as AiJson.Obj),ToolExecutionContext("s","t",1,command)) }
+                val result = async { executor.execute(ConversationToolCall("call",definition.name,parseAiJson(arguments(index,fixture.recordingId)) as AiJson.Obj),ToolExecutionContext("s","t",1,command)) }
                 val ticket = withTimeout(5000) { fixture.foreground.pending.filterNotNull().first() }
                 when(val target = ticket.confirmation) {
                     is ConfirmationTarget.Position -> { assertEquals(2L,target.id); assertEquals("Role2",target.name) }

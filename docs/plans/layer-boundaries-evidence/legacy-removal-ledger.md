@@ -4,8 +4,8 @@
 
 | 当前旧路径 | 仍使用它的业务 | 删除门 |
 |---|---|---|
-| `BackendContext` 及扩展式业务服务 | 报表/首页、铃声、小组件/运行状态等尚未迁出的业务；设置/档案/来电服务已迁窄依赖，但当前总装配仍在 Context | T09–T10 逐片迁出，T13 删除类及全部引用；禁止替换成另一个万能上下文 |
-| `BackendStore` 全状态 read/transaction、`BackendState`、`SqliteBackendStore` 全量装载/差异保存 | 尚未迁出的普通业务和旧完整快照 | T06b–T09 改为窄事务/专用快照模型，最后消费者迁出后删除；T13/T14 检查禁止旧符号 |
+| `BackendContext` 及扩展式业务服务 | 铃声、小组件/运行状态及当前总装配；设置/档案/来电/报表/首页/完整快照已迁出 | T10迁出并删除类及全部引用；禁止替换成另一个万能上下文 |
+| `BackendStore` 全状态 read/transaction、`BackendState`、`SqliteBackendStore` 全量装载/差异保存 | recording findCall旧read、初始化及旧fixture；完整快照已迁专用事实 | T10目标录音查找、T13初始化/fixture退出后彻底删除；T14检查禁止旧符号 |
 | `StorageResources` 的 legacy 资源投影 | 上述全状态调用 | 随最终旧存储消费者迁出删除，保留统一的显式资源生命周期 |
 | classifier/correlation 接受 `BackendState` 的入口及全状态决策 capture 重载 | 旧入口已删除；剩余 BackendState 的 WorkInputs 实现仅随读/快照和 fixture 继续退出 | T06b/T08 已用实际输入闭包；T09/T13 删除最后旧模型消费者 |
 | schema 初始化/升级中使用旧全状态协议 | onCreate 仍用 StorageSession.load/save；upgrade 已于T08迁出 | T13 改定向初始化；T08 已删除升级 saveCalls/State 关联入口，最终守卫不得豁免初始化 |
@@ -24,5 +24,7 @@ T07 已删除 CallersService、旧 CallerProjection 包装、UiEdits.profile 预
 T08 已删除 calling 全状态业务、coreTransaction/coreScopeValues、DecisionSnapshot.capture(BackendState)、CallCorrelation 的 State overload 及无调用 StorageSession.saveCalls。旧 CallStore 与新 calling 复用唯一 codec。普通生产 writer 已全部退出 BackendStore.transaction，剩余接口/转发与 seed fixture 是 T13 必须删除的债；不得声称仍有 calling 消费者。完整旧存储的读/快照尚有 T09、录音 findCall 尚有 T10、onCreate 初始化尚有 T13 真实消费者。notifyChanged 仍有 RingtoneService 三处，changedScopeKeys 仍有 AppearanceService；随对应后续片关闭。
 
 T09a 已删除旧 Home/Reports Context工厂与业务、ReportCalculator.timeRange/report、Context.page/meta/read/lock/revision、QuerySupport.paged和SettingsValidation.requireIssues。Context当前普通消费者仅剩运行状态/铃声/小组件及总装配；CoreSnapshotProjection仍使用score/quality/reportTotals/visible/currentSchedule/stats与复制助手及旧完整状态捕获，T09b迁出即删。CSV及CallerRowCodec均为共享唯一实现，无兼容转发。
+
+T09b 已删除BackendStore.captureFull、CallringBackend.captureCore、Context完整入口、CoreSnapshotProjection/ReportCalculator文件及score/quality/reportTotals/visible/currentSchedule/stats、quiet/schedule/windows复制旧助手。FullSnapshotReader只返回专用深冻结facts；SQL源的BackendState/分类/评分业务退出，唯一JSON/StrictJson codec真迁data且旧platform文件删除。SettingsValidation只剩真实widgetId消费者T10。目录会话和完整快照资源各有唯一生命周期，无旧validateRead重载/无迁移fallback。
 
 最终证据应包含生产与测试符号搜索、编译类路径、架构正反例，以及无旧路径可执行的回归结果。历史基线与审查文档保留原貌，不将历史文字当作当前代码残留。

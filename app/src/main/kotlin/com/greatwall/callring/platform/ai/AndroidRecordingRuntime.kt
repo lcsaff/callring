@@ -225,18 +225,18 @@ class AndroidRecordingRuntime(
                     next.setOnCompletionListener { finishPlayback(it) }
                     next.setOnErrorListener { mp, _, _ -> finishPlayback(mp); true }
                     next.start(); player = next;playbackCallId=callId
-                    coordinator.changed("recording"); coordinator.record(command)
+                    coordinator.publishRuntime(setOf("runtime:recordingPlayback")); coordinator.record(command)
                 } }
             } catch (failure: Exception) { next.release(); throw failure }
         }
     }
-    private fun finishPlayback(value: MediaPlayer) { val changed = synchronized(filesLock) { if(player === value) { stopPlayer(); true } else false }; if(changed) coordinator.changed("recording") }
+    private fun finishPlayback(value: MediaPlayer) { val changed = synchronized(filesLock) { if(player === value) { stopPlayer(); true } else false }; if(changed) coordinator.publishRuntime(setOf("runtime:recordingPlayback")) }
     private fun stopPlayer() { player?.release(); player = null;playbackCallId=null }
     override suspend fun stop(): ApiResult<Unit> = stopWith(null)
     private suspend fun stopWith(command: CommandContext?) = result { coordinator.guard(command) {
         playbackGeneration.incrementAndGet()
         synchronized(filesLock) { stopPlayer() }
-        coordinator.changed("recording"); coordinator.record(command)
+        coordinator.publishRuntime(setOf("runtime:recordingPlayback")); coordinator.record(command)
     } }
     override suspend fun setSystemFolder(document: DocumentRef) = folderWith(document, null)
     private suspend fun folderWith(document: DocumentRef, command: CommandContext?) = result {

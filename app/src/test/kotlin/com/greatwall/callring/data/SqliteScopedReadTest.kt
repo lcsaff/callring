@@ -20,6 +20,26 @@ import org.robolectric.annotation.Config
 @Config(sdk=[33],manifest=Config.NONE)
 class SqliteScopedReadTest {
 
+    @Test fun callCursorIgnoresQuietCommitButRejectsChangedCalls()=runBlocking {
+        SqliteBackendStore(RuntimeEnvironment.getApplication(),"scoped-dependencies.db").use { store ->
+            val fact=ClassificationFact(false,WorkReason.OUTSIDE_WORK_HOURS,null,true,"UTC",1,null,0)
+            store.transaction { state ->
+                state.profiles["31234"]=ProfileRecord("31234")
+                repeat(3) { i -> state.calls[i+1L]=RawCallRecord(i+1L,"31234",1000L+i,30,CallResult.ANSWERED.toDomain(),CallDecision.NORMAL_RINGING.toDomain(),CallSource.SYSTEM_CALL_LOG.toDomain(),null,null,true,fact.toDomain(),fact.toDomain()) }
+                state.nextCallId=4
+            }
+            val coordinator=BusinessRevisionCoordinator()
+            val query=QueryService(listOf(store.scopedReads(coordinator)))
+            val first=query.query(QuerySpec(AiDomain.D04,limit=1)).requiredValue()
+            store.sessions.writeQuiet { writer -> val old=writer.quiet();writer.saveQuiet(old.copy(settings=old.settings.copy(allNumbers=!old.settings.allNumbers))) }
+            coordinator.publishCore(setOf("quiet"),com.greatwall.callring.application.coordination.ChangeImpact.wide(setOf(com.greatwall.callring.contracts.change.DataDomain.QUIET_HOURS)))
+            val second=query.query(QuerySpec(AiDomain.D04,cursor=first.nextCursor,limit=1)).requiredValue()
+            assertEquals(first.stamp.sourceVersion,second.stamp.sourceVersion)
+            store.sessions.writeCalling { writer -> val old=writer.callingCall(1)!!;writer.updateCallingCalls(listOf(old to old.copy(duration=99))) }
+            coordinator.publishCore(setOf("calls"),com.greatwall.callring.application.coordination.ChangeImpact.wide(setOf(com.greatwall.callring.contracts.change.DataDomain.CALLS)))
+            assertTrue(query.query(QuerySpec(AiDomain.D04,cursor=second.nextCursor,limit=1)) is ApiResult.Failure)
+        }
+    }
     @Test @Config(sdk=[29]) fun searchMatchesUiNumberNameDepartmentCaseAndTrimAcrossPages()=runBlocking {
         SqliteBackendStore(RuntimeEnvironment.getApplication(),"search-ui-equivalence.db").use{store->
             val records=listOf(ProfileRecord("+31234",name="Synthetic",department="UNIT"),ProfileRecord("91234",name="Συνθετικό",department="Kelvin K"),ProfileRecord("56789",name="x*y[z]?",department="unit"))

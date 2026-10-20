@@ -1,5 +1,7 @@
 package com.greatwall.callring.platform.ai
 
+import com.greatwall.callring.data.codec.parseAiJson
+
 import com.greatwall.callring.domain.ai.ThinkingContract
 import com.greatwall.callring.contracts.common.*
 import com.greatwall.callring.contracts.ai.*
@@ -7,7 +9,7 @@ import com.greatwall.callring.application.recording.model.*
 import com.greatwall.callring.application.recording.policy.*
 import com.greatwall.callring.application.conversation.*
 import com.greatwall.callring.application.ports.*
-import com.greatwall.callring.platform.StrictJson
+import com.greatwall.callring.data.codec.StrictJson
 import java.io.ByteArrayOutputStream
 import java.net.HttpURLConnection
 import java.net.URL
@@ -125,7 +127,7 @@ class CompatibleConversationClient(private val openConnection: (URL) -> HttpURLC
                         val function = call.getJSONObject("function")
                         require(call.get("id") is String && function.get("name") is String && function.get("arguments") is String)
                         val raw = function.getString("arguments")
-                        val args = runCatching { parseConversationJson(raw) as AiJson.Obj }
+                        val args = runCatching { parseAiJson(raw) as AiJson.Obj }
                         calls += ConversationToolCall(call.getString("id"), function.getString("name"), args.getOrDefault(aiObject()),
                             if(args.isFailure) ApiError(ErrorCode.VALIDATION,"ai.argument_json",aiFailure=ConversationFailure(AiFailureKind.ARGUMENT_JSON,"ARGUMENT_JSON")) else null, raw)
                     }
@@ -138,8 +140,8 @@ class CompatibleConversationClient(private val openConnection: (URL) -> HttpURLC
                 for(i in 0 until array.length()) {
                     val block = array.getJSONObject(i)
                     when(block.getString("type")) {
-                        "text" -> { content += block.getString("text"); blocks += parseConversationJson(block.toString()) }
-                        "tool_use" -> { calls += ConversationToolCall(block.getString("id"), block.getString("name"), parseConversationJson(block.getJSONObject("input").toString()) as AiJson.Obj); blocks += parseConversationJson(block.toString()) }
+                        "text" -> { content += block.getString("text"); blocks += parseAiJson(block.toString()) }
+                        "tool_use" -> { calls += ConversationToolCall(block.getString("id"), block.getString("name"), parseAiJson(block.getJSONObject("input").toString()) as AiJson.Obj); blocks += parseAiJson(block.toString()) }
                         else -> fail("ai.protocol_shape")
                     }
                 }

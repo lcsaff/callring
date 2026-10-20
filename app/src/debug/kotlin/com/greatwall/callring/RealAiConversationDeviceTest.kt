@@ -18,7 +18,7 @@ import com.greatwall.callring.contracts.ai.*
 import com.greatwall.callring.application.conversation.ForegroundActionService
 import com.greatwall.callring.application.requiredValue
 import com.greatwall.callring.bootstrap.BackendGraph
-import com.greatwall.callring.platform.ai.parseConversationJson
+import com.greatwall.callring.data.codec.parseAiJson
 import com.greatwall.callring.ui.app.CallringActivity
 import com.greatwall.callring.ui.app.UiDestination
 import java.io.File
@@ -186,7 +186,7 @@ class AiConversationPersistenceDeviceTest:InstrumentationTestCase() {
         check(expected.length()==10)
         val graph=(context as CallringApplication).backendGraph
         val actual=profiles(graph)
-        repeat(expected.length()){i->val row=expected.getJSONObject(i);check(actual[row.getString("number")]==parseConversationJson(row.toString())){"A persisted synthetic profile changed"}}
+        repeat(expected.length()){i->val row=expected.getJSONObject(i);check(actual[row.getString("number")]==parseAiJson(row.toString())){"A persisted synthetic profile changed"}}
         check(graph.api.settings.getAppearance().requiredValue().colorMode==ColorMode.DARK)
         check(graph.api.conversation.state.value.messages.isEmpty()){"Chat must not persist across process restart"}
         val activity=launchProofActivity(instrumentation,UiDestination.Conversation,"conversation")

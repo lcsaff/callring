@@ -9,6 +9,18 @@ import org.junit.Assert.*
 import org.junit.Test
 
 class ScopedQueryAssemblyTest {
+    @Test fun recordingConfigurationDisclosesProviderObservationWithoutInventingARevision()=runBlocking {
+        var name="folder";var access="GRANTED"
+        val source=ValueScopedReadSource(setOf(AiDomain.D13),{0L}){sequenceOf(SourceRow("current",aiObject("folderName" to aiString(name),"folderAccess" to aiString(access))))}
+        val query=QueryService(listOf(source))
+        val before=query.get(AiDomain.D13,"current").requiredValue()
+        name="renamed";access="DENIED"
+        val after=query.get(AiDomain.D13,"current").requiredValue()
+        assertEquals("live_probe",before.stamp.consistency)
+        assertEquals(before.stamp.sourceVersion,after.stamp.sourceVersion)
+        assertEquals("renamed",after.value["folderName"].string())
+        assertEquals("DENIED",after.value["folderAccess"].string())
+    }
     @Test fun safeViewsAreLazyAndPagingNeverCallsAnotherDomain()=runBlocking {
         var appearances=0;var ai=0
         val source=ValueScopedReadSource(setOf(AiDomain.D11,AiDomain.D14),{0L}){spec->

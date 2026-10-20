@@ -1,5 +1,7 @@
 package com.greatwall.callring.platform.ai
 
+import com.greatwall.callring.data.codec.parseAiJson
+
 import android.database.DatabaseUtils
 import android.database.sqlite.SQLiteDatabase
 import com.greatwall.callring.contracts.common.*
@@ -50,7 +52,7 @@ internal class ArchiveProjectionIndex(private val db:SQLiteDatabase,private val 
         if(budget<4)return Advance(false,0)
         checkActive()
         if(indexed(id,generation))return Advance(true,0)
-        val saved=db.rawQuery("SELECT generation,state FROM archive_parse_progress WHERE call_id=?",arrayOf(id.toString())).use{c->if(c.moveToFirst()&&c.getLong(0)==generation)parseConversationJson(c.getString(1)) as AiJson.Obj else null}
+        val saved=db.rawQuery("SELECT generation,state FROM archive_parse_progress WHERE call_id=?",arrayOf(id.toString())).use{c->if(c.moveToFirst()&&c.getLong(0)==generation)parseAiJson(c.getString(1)) as AiJson.Obj else null}
         fun current(){val now=db.rawQuery("SELECT generation FROM archives WHERE call_id=?",arrayOf(id.toString())).use{c->if(c.moveToFirst())c.getLong(0)else null};if(now!=generation)throw BackendFailure(ApiError(ErrorCode.CONFLICT,"recording.changed"))}
         if(saved==null)transaction {
             current()

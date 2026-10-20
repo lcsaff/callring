@@ -47,6 +47,7 @@ class BackendGraph(
     private val store = StorageResources {
         SqliteBackendStore(application, configuration.databaseName, configuration.sqlAccessProbe)
     }
+    internal val fullSnapshotReader:com.greatwall.callring.application.ports.store.FullSnapshotReader get()=store
     val playbackState = PlaybackStateTracker()
     val playbackCommands by lazy {
         ensureOpen()
@@ -146,7 +147,7 @@ class BackendGraph(
     val queries:QueryService get()=queriesDelegate.value
     /** Safe aggregate counters; reading them neither opens a store nor probes platform state. */
     fun businessReadCounters():Map<String,Long> = mapOf("coreOpens" to store.coreOpens.get(), "coreStateLoads" to store.stateLoadCount(),"completeCaptures" to store.completeCaptures.get(),"sourceQueries" to if(queriesDelegate.isInitialized())queries.sourceQueries.get()else 0L,"classifications" to com.greatwall.callring.domain.WorkClassifier.evaluations.get(),"runtimeProbes" to AndroidRuntimeProbe.observations.get(), "quietReads" to 0L, "quietWrites" to 0L) + store.narrowAccessCounts()
-    private val snapshotsDelegate = lazy { ensureOpen(); completeSnapshotApi(backend, recordings, diagnostics, coordinator, resources, configuration.clock) }
+    private val snapshotsDelegate = lazy { ensureOpen(); completeSnapshotApi(backend, fullSnapshotReader, recordings, diagnostics, coordinator, resources, configuration.clock) }
     private val conversationDelegate = lazy { ensureOpen(); ConversationService({ api }, queries, { recordings.store.settings() }, coordinator, { CompatibleConversationClient() }, resources = resources,documentWriteVerified={documents.verifyWrite(it)}) }
     private val updateDelegate = lazy { ensureOpen(); com.greatwall.callring.platform.update.AndroidAppUpdate(application) }
     /** 更新平台实现；构造不触网，首次访问才读取 PackageManager。 */

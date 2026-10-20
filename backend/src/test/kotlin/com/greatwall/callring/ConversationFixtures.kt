@@ -21,7 +21,6 @@ class ConversationFixtures {
     private val store = object : BackendStore {
             override fun <T> read(block: (BackendState) -> T) = block(state)
             override fun <T> transaction(block: (BackendState) -> T) = block(state)
-            override fun <T> captureFull(block: (BackendState, List<AuditRecord>) -> T) = block(state, emptyList())
         }
     val backend = CallringBackend(
         store,

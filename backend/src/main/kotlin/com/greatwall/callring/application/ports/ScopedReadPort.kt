@@ -8,6 +8,10 @@ data class SourcePage(val rows:List<SourceRow>,val matchedTotal:Long?,val nextKe
 data class SourceText(val text:String,val start:Long,val end:Long,val total:Long)
 interface ScopedReadPort {
     fun reset()=Unit
+    fun validateRead(domain:AiDomain,rows:List<SourceRow>)=Unit
+    fun delivered(rows:List<SourceRow>)=Unit
+    fun discard(rows:List<SourceRow>)=Unit
+    fun closeCursor(key:String)=Unit
     val domains:Set<AiDomain>
     /** Called outside source transactions. Never acquire the coordinator fence from a SQL read. */
     fun version(domain:AiDomain):Long

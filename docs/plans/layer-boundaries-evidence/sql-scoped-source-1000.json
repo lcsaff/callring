@@ -1,0 +1,52 @@
+{
+  "measurement": "query invocations \/ successful cursor moves consumedRows, not engine scan rows",
+  "scopedRows": [
+    {
+      "tag": "SCOPED_ROWS",
+      "tables": [
+        "calls"
+      ],
+      "queryCalls": 1,
+      "consumedRows": 1,
+      "writtenRows": 0
+    },
+    {
+      "tag": "AGGREGATE",
+      "tables": [
+        "calls"
+      ],
+      "queryCalls": 1,
+      "consumedRows": 1,
+      "writtenRows": 0
+    }
+  ],
+  "scopedAggregate": [
+    {
+      "tag": "SCOPED_SETTING",
+      "tables": [
+        "settings"
+      ],
+      "queryCalls": 4,
+      "consumedRows": 4,
+      "writtenRows": 0
+    },
+    {
+      "tag": "SCOPED_ROWS",
+      "tables": [
+        "calls"
+      ],
+      "queryCalls": 1,
+      "consumedRows": 1,
+      "writtenRows": 0
+    },
+    {
+      "tag": "WORK_ROWS",
+      "tables": [
+        "config_versions"
+      ],
+      "queryCalls": 1,
+      "consumedRows": 1,
+      "writtenRows": 0
+    }
+  ]
+}

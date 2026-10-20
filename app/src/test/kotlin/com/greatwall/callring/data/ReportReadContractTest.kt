@@ -260,6 +260,61 @@ class ReportReadContractTest {
                 assertEquals("one actual document stream write", 1, documentWrites)
                 assertTrue(output.toString("UTF-8").endsWith("\r\n"))
             }
+            measure("scopedRows") {
+                val page =
+                    graph.queries
+                        .query(
+                            com.greatwall.callring.contracts.ai.QuerySpec(
+                                com.greatwall.callring.contracts.ai.AiDomain.D04,
+                                filter =
+                                    com.greatwall.callring.contracts.ai.QueryFilter(
+                                        number = LocalAccessFixture.TARGET,
+                                    ),
+                            ),
+                        )
+                        .requiredValue()
+                assertTrue(page.complete)
+                assertEquals(1L, page.matchedTotal)
+            }
+            measure("scopedAggregate") {
+                val result =
+                    graph.queries
+                        .aggregate(
+                            com.greatwall.callring.contracts.ai.AggregateSpec(
+                                com.greatwall.callring.contracts.ai.AiDomain.D05,
+                                "reportTotals",
+                                com.greatwall.callring.contracts.ai.QueryFilter(
+                                    number = LocalAccessFixture.TARGET,
+                                ),
+                            ),
+                        )
+                        .requiredValue()
+                assertTrue(result.complete)
+            }
+            java.io.File("build/qa").mkdirs()
+            java.io
+                .File("build/qa/scoped-source-access-$size.json")
+                .writeText(
+                    org.json
+                        .JSONObject()
+                        .put("unrelatedCallCount", size)
+                        .put("scopedRows", observations.get("scopedRows"))
+                        .put("scopedAggregate", observations.get("scopedAggregate"))
+                        .toString(2),
+                )
+            java.io
+                .File("build/qa/sql-scoped-source-$size.json")
+                .writeText(
+                    org.json
+                        .JSONObject()
+                        .put(
+                            "measurement",
+                            "query invocations / successful cursor moves consumedRows, not engine scan rows",
+                        )
+                        .put("scopedRows", sqlObservations.get("scopedRows"))
+                        .put("scopedAggregate", sqlObservations.get("scopedAggregate"))
+                        .toString(2),
+                )
             java.io.File("build/qa").mkdirs()
             java.io
                 .File("build/qa/report-home-access-$size.json")

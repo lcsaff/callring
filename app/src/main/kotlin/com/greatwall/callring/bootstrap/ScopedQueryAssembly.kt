@@ -1,5 +1,7 @@
 package com.greatwall.callring.bootstrap
 
+import com.greatwall.callring.application.conversation.query.*
+
 import com.greatwall.callring.application.BusinessRevisionCoordinator
 import com.greatwall.callring.contracts.runtime.*
 import com.greatwall.callring.contracts.widget.*
@@ -20,14 +22,14 @@ import kotlinx.coroutines.runBlocking
 fun scopedQueryApi(core:ScopedReadPort,recordings:()->AndroidRecordingRuntime,api:()->CallringUiApi,preferences:()->AndroidPreferences,diagnostics:()->AndroidDiagnosticsStore,directory:SystemRecordingSource,coordinator:BusinessRevisionCoordinator,resources:ForegroundResourceRegistry,playback:()->PlaybackStatus,installed:()->WidgetInstallState,jobs:()->AiJson,clock:Clock):QueryService {
     val recordingSource=object:ScopedReadPort {
         override val domains=setOf(AiDomain.D15,AiDomain.D16)
-        override fun version(domain:AiDomain)=coordinator.capture().values.getValue("recording")
+        override fun version(domain:AiDomain)=coordinator.sourceVersion(domain)
         private fun source()=recordings().store.scopedReads()
         override fun query(spec:QuerySpec,after:String?)=source().query(spec,after)
         override fun get(domain:AiDomain,key:String,projection:String)=source().get(domain,key,projection)
         override fun text(domain:AiDomain,key:String,field:String,start:Long,maxChars:Int)=source().text(domain,key,field,start,maxChars)
         override fun aggregate(spec:AggregateSpec)=source().aggregate(spec)
     }
-    val views=ValueScopedReadSource(setOf(AiDomain.D11,AiDomain.D12,AiDomain.D13,AiDomain.D14,AiDomain.D18,AiDomain.D19),{d->coordinator.capture().values.getValue(when(d){AiDomain.D13->"recordingConfig";AiDomain.D14->"aiConfig";AiDomain.D12->"ringtone";else->"preferences"})}){spec->
+    val views=ValueScopedReadSource(setOf(AiDomain.D11,AiDomain.D12,AiDomain.D13,AiDomain.D14,AiDomain.D18,AiDomain.D19),{d->coordinator.sourceVersion(d)}){spec->
         if(spec.domain==AiDomain.D18){
             require(spec.projection in setOf("default","bindings","installed"))
             val bound=if(spec.projection=="installed")emptySequence()else preferences().scopedBindingRows()
@@ -51,13 +53,13 @@ fun scopedQueryApi(core:ScopedReadPort,recordings:()->AndroidRecordingRuntime,ap
     }
     val diagnosticSource=object:ScopedReadPort {
         override val domains=setOf(AiDomain.D20)
-        override fun version(domain:AiDomain)=coordinator.capture().values.getValue("diagnostics")
+        override fun version(domain:AiDomain)=coordinator.sourceVersion(domain)
         override fun query(spec:QuerySpec,after:String?)=diagnostics().scopedReads().query(spec,after)
         override fun get(domain:AiDomain,key:String,projection:String)=diagnostics().scopedReads().get(domain,key,projection)
         override fun text(domain:AiDomain,key:String,field:String,start:Long,maxChars:Int)=diagnostics().scopedReads().text(domain,key,field,start,maxChars)
         override fun aggregate(spec:AggregateSpec)=diagnostics().scopedReads().aggregate(spec)
     }
-    val sources=listOf(core,recordingSource,views,diagnosticSource,directory.scopedReads({recordings().store.settings().systemFolder},{coordinator.capture().values.getValue("recordingConfig")},resources))
+    val sources=listOf(core,recordingSource,views,diagnosticSource,directory.scopedReads({recordings().store.settings().systemFolder},{coordinator.sourceVersion(AiDomain.D17)},resources))
     require(sources.flatMap{it.domains}.toSet()==AiDomain.entries.toSet())
     return QueryService(sources,clock::millis,coordinator::marker){recordings().store.settings().let{SecretRedactor(listOf(it.analysis.apiKey,it.transcription.apiKey))}}
 }

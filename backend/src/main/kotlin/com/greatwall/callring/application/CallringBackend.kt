@@ -128,7 +128,4 @@ class CallringBackend(
     fun hasRecentPending(nowEpochMillis: Long): Boolean =
         context.decisionQueries.hasRecentPending(nowEpochMillis)
 
-    suspend fun captureCore(at: Long): ApiResult<Map<String, AiJson>> = context.io {
-        context.captureCore(at)
-    }
 }

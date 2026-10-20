@@ -6,7 +6,6 @@ import com.greatwall.callring.application.createSettingsApi
 import com.greatwall.callring.application.report.csvCell
 import com.greatwall.callring.application.mapping.*
 import com.greatwall.callring.application.recording.policy.*
-import com.greatwall.callring.application.score
 import com.greatwall.callring.contracts.callers.*
 import com.greatwall.callring.contracts.common.*
 import com.greatwall.callring.contracts.report.*
@@ -530,12 +529,11 @@ class DomainRegressionTest {
         settings: ScoreSettings = ScoreSettings(5, 2, 3, 30),
         start: Long = 0,
         end: Long = Long.MAX_VALUE,
-    ): ScoreSummary =
-        calculations.score(
-            BackendState().apply { score = settings.toDomain() },
-            calls,
-            TimeRange(start, end, "UTC"),
-        )
+    ): ScoreSummary {
+        val accumulator=com.greatwall.callring.domain.report.StreamingReportAccumulator(settings.toDomain(),TimeRange(start,end,"UTC").toDomain())
+        calls.sortedBy{it.startedAtEpochMillis}.forEach{accumulator.accept(it.startedAtEpochMillis,it.counted,it.classification.working,it.durationSeconds,it.result.toDomain())}
+        return accumulator.score().toContract()
+    }
 
     @Test
     fun equalTimestampCallsAddOneRepeatPerSuccessor() {

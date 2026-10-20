@@ -1,0 +1,1 @@
+backend/src/test/resources/report/t09a-original.csv -text whitespace=cr-at-eol

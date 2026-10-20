@@ -1,11 +1,9 @@
-package com.greatwall.callring.platform.ai
+package com.greatwall.callring.data.codec
 
 import com.greatwall.callring.contracts.ai.*
-import com.greatwall.callring.application.recording.policy.*
-import com.greatwall.callring.platform.StrictJson
 import org.json.*
 
-fun parseConversationJson(text: String): AiJson {
+fun parseAiJson(text: String): AiJson {
     StrictJson.validate(text)
     return conversationJsonValue(JSONTokener(text).nextValue())
 }

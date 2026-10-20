@@ -40,7 +40,8 @@ class ReceiptVerifier(private val q:QueryService) {
         fun compare(actual:AiJson.Obj,expected:AiJson.Obj=a,aliases:Map<String,String> = emptyMap()):Boolean = expected.fields.filterKeys{it !in setOf("taskId","dependsOn")}.all{(key,value)->sameValue(actual[aliases[key]?:key],value,key)}
         fun receiptObject()=receipt.value as? AiJson.Obj?:aiObject()
         try {
-            val matches=when(index) {
+            val readbackDomains=when(index){63->setOf(AiDomain.D01,AiDomain.D16);81->setOf(AiDomain.D01,AiDomain.D03,AiDomain.D16,AiDomain.D18);52->setOf(AiDomain.D13,AiDomain.D14);else->emptySet()}
+            val matches=q.coherent(readbackDomains){when(index) {
                 7->{val v=get(AiDomain.D01,a.s("number"));sameValue(v["stored"],aiBool(true))&&compare(v,aliases=mapOf("positionId" to "position_id"))}
                 8->compare(get(AiDomain.D01,a.s("number")),aiObject("number" to a["number"],"whitelisted" to a["enabled"]))
                 10->documentProof.isNotEmpty()
@@ -93,6 +94,7 @@ class ReceiptVerifier(private val q:QueryService) {
                     receipt.error == null && profileGone && callsGone && archivesGone && bindingsGone
                 }
                 else->false
+            }
             }
             val proof=AiJson.Arr(evidence)
             val actualExternalReceipt=(index==10&&documentProof.isNotEmpty())||(index==67&&foregroundProof.any{it is AiJson.Obj&&it["foregroundAction"]==aiString("CAPABILITY")&&it["result"]==aiString("VERIFIED")})

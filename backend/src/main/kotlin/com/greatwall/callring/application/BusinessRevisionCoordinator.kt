@@ -42,6 +42,7 @@ class BusinessRevisionCoordinator {
     private var revision = 0L
     private val scopeChanges=linkedMapOf<String,Long>()
     private val domainMarkers=versions.keys.associateWith{linkedMapOf(0L to 0L)}
+    fun lastChange(keys:Set<String>):Long=synchronized(fence){keys.maxOfOrNull{scopeChanges[it]?:0L}?:0L}
     fun marker():Long=synchronized(fence){revision}
     fun domainMarker(domain:String,version:Long):Long?=synchronized(fence){domainMarkers[domain]?.get(version)}
     fun unchanged(keys:Set<String>,at:Long)=synchronized(fence){keys.isNotEmpty()&&at<=revision&&keys.none{(scopeChanges[it]?:0L)>at}}
@@ -82,6 +83,14 @@ class BusinessRevisionCoordinator {
     fun record(context: CommandContext?) { if(context != null) synchronized(fence) { commandCommits[context.operationId] = capture();commandMarkers[context.operationId]=revision } }
     fun committedMarker(operationId:String):Long?=synchronized(fence){commandMarkers[operationId]}
     fun committed(operationId: String): RevisionVector? = synchronized(fence) { commandCommits[operationId] }
-    fun runtimeChanged() = synchronized(fence) { revision = Math.addExact(revision,1); scopeChanges["runtime"] = revision; changes.value = DataChange(revision,DataDomain.values().toSet(),null,null); invalidations.publish(revision, ChangeImpact.wide(DataDomain.entries.toSet())) }
+    fun publishRuntime(keys:Set<String>)=synchronized(fence) {
+        if(keys.isEmpty())return@synchronized
+        revision=Math.addExact(revision,1)
+        keys.forEach{scopeChanges[it]=revision}
+        val impact=ChangeImpact.wide(setOf(DataDomain.RUNTIME))
+        changes.value=DataChange(revision,impact.domains.keys,null,null)
+        invalidations.publish(revision,impact)
+    }
+    fun runtimeChanged()=publishRuntime(setOf("runtime","runtime:capabilities"))
     fun <T> commit(domain: String, context: CommandContext? = null, block: () -> T): T = guard(context) { block().also { changed(domain); record(context) } }
 }

@@ -15,7 +15,7 @@ class LazyBackendStoreTest {
             opened++
             object : BackendStore, com.greatwall.callring.application.ports.store.CoreStorageResource {
                 override val legacy: BackendStore get() = this
-                override val fullSnapshot: com.greatwall.callring.application.ports.store.FullSnapshotReader get() = this
+                override val fullSnapshot: com.greatwall.callring.application.ports.store.FullSnapshotReader get() = error("unused")
                 override val sessions: com.greatwall.callring.application.ports.store.CoreUnitOfWork get() = error("unused")
                 override val scoped: ScopedReadPort get() = error("unused")
                 override fun stateLoadCount() = 0L

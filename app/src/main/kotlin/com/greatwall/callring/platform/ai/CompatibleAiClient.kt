@@ -7,7 +7,7 @@ import com.greatwall.callring.contracts.recording.*
 import com.greatwall.callring.contracts.ai.*
 import com.greatwall.callring.application.recording.model.*
 import com.greatwall.callring.application.recording.policy.*
-import com.greatwall.callring.platform.StrictJson
+import com.greatwall.callring.data.codec.StrictJson
 import org.json.JSONArray
 import org.json.JSONObject
 import org.json.JSONTokener

@@ -1,5 +1,7 @@
 package com.greatwall.callring.platform
 
+import com.greatwall.callring.data.codec.StrictJson
+
 import android.content.ContentResolver
 import android.net.Uri
 import com.greatwall.callring.contracts.common.*

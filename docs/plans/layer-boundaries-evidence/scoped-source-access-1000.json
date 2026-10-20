@@ -1,0 +1,19 @@
+{
+  "unrelatedCallCount": 1000,
+  "scopedRows": {
+    "fullStateLoads": 0,
+    "completeCaptures": 0,
+    "revisionDelta": 0,
+    "narrowAccess": {
+      "sourceQueries": 1
+    }
+  },
+  "scopedAggregate": {
+    "fullStateLoads": 0,
+    "completeCaptures": 0,
+    "revisionDelta": 0,
+    "narrowAccess": {
+      "sourceQueries": 1
+    }
+  }
+}

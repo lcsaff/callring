@@ -201,10 +201,10 @@ UT = ui/src/test/kotlin/com/greatwall/callring/ui
 
 - [x] 在 `AT/data/ReportReadContractTest.kt` 固定范围、过滤、分页总数、重复评分的区间内边界（不引入区间前扣分）、未知时长、本人岗位、CSV 转义/汇总和 DST 样本。
 - [x] 按号码/时间范围流式取事实；领域累加器唯一实现公式；首页组合最小投影，不载入全部业务状态。
-- [ ] AI SQL 源不直接调用业务服务或 platform.ai JSON 解析器；把持久化 JSON codec 归 data，计算移纯领域/应用查询层，保持 D01–D21、游标、scope/version、完整性语义。
-- [ ] 源版本按 D 域真实依赖推进：同域变化使游标/缓存失效，无关域变化不误失效；QueryStamp.scopeRevision 保持既有披露/冲突语义，不能替换为 UI 观察令牌。
-- [ ] 显式 FullSnapshotReader 取代 BackendStore.captureFull；保持大小限制、审计和秘密脱敏，普通查询/闲聊/发现零完整快照。
-- [ ] 补 `AT/data/QuerySnapshotConsistencyTest.kt`：读令牌与快照数据一致；并发提交时重读或拒绝过期，不能给旧结果贴新版本。
+- [x] AI SQL 源不直接调用业务服务或 platform.ai JSON 解析器；把持久化 JSON codec 归 data，计算移纯领域/应用查询层，保持 D01–D21、游标、scope/version、完整性语义。
+- [x] 源版本按 D 域真实依赖推进：同域变化使游标/缓存失效，无关域变化不误失效；QueryStamp.scopeRevision 保持既有披露/冲突语义，不能替换为 UI 观察令牌。
+- [x] 显式 FullSnapshotReader 取代 BackendStore.captureFull；保持大小限制、审计和秘密脱敏，普通查询/闲聊/发现零完整快照。
+- [x] 补 `AT/data/QuerySnapshotConsistencyTest.kt`：读令牌与快照数据一致；并发提交时重读或拒绝过期，不能给旧结果贴新版本。
 
 **门：** 首页、报表、普通源查询脱离全状态；完整快照仍单独可用。覆盖 P1/P2/P4，A1/A2/A3/A7。
 
@@ -213,6 +213,8 @@ UT = ui/src/test/kotlin/com/greatwall/callring/ui
 **修改/拆分：** `A/platform/ai/{AiSettingsService,AndroidRecordingRuntime,AndroidRecordingStore}.kt`、`platform/callers/NumberDeletionService.kt`、`B/application/Recording*.kt`、`SharedBusinessCommands.kt`、BackendGraph 和相关装配。
 
 **目标：** `B/application/recording/{RecordingService,AiSettingsService,IdentityAdoptionService}.kt`、`B/application/callers/NumberDeletionService.kt`、recording 端口、app 的 data/recording 与 platform/recording/ai。
+
+执行拆为T10a配置及剩余小服务、T10b录音/身份/组合删除、T10c装配收口三个检查点。T10a迁AI设置及Runtime/Ringtone/Widget窄服务、真实delta唯一发布；T10b迁录音业务和单号码metadata/音频端口、目标call查找、组合顺序及generation/tombstone；T10c拆Core/Recording/Conversation/UiBridgeAssembly并删除BackendContext及最后旧工厂/默认能力。各片分别验证和双审；最后消费者提前迁出时立即删旧设施，不等T10c。全部通过才关闭T10，T11继续删除旧通知协议而不是延迟首次准确发布。
 
 - [ ] 在 `BT/recording/AiSettingsMergeTest.kt`、`BT/callers/NumberDeletionWorkflowTest.kt` 用窄假端口覆盖密钥修改、复制、权限、字段冲突、busy、数量变化、部分失败与重试。
 - [ ] 单号码归档/绑定查询与音频大小端口替代全归档扫描和 backend File 调用；保留录音→核心→绑定顺序、实际部分成功通知和 continueOwnCommits 语义。

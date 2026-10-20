@@ -1,5 +1,6 @@
 package com.greatwall.callring.data
 
+import com.greatwall.callring.application.conversation.query.sourceVersion
 import android.content.Context
 import android.database.sqlite.SQLiteDatabase
 import com.greatwall.callring.application.ports.BackendStore
@@ -21,7 +22,7 @@ constructor(
         get() = this
 
     override val fullSnapshot: com.greatwall.callring.application.ports.store.FullSnapshotReader
-        get() = this
+        get() = SqliteFullSnapshotReader(db, sql, sessions)
 
     private val sessionsDelegate = lazy { SqliteCoreUnitOfWork(db, sql) }
     override val sessions: com.greatwall.callring.application.ports.store.CoreUnitOfWork
@@ -36,7 +37,7 @@ constructor(
         else emptyMap()
 
     override val scoped: com.greatwall.callring.application.ports.ScopedReadPort by lazy {
-        SqliteScopedReadAdapter(db, { 0L }, sql = sql)
+        com.greatwall.callring.application.conversation.query.CoreScopedReadSource(SqliteScopedReadAdapter(db, { 0L }, sql = sql))
     }
 
     override fun stateLoadCount() = stateLoads.get()
@@ -44,7 +45,7 @@ constructor(
     fun scopedReads(
         coordinator: com.greatwall.callring.application.BusinessRevisionCoordinator,
     ): com.greatwall.callring.application.ports.ScopedReadPort =
-        SqliteScopedReadAdapter(db, { coordinator.capture().values.getValue("core") }, sql = sql)
+        com.greatwall.callring.application.conversation.query.CoreScopedReadSource(SqliteScopedReadAdapter(db, { domain -> coordinator.sourceVersion(domain) }, sql = sql))
 
     init {
         helper.setWriteAheadLoggingEnabled(true)
@@ -67,40 +68,6 @@ constructor(
             val result = block(state)
             db.setTransactionSuccessful()
             return result
-        } finally {
-            db.endTransaction()
-        }
-    }
-
-    @Synchronized
-    override fun <T> captureFull(
-        block: (BackendState, List<com.greatwall.callring.domain.AuditRecord>) -> T,
-    ): T {
-        db.beginTransactionNonExclusive()
-        try {
-            checkSnapshotSize(db, sql)
-            stateLoads.incrementAndGet()
-            val state = StorageSession(db, sql).load()
-            val audits =
-                sql.rawQuery(
-                        QueryTag.AUDIT_ROWS,
-                        setOf(SqlTable.CALENDAR_AUDIT),
-                        "SELECT kind,target,raw,created FROM calendar_audit ORDER BY id",
-                        null,
-                    )
-                    .use { c ->
-                        buildList {
-                            while (c.moveToNext()) add(
-                                com.greatwall.callring.domain.AuditRecord(
-                                    c.getString(0),
-                                    c.getString(1),
-                                    c.getString(2),
-                                    c.getLong(3),
-                                ),
-                            )
-                        }
-                    }
-            return block(state, audits).also { db.setTransactionSuccessful() }
         } finally {
             db.endTransaction()
         }

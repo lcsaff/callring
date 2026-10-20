@@ -1,5 +1,7 @@
 package com.greatwall.callring.platform
 
+import com.greatwall.callring.data.codec.StrictJson
+
 import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
 import java.nio.file.Files

@@ -1,0 +1,42 @@
+{
+  "phase": "T09b",
+  "date": "2026-10-21",
+  "productionBase": "b1bf4b0",
+  "gateHead": "390c651fbd661bcc62ad62c2958f74ad990e6171",
+  "specReview": "PASS after overlapping-failure and pending-handle TTL fixes",
+  "qualityReview": "PASS",
+  "completeGate": {
+    "log": "build/qa/layer-boundaries/t09b-full-gate.log",
+    "sha256": "30e7d3f1136b853b36bc3093d29748d9e5a366d971df7cdc2291fe43b9b5d927",
+    "result": "BUILD SUCCESSFUL",
+    "seconds": 94,
+    "tasks": 147,
+    "executed": 17,
+    "upToDate": 130,
+    "backendTests": 296,
+    "uiTests": 298,
+    "appTests": 280,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0,
+    "contractsTests": "NO-SOURCE",
+    "allThreeModulesXmlWrittenAfterFinalGateStart": true
+  },
+  "rootIndependentChecks": {"architectureScript": "PASS", "backendBoundariesScript": "PASS", "backendSourceCount": 105, "architectureTests": 17, "backendBoundaryTests": 4, "workingDiffCheck": "PASS", "stagedDiffCheck": "PASS"},
+  "lint": {"ui": {"Warning": 31, "Hint": 3}, "app": {"Warning": 6}, "Error": 0},
+  "safeAccessEvidence": ["scoped-source-access-1000.json", "scoped-source-access-10000.json", "sql-scoped-source-1000.json", "sql-scoped-source-10000.json"],
+  "sameMeasuredClosuresAcrossFixtureScales": true,
+  "ordinaryFullStateLoads": 0,
+  "ordinaryCompleteSnapshots": 0,
+  "sqlMeasurement": "query invocations and successful cursor result moves; not engine scans",
+  "csvOracle": {
+    "indexBytes": 1197,
+    "indexCrlf": 7,
+    "sha256": "10615668b38d370cf649a56f358214e3ab0a2a821eb4da897022cd3a20eeb66a",
+    "indexEqualsTestedWorkingFile": true,
+    "attributes": "-text whitespace=cr-at-eol",
+    "linuxExecution": "pending remote CI"
+  },
+  "deviceExecuted": false,
+  "remaining": ["T10 narrow recording and final composition", "T11 cumulative refresh protocol cleanup", "T12 named operation catalog", "T13 initialization, fixtures, legacy store deletion and directory cleanup", "T14 CI guards", "T15 final and device acceptance"]
+}

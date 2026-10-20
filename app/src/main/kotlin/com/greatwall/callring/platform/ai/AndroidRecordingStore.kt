@@ -157,7 +157,7 @@ class AndroidRecordingStore(context: Context, namespace: String,
             }) }
             val events = aiObject("events" to rows("SELECT * FROM recording_events ORDER BY id"), "links" to rows("SELECT * FROM recording_statistics_links ORDER BY statistics_id"), "deleted" to rows("SELECT * FROM deleted_archives ORDER BY call_id"))
             val archives = db.rawQuery("SELECT payload FROM archives ORDER BY call_id", null).use { c -> AiJson.Arr(buildList {
-                while (c.moveToNext()) { val text = c.getString(0); com.greatwall.callring.platform.StrictJson.validate(text); add(com.greatwall.callring.application.safeValue(RecordingJson.archive(JSONObject(text)))) }
+                while (c.moveToNext()) { val text = c.getString(0); com.greatwall.callring.data.codec.StrictJson.validate(text); add(com.greatwall.callring.application.safeValue(RecordingJson.archive(JSONObject(text)))) }
             }) }
             db.setTransactionSuccessful()
             return mapOf("D15" to events, "D16" to archives)

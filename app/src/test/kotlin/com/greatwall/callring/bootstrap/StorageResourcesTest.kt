@@ -20,12 +20,30 @@ class StorageResourcesTest {
                 override fun <T> read(block: (BackendState) -> T) = block(state)
 
                 override fun <T> transaction(block: (BackendState) -> T) = block(state)
-
-                override fun <T> captureFull(block: (BackendState, List<AuditRecord>) -> T) =
-                    block(state, emptyList())
             }
-        override val fullSnapshot: FullSnapshotReader
-            get() = legacy
+        override val fullSnapshot = FullSnapshotReader {
+            FullSnapshotFacts(
+                emptyMap(),
+                emptyMap(),
+                emptyMap(),
+                WorkHistory(
+                    emptyList(),
+                    emptyMap(),
+                    emptyMap(),
+                    emptySet(),
+                    emptyMap(),
+                    emptyMap(),
+                    0,
+                ),
+                emptyList(),
+                null,
+                QuietSettings(QuietMode.OFF, false, emptyMap()),
+                QuietMode.NON_WORK,
+                ScoreSettings(5, 2, 10, 30),
+                false,
+                emptyList(),
+            )
+        }
 
         override val sessions =
             object : CoreUnitOfWork {
@@ -273,7 +291,7 @@ class StorageResourcesTest {
         assertEquals(42L, source.query(QuerySpec(AiDomain.D10), null).matchedTotal)
         assertEquals(QuietMode.OFF, resources.readQuiet { it.quiet().settings.mode })
         resources.read { it.nextCallId }
-        resources.captureFull { _, _ -> Unit }
+        resources.capture()
         assertEquals(1, opens.get())
         assertEquals(7L, resources.stateLoadCount())
         assertEquals(1L, resources.completeCaptures.get())
@@ -282,7 +300,7 @@ class StorageResourcesTest {
         assertEquals(1, fake.closes)
         assertThrows(BackendFailure::class.java) { resources.read {} }
         assertThrows(BackendFailure::class.java) { resources.transaction {} }
-        assertThrows(BackendFailure::class.java) { resources.captureFull { _, _ -> } }
+        assertThrows(BackendFailure::class.java) { resources.capture() }
         assertThrows(BackendFailure::class.java) { resources.readQuiet {} }
         assertThrows(BackendFailure::class.java) { resources.writeQuiet {} }
         assertThrows(BackendFailure::class.java) { resources.readSession {} }
@@ -362,7 +380,12 @@ class StorageResourcesTest {
         val changed = CountDownLatch(1)
         val writer = Thread {
             check(entered.await(5, TimeUnit.SECONDS))
-            coordinator.changed("core")
+            coordinator.publishCore(
+                setOf("quiet"),
+                com.greatwall.callring.application.coordination.ChangeImpact.wide(
+                    setOf(com.greatwall.callring.contracts.change.DataDomain.QUIET_HOURS),
+                ),
+            )
             changed.countDown()
         }
         writer.start()
