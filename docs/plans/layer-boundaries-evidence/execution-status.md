@@ -12,8 +12,8 @@
 | T02 兼容/订阅清单 | 已完成基线检查点 | 81 工具/12 API 源冻结/订阅矩阵/3 项 loader characterization，规格与质量审查通过 |
 | T03 contracts | 已完成，339ccd0 | 全量223/283/220、编译/依赖门及双审通过；见t03-review.md |
 | T04 纯领域 | 已完成 | 原生模型、穷尽映射、WorkInputs/DecisionInputs；全量238/283/220及双审通过，见t04-review.md |
-| T05 窄会话/累计失效/懒资源 | 已完成，T05a faaf3b0及T05b检查点 | T05b全量245/290/233、双审与修复复审通过；quiet真实SQL/两个VM证据齐全 |
-| T06 设置 | 准备实施剩余片 | quiet已在T05b完成；其余简单设置及历史批处理待迁移 |
+| T05 窄会话/累计失效/懒资源 | 已完成，T05a faaf3b0及T05b b99c5ae | T05b全量245/290/233、双审与修复复审通过；quiet真实SQL/两个VM证据齐全 |
+| T06 设置 | T06a简单设置实施中 | quiet已完成；score/overlay/statistics/appearance/positions/summary在迁移，work/calendar/leaves留T06b |
 | T07 档案 | 未开始 | 依赖 T06 |
 | T08 来电/导入 | 未开始 | 依赖 T07 |
 | T09 报表/源查询/快照 | 未开始 | 依赖 T08 |
