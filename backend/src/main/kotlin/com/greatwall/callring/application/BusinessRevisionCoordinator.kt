@@ -27,11 +27,14 @@ class BusinessRevisionCoordinator {
         }
     }
     fun publishCore(keys: Set<String>, impact: ChangeImpact) = synchronized(fence) {
+        publishResource("core", keys, impact)
+    }
+    fun publishResource(domain: String, keys: Set<String>, impact: ChangeImpact) = synchronized(fence) {
         if (keys.isEmpty()) return@synchronized
-        versions["core"] = Math.addExact(versions.getValue("core"), 1)
+        versions[domain] = Math.addExact(versions.getValue(domain), 1)
         revision = Math.addExact(revision, 1)
-        (keys + "core").forEach { scopeChanges[it] = revision }
-        domainMarkers.getValue("core").let { history -> history[versions.getValue("core")] = revision; if (history.size > 1024) history.remove(history.keys.first()) }
+        (keys + domain).forEach { scopeChanges[it] = revision }
+        domainMarkers.getValue(domain).let { history -> history[versions.getValue(domain)] = revision; if (history.size > 1024) history.remove(history.keys.first()) }
         invalidations.publish(revision, impact)
         changes.value = DataChange(revision, impact.domains.keys, null, null)
     }

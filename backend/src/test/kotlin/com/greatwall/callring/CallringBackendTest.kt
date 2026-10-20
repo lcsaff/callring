@@ -234,7 +234,7 @@ class CallringBackendTest {
             Clock.fixed(Instant.ofEpochMilli(now), ZoneOffset.UTC),
             Dispatchers.Unconfined,
             CalendarSource { annualCalendar() },
-            quietTransactions = MemoryQuietTransactions(store),
+            coreTransactions = MemoryQuietTransactions(store),
         )
 
     @Test

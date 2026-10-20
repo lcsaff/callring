@@ -9,7 +9,7 @@ import com.greatwall.callring.ui.state.*
 
 class SettingsSummaryViewModel(private val api: CallringUiApi) : SnapshotViewModel<SettingsSummary>(
     api.changes, setOf(DataDomain.STATISTICS, DataDomain.OVERLAY_SETTINGS, DataDomain.QUIET_HOURS,
-        DataDomain.POSITIONS, DataDomain.WORK_CALENDAR, DataDomain.SCORE_SETTINGS, DataDomain.APPEARANCE), api.settings::getSummary
+        DataDomain.POSITIONS, DataDomain.WORK_CALENDAR, DataDomain.SCORE_SETTINGS, DataDomain.APPEARANCE), api.settings::getSummary, refreshFromChanges = true
 ) {
     fun statistics(enabled: Boolean) = write({ api.settings.setStatisticsEnabled(enabled) })
     fun overlay(enabled: Boolean) = write({ api.settings.setOverlayEnabled(enabled) })
@@ -34,7 +34,7 @@ class ScoreSettingsViewModel(private val api: CallringUiApi, @Suppress("UNUSED_P
 }
 
 class PositionsViewModel(private val api: CallringUiApi) : SnapshotViewModel<PositionSettings>(
-    api.changes, setOf(DataDomain.POSITIONS, DataDomain.CALLERS), api.settings::getPositions
+    api.changes, setOf(DataDomain.POSITIONS), api.settings::getPositions, refreshFromChanges = true
 ) {
     fun save(command: SavePosition) = write({ api.settings.savePosition(command) }, "职位已保存")
     fun saveDraft(command: SavePosition, base: SavePosition?) = write({ api.edits.position(base, command) }, "职位已保存")

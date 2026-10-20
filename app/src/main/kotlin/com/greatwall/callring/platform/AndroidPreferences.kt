@@ -77,9 +77,8 @@ class AndroidPreferences(
         )
     }
 
-    override fun saveAppearance(settings: AppearanceSettings) = coordinator.commit("preferences") { saveAppearanceInternal(settings) }
-    @Synchronized private fun saveAppearanceInternal(settings: AppearanceSettings) {
-        val before=getAppearance()
+    @Synchronized
+    override fun saveAppearance(settings: AppearanceSettings) {
         updatePreferences(
             appearance,
             mapOf(
@@ -89,8 +88,6 @@ class AndroidPreferences(
                 "custom_seed" to settings.customSeedRgb,
             ),
         )
-        val old=com.greatwall.callring.application.appearanceScopeValues(before);val new=com.greatwall.callring.application.appearanceScopeValues(settings)
-        coordinator.publishScopes((old.keys+new.keys).filterTo(linkedSetOf()){old[it]!=new[it]})
     }
 
     @Synchronized

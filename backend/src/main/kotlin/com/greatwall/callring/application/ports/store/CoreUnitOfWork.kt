@@ -2,7 +2,6 @@ package com.greatwall.callring.application.ports.store
 
 import com.greatwall.callring.domain.model.QuietSettings
 import com.greatwall.callring.domain.model.QuietMode
-import com.greatwall.callring.domain.StatisticsInterval
 
 data class QuietConfiguration(val settings: QuietSettings, val lastMode: QuietMode)
 interface QuietReader { fun quiet(): QuietConfiguration }
@@ -11,14 +10,19 @@ interface QuietTransactions {
     fun <T> readQuiet(block: (QuietReader) -> T): T
     fun <T> writeQuiet(block: (QuietWriter) -> T): T
 }
-/** Explicit absence for calculation-only compositions; never loads legacy full state. */
-object UnavailableQuietTransactions : QuietTransactions {
-    override fun <T> readQuiet(block: (QuietReader) -> T): T = error("quiet.storage.unavailable")
-    override fun <T> writeQuiet(block: (QuietWriter) -> T): T = error("quiet.storage.unavailable")
+interface CoreReadSession : QuietReader, ScoreReader, OverlayReader, StatisticsReader, PositionReader, SummaryReader {
 }
-interface CoreReadSession : QuietReader { fun statistics(): List<StatisticsInterval> }
-interface CoreWriteSession : CoreReadSession, QuietWriter { fun appendStatistics(value: StatisticsInterval) }
-interface CoreUnitOfWork : QuietTransactions {
+interface CoreWriteSession : CoreReadSession, QuietWriter, ScoreWriter, OverlayWriter, StatisticsWriter, PositionWriter {
+}
+
+interface CoreUnitOfWork : QuietTransactions, ScoreTransactions, OverlayTransactions, StatisticsTransactions, PositionTransactions, SummaryTransactions {
     fun <T> readSession(block: (CoreReadSession) -> T): T
     fun <T> writeSession(block: (CoreWriteSession) -> T): T
+    override fun <T> readScore(block: (ScoreReader) -> T): T = readSession { block(it) }
+    override fun <T> writeScore(block: (ScoreWriter) -> T): T = writeSession { block(it) }
+    override fun <T> writeOverlay(block: (OverlayWriter) -> T): T = writeSession { block(it) }
+    override fun <T> writeStatistics(block: (StatisticsWriter) -> T): T = writeSession { block(it) }
+    override fun <T> readPositions(block: (PositionReader) -> T): T = readSession { block(it) }
+    override fun <T> writePositions(block: (PositionWriter) -> T): T = writeSession { block(it) }
+    override fun <T> readSummary(block: (SummaryReader) -> T): T = readSession { block(it) }
 }

@@ -2,24 +2,43 @@ package com.greatwall.callring.ui.state
 
 import com.greatwall.callring.contracts.common.*
 import com.greatwall.callring.contracts.change.*
-import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.*
+import kotlinx.coroutines.flow.*
 
 open class SnapshotViewModel<T>(
     changes: ChangeFeed,
     domains: Set<DataDomain>,
     private val load: suspend () -> ApiResult<T>,
-    testScope: CoroutineScope? = null
+    testScope: CoroutineScope? = null,
+    private val refreshFromChanges: Boolean = false
 ) : UiViewModel(testScope) {
     private val loader = RequestLoader<T>(scope)
-    val state = loader.state
+    private val mutableState = MutableStateFlow(LoadState<T>())
+    val state = if (refreshFromChanges) mutableState.asStateFlow() else loader.state
+    private val observation = ChangeObserver(changes, ChangeSubscription(domains))
+    private val refreshCoordinator = RefreshCoordinator(scope, observation::token, {
+        try { load() } catch (cancelled: CancellationException) { throw cancelled }
+        catch (_: Exception) { ApiResult.Failure(ApiError(ErrorCode.INTERNAL, "设置未完成，请重试", retryable = true)) }
+    }, { result ->
+        mutableState.value = when (result) {
+            is ApiResult.Success -> LoadState(result.value, loaded = true)
+            is ApiResult.Failure -> mutableState.value.copy(loading = false, error = result.error)
+        }
+    }, { loading -> mutableState.value = mutableState.value.copy(loading = loading) })
     private val writer = MutationRunner(scope)
     val mutation = writer.state
 
-    init { observeChanges(changes, domains, refresh = ::refresh) }
+    init {
+        if (refreshFromChanges) observation.start(scope) { refreshCoordinator.request(force = observation.token() == null) }
+        else observeChanges(changes, domains, refresh = ::refresh)
+    }
 
-    fun refresh() = loader.load { load() }
+    fun refresh() {
+        if (refreshFromChanges) refreshCoordinator.request(force = true)
+        else loader.load { load() }
+    }
 
-    protected fun <R> write(operation: suspend () -> ApiResult<R>, successMessage: String = "设置已更新", onSuccess: (R) -> Unit = { refresh() }) =
+    protected fun <R> write(operation: suspend () -> ApiResult<R>, successMessage: String = "设置已更新", onSuccess: (R) -> Unit = { if (!refreshFromChanges) refresh() }) =
         writer.run(operation, successMessage, onSuccess)
 
     // Useful for composed presentation models whose operations are injected alongside their query.

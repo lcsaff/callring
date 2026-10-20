@@ -203,6 +203,7 @@ class DomainRegressionTest {
             unusedPort(),
             Clock.fixed(Instant.parse("2026-10-14T02:00:00Z"), ZoneOffset.UTC),
             Dispatchers.Unconfined,
+            coreTransactions = unusedPort(),
         )
     }
 

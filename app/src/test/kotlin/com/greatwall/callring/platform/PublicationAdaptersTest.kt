@@ -25,7 +25,8 @@ class PublicationAdaptersTest {
         assertEquals(1L, coordinator.capture().values["preferences"])
         assertEquals(listOf(WidgetBinding(7, "31234")), preferences.listBindings())
         preferences.saveAppearance(initial.copy(colorMode = ColorMode.DARK))
-        assertEquals(2L, coordinator.capture().values["preferences"])
+        assertEquals("appearance persistence publishes only through its business service", 1L, coordinator.capture().values["preferences"])
+        assertEquals(ColorMode.DARK, preferences.getAppearance().colorMode)
         AndroidDiagnosticsStore(context.getSharedPreferences("publication_diag", 0), Clock.systemUTC(), coordinator).use { it.add(DiagnosticEvent.AUDIO_PLAYING) }
         assertEquals(1L, coordinator.capture().values["diagnostics"])
     }

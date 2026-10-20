@@ -25,8 +25,6 @@ internal fun BackendContext.validateWeekly(weekly: Map<Int, List<TimeWindow>>, f
     requireIssues(com.greatwall.callring.domain.model.SettingsRules.weekly(weekly.mapValues { (_, windows) -> windows.map { it.toDomain() } }, field))
 internal fun BackendContext.validateWindows(windows: List<TimeWindow>, field: String) =
     requireIssues(com.greatwall.callring.domain.model.SettingsRules.windows(windows.map { it.toDomain() }, field))
-internal fun BackendContext.validateQuiet(q: QuietSettings) =
-    requireIssues(com.greatwall.callring.domain.model.SettingsRules.quiet(q.toDomain()))
 internal fun BackendContext.validateZone(zone: String, field: String = "zoneId") =
     requireIssues(com.greatwall.callring.domain.model.SettingsRules.zone(zone, field))
 

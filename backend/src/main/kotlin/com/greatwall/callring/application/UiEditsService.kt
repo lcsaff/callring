@@ -32,32 +32,11 @@ internal fun createUiEditsApi(context: BackendContext): UiEditsApi = with(contex
                 merge("makeup", base.makeup, value.makeup, current.makeup)) } }
         }) { c, v -> createSettingsApi(c).saveWorkSchedule(v) }
 
-        override suspend fun score(base: ScoreSettings, value: ScoreSettings) = edit({
-            read { s -> s.score.let { current -> ScoreSettings(
-                merge("offHoursWeight", base.offHoursWeight, value.offHoursWeight, current.offHoursWeight),
-                merge("repeatWeight", base.repeatWeight, value.repeatWeight, current.repeatWeight),
-                merge("repeatMinutes", base.repeatMinutes, value.repeatMinutes, current.repeatMinutes),
-                merge("observationDays", base.observationDays, value.observationDays, current.observationDays)) } }
-        }) { c, v -> createSettingsApi(c).saveScoreSettings(v) }
+        override suspend fun score(base: ScoreSettings, value: ScoreSettings) = scoreService.edit(base, value)
 
-        override suspend fun appearance(base: AppearanceSettings, value: AppearanceSettings) = edit({
-            preferences.getAppearance().let { current -> AppearanceSettings(
-                merge("selection", base.selection, value.selection, current.selection),
-                merge("presetId", base.presetId, value.presetId, current.presetId),
-                merge("customSeedRgb", base.customSeedRgb, value.customSeedRgb, current.customSeedRgb),
-                merge("colorMode", base.colorMode, value.colorMode, current.colorMode)) }
-        },appearanceDirty(base,value).mapTo(linkedSetOf()){ "appearance:$it" }.ifEmpty{setOf("appearance:colorMode")}) { c, v -> c.io { c.saveAppearanceExact(v, preserveNull = false,baseline=base,dirtyFields=appearanceDirty(base,value)) } }
+        override suspend fun appearance(base: AppearanceSettings, value: AppearanceSettings) = appearanceService.edit(base, value)
 
-        override suspend fun position(base: SavePosition?, value: SavePosition) = edit({
-            if (base == null) { requireField(value.id == null, "id", "draft.baseline_required"); value }
-            else read { s ->
-                requireField(base.id == value.id, "id", "draft.identity_changed")
-                val current = s.positions[value.id] ?: fail(ErrorCode.CONFLICT, "draft.deleted", "id")
-                value.copy(name = merge("name", base.name, value.name, current.name),
-                    level = merge("level", base.level, value.level, current.level),
-                    active = merge("active", base.active, value.active, current.active))
-            }
-        }) { c, v -> createSettingsApi(c).savePosition(v) }
+        override suspend fun position(base: SavePosition?, value: SavePosition) = positionService.edit(base, value)
 
         override suspend fun leave(base: SaveLeave?, value: SaveLeave) = edit({
             if (base == null) { requireField(value.id == null, "id", "draft.baseline_required"); value }
@@ -78,7 +57,6 @@ private fun <T> BackendContext.merge(field: String, base: T, draft: T, current: 
 }
 
 private fun profileDirty(a:CallerDraft,b:CallerDraft)=setOfNotNull(if(a.name!=b.name)"name"else null,if(a.department!=b.department)"department"else null,if(a.positionId!=b.positionId)"positionId"else null,if(a.whitelisted!=b.whitelisted)"whitelisted"else null)
-private fun appearanceDirty(a:AppearanceSettings,b:AppearanceSettings)=setOfNotNull(if(a.selection!=b.selection)"selection"else null,if(a.presetId!=b.presetId)"presetId"else null,if(a.customSeedRgb!=b.customSeedRgb)"customSeedRgb"else null,if(a.colorMode!=b.colorMode)"colorMode"else null)
 private suspend fun <T, R> BackendContext.edit(prepare: () -> T,keys:Set<String> = setOf("core"), save: suspend (BackendContext, T) -> ApiResult<R>): ApiResult<R> {
     val prepared = io {
         coordinator.guard(commandContext) {

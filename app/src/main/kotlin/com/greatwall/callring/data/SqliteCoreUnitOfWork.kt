@@ -2,7 +2,7 @@ package com.greatwall.callring.data
 
 import android.database.sqlite.SQLiteDatabase
 import com.greatwall.callring.application.ports.store.*
-import com.greatwall.callring.domain.StatisticsInterval
+import com.greatwall.callring.domain.PositionRecord
 import com.greatwall.callring.domain.model.*
 import org.json.JSONObject
 
@@ -54,15 +54,23 @@ internal class SqliteCoreUnitOfWork(private val db: SQLiteDatabase, private val 
             storedLastMode = value.lastMode
             return changed.isNotEmpty()
         }
-        override fun statistics(): List<StatisticsInterval> {
-            checkActive()
-            return sql.query(QueryTag.SCOPED_ROWS, "statistics_intervals", arrayOf("start", "end"), null, null, null, null, "id").use { c ->
-                buildList { while (c.moveToNext()) add(StatisticsInterval(c.getLong(0), if (c.isNull(1)) null else c.getLong(1))) }
-            }
-        }
-        override fun appendStatistics(value: StatisticsInterval) {
-            checkActive(true)
-            db.insertOrThrow("statistics_intervals", null, values("start" to value.startMillis, "end" to value.endMillis))
-        }
+        private val settings = com.greatwall.callring.data.settings.SqliteSimpleSettings(sql, ::checkActive)
+        override fun score() = settings.score()
+        override fun saveScore(value: ScoreSettings) = settings.saveScore(value)
+        override fun overlay() = settings.overlay()
+        override fun saveOverlay(value: Boolean) = settings.saveOverlay(value)
+        override fun statisticsHead() = settings.statisticsHead()
+        override fun openStatistics(at: Long) = settings.openStatistics(at)
+        override fun closeStatistics(id: Long, at: Long) = settings.closeStatistics(id, at)
+        override fun positions() = settings.positions()
+        override fun position(id: Long) = settings.position(id)
+        override fun myPositionId() = settings.myPositionId()
+        override fun positionNameExists(name: String, except: Long?) = settings.positionNameExists(name, except)
+        override fun positionReferenced(id: Long) = settings.positionReferenced(id)
+        override fun positionNumbers(id: Long) = settings.positionNumbers(id)
+        override fun putPosition(value: PositionRecord, insert: Boolean) = settings.putPosition(value, insert)
+        override fun deletePosition(id: Long) = settings.deletePosition(id)
+        override fun saveMyPosition(id: Long?) = settings.saveMyPosition(id)
+        override fun settingsSummary() = settings.settingsSummary()
     }
 }

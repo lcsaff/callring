@@ -108,6 +108,7 @@ class LocalAccessContractTest {
                 sqlObservations.put(name, JSONArray(sqlWindow))
                 val after = graph.businessReadCounters()
                 val revisionDelta = graph.coordinator.marker() - beforeRevision
+                if (name == "scoreRead") assertEquals("score must avoid full state loading", 0L, after.getValue("coreStateLoads") - before.getValue("coreStateLoads"))
                 if (name.startsWith("quiet")) {
                     assertEquals("quiet must avoid full state loading", 0L, after.getValue("coreStateLoads") - before.getValue("coreStateLoads"))
                     assertEquals(if (name == "quietRead" || name == "quietNoop") 0L else 1L, revisionDelta)
@@ -125,6 +126,7 @@ class LocalAccessContractTest {
                 assertEquals("$name must preserve every unrelated profile/call fact",
                     unrelatedBefore, unrelatedFacts())
             }
+            measure("scoreRead") { assertEquals(ScoreSettings(5, 2, 10, 30), graph.api.settings.getScoreSettings().requiredValue()) }
             measure("quietRead") {
                 assertEquals(QuietMode.OFF, graph.api.settings.getQuietHours().requiredValue().mode)
             }
@@ -192,8 +194,7 @@ class LocalAccessContractTest {
                     .put("unrelatedReportInitialLoads", reportLoads).put("unrelatedReportReloads", 0))
                 val count = graph.businessReadCounters().getValue("quietReads")
                 graph.api.settings.saveAppearance(configuration.defaultAppearance).requiredValue()
-                // This is a legacy producer and intentionally still broad in this stage.
-                withTimeout(5000) { while (graph.businessReadCounters().getValue("quietReads") < count + 2) delay(1) }
+                assertEquals("appearance is unrelated to quiet", count, graph.businessReadCounters().getValue("quietReads"))
             } finally { uiScope.cancel() }
             output.writeText(observations.toString(2))
         } finally {

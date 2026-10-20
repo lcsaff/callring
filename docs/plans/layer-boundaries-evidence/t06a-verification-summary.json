@@ -1,0 +1,43 @@
+{
+  "phase": "T06a",
+  "date": "2026-10-21",
+  "productionBase": "b99c5ae",
+  "specReview": "PASS",
+  "qualityReviewIncludingCleanup": "PASS",
+  "completeGate": {
+    "log": "build/qa/layer-boundaries/t06a-freeze-final.log",
+    "sha256": "fb38984c451cf9bac996b03cecb35a1f88432a5c74fb19f0bd5b33b5ac8cb1de",
+    "result": "BUILD SUCCESSFUL",
+    "seconds": 46,
+    "tasks": 146,
+    "backendTests": 257,
+    "uiTests": 293,
+    "appTests": 236,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0,
+    "contractsTests": "NO-SOURCE",
+    "includes": ["Debug", "ui/app lint", "BackendQa Kotlin compilation", "UI AndroidTest Kotlin compilation"]
+  },
+  "subsequentMechanicalCleanup": {
+    "change": "Inline synchronized appearance persistence override and delete one-use private forwarding helper",
+    "log": "build/qa/layer-boundaries/t06a-cleanup-followup.log",
+    "sha256": "eba243cd4c273785412ad4e9964a84af68b551ea2fbdebee33562bdf0d3aa47a",
+    "result": "BUILD SUCCESSFUL",
+    "seconds": 13,
+    "tasks": 52,
+    "tests": 3,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0,
+    "completeGateRerun": false,
+    "appXmlNowContainsOnlyTargetedRun": true
+  },
+  "rootIndependentChecks": {"architectureScript": "PASS", "backendBoundariesScript": "PASS", "architectureTests": 17, "backendBoundaryTests": 4, "diffCheck": "PASS"},
+  "lint": {"ui": {"Warning": 31, "Hint": 3}, "app": {"Warning": 6}, "Error": 0},
+  "safeAccessEvidence": ["settings-access-1000.json", "settings-access-10000.json", "sql-settings-1000.json", "sql-settings-10000.json"],
+  "onlyCrossScaleDifference": "unrelatedCallCount",
+  "deviceExecuted": false,
+  "T06Complete": false,
+  "remaining": ["T06b work/calendar/override/leaves", "Legacy storage/context consumers T07-T10/T13", "Remaining refresh compatibility deletion T11", "quiet read coarse core consistency debt"]
+}

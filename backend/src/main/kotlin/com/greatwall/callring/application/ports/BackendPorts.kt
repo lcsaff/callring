@@ -29,12 +29,8 @@ fun interface CalendarSource {
     fun fetch(year: Int): CalendarImport
 }
 
-interface PreferenceStore {
+interface PreferenceStore : com.greatwall.callring.application.ports.store.AppearanceStore {
     fun listBindings(): List<WidgetBinding> = throw BackendFailure(ApiError(ErrorCode.SYSTEM_UNAVAILABLE, "snapshot.bindings_unavailable"))
-    fun getAppearance(): AppearanceSettings
-
-    fun saveAppearance(settings: AppearanceSettings)
-
     fun getBinding(widgetId: Int): WidgetBinding?
 
     fun saveBinding(binding: WidgetBinding)

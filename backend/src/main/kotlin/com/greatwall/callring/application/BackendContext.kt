@@ -32,16 +32,30 @@ internal class BackendContext(
     internal val coordinator: BusinessRevisionCoordinator = BusinessRevisionCoordinator(),
     internal val commandContext: CommandContext? = null,
     internal val decisions: AtomicReference<DecisionSnapshot?> = AtomicReference(null),
-    internal val quietTransactions: com.greatwall.callring.application.ports.store.QuietTransactions = com.greatwall.callring.application.ports.store.UnavailableQuietTransactions,
+    internal val coreTransactions: com.greatwall.callring.application.ports.store.CoreUnitOfWork,
 ) {
+    internal val scoreService = com.greatwall.callring.application.settings.ScoreSettingsService(coreTransactions, coordinator, dispatcher, commandContext)
+    internal val appearanceService = com.greatwall.callring.application.settings.AppearanceService(preferences, coordinator, dispatcher, commandContext)
+    internal val overlayService = com.greatwall.callring.application.settings.OverlaySettingsService(coreTransactions, { runtimeProbe.getStatus().capabilities[Capability.OVERLAY] ?: AccessState.UNKNOWN }, coordinator, dispatcher, { enabled ->
+        decisions.get()?.let { current -> decisions.set(DecisionSnapshot.capture(current.inputs.copy(overlayEnabled = enabled))) }
+    }, commandContext)
+    internal val statisticsService = com.greatwall.callring.application.settings.StatisticsSettingsService(coreTransactions, coordinator, dispatcher, clock, syncScheduler, { change ->
+        decisions.get()?.let { current ->
+            val intervals = if (change.before == null) current.inputs.statisticsIntervals + change.after
+                else current.inputs.statisticsIntervals.map { if (it == change.before) change.after else it }
+            decisions.set(DecisionSnapshot.capture(current.inputs.copy(statisticsIntervals = intervals)))
+        }
+    }, commandContext)
+    internal val positionService = com.greatwall.callring.application.settings.PositionService(coreTransactions, coordinator, dispatcher, commandContext)
+    internal val summaryService = com.greatwall.callring.application.settings.SettingsSummaryService(coreTransactions, preferences, coordinator, dispatcher, clock)
     internal val lock = coordinator.fence
     internal val revision get() = coordinator.changes.value.dataRevision
     internal val allDomains = frozenSet(DataDomain.values().toSet())
     // Conflation retains a complete invalidation, so slow collectors never lose a changed domain.
     internal val events get() = coordinator.changes
 
-    fun bound(command: CommandContext) = BackendContext(store, preferences, documents, runtimeProbe, audio, syncScheduler, clock, dispatcher, calendarSource, coordinator, command, decisions, quietTransactions)
-    internal val quietService = com.greatwall.callring.application.settings.QuietSettingsService(quietTransactions, coordinator, dispatcher, { quiet ->
+    fun bound(command: CommandContext) = BackendContext(store, preferences, documents, runtimeProbe, audio, syncScheduler, clock, dispatcher, calendarSource, coordinator, command, decisions, coreTransactions)
+    internal val quietService = com.greatwall.callring.application.settings.QuietSettingsService(coreTransactions, coordinator, dispatcher, { quiet ->
         decisions.get()?.let { current -> decisions.set(DecisionSnapshot.capture(current.inputs.copy(quiet = quiet))) }
     }, commandContext)
 

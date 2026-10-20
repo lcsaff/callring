@@ -23,10 +23,25 @@ class StorageResourcesTest {
         override val fullSnapshot: FullSnapshotReader get() = legacy
         override val sessions = object : CoreUnitOfWork {
             private val session = object : CoreWriteSession {
+                override fun score(): ScoreSettings = error("unused")
+                override fun saveScore(value: ScoreSettings): Boolean = error("unused")
+                override fun overlay(): Boolean = error("unused")
+                override fun saveOverlay(value: Boolean): Boolean = error("unused")
+                override fun statisticsHead(): StatisticsHead = error("unused")
+                override fun openStatistics(at: Long): Unit = error("unused")
+                override fun closeStatistics(id: Long, at: Long): Unit = error("unused")
+                override fun positions(): List<PositionRecord> = error("unused")
+                override fun position(id: Long): PositionRecord? = error("unused")
+                override fun myPositionId(): Long? = error("unused")
+                override fun positionNameExists(name: String, except: Long?): Boolean = error("unused")
+                override fun positionReferenced(id: Long): Boolean = error("unused")
+                override fun positionNumbers(id: Long): Set<String> = error("unused")
+                override fun putPosition(value: PositionRecord, insert: Boolean): PositionRecord = error("unused")
+                override fun deletePosition(id: Long): Unit = error("unused")
+                override fun saveMyPosition(id: Long?): Unit = error("unused")
+                override fun settingsSummary(): CoreSettingsSummary = error("unused")
                 override fun quiet() = QuietConfiguration(state.quiet, state.lastQuietMode)
                 override fun saveQuiet(value: QuietConfiguration): Boolean { state.quiet = value.settings; state.lastQuietMode = value.lastMode; return true }
-                override fun statistics() = state.statisticsIntervals.toList()
-                override fun appendStatistics(value: StatisticsInterval) { state.statisticsIntervals += value }
             }
             override fun <T> readQuiet(block: (QuietReader) -> T) = block(session)
             override fun <T> writeQuiet(block: (QuietWriter) -> T) = block(session)

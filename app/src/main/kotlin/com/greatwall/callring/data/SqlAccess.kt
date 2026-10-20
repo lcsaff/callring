@@ -6,7 +6,7 @@ import android.database.DatabaseUtils
 import android.database.sqlite.SQLiteDatabase
 
 /** Fixed labels only: observations never retain SQL, bind values, or exception messages. */
-enum class QueryTag { SNAPSHOT_ROWS, LOAD_ROWS, NEXT_ID_MAX, SEQUENCE, AGGREGATE, SCOPED_ROWS, SCOPED_TEXT, SCOPED_SETTING, WORK_ROWS, PREFLIGHT_SCHEMA, PREFLIGHT_AGGREGATE, AUDIT_ROWS, DIRECT_UPDATE, DIRECT_INSERT }
+enum class QueryTag { SNAPSHOT_ROWS, LOAD_ROWS, NEXT_ID_MAX, SEQUENCE, AGGREGATE, SCOPED_ROWS, SCOPED_TEXT, SCOPED_SETTING, WORK_ROWS, PREFLIGHT_SCHEMA, PREFLIGHT_AGGREGATE, AUDIT_ROWS, DIRECT_UPDATE, DIRECT_INSERT, DIRECT_DELETE }
 enum class SqlTable(val sqlName: String) {
     CALLS("calls"), CALLERS("callers"), POSITIONS("positions"), SETTINGS("settings"), STATISTICS_INTERVALS("statistics_intervals"), CONFIG_VERSIONS("config_versions"), CALENDAR_YEARS("calendar_years"), CALENDAR_DAYS("calendar_days"), OVERRIDES("overrides"), LEAVES("leaves"), CALENDAR_AUDIT("calendar_audit"), SQLITE_SEQUENCE("sqlite_sequence"), SQLITE_MASTER("sqlite_master"), OTHER("other");
     companion object { internal fun named(name: String) = entries.firstOrNull { it.sqlName == name } ?: OTHER }
@@ -42,6 +42,13 @@ internal class SqlAccess(val database: SQLiteDatabase, private val probe: SqlAcc
     fun insert(table: String, values: android.content.ContentValues) {
         write(QueryTag.DIRECT_INSERT, table) { database.insertOrThrow(table, null, values); 1L }
     }
+    fun insertReturningId(table: String, values: android.content.ContentValues): Long {
+        var id = 0L
+        write(QueryTag.DIRECT_INSERT, table) { id = database.insertOrThrow(table, null, values); 1L }
+        return id
+    }
+    fun delete(table: String, where: String, args: Array<String>): Int =
+        write(QueryTag.DIRECT_DELETE, table) { database.delete(table, where, args).toLong() }.toInt()
     private fun cursor(tag: QueryTag, tables: Set<SqlTable>, open: () -> Cursor): Cursor {
         val observer = probe ?: return open()
         val labels = tables.toSet()

@@ -14,12 +14,13 @@ internal class StorageResources(private val factory: () -> CoreStorageResource) 
     private var instance: CoreStorageResource? = null
     private val closing = java.util.concurrent.atomic.AtomicBoolean()
     val completeCaptures = AtomicLong()
+    val coreOpens = AtomicLong()
     private fun ensureOpen() { if (closing.get()) throw BackendFailure(ApiError(ErrorCode.SYSTEM_UNAVAILABLE, "backend.closed")) }
     private fun <T> lease(block: (CoreStorageResource) -> T): T {
         ensureOpen()
         return synchronized(this) {
             ensureOpen()
-            val resource = instance ?: factory().also { instance = it }
+            val resource = instance ?: factory().also { instance = it; coreOpens.incrementAndGet() }
             block(resource)
         }
     }

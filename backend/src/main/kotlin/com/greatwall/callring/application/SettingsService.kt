@@ -13,57 +13,11 @@ import kotlinx.coroutines.flow.*
 internal fun createSettingsApi(context: BackendContext): SettingsApi =
     with(context) {
         object : SettingsApi {
-            override suspend fun getSummary(): ApiResult<SettingsSummary> = io {
-                val appearance = preferences.getAppearance()
-                read { s ->
-                    SettingsSummary(
-                        stats(s),
-                        s.overlayEnabled,
-                        s.quiet.mode.toContract(),
-                        s.positions[s.myPositionId]?.let { option(s, it) },
-                        currentSchedule(s).zoneId,
-                        s.score.toContract(),
-                        appearance,
-                        meta(),
-                    )
-                }
-            }
+            override suspend fun getSummary() = summaryService.get()
 
-            override suspend fun setStatisticsEnabled(enabled: Boolean): ApiResult<Unit> = write {
-                val changed = mutate { s ->
-                    if (stats(s) == enabled) false
-                    else {
-                        var at = clock.millis()
-                        if (enabled) {
-                            at =
-                                maxOf(
-                                    at,
-                                    s.statisticsIntervals.mapNotNull { it.endMillis }.maxOrNull()
-                                        ?: Long.MIN_VALUE,
-                                )
-                            s.statisticsIntervals += StatisticsInterval(at, null)
-                        } else {
-                            val index = s.statisticsIntervals.indexOfLast { it.endMillis == null }
-                            val interval = s.statisticsIntervals[index]
-                            s.statisticsIntervals[index] =
-                                interval.copy(endMillis = maxOf(at, interval.startMillis))
-                        }
-                        true
-                    }
-                }
-                if (enabled && changed)
-                    try {
-                        syncScheduler.requestSync(clock.millis())
-                    } catch (_: Exception) {
-                        /* scheduling failure cannot roll back an already committed statistics interval */
-                    }
-                Unit
-            }
+            override suspend fun setStatisticsEnabled(enabled: Boolean) = statisticsService.set(enabled)
 
-            override suspend fun setOverlayEnabled(enabled: Boolean): ApiResult<Unit> = write {
-                if (enabled) capability(Capability.OVERLAY)
-                mutate { it.overlayEnabled = enabled }
-            }
+            override suspend fun setOverlayEnabled(enabled: Boolean) = overlayService.set(enabled)
 
             override suspend fun getQuietHours(): ApiResult<QuietSettings> = quietService.get()
 
@@ -74,48 +28,10 @@ internal fun createSettingsApi(context: BackendContext): SettingsApi =
 
             override suspend fun setQuietEnabled(enabled: Boolean): ApiResult<QuietSettings> = quietService.enabled(enabled)
 
-            override suspend fun getPositions(): ApiResult<PositionSettings> = io {
-                read { PositionSettings(options(it), it.myPositionId) }
-            }
-
-            override suspend fun savePosition(command: SavePosition): ApiResult<PositionOption> =
-                write {
-                    val name = command.name.trim()
-                    requireField(name.isNotEmpty(), "name", "name.required")
-                    requireField(command.level > 0, "level", "level.invalid")
-                    mutate { s ->
-                        requireField(command.id == null || requireNotNull(command.id) > 0, "id", "id.invalid")
-                        if (command.id != null && command.id !in s.positions)
-                            fail(ErrorCode.NOT_FOUND, "position.not_found")
-                        requireField(
-                            s.positions.values.none { it.name == name && it.id != command.id },
-                            "name",
-                            "position.name.duplicate",
-                        )
-                        val id = command.id ?: s.nextPositionId++
-                        val p = PositionRecord(id, name, command.level, command.active)
-                        s.positions[id] = p
-                        option(s, p)
-                    }
-                }
-
-            override suspend fun deletePosition(id: Long): ApiResult<Unit> = write {
-                mutate { s ->
-                    if (id !in s.positions) fail(ErrorCode.NOT_FOUND, "position.not_found")
-                    if (s.myPositionId == id || s.profiles.values.any { it.positionId == id })
-                        fail(ErrorCode.IN_USE, "position.in_use")
-                    s.positions.remove(id)
-                    Unit
-                }
-            }
-
-            override suspend fun setMyPosition(id: Long?): ApiResult<PositionSettings> = write {
-                mutate { s ->
-                    validatePosition(s, id, s.myPositionId)
-                    s.myPositionId = id
-                    PositionSettings(options(s), id)
-                }
-            }
+            override suspend fun getPositions() = positionService.get()
+            override suspend fun savePosition(command: SavePosition) = positionService.save(command)
+            override suspend fun deletePosition(id: Long) = positionService.delete(id)
+            override suspend fun setMyPosition(id: Long?) = positionService.mine(id)
 
             override suspend fun getWorkSchedule(): ApiResult<WorkScheduleSettings> = io {
                 read { scheduleCopy(currentSchedule(it)).toContract() }
@@ -275,56 +191,14 @@ internal fun createSettingsApi(context: BackendContext): SettingsApi =
                 }
             }
 
-            override suspend fun getScoreSettings(): ApiResult<ScoreSettings> = io {
-                read { it.score.toContract() }
-            }
+            override suspend fun getScoreSettings() = scoreService.get()
+            override suspend fun saveScoreSettings(settings: ScoreSettings) = scoreService.save(settings)
+            override suspend fun resetScoreSettings() = scoreService.reset()
 
-            override suspend fun saveScoreSettings(
-                settings: ScoreSettings
-            ): ApiResult<ScoreSettings> = write {
-                requireIssues(com.greatwall.callring.domain.model.SettingsRules.score(settings.toDomain()))
-                mutate {
-                    it.score = settings.toDomain()
-                    settings
-                }
-            }
-
-            override suspend fun resetScoreSettings(): ApiResult<ScoreSettings> =
-                saveScoreSettings(ScoreSettings(5, 2, 10, 30))
-
-            override suspend fun getAppearance(): ApiResult<AppearanceSettings> = io {
-                preferences.getAppearance()
-            }
-
-            override suspend fun saveAppearance(
-                settings: AppearanceSettings
-            ): ApiResult<AppearanceSettings> = write { saveAppearanceExact(settings, preserveNull = true) }
+            override suspend fun getAppearance() = appearanceService.get()
+            override suspend fun saveAppearance(settings: AppearanceSettings) = appearanceService.save(settings)
         }
     }
-
-internal fun BackendContext.saveAppearanceExact(settings: AppearanceSettings, preserveNull: Boolean,baseline:AppearanceSettings?=null,dirtyFields:Set<String>?=null): AppearanceSettings {
-    return synchronized(lock) {
-        coordinator.check(commandContext)
-        val oldAppearance=preferences.getAppearance()
-        fun <T> merged(field:String,wanted:T,current:T,base:T):T {
-            if(dirtyFields==null)return wanted
-            if(field !in dirtyFields)return current
-            requireField(base==current,field,"draft.field_changed")
-            return wanted
-        }
-        requireField(dirtyFields==null||baseline!=null,"baseline","draft.baseline_required")
-        val desired=if(baseline==null)settings else AppearanceSettings(merged("selection",settings.selection,oldAppearance.selection,baseline.selection),merged("presetId",settings.presetId,oldAppearance.presetId,baseline.presetId),merged("customSeedRgb",settings.customSeedRgb,oldAppearance.customSeedRgb,baseline.customSeedRgb),merged("colorMode",settings.colorMode,oldAppearance.colorMode,baseline.colorMode))
-        val saved = if (preserveNull && desired.customSeedRgb == null) desired.copy(customSeedRgb = oldAppearance.customSeedRgb) else desired
-        requireField(saved.presetId.isNotBlank(), "presetId", "preset.required")
-        requireField(saved.customSeedRgb == null || saved.customSeedRgb in 0..0xffffff, "customSeedRgb", "rgb.invalid")
-        requireField(saved.selection != ThemeSelection.CUSTOM || saved.customSeedRgb != null, "customSeedRgb", "rgb.required")
-        preferences.saveAppearance(saved)
-        coordinator.publishScopes(changedScopeKeys(appearanceScopeValues(oldAppearance),appearanceScopeValues(saved)))
-        notifyChanged()
-        coordinator.record(commandContext)
-        saved
-    }
-}
 
 private fun BackendContext.replaceCalendar(imported: CalendarImport): CalendarInfo {
     val m = imported.metadata

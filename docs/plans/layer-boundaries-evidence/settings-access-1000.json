@@ -1,0 +1,171 @@
+{
+  "unrelatedCallCount": 1000,
+  "appearanceWrite": {
+    "fullStateLoads": 0,
+    "revisionDelta": 1,
+    "quietReads": 0,
+    "quietWrites": 0,
+    "publishedDomains": [
+      "APPEARANCE"
+    ]
+  },
+  "scoreRead": {
+    "fullStateLoads": 0,
+    "revisionDelta": 0,
+    "quietReads": 0,
+    "quietWrites": 0,
+    "publishedDomains": []
+  },
+  "scoreWrite": {
+    "fullStateLoads": 0,
+    "revisionDelta": 1,
+    "quietReads": 0,
+    "quietWrites": 0,
+    "publishedDomains": [
+      "SCORE_SETTINGS"
+    ]
+  },
+  "scoreNoop": {
+    "fullStateLoads": 0,
+    "revisionDelta": 0,
+    "quietReads": 0,
+    "quietWrites": 0,
+    "publishedDomains": []
+  },
+  "scoreEdit": {
+    "fullStateLoads": 0,
+    "revisionDelta": 1,
+    "quietReads": 0,
+    "quietWrites": 0,
+    "publishedDomains": [
+      "SCORE_SETTINGS"
+    ]
+  },
+  "overlayNoop": {
+    "fullStateLoads": 0,
+    "revisionDelta": 0,
+    "quietReads": 0,
+    "quietWrites": 0,
+    "publishedDomains": []
+  },
+  "overlayEnable": {
+    "fullStateLoads": 0,
+    "revisionDelta": 1,
+    "quietReads": 0,
+    "quietWrites": 0,
+    "publishedDomains": [
+      "OVERLAY_SETTINGS"
+    ]
+  },
+  "overlayDisable": {
+    "fullStateLoads": 0,
+    "revisionDelta": 1,
+    "quietReads": 0,
+    "quietWrites": 0,
+    "publishedDomains": [
+      "OVERLAY_SETTINGS"
+    ]
+  },
+  "statisticsDisable": {
+    "fullStateLoads": 0,
+    "revisionDelta": 1,
+    "quietReads": 0,
+    "quietWrites": 0,
+    "publishedDomains": [
+      "STATISTICS"
+    ]
+  },
+  "statisticsEnable": {
+    "fullStateLoads": 0,
+    "revisionDelta": 1,
+    "quietReads": 0,
+    "quietWrites": 0,
+    "publishedDomains": [
+      "STATISTICS"
+    ]
+  },
+  "statisticsNoop": {
+    "fullStateLoads": 0,
+    "revisionDelta": 0,
+    "quietReads": 0,
+    "quietWrites": 0,
+    "publishedDomains": []
+  },
+  "positionsRead": {
+    "fullStateLoads": 0,
+    "revisionDelta": 0,
+    "quietReads": 0,
+    "quietWrites": 0,
+    "publishedDomains": []
+  },
+  "positionCreate": {
+    "fullStateLoads": 0,
+    "revisionDelta": 1,
+    "quietReads": 0,
+    "quietWrites": 0,
+    "publishedDomains": [
+      "POSITIONS"
+    ]
+  },
+  "positionNoop": {
+    "fullStateLoads": 0,
+    "revisionDelta": 0,
+    "quietReads": 0,
+    "quietWrites": 0,
+    "publishedDomains": []
+  },
+  "positionEdit": {
+    "fullStateLoads": 0,
+    "revisionDelta": 1,
+    "quietReads": 0,
+    "quietWrites": 0,
+    "publishedDomains": [
+      "POSITIONS"
+    ]
+  },
+  "myPosition": {
+    "fullStateLoads": 0,
+    "revisionDelta": 1,
+    "quietReads": 0,
+    "quietWrites": 0,
+    "publishedDomains": [
+      "CALLERS",
+      "POSITIONS",
+      "REPORTS"
+    ]
+  },
+  "myPositionNoop": {
+    "fullStateLoads": 0,
+    "revisionDelta": 0,
+    "quietReads": 0,
+    "quietWrites": 0,
+    "publishedDomains": []
+  },
+  "myPositionClear": {
+    "fullStateLoads": 0,
+    "revisionDelta": 1,
+    "quietReads": 0,
+    "quietWrites": 0,
+    "publishedDomains": [
+      "CALLERS",
+      "POSITIONS",
+      "REPORTS"
+    ]
+  },
+  "positionDelete": {
+    "fullStateLoads": 0,
+    "revisionDelta": 1,
+    "quietReads": 0,
+    "quietWrites": 0,
+    "publishedDomains": [
+      "POSITIONS"
+    ]
+  },
+  "summaryRead": {
+    "fullStateLoads": 0,
+    "revisionDelta": 0,
+    "quietReads": 0,
+    "quietWrites": 0,
+    "publishedDomains": []
+  }
+}

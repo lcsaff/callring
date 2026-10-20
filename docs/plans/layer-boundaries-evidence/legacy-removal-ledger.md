@@ -12,7 +12,7 @@
 | 旧通知与整库版本/全域刷新发布 | 尚未迁出的旧写入链路 | 每片接入唯一提交者，T11 删除旧发布路径；不保留双发布兜底 |
 | AI 数字索引/顺序分派 | 当前工具目录和业务命令绑定 | T12 迁为具名操作，删除按序号找行为的路径；外部现有标识仅作为协议元数据 |
 
-T06a 额外清理正在实施：删除 `UnavailableCoreUnitOfWork` / `UnavailableQuietTransactions` 及构造器默认替代；装配显式要求必需端口，计算测试使用测试专用假实现。结果在 T06a 审查记录确认后更新。
+T06a 额外清理已完成并经双审：删除 `UnavailableCoreUnitOfWork` / `UnavailableQuietTransactions` 及构造器默认替代；装配显式要求必需端口，计算测试使用测试专用假实现。对应简单设置旧实现、premerge、无用验证助手和偏好重复发布均删除，见 t06a-review.md。SnapshotViewModel 的 refreshFromChanges 双路径仍有未迁移消费者，T11 必须删除该开关及旧订阅分支；一次性请求仍可使用 RequestLoader。
 
 已删除且经既有检查点验证：`LazyBackendStore`（T05b，以明确资源和窄能力替代）；UI 对 backend 的生产/测试编译依赖及旧包导入（T03）；domain 对 contracts/application 的依赖（T04）。
 
