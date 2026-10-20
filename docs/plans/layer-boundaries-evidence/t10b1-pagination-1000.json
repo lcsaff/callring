@@ -1,0 +1,117 @@
+{
+  "fixtureRows": 1000,
+  "pages": [
+    {
+      "returned": 64,
+      "warmRows": 64,
+      "coldRows": 64,
+      "sourceBytes": 14208
+    },
+    {
+      "returned": 64,
+      "warmRows": 64,
+      "coldRows": 64,
+      "sourceBytes": 14208
+    },
+    {
+      "returned": 64,
+      "warmRows": 64,
+      "coldRows": 64,
+      "sourceBytes": 14208
+    },
+    {
+      "returned": 64,
+      "warmRows": 64,
+      "coldRows": 64,
+      "sourceBytes": 14208
+    },
+    {
+      "returned": 64,
+      "warmRows": 64,
+      "coldRows": 64,
+      "sourceBytes": 14208
+    },
+    {
+      "returned": 64,
+      "warmRows": 64,
+      "coldRows": 64,
+      "sourceBytes": 14184
+    },
+    {
+      "returned": 64,
+      "warmRows": 64,
+      "coldRows": 64,
+      "sourceBytes": 24136
+    },
+    {
+      "returned": 64,
+      "warmRows": 64,
+      "coldRows": 64,
+      "sourceBytes": 24096
+    },
+    {
+      "returned": 64,
+      "warmRows": 64,
+      "coldRows": 64,
+      "sourceBytes": 14100
+    },
+    {
+      "returned": 64,
+      "warmRows": 64,
+      "coldRows": 64,
+      "sourceBytes": 14132
+    },
+    {
+      "returned": 64,
+      "warmRows": 64,
+      "coldRows": 64,
+      "sourceBytes": 14144
+    },
+    {
+      "returned": 64,
+      "warmRows": 64,
+      "coldRows": 64,
+      "sourceBytes": 14144
+    },
+    {
+      "returned": 64,
+      "warmRows": 64,
+      "coldRows": 64,
+      "sourceBytes": 14144
+    },
+    {
+      "returned": 64,
+      "warmRows": 64,
+      "coldRows": 64,
+      "sourceBytes": 14144
+    },
+    {
+      "returned": 64,
+      "warmRows": 52,
+      "coldRows": 52,
+      "sourceBytes": 11492
+    },
+    {
+      "returned": 40,
+      "warmRows": 20,
+      "coldRows": 20,
+      "sourceBytes": 4420
+    },
+    {
+      "returned": 0,
+      "warmRows": 0,
+      "coldRows": 0,
+      "sourceBytes": 0
+    }
+  ],
+  "totals": {
+    "warmMetadataRows": 968,
+    "sourceChunkQueries": 1940,
+    "metadataCharacters": 4840,
+    "projectionMetadataBytes": 364224,
+    "payloadMetadataRows": 968,
+    "coldIdentityRows": 968,
+    "maxSourceChunkBytes": 4096,
+    "sourceBytes": 234176
+  }
+}

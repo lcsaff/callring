@@ -5,7 +5,7 @@
 | 当前旧路径 | 仍使用它的业务 | 删除门 |
 |---|---|---|
 | `BackendContext` 及扩展式业务服务 | 仅余总装配、bound/decision mirror生命周期与SettingsApi/UiEditsApi组装；业务服务已迁出 | T10c迁出并删除类及全部引用；禁止替换成另一个万能上下文 |
-| `BackendStore` 全状态 read/transaction、`BackendState`、`SqliteBackendStore` 全量装载/差异保存 | recording findCall旧read、初始化及旧fixture；完整快照已迁专用事实 | T10目标录音查找、T13初始化/fixture退出后彻底删除；T14检查禁止旧符号 |
+| `BackendStore` 全状态 read/transaction、`BackendState`、`SqliteBackendStore` 全量装载/差异保存 | 初始化及旧fixture；T10b1已删recording findCall旧read，完整快照已迁专用事实 | T10b1目标录音查找已退出；T13初始化/fixture退出后彻底删除；T14检查禁止旧符号 |
 | `StorageResources` 的 legacy 资源投影 | 上述全状态调用 | 随最终旧存储消费者迁出删除，保留统一的显式资源生命周期 |
 | classifier/correlation 接受 `BackendState` 的入口及全状态决策 capture 重载 | 旧入口已删除；剩余 BackendState 的 WorkInputs 实现仅随读/快照和 fixture 继续退出 | T06b/T08 已用实际输入闭包；T09/T13 删除最后旧模型消费者 |
 | schema 初始化/升级中使用旧全状态协议 | onCreate 仍用 StorageSession.load/save；upgrade 已于T08迁出 | T13 改定向初始化；T08 已删除升级 saveCalls/State 关联入口，最终守卫不得豁免初始化 |
@@ -41,3 +41,9 @@ T10a源码已冻结并通过规格修复复审及独立质量审查：旧app AiS
 - 分阶段仍有真实调用方的旧设施只能登记到明确删除门；最终报告不能将待删除清单非空的状态标为完成。历史说明文件与冻结协议样本不作机械关键字清除。
 
 本节是验收约束，不表示当前清单已经关闭；实际完成仍以各检查点和最终源码/测试/守卫证据为准。
+
+
+T10b1 源码正式冻结待规格→质量双审：已删除 RecordingStore/AndroidRecordingStore.all 入口及普通消费者、Graph.findCall 全状态集合解析、旧 collection resolver、Workflow/AiClient 的 File 边界、isDeleted 默认false、AiClient.operation/cancel无消费者默认。显式 listArchives 只有列表真实消费者；identity/import generation/noteMissing/发现/调度/号码预览使用窄读取，play final只查generation。v4未索引历史只流式metadata且不写全文派生完成标记，raw号码/Unicode及原归档删除顺序保持。实际后续：Runtime facade/owned音频/play prepare/Store旧发布在T10b2；app与core组合服务、widgets全量lookup与SharedBusinessCommands宽依赖在T10b3；这些有真实消费者，没有新增兼容桥。见 [t10b1实施证据](t10b1-implementation.md)。本段不表示T10整体或双审已经通过。
+
+
+T10b1质量P2分页补证：已消除dueCandidates每页扫描全部剩余warm/cold源的可避免放大；两个有序分区各收齐limit个真正due后停止，再合并全局前limit，future额外读取如实披露。只有RecordingMetadataReads与新增SQLite分页测试变化，未新增兼容入口/索引写。分页补完整门backend315/app302实际执行、UI298沿主门XML，完整561/变动26路径指纹及10k总19936源行安全计数见t10b1实施证据补节。重新冻结待规格核变化与质量复审，不表示后续T10b2/b3已经完成。

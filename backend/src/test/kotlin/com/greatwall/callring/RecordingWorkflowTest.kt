@@ -10,6 +10,29 @@ import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 
 class RecordingWorkflowTest {
+    @Test fun candidatePagesCoverPositiveAndNegativeIdsWithoutHoldingStorageDuringNetwork() {
+        configure()
+        for (id in -70L..70L) if (id != 0L) workflow.attach(id, "31234", 100, "/private/test.m4a", RecordingSource.IMPORTED, 1000)
+        workflow.processPending()
+        assertEquals(140, transcriptions)
+        assertEquals(140, analyses)
+        assertTrue(store.candidatePageSizes.all { it <= 64 })
+        assertEquals(listOf(64, 64, 12, 0), store.candidatePageSizes)
+        assertNull(workflow.nextRunAt())
+        assertEquals(0, store.listReads)
+    }
+    @Test fun schedulingDoesNotMaterializeArchiveList() {
+        configure()
+        workflow.attach(1, "31234", 100, "/private/test.m4a", RecordingSource.IMPORTED, 1000)
+        assertEquals(0L, workflow.nextRunAt())
+        workflow.processPending()
+        assertEquals(ArchiveStatus.COMPLETE, store.get(1)!!.status)
+        assertEquals(0, store.listReads)
+    }
+    @Test fun aiAudioBoundaryIsDataOnly() {
+        assertFalse(AiClient::class.java.methods.any { method -> method.parameterTypes.contains(java.io.File::class.java) })
+    }
+
     @Test fun independentArchiveIdentityCanRunThroughAnalysisWithoutStatistics() {
         configure()
         workflow.attach(-7, "31234", 100, "/private/test.m4a", RecordingSource.IMPORTED, 1000)
@@ -24,8 +47,10 @@ class RecordingWorkflowTest {
     private var beforeAnalysis: () -> Unit = {}
     private var fail = false
     private val client = object : AiClient {
+        override fun operation(cancelled: () -> Boolean): AiClient = this
+        override fun cancel() = Unit
         override fun test(connection: AiConnection, transcription: Boolean) {}
-        override fun transcribe(connection: AiConnection, audio: File): String { transcriptions++; return "Caller says hello" }
+        override fun transcribe(connection: AiConnection, reference: com.greatwall.callring.application.AudioReference): String { transcriptions++; return "Caller says hello" }
         override fun analyze(connection: AiConnection, transcript: String): CallAnalysis {
             analyses++; beforeAnalysis()
             if (fail) throw AiFailure("ai.temporary", true)
@@ -85,7 +110,7 @@ class RecordingWorkflowTest {
         configure()
         val brokenClient = object : AiClient by client {
             override fun operation(cancelled: () -> Boolean): AiClient = this
-            override fun transcribe(connection: AiConnection, audio: File): String = throw AiFailure("ai.authentication")
+            override fun transcribe(connection: AiConnection, reference: com.greatwall.callring.application.AudioReference): String = throw AiFailure("ai.authentication")
         }
         val brokenWorkflow = RecordingWorkflow(store, brokenClient, { 1000L })
         brokenWorkflow.attach(1, "31234", 100, "/private/test.m4a", RecordingSource.IMPORTED, 1000)
@@ -127,7 +152,7 @@ class RecordingWorkflowTest {
         var stopped = false
         val cancellable = object : AiClient by client {
             override fun operation(cancelled: () -> Boolean): AiClient = this
-            override fun transcribe(connection: AiConnection, audio: File): String {
+            override fun transcribe(connection: AiConnection, reference: com.greatwall.callring.application.AudioReference): String {
                 stopped = true
                 throw AiFailure("recording.cancelled")
             }
@@ -146,7 +171,19 @@ class RecordingWorkflowTest {
         @Synchronized override fun settings() = config
         @Synchronized fun seedSettings(value: RecordingSettings) { config = value }
         @Synchronized override fun get(callId: Long) = entries[callId]
-        @Synchronized override fun all() = entries.values.toList()
+        override fun metadata(callId: Long, cancelled: () -> Boolean): RecordingArchiveMetadata? = error("unused")
+        override fun generation(callId: Long) = entries[callId]?.generation
+        override fun isDeleted(callId: Long) = false
+        override fun earliestPendingAt(cancelled: () -> Boolean) = entries.values.filter { it.status in pending && it.nextAttemptAt != Long.MAX_VALUE }.minOfOrNull { it.nextAttemptAt }
+        val candidatePageSizes = mutableListOf<Int>()
+        override fun dueCandidates(at: Long, afterId: Long?, limit: Int, cancelled: () -> Boolean) = entries.values.filter {
+            (afterId == null || it.callId > afterId) && it.status in pending && it.nextAttemptAt <= at
+        }.sortedBy { it.callId }.take(limit).map { RecordingCandidate(it.callId, it.generation) }.also { candidatePageSizes += it.size }
+        override fun recentMetadata(since: Long, cancelled: () -> Boolean): List<RecordingArchiveMetadata> = error("unused")
+        override fun numberMetadata(number: String, cancelled: () -> Boolean): List<NumberRecordingMetadata> = error("unused")
+        private val pending = setOf(ArchiveStatus.QUEUED, ArchiveStatus.TRANSCRIBING, ArchiveStatus.ANALYZING, ArchiveStatus.FAILED)
+        var listReads = 0
+        @Synchronized override fun listArchives() = entries.values.toList().also { listReads++ }
         @Synchronized override fun compareAndSet(callId: Long, expectedGeneration: Long?, value: CallArchive): Boolean {
             if (entries[callId]?.generation != expectedGeneration) return false
             entries[callId] = value; return true

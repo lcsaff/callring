@@ -79,20 +79,24 @@ class AndroidRecordingRuntime(
     private fun recordingCall(callId: Long): RecordingCall? {
         if (callId < 0) return store.findRecording(callId)
         store.linkedRecording(callId)?.let { return it }
-        store.get(callId)?.let { return RecordingCall(it.callId, it.number, it.startedAtEpochMillis, it.durationMillis?.div(1000)) }
+        store.metadata(callId) { false }?.let { return RecordingCall(it.callId, it.number, it.startedAtEpochMillis, it.durationMillis?.div(1000)) }
         val legacy = findCall(callId) ?: return null
         return store.linkedRecording(legacy.id) ?: legacy
     }
     private fun archiveId(callId: Long): Long = recordingCall(callId)?.id ?: callId
     override suspend fun getIdentity(callId: Long) = result { val call = requireNotNull(recordingCall(callId)); RecordingIdentity(call.id, call.number, call.startedAt) }
-    override suspend fun listArchives() = result { store.all().sortedByDescending { it.startedAtEpochMillis } }
+    override suspend fun listArchives() = result { store.listArchives().sortedByDescending { it.startedAtEpochMillis } }
+    suspend fun numberArchives(number: String) = result {
+        val caller = kotlinx.coroutines.currentCoroutineContext()[kotlinx.coroutines.Job]
+        store.numberMetadata(number) { caller?.isActive == false }
+    }
     override suspend fun getArchive(callId: Long) = result { store.get(archiveId(callId)) }
     override suspend fun importRecording(callId: Long, number: String, startedAt: Long, document: DocumentRef, source: RecordingSource) = result {
         importFile(callId, number, startedAt, document, source)
     }
     private fun importFile(callId: Long, number: String, startedAt: Long, document: DocumentRef,
         source: RecordingSource, automatic: Boolean = false, command: CommandContext? = null): CallArchive {
-        val saved = store.get(callId)?.takeIf { it.number == number && it.startedAtEpochMillis == startedAt }
+        val saved = store.metadata(callId) { false }?.takeIf { it.number == number && it.startedAtEpochMillis == startedAt }
         val request = requireNotNull(if (callId < 0) store.findRecording(callId) else saved?.let {
             RecordingCall(it.callId, it.number, it.startedAtEpochMillis, it.durationMillis?.div(1000))
         } ?: findCall(callId))
@@ -100,7 +104,7 @@ class AndroidRecordingRuntime(
         val call = requireNotNull(recordingCall(callId))
         val uri = Uri.parse(document.uri)
         require(uri.scheme == "content")
-        val initialGeneration = store.get(call.id)?.generation
+        val initialGeneration = store.generation(call.id)
         coordinator.guard(command) { check(!automatic || !store.isDeleted(call.id)) { "recording.deleted" } }
         check(directory.isDirectory || directory.mkdirs())
         val scratch = File(directory, UUID.randomUUID().toString() + ".tmp")
@@ -121,7 +125,7 @@ class AndroidRecordingRuntime(
                 val metadata = metadata(scratch)
                 val audio = File(directory, UUID.randomUUID().toString() + "." + metadata.second)
                 val archive = coordinator.guard(command) { synchronized(filesLock) {
-                    check(store.get(call.id)?.generation == initialGeneration && (!automatic || !store.isDeleted(call.id))) { "recording.changed" }
+                    check(store.generation(call.id) == initialGeneration && (!automatic || !store.isDeleted(call.id))) { "recording.changed" }
                     check(scratch.renameTo(audio))
                     attach(call, audio, source, metadata.first).also { coordinator.record(command) }
                 } }
@@ -169,7 +173,7 @@ class AndroidRecordingRuntime(
         return archive
     }
     fun noteMissing(call: RecordingCall, reason: String? = null): Unit = coordinator.guard { synchronized(filesLock) {
-        if (!store.isDeleted(call.id) && store.get(call.id) == null) store.compareAndSet(call.id, null, CallArchive(call.id, call.number, call.startedAt,
+        if (!store.isDeleted(call.id) && store.generation(call.id) == null) store.compareAndSet(call.id, null, CallArchive(call.id, call.number, call.startedAt,
             generation = System.currentTimeMillis() * 1000, error = reason))
         Unit
     } }
@@ -212,7 +216,7 @@ class AndroidRecordingRuntime(
             try {
                 next.setDataSource(file.absolutePath); next.prepare()
                 coordinator.guard(command) { synchronized(filesLock) {
-                    check(ticket == playbackGeneration.get() && store.get(archive.callId)?.generation == archive.generation) { "recording.changed" }
+                    check(ticket == playbackGeneration.get() && store.generation(archive.callId) == archive.generation) { "recording.changed" }
                     stopPlayer()
                     next.setOnCompletionListener { finishPlayback(it) }
                     next.setOnErrorListener { mp, _, _ -> finishPlayback(mp); true }
@@ -253,13 +257,14 @@ class AndroidRecordingRuntime(
         val folder = config.systemFolder
         if (!config.recordingEnabled || folder == null) return
         val since = System.currentTimeMillis() - 12 * 60 * 60 * 1000L
-        val calls = store.all().filter { it.startedAtEpochMillis >= since }.map {
+        val metadata = store.recentMetadata(since) { false }
+        val calls = metadata.map {
             RecordingCall(it.callId, it.number, it.startedAtEpochMillis, it.durationMillis?.div(1000))
         }
         val files = sources.list(folder)
         calls.forEach { call ->
-            val existing = store.get(call.id)
-            if ((existing?.audioPath != null && existing.source != RecordingSource.MICROPHONE) || store.isDeleted(call.id)) return@forEach
+            val existing = store.metadata(call.id) { false }
+            if ((existing?.hasAudio == true && existing.source != RecordingSource.MICROPHONE) || store.isDeleted(call.id)) return@forEach
             noteMissing(call)
             // A file's modified timestamp cannot establish the call's start or number. Require
             // an explicit filename number and timestamp; reject ambiguous candidates both ways.

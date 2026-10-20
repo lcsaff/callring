@@ -16,6 +16,9 @@ interface CallingReader {
 
     fun callingCall(id: Long): RawCallRecord?
 
+    /** At most two visible links establish uniqueness for a hidden screening identity. */
+    fun visibleRecordingLinks(screenId: Long): List<RawCallRecord>
+
     fun providerCalls(logIds: Set<String>): List<RawCallRecord>
 
     fun correlationCalls(number: String): List<RawCallRecord>

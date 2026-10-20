@@ -110,7 +110,7 @@ class IndependentRecordingRuntimeTest {
         val runtime = AndroidRecordingRuntime(context, "disabled_recording", findCall = { error("statistics lookup") },
             activeCallId = { null }, schedule = {}, storeFactory = { store })
         assertNull(runtime.observeIncoming("session", "31234", 1000, null))
-        assertTrue(store.all().isEmpty())
+        assertTrue(store.listArchives().isEmpty())
         runtime.close()
     }
 }

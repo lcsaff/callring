@@ -20,9 +20,8 @@ import com.greatwall.callring.platform.calling.IncomingCallCoordinator
 import java.io.Closeable
 import com.greatwall.callring.platform.ai.AndroidRecordingRuntime
 import com.greatwall.callring.application.RecordingCall
-import com.greatwall.callring.application.RecordingCallLink
 import com.greatwall.callring.application.IncomingRecordingSession
-import com.greatwall.callring.application.resolveRecordingCall
+import com.greatwall.callring.application.findRecordingCall
 import com.greatwall.callring.RecordingJobService
 import com.greatwall.callring.application.SharedBusinessCommands
 import com.greatwall.callring.application.conversation.*
@@ -131,9 +130,7 @@ class BackendGraph(
     private val recordingDelegate = lazy {
         ensureOpen()
         AndroidRecordingRuntime(application, configuration.databaseName,
-            findCall = { id -> store.read { state -> resolveRecordingCall(state.calls.values.map {
-                RecordingCallLink(it.id, it.number, it.time, it.duration, it.hidden, it.linkedScreenId)
-            }, id) } },
+            findCall = { id -> findRecordingCall(store, id) },
             activeCallId = { recordingSession.activeCandidate(configuration.clock.millis()) },
             schedule = { delay -> RecordingJobService.schedule(application, delay) }, coordinator = coordinator)
     }
@@ -160,7 +157,7 @@ class BackendGraph(
             override val recordings: RecordingApi get() = this@BackendGraph.recordings
             override val aiSettings: AiSettingsApi get() = this@BackendGraph.recordings.aiSettings
             override val numberDeletion: NumberDeletionApi get() =
-                com.greatwall.callring.platform.callers.NumberDeletionService(backend.callers, this@BackendGraph.recordings, backend.widgets)
+                com.greatwall.callring.platform.callers.NumberDeletionService(backend.callers, this@BackendGraph.recordings, backend.widgets, this@BackendGraph.recordings::numberArchives)
             override val snapshots: AiSnapshotApi get() = snapshotsDelegate.value
             override val conversation: ConversationApi get() = conversationDelegate.value
             override val update: AppUpdateApi get() = this@BackendGraph.update
@@ -179,6 +176,7 @@ class BackendGraph(
                     boundBackend.callers,
                     this@BackendGraph.recordings.bound(deletionCommand),
                     boundBackend.widgets,
+                    this@BackendGraph.recordings::numberArchives,
                 )
             }
         override val snapshots: AiSnapshotApi get() = snapshotsDelegate.value

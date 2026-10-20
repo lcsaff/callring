@@ -59,7 +59,7 @@ class CompatibleAiClientTest {
         val file = File.createTempFile("speech", ".wav").apply { writeBytes(byteArrayOf(1, 2, 3)) }
         try {
             val response = Response("""{"text":"hello world"}"""); var endpoint = ""
-            assertEquals("hello world", CompatibleAiClient(openConnection = { endpoint = it.toString(); response }).transcribe(config, file))
+            assertEquals("hello world", CompatibleAiClient(openConnection = { endpoint = it.toString(); response }).transcribe(config, com.greatwall.callring.application.AudioReference(file.absolutePath)))
             assertTrue(endpoint.endsWith("/audio/transcriptions"))
             val sent = response.sent.toString("UTF-8")
             assertTrue(sent.contains("name=\"model\"")); assertTrue(sent.contains("test-model")); assertTrue(sent.contains("filename=\"recording.wav\""))
@@ -87,7 +87,7 @@ class CompatibleAiClientTest {
     @Test fun rejectsLenientTranscriptionEnvelope() {
         val file = File.createTempFile("speech", ".wav").apply { writeBytes(byteArrayOf(1)) }
         try {
-            assertEquals("ai.invalid_response", failure { CompatibleAiClient(openConnection = { Response("{'text':'hello'}") }).transcribe(config, file) }.reason)
+            assertEquals("ai.invalid_response", failure { CompatibleAiClient(openConnection = { Response("{'text':'hello'}") }).transcribe(config, com.greatwall.callring.application.AudioReference(file.absolutePath)) }.reason)
         } finally { file.delete() }
     }
     @Test fun rejectsOversizedTranscriptWithoutNetwork() {
@@ -188,7 +188,7 @@ class CompatibleAiClientTest {
         operation = CompatibleAiClient(openConnection = { response }).operation { false }
         val audio = File.createTempFile("speech", ".wav").apply { writeBytes(ByteArray(24_000)) }
         try {
-            assertEquals("recording.cancelled", failure { operation.transcribe(config, audio) }.reason)
+            assertEquals("recording.cancelled", failure { operation.transcribe(config, com.greatwall.callring.application.AudioReference(audio.absolutePath)) }.reason)
             assertEquals(1, payloadWrites)
             assertTrue(response.disconnected)
         } finally { audio.delete() }
@@ -228,7 +228,7 @@ class CompatibleAiClientTest {
         val file = File.createTempFile("speech", ".wav").apply { writeBytes(byteArrayOf(1, 2, 3)) }
         try {
             val response = Response("""{"text":"hello world"}""")
-            CompatibleAiClient(openConnection = { response }).transcribe(qwen, file)
+            CompatibleAiClient(openConnection = { response }).transcribe(qwen, com.greatwall.callring.application.AudioReference(file.absolutePath))
             val sent = response.sent.toString("UTF-8")
             assertFalse(sent.contains("enable_thinking")); assertFalse(sent.contains("thinking")); assertFalse(sent.contains("preserve_thinking"))
             assertTrue(sent.contains("name=\"model\"")); assertTrue(sent.contains("qwen3.8-flash"))

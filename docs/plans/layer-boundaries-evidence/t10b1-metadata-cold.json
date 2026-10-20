@@ -1,0 +1,8 @@
+{
+  "sourceChunkQueries": 3060,
+  "metadataCharacters": 25,
+  "payloadMetadataRows": 5,
+  "coldIdentityRows": 5,
+  "maxSourceChunkBytes": 4096,
+  "sourceBytes": 12501125
+}

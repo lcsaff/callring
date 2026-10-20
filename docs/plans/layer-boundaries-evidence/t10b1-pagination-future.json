@@ -1,0 +1,13 @@
+{
+  "returned": 120,
+  "totals": {
+    "warmMetadataRows": 175,
+    "sourceChunkQueries": 350,
+    "metadataCharacters": 875,
+    "projectionMetadataBytes": 65813,
+    "payloadMetadataRows": 175,
+    "coldIdentityRows": 175,
+    "maxSourceChunkBytes": 223,
+    "sourceBytes": 38679
+  }
+}

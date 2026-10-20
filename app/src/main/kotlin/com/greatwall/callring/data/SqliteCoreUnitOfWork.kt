@@ -153,6 +153,8 @@ internal class SqliteCoreUnitOfWork(private val db: SQLiteDatabase, private val 
         override fun callingCall(id: Long) =
             callingAccess("callingCall") { calling.callingCall(id) }
 
+        override fun visibleRecordingLinks(screenId: Long) = calling.visibleRecordingLinks(screenId)
+
         override fun providerCalls(logIds: Set<String>) =
             callingAccess("providerCalls") { calling.providerCalls(logIds) }
 

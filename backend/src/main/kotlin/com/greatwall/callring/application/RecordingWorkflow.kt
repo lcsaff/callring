@@ -3,7 +3,6 @@ package com.greatwall.callring.application
 import com.greatwall.callring.contracts.recording.*
 import com.greatwall.callring.contracts.ai.*
 import com.greatwall.callring.application.recording.policy.*
-import java.io.File
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicLong
 import java.util.concurrent.atomic.AtomicBoolean
@@ -23,15 +22,15 @@ class RecordingWorkflow(
 
     fun attach(callId: Long, number: String, startedAt: Long, path: String, source: RecordingSource, duration: Long): CallArchive {
         require(callId != 0L && number.isNotBlank() && duration > 0) { "recording.invalid_attachment" }
-        val old = store.get(callId)
+        val previousGeneration = store.generation(callId)
         cancelledOperations[callId]?.set(true)
         activeClients[callId]?.cancel()
         val settings = store.settings()
-        val value = CallArchive(callId, number, startedAt, version(old?.generation ?: 0),
+        val value = CallArchive(callId, number, startedAt, version(previousGeneration ?: 0),
             if (settings.automaticAnalysis) ArchiveStatus.QUEUED else ArchiveStatus.READY,
             source, path, if (source == RecordingSource.MICROPHONE) "recording.microphone_unverified" else "recording.unverified",
             duration)
-        check(store.compareAndSet(callId, old?.generation, value)) { "recording.changed" }
+        check(store.compareAndSet(callId, previousGeneration, value)) { "recording.changed" }
         return value
     }
 
@@ -56,20 +55,26 @@ class RecordingWorkflow(
         activeClients.values.forEach { it.cancel() }
     }
 
-    fun nextRunAt(): Long? = store.all().filter { it.status in pending && it.nextAttemptAt != Long.MAX_VALUE }
-        .minOfOrNull { it.nextAttemptAt }
+    fun nextRunAt(): Long? = store.earliestPendingAt { false }
 
-    /** Busy rows are recovered on a new process, with in-process exclusion on each call ID. */
+    /** Candidate pages are consumed before network work; no storage cursor spans an AI request. */
     fun processPending(cancelled: () -> Boolean = { false }) {
-        store.all().filter { it.status in pending && it.nextAttemptAt <= now() }.forEach { item ->
-            if (cancelled()) return
-            if (running.add(item.callId)) try { process(item, cancelled) } finally {
-                cancelledOperations.remove(item.callId); activeClients.remove(item.callId); running.remove(item.callId)
+        val cutoff = now()
+        var after: Long? = null
+        while (!cancelled()) {
+            val candidates = store.dueCandidates(cutoff, after, 64, cancelled)
+            if (candidates.isEmpty()) return
+            for (item in candidates) {
+                if (cancelled()) return
+                after = item.callId
+                if (running.add(item.callId)) try { process(item, cancelled) } finally {
+                    cancelledOperations.remove(item.callId); activeClients.remove(item.callId); running.remove(item.callId)
+                }
             }
         }
     }
 
-    private fun process(initial: CallArchive, cancelled: () -> Boolean) {
+    private fun process(initial: RecordingCandidate, cancelled: () -> Boolean) {
         var current = store.get(initial.callId) ?: return
         if (current.generation != initial.generation) return
         val config = store.settings()
@@ -93,7 +98,7 @@ class RecordingWorkflow(
                     if (current.transcript.isBlank()) ArchiveStatus.TRANSCRIBING else ArchiveStatus.ANALYZING))) return
             if (isCancelled()) throw AiFailure("recording.cancelled")
             if (current.transcript.isBlank()) {
-                val text = operation.transcribe(config.transcription, File(requireNotNull(current.audioPath)))
+                val text = operation.transcribe(config.transcription, AudioReference(requireNotNull(current.audioPath)))
                 if (text.isBlank()) throw AiFailure("ai.empty_transcript")
                 if (!update(current.copy(transcript = text, transcriptionModel = config.transcription.model,
                         status = ArchiveStatus.ANALYZING))) return
@@ -116,7 +121,4 @@ class RecordingWorkflow(
         }
     }
 
-    companion object {
-        private val pending = setOf(ArchiveStatus.QUEUED, ArchiveStatus.TRANSCRIBING, ArchiveStatus.ANALYZING, ArchiveStatus.FAILED)
-    }
 }

@@ -8,7 +8,7 @@ import android.database.DatabaseUtils
 import android.security.keystore.KeyGenParameterSpec
 import android.security.keystore.KeyProperties
 import android.util.Base64
-import com.greatwall.callring.application.RecordingStore
+import com.greatwall.callring.application.*
 import com.greatwall.callring.application.BusinessRevisionCoordinator
 import com.greatwall.callring.platform.updatePreferences
 import com.greatwall.callring.application.RecordingCall
@@ -57,6 +57,7 @@ class AndroidRecordingStore(context: Context, namespace: String,
     private val cipher: RecordingCipher = KeystoreRecordingCipher("callring.recording.$namespace"),
     val coordinator: BusinessRevisionCoordinator = BusinessRevisionCoordinator(),
 ) : RecordingStore, com.greatwall.callring.application.recording.RecordingSettingsStore, AutoCloseable {
+    val readCounters = RecordingReadCounters()
     private val preferences = context.getSharedPreferences(namespace + "_recording", Context.MODE_PRIVATE)
     private val helper = object : SQLiteOpenHelper(context, namespace + "_recording.db", null, 4) {
         override fun onCreate(db: SQLiteDatabase) {
@@ -125,9 +126,21 @@ class AndroidRecordingStore(context: Context, namespace: String,
         updatePreferences(preferences, mapOf("config" to cipher.encrypt(RecordingJson.settings(value).toString())))
     }
     @Synchronized override fun get(callId: Long): CallArchive? = helper.readableDatabase.query("archives", arrayOf("payload"),
-        "call_id=?", arrayOf(callId.toString()), null, null, null).use { if (it.moveToFirst()) RecordingJson.archive(JSONObject(it.getString(0))) else null }
-    @Synchronized override fun all(): List<CallArchive> = helper.readableDatabase.query("archives", arrayOf("payload"),
-        null, null, null, null, "call_id").use { cursor -> buildList { while (cursor.moveToNext()) add(RecordingJson.archive(JSONObject(cursor.getString(0)))) } }
+        "call_id=?", arrayOf(callId.toString()), null, null, null).use { if (it.moveToFirst()) RecordingJson.archive(JSONObject(it.getString(0))).also { readCounters.add("fullArchiveDecodes") } else null }
+    @Synchronized override fun listArchives(): List<CallArchive> = helper.readableDatabase.query("archives", arrayOf("payload"),
+        null, null, null, null, "call_id").use { cursor -> buildList { while (cursor.moveToNext()) add(RecordingJson.archive(JSONObject(cursor.getString(0))).also { readCounters.add("listArchiveDecodes") }) } }
+    @Synchronized override fun metadata(callId: Long, cancelled: () -> Boolean) =
+        RecordingMetadataReads(helper.readableDatabase, readCounters, cancelled).metadata(callId)
+    @Synchronized override fun generation(callId: Long): Long? = helper.readableDatabase.rawQuery(
+        "SELECT generation FROM archives WHERE call_id=?", arrayOf(callId.toString())).use { if (it.moveToFirst()) it.getLong(0) else null }
+    @Synchronized override fun earliestPendingAt(cancelled: () -> Boolean) =
+        RecordingMetadataReads(helper.readableDatabase, readCounters, cancelled).earliestPendingAt()
+    @Synchronized override fun dueCandidates(at: Long, afterId: Long?, limit: Int, cancelled: () -> Boolean) =
+        RecordingMetadataReads(helper.readableDatabase, readCounters, cancelled).dueCandidates(at, afterId, limit)
+    @Synchronized override fun recentMetadata(since: Long, cancelled: () -> Boolean) =
+        RecordingMetadataReads(helper.readableDatabase, readCounters, cancelled).recentMetadata(since)
+    @Synchronized override fun numberMetadata(number: String, cancelled: () -> Boolean) =
+        RecordingMetadataReads(helper.readableDatabase, readCounters, cancelled).numberMetadata(number)
     @Synchronized fun captureRecordingText(): Map<String, AiJson> {
         val db = helper.readableDatabase
         db.beginTransactionNonExclusive()

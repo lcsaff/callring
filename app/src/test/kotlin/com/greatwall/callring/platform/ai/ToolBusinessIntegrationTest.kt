@@ -45,10 +45,12 @@ class ToolBusinessIntegrationTest {
     private val context get() = RuntimeEnvironment.getApplication()
     private val now = Instant.parse("2026-10-18T00:00:00Z").toEpochMilli()
     private class Client : AiClient {
+        override fun operation(cancelled: () -> Boolean): AiClient = this
+        override fun cancel() = Unit
         var tests = 0
         override fun test(connection: AiConnection, transcription: Boolean) { connection.validate(); if(transcription) require(connection.protocol == AiProtocol.OPENAI); tests++ }
         override fun analyze(connection: AiConnection, transcript: String): CallAnalysis = error("No paid analysis in tools test")
-        override fun transcribe(connection: AiConnection, audio: File): String = error("No paid transcription in tools test")
+        override fun transcribe(connection: AiConnection, reference: com.greatwall.callring.application.AudioReference): String = error("No paid transcription in tools test")
     }
     private inner class Fixture(index: Int) : AutoCloseable {
         val namespace = "tool_${index}"

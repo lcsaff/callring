@@ -26,6 +26,50 @@ import org.robolectric.annotation.Config
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [33], manifest = Config.NONE)
 class NumberDeletionIntegrationTest {
+    @Test fun archiveFailureKeepsOriginalNewestFirstOrderAndStopsLaterSteps() = runBlocking {
+        val graph = graph("delete_archive_order")
+        try {
+            graph.api.callers.saveProfile(SaveCallerProfile("31234", "keep", "unit", null)).requiredValue()
+            graph.api.widgets.saveBinding(1, "31234").requiredValue()
+            for ((id, started) in listOf(-1L to 300L, -2L to 300L, -3L to 100L)) {
+                graph.recordings.store.compareAndSet(id, null, CallArchive(id, "31234", started, generation = 2, status = ArchiveStatus.READY))
+            }
+            val visited = mutableListOf<Long>()
+            val recordings = object : RecordingApi by graph.recordings {
+                override suspend fun delete(callId: Long): ApiResult<Unit> {
+                    visited += callId
+                    if (callId == -1L) return ApiResult.Failure(ApiError(ErrorCode.IO_FAILURE, "fixture.failure"))
+                    return graph.recordings.delete(callId)
+                }
+            }
+            val result = NumberDeletionService(graph.backend.callers, recordings, graph.backend.widgets, graph.recordings::numberArchives)
+                .delete(DeleteNumberCommand("31234", 0, 3, 1))
+            assertTrue(result is ApiResult.Failure)
+            assertEquals(listOf(-2L, -1L), visited)
+            assertNull(graph.recordings.store.get(-2))
+            assertNotNull(graph.recordings.store.get(-3))
+            assertNotNull(graph.recordings.store.get(-1))
+            assertEquals("keep", graph.api.callers.getEditor("31234").requiredValue().draft.name)
+            assertNotNull(graph.api.widgets.getBinding(1).requiredValue())
+        } finally { graph.close() }
+    }
+
+    @Test fun impactDoesNotUseExplicitArchiveListing() = runBlocking {
+        val graph = graph("deletion_metadata")
+        try {
+            graph.recordings.store.registerIncoming("session", "31234", 1, null)
+            var lists = 0
+            val recordings = object : RecordingApi by graph.recordings {
+                override suspend fun listArchives(): ApiResult<List<CallArchive>> {
+                    lists++
+                    return graph.recordings.listArchives()
+                }
+            }
+            assertEquals(1, NumberDeletionService(graph.backend.callers, recordings, graph.backend.widgets, graph.recordings::numberArchives).impact("31234").requiredValue().archiveCount)
+            assertEquals(0, lists)
+        } finally { graph.close() }
+    }
+
     @Test fun foreignProfileEditAfterArchiveCleanupMustBePreserved() = runBlocking {
         val graph = graph("delete_profile_edited")
         try {
@@ -43,7 +87,7 @@ class NumberDeletionIntegrationTest {
                     return result
                 }
             }
-            val result = NumberDeletionService(bound.callers, recordings, bound.widgets)
+            val result = NumberDeletionService(bound.callers, recordings, bound.widgets, graph.recordings::numberArchives)
                 .delete(DeleteNumberCommand("31234", 0, 1, 0))
             assertTrue(result is ApiResult.Failure)
             assertEquals("edited elsewhere", graph.api.callers.getEditor("31234").requiredValue().draft.name)
@@ -80,7 +124,7 @@ class NumberDeletionIntegrationTest {
                     return snapshot
                 }
             }
-            val result = NumberDeletionService(bound.callers, bound.recordings, widgets)
+            val result = NumberDeletionService(bound.callers, bound.recordings, widgets, graph.recordings::numberArchives)
                 .delete(DeleteNumberCommand("31234", 0, 0, 1))
             assertTrue(result is ApiResult.Failure)
             assertEquals("39999", graph.api.widgets.getBinding(1).requiredValue()!!.number)

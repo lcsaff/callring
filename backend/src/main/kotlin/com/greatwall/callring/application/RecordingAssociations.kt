@@ -4,10 +4,17 @@ data class RecordingCall(val id: Long, val number: String, val startedAt: Long, 
 data class RecordingCallLink(val id: Long, val number: String, val startedAt: Long, val durationSeconds: Long?,
     val hidden: Boolean = false, val linkedScreenId: Long? = null)
 
+/** The entire target/visible-link closure is consumed under the same storage lease. */
+fun findRecordingCall(reads: com.greatwall.callring.application.ports.store.CallingTransactions, id: Long): RecordingCall? =
+    reads.readCalling { reader ->
+        val requested = reader.callingCall(id) ?: return@readCalling null
+        fun com.greatwall.callring.domain.RawCallRecord.link() = RecordingCallLink(this.id, number, time, duration, hidden, linkedScreenId)
+        resolveRecordingCall(requested.link(), if (requested.hidden) reader.visibleRecordingLinks(id).map { it.link() } else emptyList())
+    }
+
 /** Screening ID is the stable archive key even after system sync replaces its UI identity. */
-fun resolveRecordingCall(records: Collection<RecordingCallLink>, id: Long): RecordingCall? {
-    val requested = records.firstOrNull { it.id == id } ?: return null
-    val visible = if (requested.hidden) records.singleOrNull { !it.hidden && it.linkedScreenId == id } ?: return null else requested
+fun resolveRecordingCall(requested: RecordingCallLink, visibleLinks: List<RecordingCallLink>): RecordingCall? {
+    val visible = if (requested.hidden) visibleLinks.singleOrNull() ?: return null else requested
     return RecordingCall(visible.linkedScreenId ?: visible.id, visible.number, visible.startedAt, visible.durationSeconds)
 }
 

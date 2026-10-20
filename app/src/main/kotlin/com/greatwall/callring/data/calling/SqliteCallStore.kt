@@ -29,6 +29,14 @@ internal class SqliteCallStore(
 
     override fun callingCall(id: Long) = rows("id=?", args(id)).singleOrNull()
 
+    override fun visibleRecordingLinks(screenId: Long): List<RawCallRecord> {
+        checkActive(false)
+        return sql.rawQuery(QueryTag.SCOPED_ROWS, setOf(SqlTable.CALLS),
+            "SELECT * FROM calls WHERE hidden=0 AND linked_screen_id=? ORDER BY id LIMIT 2", args(screenId)).use { c ->
+            buildList { while (c.moveToNext()) add(CallingRowCodec.decode(c)) }
+        }
+    }
+
     override fun providerCalls(logIds: Set<String>): List<RawCallRecord> {
         checkActive(false)
         return logIds.toList().chunked(400).flatMap { batch ->

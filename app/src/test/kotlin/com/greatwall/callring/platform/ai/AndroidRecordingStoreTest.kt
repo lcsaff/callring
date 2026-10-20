@@ -30,7 +30,7 @@ class AndroidRecordingStoreTest {
         val second = store.registerIncoming("session-b", "31234", 1000, "sim-b")
         assertNotEquals(first.id, second.id)
         assertEquals(ArchiveStatus.WAITING_RECORDING, store.get(first.id)!!.status)
-        assertEquals(2, store.all().size)
+        assertEquals(2, store.listArchives().size)
         store.delete(first.id)
         store.registerIncoming("session-a", "31234", 1000, "sim-a")
         assertNull(store.get(first.id))

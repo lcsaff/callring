@@ -21,6 +21,22 @@ import java.util.concurrent.*
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [33], manifest = Config.NONE)
 class RecordingCommandContextTest {
+    @Test fun playbackFinalGenerationCheckDoesNotDecodeArchiveAgain() = runBlocking {
+        val store = AndroidRecordingStore(context, "play-generation", cipher)
+        val runtime = AndroidRecordingRuntime(context, "play-generation", { null }, { null }, {}, { store })
+        runtime.directory.mkdirs()
+        val audio = File(runtime.directory, "play.wav").apply { writeBytes(ByteArray(32)) }
+        store.compareAndSet(-7, null, com.greatwall.callring.contracts.recording.CallArchive(-7, "31234", 1, generation = 4, audioPath = audio.absolutePath))
+        org.robolectric.shadows.ShadowMediaPlayer.setMediaInfoProvider { org.robolectric.shadows.ShadowMediaPlayer.MediaInfo(1000, 0) }
+        val before = store.readCounters.snapshot()["fullArchiveDecodes"] ?: 0
+        try {
+            val result = runtime.play(-7)
+            assertTrue(result.toString(), result is ApiResult.Success)
+            assertEquals(1L, (store.readCounters.snapshot()["fullArchiveDecodes"] ?: 0) - before)
+            assertEquals(4L, store.generation(-7))
+        } finally { runtime.close() }
+    }
+
     private val context get() = RuntimeEnvironment.getApplication()
     private val cipher = object : RecordingCipher { override fun encrypt(value: String) = value; override fun decrypt(value: String) = value }
     @Test fun deleteDoesNotWaitForImportPreparationAndLateImportCannotResurrectArchive() = runBlocking {

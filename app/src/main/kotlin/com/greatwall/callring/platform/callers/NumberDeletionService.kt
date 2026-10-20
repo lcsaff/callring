@@ -1,12 +1,12 @@
 package com.greatwall.callring.platform.callers
 
-import com.greatwall.callring.application.recording.policy.*
+import com.greatwall.callring.application.sameRecordingNumber
 import com.greatwall.callring.contracts.common.*
 import com.greatwall.callring.contracts.callers.*
 import com.greatwall.callring.contracts.widget.*
 import com.greatwall.callring.contracts.recording.*
 import com.greatwall.callring.contracts.command.*
-import java.io.File
+import com.greatwall.callring.application.NumberRecordingMetadata
 
 /**
  * 组合删除：录音归档（含音频）→ 档案与通话记录（单事务）→ 小组件绑定。
@@ -16,6 +16,7 @@ internal class NumberDeletionService(
     private val core: CallersApi,
     private val recordings: RecordingApi,
     private val widgets: WidgetBindingsApi,
+    private val archivesForNumber: suspend (String) -> ApiResult<List<NumberRecordingMetadata>>,
 ) : NumberDeletionApi {
 
     override suspend fun impact(number: String): ApiResult<NumberDeletionImpact> {
@@ -23,13 +24,13 @@ internal class NumberDeletionService(
             is ApiResult.Failure -> return result
             is ApiResult.Success -> result.value
         }
-        val archives = when (val result = recordings.listArchives()) {
+        val archives = when (val result = archivesForNumber(coreImpact.number)) {
             is ApiResult.Failure -> return result
-            is ApiResult.Success -> result.value.filter { sameNumber(it.number, coreImpact.number) }
+            is ApiResult.Success -> result.value
         }
         val bindings = when (val result = widgets.listBindings()) {
             is ApiResult.Failure -> return result
-            is ApiResult.Success -> result.value.stored.filter { sameNumber(it.number, coreImpact.number) }
+            is ApiResult.Success -> result.value.stored.filter { sameRecordingNumber(it.number, coreImpact.number) }
         }
         val busy = archives.any {
             it.status in setOf(ArchiveStatus.QUEUED, ArchiveStatus.TRANSCRIBING, ArchiveStatus.ANALYZING)
@@ -40,7 +41,7 @@ internal class NumberDeletionService(
                 profileExists = coreImpact.profileExists,
                 callCount = coreImpact.callCount,
                 archiveCount = archives.size,
-                audioBytes = archives.sumOf { audioSize(it.audioPath) },
+                audioBytes = archives.sumOf { it.audioBytes },
                 widgetBindingCount = bindings.size,
                 busy = busy,
             ),
@@ -63,9 +64,9 @@ internal class NumberDeletionService(
         }
         if (current.busy) return ApiResult.Failure(ApiError(ErrorCode.CONFLICT, "number.delete_busy", retryable = true))
 
-        val archives = when (val result = recordings.listArchives()) {
+        val archives = when (val result = archivesForNumber(current.number)) {
             is ApiResult.Failure -> return result
-            is ApiResult.Success -> result.value.filter { sameNumber(it.number, current.number) }
+            is ApiResult.Success -> result.value
         }
         for (archive in archives) {
             when (val result = recordings.delete(archive.callId)) {
@@ -83,7 +84,7 @@ internal class NumberDeletionService(
 
         val bindings = when (val result = widgets.listBindings()) {
             is ApiResult.Failure -> return result
-            is ApiResult.Success -> result.value.stored.filter { sameNumber(it.number, current.number) }
+            is ApiResult.Success -> result.value.stored.filter { sameRecordingNumber(it.number, current.number) }
         }
         for (binding in bindings) {
             when (val result = widgets.removeBinding(binding.widgetId)) {
@@ -94,13 +95,4 @@ internal class NumberDeletionService(
         return ApiResult.Success(Unit)
     }
 
-    private fun sameNumber(raw: String, normalized: String): Boolean {
-        if (raw == normalized) return true
-        val a = raw.filter(Char::isDigit)
-        val b = normalized.filter(Char::isDigit)
-        return a.isNotEmpty() && a == b
-    }
-
-    private fun audioSize(path: String?): Long =
-        path?.let { runCatching { File(it).length() }.getOrDefault(0L) } ?: 0L
 }

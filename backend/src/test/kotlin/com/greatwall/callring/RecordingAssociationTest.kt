@@ -17,11 +17,18 @@ class RecordingAssociationTest {
         session.ringing(); session.register(-2, 104)
         assertNull(session.activeCandidate(105))
     }
+    @Test fun hiddenRecordingIdentityRequiresExactlyOneVisibleLink() {
+        val hidden = RecordingCallLink(1, "31234", 100, null, hidden = true)
+        val first = RecordingCallLink(2, "31234", 101, 60, linkedScreenId = 1)
+        assertNull(resolveRecordingCall(hidden, emptyList()))
+        assertNull(resolveRecordingCall(hidden, listOf(first, first.copy(id = 3))))
+        assertEquals(RecordingCall(1, "31234", 101, 60), resolveRecordingCall(hidden, listOf(first)))
+    }
     @Test fun synchronizedCallUsesOriginalScreeningArchive() {
         val records = listOf(RecordingCallLink(1, "31234", 100, null, hidden = true),
             RecordingCallLink(2, "31234", 101, 60, linkedScreenId = 1))
-        assertEquals(RecordingCall(1, "31234", 101, 60), resolveRecordingCall(records, 2))
-        assertEquals(resolveRecordingCall(records, 2), resolveRecordingCall(records, 1))
+        assertEquals(RecordingCall(1, "31234", 101, 60), resolveRecordingCall(records[1], emptyList()))
+        assertEquals(resolveRecordingCall(records[1], emptyList()), resolveRecordingCall(records[0], listOf(records[1])))
     }
     @Test fun idleClearsIncomingSessionSoOutgoingCallCannotReuseIt() {
         val session = IncomingRecordingSession()

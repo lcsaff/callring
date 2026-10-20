@@ -65,6 +65,8 @@ internal class MemoryQuietTransactions(private val store: BackendStore) : CoreUn
 
             override fun callingCall(id: Long) = state.calls[id]
 
+            override fun visibleRecordingLinks(screenId: Long) = state.calls.values.filter { !it.hidden && it.linkedScreenId == screenId }.take(2)
+
             override fun providerCalls(logIds: Set<String>) =
                 state.calls.values.filter { it.logId in logIds }
 

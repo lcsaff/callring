@@ -1,0 +1,1185 @@
+{
+  "capturedAt": "2026-10-20T20:20:13.096561+00:00",
+  "deltaFromReviewFix": [
+    "app/src/main/kotlin/com/greatwall/callring/platform/ai/RecordingMetadataReads.kt",
+    "app/src/test/kotlin/com/greatwall/callring/platform/ai/RecordingCandidatePaginationTest.kt"
+  ],
+  "lint": {
+    "ui": {
+      "path": "ui/build/reports/lint-results-debug.xml",
+      "sha256": "ad7372970e17f998564b5a8435ae38566096153b4d80e61b307ef3174722110b",
+      "counts": {
+        "Warning": 31,
+        "Hint": 3
+      }
+    },
+    "app": {
+      "path": "app/build/reports/lint-results-debug.xml",
+      "sha256": "870f75067afdbd0613d441d5411e734123f76480f1f3cf8b5a91c11e1e5e993a",
+      "counts": {
+        "Warning": 6
+      }
+    }
+  },
+  "logs": {
+    "t10b1-pagination-architecture.log": "e90de28d3552cfe7e1d37a5829c23cfe9f1994f612ebbed82b6aaa5404d34ba4",
+    "t10b1-pagination-full-gate.log": "4e2d099385b7db9c9b00d7a571dd90c02b59ccf075d61030c33f1e31f0b86963",
+    "t10b1-pagination-green.log": "03508142b9e47b315d7c11fdc4e8e9533577a385b8be22bf6675d908d6e53109",
+    "t10b1-pagination-red.log": "d60ab17a4af1139c76fa947491e478925f18dcc71240d5ceaee630b65b1237be",
+    "t10b1-pagination-evidence-check.log": "31ae7a748e3e31cd2da8005b3ee75f05d1f6dd631db194f959a55b4bef335f7c"
+  },
+  "metrics": {
+    "t10b1-pagination-1000.json": {
+      "path": "docs/plans/layer-boundaries-evidence/t10b1-pagination-1000.json",
+      "sha256": "aab3c0ca519af5f2d95ac5b09d1ef15ab06a8941140c119fcca428b870cc144a",
+      "counts": {
+        "fixtureRows": 1000,
+        "pages": [
+          {
+            "returned": 64,
+            "warmRows": 64,
+            "coldRows": 64,
+            "sourceBytes": 14208
+          },
+          {
+            "returned": 64,
+            "warmRows": 64,
+            "coldRows": 64,
+            "sourceBytes": 14208
+          },
+          {
+            "returned": 64,
+            "warmRows": 64,
+            "coldRows": 64,
+            "sourceBytes": 14208
+          },
+          {
+            "returned": 64,
+            "warmRows": 64,
+            "coldRows": 64,
+            "sourceBytes": 14208
+          },
+          {
+            "returned": 64,
+            "warmRows": 64,
+            "coldRows": 64,
+            "sourceBytes": 14208
+          },
+          {
+            "returned": 64,
+            "warmRows": 64,
+            "coldRows": 64,
+            "sourceBytes": 14184
+          },
+          {
+            "returned": 64,
+            "warmRows": 64,
+            "coldRows": 64,
+            "sourceBytes": 24136
+          },
+          {
+            "returned": 64,
+            "warmRows": 64,
+            "coldRows": 64,
+            "sourceBytes": 24096
+          },
+          {
+            "returned": 64,
+            "warmRows": 64,
+            "coldRows": 64,
+            "sourceBytes": 14100
+          },
+          {
+            "returned": 64,
+            "warmRows": 64,
+            "coldRows": 64,
+            "sourceBytes": 14132
+          },
+          {
+            "returned": 64,
+            "warmRows": 64,
+            "coldRows": 64,
+            "sourceBytes": 14144
+          },
+          {
+            "returned": 64,
+            "warmRows": 64,
+            "coldRows": 64,
+            "sourceBytes": 14144
+          },
+          {
+            "returned": 64,
+            "warmRows": 64,
+            "coldRows": 64,
+            "sourceBytes": 14144
+          },
+          {
+            "returned": 64,
+            "warmRows": 64,
+            "coldRows": 64,
+            "sourceBytes": 14144
+          },
+          {
+            "returned": 64,
+            "warmRows": 52,
+            "coldRows": 52,
+            "sourceBytes": 11492
+          },
+          {
+            "returned": 40,
+            "warmRows": 20,
+            "coldRows": 20,
+            "sourceBytes": 4420
+          },
+          {
+            "returned": 0,
+            "warmRows": 0,
+            "coldRows": 0,
+            "sourceBytes": 0
+          }
+        ],
+        "totals": {
+          "warmMetadataRows": 968,
+          "sourceChunkQueries": 1940,
+          "metadataCharacters": 4840,
+          "projectionMetadataBytes": 364224,
+          "payloadMetadataRows": 968,
+          "coldIdentityRows": 968,
+          "maxSourceChunkBytes": 4096,
+          "sourceBytes": 234176
+        }
+      }
+    },
+    "t10b1-pagination-10000.json": {
+      "path": "docs/plans/layer-boundaries-evidence/t10b1-pagination-10000.json",
+      "sha256": "e2386b609247db8f722ca848a015ceb924e452af2c6ede29b691917d4bced17b",
+      "counts": {
+        "fixtureRows": 10000,
+        "pages": [
+          {
+            "returned": 64,
+            "warmRows": 64,
+            "coldRows": 64,
+            "sourceBytes": 14272
+          },
+          {
+            "returned": 64,
+            "warmRows": 64,
+            "coldRows": 64,
+            "sourceBytes": 14272
+          },
+          {
+            "returned": 64,
+            "warmRows": 64,
+            "coldRows": 64,
+            "sourceBytes": 14272
+          },
+          {
+            "returned": 64,
+            "warmRows": 64,
+            "coldRows": 64,
+            "sourceBytes": 14272
+          },
+          {
+            "returned": 64,
+            "warmRows": 64,
+            "coldRows": 64,
+            "sourceBytes": 14272
+          },
+          {
+            "returned": 64,
+            "warmRows": 64,
+            "coldRows": 64,
+            "sourceBytes": 14272
+          },
+          {
+            "returned": 64,
+            "warmRows": 64,
+            "coldRows": 64,
+            "sourceBytes": 14272
+          },
+          {
+            "returned": 64,
+            "warmRows": 64,
+            "coldRows": 64,
+            "sourceBytes": 14272
+          },
+          {
+            "returned": 64,
+            "warmRows": 64,
+            "coldRows": 64,
+            "sourceBytes": 14272
+          },
+          {
+            "returned": 64,
+            "warmRows": 64,
+            "coldRows": 64,
+            "sourceBytes": 14272
+          },
+          {
+            "returned": 64,
+            "warmRows": 64,
+            "coldRows": 64,
+            "sourceBytes": 14272
+          },
+          {
+            "returned": 64,
+            "warmRows": 64,
+            "coldRows": 64,
+            "sourceBytes": 14272
+          },
+          {
+            "returned": 64,
+            "warmRows": 64,
+            "coldRows": 64,
+            "sourceBytes": 14272
+          },
+          {
+            "returned": 64,
+            "warmRows": 64,
+            "coldRows": 64,
+            "sourceBytes": 14272
+          },
+          {
+            "returned": 64,
+            "warmRows": 64,
+            "coldRows": 64,
+            "sourceBytes": 14272
+          },
+          {
+            "returned": 64,
+            "warmRows": 64,
+            "coldRows": 64,
+            "sourceBytes": 14272
+          },
+          {
+            "returned": 64,
+            "warmRows": 64,
+            "coldRows": 64,
+            "sourceBytes": 14272
+          },
+          {
+            "returned": 64,
+            "warmRows": 64,
+            "coldRows": 64,
+            "sourceBytes": 14272
+          },
+          {
+            "returned": 64,
+            "warmRows": 64,
+            "coldRows": 64,
+            "sourceBytes": 14272
+          },
+          {
+            "returned": 64,
+            "warmRows": 64,
+            "coldRows": 64,
+            "sourceBytes": 14272
+          },
+          {
+            "returned": 64,
+            "warmRows": 64,
+            "coldRows": 64,
+            "sourceBytes": 14272
+          },
+          {
+            "returned": 64,
+            "warmRows": 64,
+            "coldRows": 64,
+            "sourceBytes": 14272
+          },
+          {
+            "returned": 64,
+            "warmRows": 64,
+            "coldRows": 64,
+            "sourceBytes": 14272
+          },
+          {
+            "returned": 64,
+            "warmRows": 64,
+            "coldRows": 64,
+            "sourceBytes": 14272
+          },
+          {
+            "returned": 64,
+            "warmRows": 64,
+            "coldRows": 64,
+            "sourceBytes": 14272
+          },
+          {
+            "returned": 64,
+            "warmRows": 64,
+            "coldRows": 64,
+            "sourceBytes": 14272
+          },
+          {
+            "returned": 64,
+            "warmRows": 64,
+            "coldRows": 64,
+            "sourceBytes": 14272
+          },
+          {
+            "returned": 64,
+            "warmRows": 64,
+            "coldRows": 64,
+            "sourceBytes": 14272
+          },
+          {
+            "returned": 64,
+            "warmRows": 64,
+            "coldRows": 64,
+            "sourceBytes": 14272
+          },
+          {
+            "returned": 64,
+            "warmRows": 64,
+            "coldRows": 64,
+            "sourceBytes": 14272
+          },
+          {
+            "returned": 64,
+            "warmRows": 64,
+            "coldRows": 64,
+            "sourceBytes": 14272
+          },
+          {
+            "returned": 64,
+            "warmRows": 64,
+            "coldRows": 64,
+            "sourceBytes": 14272
+          },
+          {
+            "returned": 64,
+            "warmRows": 64,
+            "coldRows": 64,
+            "sourceBytes": 14272
+          },
+          {
+            "returned": 64,
+            "warmRows": 64,
+            "coldRows": 64,
+            "sourceBytes": 14272
+          },
+          {
+            "returned": 64,
+            "warmRows": 64,
+            "coldRows": 64,
+            "sourceBytes": 14272
+          },
+          {
+            "returned": 64,
+            "warmRows": 64,
+            "coldRows": 64,
+            "sourceBytes": 14272
+          },
+          {
+            "returned": 64,
+            "warmRows": 64,
+            "coldRows": 64,
+            "sourceBytes": 14272
+          },
+          {
+            "returned": 64,
+            "warmRows": 64,
+            "coldRows": 64,
+            "sourceBytes": 14272
+          },
+          {
+            "returned": 64,
+            "warmRows": 64,
+            "coldRows": 64,
+            "sourceBytes": 14272
+          },
+          {
+            "returned": 64,
+            "warmRows": 64,
+            "coldRows": 64,
+            "sourceBytes": 14272
+          },
+          {
+            "returned": 64,
+            "warmRows": 64,
+            "coldRows": 64,
+            "sourceBytes": 14272
+          },
+          {
+            "returned": 64,
+            "warmRows": 64,
+            "coldRows": 64,
+            "sourceBytes": 14272
+          },
+          {
+            "returned": 64,
+            "warmRows": 64,
+            "coldRows": 64,
+            "sourceBytes": 14272
+          },
+          {
+            "returned": 64,
+            "warmRows": 64,
+            "coldRows": 64,
+            "sourceBytes": 14272
+          },
+          {
+            "returned": 64,
+            "warmRows": 64,
+            "coldRows": 64,
+            "sourceBytes": 14272
+          },
+          {
+            "returned": 64,
+            "warmRows": 64,
+            "coldRows": 64,
+            "sourceBytes": 14272
+          },
+          {
+            "returned": 64,
+            "warmRows": 64,
+            "coldRows": 64,
+            "sourceBytes": 14272
+          },
+          {
+            "returned": 64,
+            "warmRows": 64,
+            "coldRows": 64,
+            "sourceBytes": 14272
+          },
+          {
+            "returned": 64,
+            "warmRows": 64,
+            "coldRows": 64,
+            "sourceBytes": 14272
+          },
+          {
+            "returned": 64,
+            "warmRows": 64,
+            "coldRows": 64,
+            "sourceBytes": 14272
+          },
+          {
+            "returned": 64,
+            "warmRows": 64,
+            "coldRows": 64,
+            "sourceBytes": 14272
+          },
+          {
+            "returned": 64,
+            "warmRows": 64,
+            "coldRows": 64,
+            "sourceBytes": 14272
+          },
+          {
+            "returned": 64,
+            "warmRows": 64,
+            "coldRows": 64,
+            "sourceBytes": 14272
+          },
+          {
+            "returned": 64,
+            "warmRows": 64,
+            "coldRows": 64,
+            "sourceBytes": 14272
+          },
+          {
+            "returned": 64,
+            "warmRows": 64,
+            "coldRows": 64,
+            "sourceBytes": 14272
+          },
+          {
+            "returned": 64,
+            "warmRows": 64,
+            "coldRows": 64,
+            "sourceBytes": 14272
+          },
+          {
+            "returned": 64,
+            "warmRows": 64,
+            "coldRows": 64,
+            "sourceBytes": 14272
+          },
+          {
+            "returned": 64,
+            "warmRows": 64,
+            "coldRows": 64,
+            "sourceBytes": 14272
+          },
+          {
+            "returned": 64,
+            "warmRows": 64,
+            "coldRows": 64,
+            "sourceBytes": 14272
+          },
+          {
+            "returned": 64,
+            "warmRows": 64,
+            "coldRows": 64,
+            "sourceBytes": 14272
+          },
+          {
+            "returned": 64,
+            "warmRows": 64,
+            "coldRows": 64,
+            "sourceBytes": 14272
+          },
+          {
+            "returned": 64,
+            "warmRows": 64,
+            "coldRows": 64,
+            "sourceBytes": 14256
+          },
+          {
+            "returned": 64,
+            "warmRows": 64,
+            "coldRows": 64,
+            "sourceBytes": 14224
+          },
+          {
+            "returned": 64,
+            "warmRows": 64,
+            "coldRows": 64,
+            "sourceBytes": 14208
+          },
+          {
+            "returned": 64,
+            "warmRows": 64,
+            "coldRows": 64,
+            "sourceBytes": 14208
+          },
+          {
+            "returned": 64,
+            "warmRows": 64,
+            "coldRows": 64,
+            "sourceBytes": 14208
+          },
+          {
+            "returned": 64,
+            "warmRows": 64,
+            "coldRows": 64,
+            "sourceBytes": 14208
+          },
+          {
+            "returned": 64,
+            "warmRows": 64,
+            "coldRows": 64,
+            "sourceBytes": 14208
+          },
+          {
+            "returned": 64,
+            "warmRows": 64,
+            "coldRows": 64,
+            "sourceBytes": 14208
+          },
+          {
+            "returned": 64,
+            "warmRows": 64,
+            "coldRows": 64,
+            "sourceBytes": 14208
+          },
+          {
+            "returned": 64,
+            "warmRows": 64,
+            "coldRows": 64,
+            "sourceBytes": 14208
+          },
+          {
+            "returned": 64,
+            "warmRows": 64,
+            "coldRows": 64,
+            "sourceBytes": 14208
+          },
+          {
+            "returned": 64,
+            "warmRows": 64,
+            "coldRows": 64,
+            "sourceBytes": 14208
+          },
+          {
+            "returned": 64,
+            "warmRows": 64,
+            "coldRows": 64,
+            "sourceBytes": 14208
+          },
+          {
+            "returned": 64,
+            "warmRows": 64,
+            "coldRows": 64,
+            "sourceBytes": 14208
+          },
+          {
+            "returned": 64,
+            "warmRows": 64,
+            "coldRows": 64,
+            "sourceBytes": 14194
+          },
+          {
+            "returned": 64,
+            "warmRows": 64,
+            "coldRows": 64,
+            "sourceBytes": 14161
+          },
+          {
+            "returned": 64,
+            "warmRows": 64,
+            "coldRows": 64,
+            "sourceBytes": 24106
+          },
+          {
+            "returned": 64,
+            "warmRows": 64,
+            "coldRows": 64,
+            "sourceBytes": 24085
+          },
+          {
+            "returned": 64,
+            "warmRows": 64,
+            "coldRows": 64,
+            "sourceBytes": 14122
+          },
+          {
+            "returned": 64,
+            "warmRows": 64,
+            "coldRows": 64,
+            "sourceBytes": 14144
+          },
+          {
+            "returned": 64,
+            "warmRows": 64,
+            "coldRows": 64,
+            "sourceBytes": 14144
+          },
+          {
+            "returned": 64,
+            "warmRows": 64,
+            "coldRows": 64,
+            "sourceBytes": 14144
+          },
+          {
+            "returned": 64,
+            "warmRows": 64,
+            "coldRows": 64,
+            "sourceBytes": 14144
+          },
+          {
+            "returned": 64,
+            "warmRows": 64,
+            "coldRows": 64,
+            "sourceBytes": 14144
+          },
+          {
+            "returned": 64,
+            "warmRows": 64,
+            "coldRows": 64,
+            "sourceBytes": 14144
+          },
+          {
+            "returned": 64,
+            "warmRows": 64,
+            "coldRows": 64,
+            "sourceBytes": 14144
+          },
+          {
+            "returned": 64,
+            "warmRows": 64,
+            "coldRows": 64,
+            "sourceBytes": 14144
+          },
+          {
+            "returned": 64,
+            "warmRows": 64,
+            "coldRows": 64,
+            "sourceBytes": 14144
+          },
+          {
+            "returned": 64,
+            "warmRows": 64,
+            "coldRows": 64,
+            "sourceBytes": 14144
+          },
+          {
+            "returned": 64,
+            "warmRows": 64,
+            "coldRows": 64,
+            "sourceBytes": 14144
+          },
+          {
+            "returned": 64,
+            "warmRows": 64,
+            "coldRows": 64,
+            "sourceBytes": 14144
+          },
+          {
+            "returned": 64,
+            "warmRows": 64,
+            "coldRows": 64,
+            "sourceBytes": 14152
+          },
+          {
+            "returned": 64,
+            "warmRows": 64,
+            "coldRows": 64,
+            "sourceBytes": 14184
+          },
+          {
+            "returned": 64,
+            "warmRows": 64,
+            "coldRows": 64,
+            "sourceBytes": 14208
+          },
+          {
+            "returned": 64,
+            "warmRows": 64,
+            "coldRows": 64,
+            "sourceBytes": 14208
+          },
+          {
+            "returned": 64,
+            "warmRows": 64,
+            "coldRows": 64,
+            "sourceBytes": 14208
+          },
+          {
+            "returned": 64,
+            "warmRows": 64,
+            "coldRows": 64,
+            "sourceBytes": 14208
+          },
+          {
+            "returned": 64,
+            "warmRows": 64,
+            "coldRows": 64,
+            "sourceBytes": 14208
+          },
+          {
+            "returned": 64,
+            "warmRows": 64,
+            "coldRows": 64,
+            "sourceBytes": 14208
+          },
+          {
+            "returned": 64,
+            "warmRows": 64,
+            "coldRows": 64,
+            "sourceBytes": 14208
+          },
+          {
+            "returned": 64,
+            "warmRows": 64,
+            "coldRows": 64,
+            "sourceBytes": 14208
+          },
+          {
+            "returned": 64,
+            "warmRows": 64,
+            "coldRows": 64,
+            "sourceBytes": 14208
+          },
+          {
+            "returned": 64,
+            "warmRows": 64,
+            "coldRows": 64,
+            "sourceBytes": 14208
+          },
+          {
+            "returned": 64,
+            "warmRows": 64,
+            "coldRows": 64,
+            "sourceBytes": 14208
+          },
+          {
+            "returned": 64,
+            "warmRows": 64,
+            "coldRows": 64,
+            "sourceBytes": 14208
+          },
+          {
+            "returned": 64,
+            "warmRows": 64,
+            "coldRows": 64,
+            "sourceBytes": 14208
+          },
+          {
+            "returned": 64,
+            "warmRows": 64,
+            "coldRows": 64,
+            "sourceBytes": 14208
+          },
+          {
+            "returned": 64,
+            "warmRows": 64,
+            "coldRows": 64,
+            "sourceBytes": 14208
+          },
+          {
+            "returned": 64,
+            "warmRows": 64,
+            "coldRows": 64,
+            "sourceBytes": 14208
+          },
+          {
+            "returned": 64,
+            "warmRows": 64,
+            "coldRows": 64,
+            "sourceBytes": 14208
+          },
+          {
+            "returned": 64,
+            "warmRows": 64,
+            "coldRows": 64,
+            "sourceBytes": 14208
+          },
+          {
+            "returned": 64,
+            "warmRows": 64,
+            "coldRows": 64,
+            "sourceBytes": 14208
+          },
+          {
+            "returned": 64,
+            "warmRows": 64,
+            "coldRows": 64,
+            "sourceBytes": 14208
+          },
+          {
+            "returned": 64,
+            "warmRows": 64,
+            "coldRows": 64,
+            "sourceBytes": 14208
+          },
+          {
+            "returned": 64,
+            "warmRows": 64,
+            "coldRows": 64,
+            "sourceBytes": 14208
+          },
+          {
+            "returned": 64,
+            "warmRows": 64,
+            "coldRows": 64,
+            "sourceBytes": 14208
+          },
+          {
+            "returned": 64,
+            "warmRows": 64,
+            "coldRows": 64,
+            "sourceBytes": 14208
+          },
+          {
+            "returned": 64,
+            "warmRows": 64,
+            "coldRows": 64,
+            "sourceBytes": 14208
+          },
+          {
+            "returned": 64,
+            "warmRows": 64,
+            "coldRows": 64,
+            "sourceBytes": 14208
+          },
+          {
+            "returned": 64,
+            "warmRows": 64,
+            "coldRows": 64,
+            "sourceBytes": 14208
+          },
+          {
+            "returned": 64,
+            "warmRows": 64,
+            "coldRows": 64,
+            "sourceBytes": 14208
+          },
+          {
+            "returned": 64,
+            "warmRows": 64,
+            "coldRows": 64,
+            "sourceBytes": 14208
+          },
+          {
+            "returned": 64,
+            "warmRows": 64,
+            "coldRows": 64,
+            "sourceBytes": 14208
+          },
+          {
+            "returned": 64,
+            "warmRows": 64,
+            "coldRows": 64,
+            "sourceBytes": 14208
+          },
+          {
+            "returned": 64,
+            "warmRows": 64,
+            "coldRows": 64,
+            "sourceBytes": 14208
+          },
+          {
+            "returned": 64,
+            "warmRows": 64,
+            "coldRows": 64,
+            "sourceBytes": 14208
+          },
+          {
+            "returned": 64,
+            "warmRows": 64,
+            "coldRows": 64,
+            "sourceBytes": 14208
+          },
+          {
+            "returned": 64,
+            "warmRows": 64,
+            "coldRows": 64,
+            "sourceBytes": 14208
+          },
+          {
+            "returned": 64,
+            "warmRows": 64,
+            "coldRows": 64,
+            "sourceBytes": 14208
+          },
+          {
+            "returned": 64,
+            "warmRows": 64,
+            "coldRows": 64,
+            "sourceBytes": 14208
+          },
+          {
+            "returned": 64,
+            "warmRows": 64,
+            "coldRows": 64,
+            "sourceBytes": 14208
+          },
+          {
+            "returned": 64,
+            "warmRows": 64,
+            "coldRows": 64,
+            "sourceBytes": 14208
+          },
+          {
+            "returned": 64,
+            "warmRows": 64,
+            "coldRows": 64,
+            "sourceBytes": 14208
+          },
+          {
+            "returned": 64,
+            "warmRows": 64,
+            "coldRows": 64,
+            "sourceBytes": 14208
+          },
+          {
+            "returned": 64,
+            "warmRows": 64,
+            "coldRows": 64,
+            "sourceBytes": 14208
+          },
+          {
+            "returned": 64,
+            "warmRows": 64,
+            "coldRows": 64,
+            "sourceBytes": 14208
+          },
+          {
+            "returned": 64,
+            "warmRows": 64,
+            "coldRows": 64,
+            "sourceBytes": 14208
+          },
+          {
+            "returned": 64,
+            "warmRows": 64,
+            "coldRows": 64,
+            "sourceBytes": 14208
+          },
+          {
+            "returned": 64,
+            "warmRows": 64,
+            "coldRows": 64,
+            "sourceBytes": 14208
+          },
+          {
+            "returned": 64,
+            "warmRows": 64,
+            "coldRows": 64,
+            "sourceBytes": 14208
+          },
+          {
+            "returned": 64,
+            "warmRows": 64,
+            "coldRows": 64,
+            "sourceBytes": 14208
+          },
+          {
+            "returned": 64,
+            "warmRows": 64,
+            "coldRows": 64,
+            "sourceBytes": 14208
+          },
+          {
+            "returned": 64,
+            "warmRows": 64,
+            "coldRows": 64,
+            "sourceBytes": 14208
+          },
+          {
+            "returned": 64,
+            "warmRows": 64,
+            "coldRows": 64,
+            "sourceBytes": 14208
+          },
+          {
+            "returned": 64,
+            "warmRows": 64,
+            "coldRows": 64,
+            "sourceBytes": 14208
+          },
+          {
+            "returned": 64,
+            "warmRows": 64,
+            "coldRows": 64,
+            "sourceBytes": 14208
+          },
+          {
+            "returned": 64,
+            "warmRows": 64,
+            "coldRows": 64,
+            "sourceBytes": 14208
+          },
+          {
+            "returned": 64,
+            "warmRows": 64,
+            "coldRows": 64,
+            "sourceBytes": 14208
+          },
+          {
+            "returned": 64,
+            "warmRows": 64,
+            "coldRows": 64,
+            "sourceBytes": 14208
+          },
+          {
+            "returned": 64,
+            "warmRows": 64,
+            "coldRows": 64,
+            "sourceBytes": 14208
+          },
+          {
+            "returned": 64,
+            "warmRows": 64,
+            "coldRows": 64,
+            "sourceBytes": 14208
+          },
+          {
+            "returned": 64,
+            "warmRows": 64,
+            "coldRows": 64,
+            "sourceBytes": 14208
+          },
+          {
+            "returned": 64,
+            "warmRows": 64,
+            "coldRows": 64,
+            "sourceBytes": 14208
+          },
+          {
+            "returned": 64,
+            "warmRows": 64,
+            "coldRows": 64,
+            "sourceBytes": 14208
+          },
+          {
+            "returned": 64,
+            "warmRows": 40,
+            "coldRows": 40,
+            "sourceBytes": 8880
+          },
+          {
+            "returned": 16,
+            "warmRows": 8,
+            "coldRows": 8,
+            "sourceBytes": 1776
+          },
+          {
+            "returned": 0,
+            "warmRows": 0,
+            "coldRows": 0,
+            "sourceBytes": 0
+          }
+        ],
+        "totals": {
+          "warmMetadataRows": 9968,
+          "sourceChunkQueries": 19940,
+          "metadataCharacters": 49840,
+          "projectionMetadataBytes": 3760696,
+          "payloadMetadataRows": 9968,
+          "coldIdentityRows": 9968,
+          "maxSourceChunkBytes": 4096,
+          "sourceBytes": 2235644
+        }
+      }
+    },
+    "t10b1-pagination-future.json": {
+      "path": "docs/plans/layer-boundaries-evidence/t10b1-pagination-future.json",
+      "sha256": "f1cf41f7ee1f0d76f94ab05a9d71979b373918d58c2d5e9b9e3ce5830240c919",
+      "counts": {
+        "returned": 120,
+        "totals": {
+          "warmMetadataRows": 175,
+          "sourceChunkQueries": 350,
+          "metadataCharacters": 875,
+          "projectionMetadataBytes": 65813,
+          "payloadMetadataRows": 175,
+          "coldIdentityRows": 175,
+          "maxSourceChunkBytes": 223,
+          "sourceBytes": 38679
+        }
+      }
+    }
+  },
+  "exit": 0,
+  "tasks": "147: 15 executed / 132 up-to-date",
+  "duration": "1m9s",
+  "priorVerification": {
+    "path": "build/qa/layer-boundaries/t10b1-pagination-prior-verification.json",
+    "sha256": "4e114fa9d34ccbc6712d6287871233c21c9877d2245a6d273ceec7a760617336"
+  },
+  "redArtifacts": {
+    "t10b1-pagination-red.xml": "b10aabb7814e0095302d65812cd9fa9fe8bd8166a9f4601014baeef4cb516ea2",
+    "t10b1-pagination-red-1000.json": "1d7fb107b4d32513d65b441f1fda01329d44a0ad2cb2741b2b4f68c89db520e1",
+    "t10b1-pagination-red-10000.json": "09259e5743c39776246a87671acb044f9744f8e604beb1f82a255c38ff435599"
+  },
+  "source": {
+    "count": 561,
+    "sha256": "08680c200c2ddffad3d19dbebcc70958e1165b821570830e0b3179d05ea68d66"
+  },
+  "changedSource": {
+    "count": 26,
+    "sha256": "4eb7c9db7b3fccdbe3ca5a9e57dcfc168833368d577bda89a1b75487da5899c8"
+  },
+  "tests": {
+    "backend": {
+      "suites": 62,
+      "tests": 315,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "execution": "EXECUTED"
+    },
+    "ui": {
+      "suites": 70,
+      "tests": 298,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "execution": "UP-TO-DATE; main --rerun XML"
+    },
+    "app": {
+      "suites": 63,
+      "tests": 302,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "execution": "EXECUTED"
+    }
+  },
+  "verificationSha256": "4b8c48d1efdf2ce7a584f689abedf764f75c85f1140357dc7e86365922624a68"
+}

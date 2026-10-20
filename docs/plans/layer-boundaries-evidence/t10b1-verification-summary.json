@@ -1,0 +1,173 @@
+{
+  "phase": "T10b1",
+  "date": "2026-10-21",
+  "productionBase": "c188167b49fb49b2c91c1e26075ae9e34cf39c82",
+  "gateHead": "0e2846fbd002d082157233ada7006693b0cde786",
+  "specReview": "PASS after all fixes",
+  "qualityReview": "PASS after pagination P2 fix",
+  "mainGate": {
+    "log": "build/qa/layer-boundaries/t10b1-full-gate.log",
+    "sha256": "4ca3038a37f076b640226667270af623a7ad84ecbad638a68fbca20ea7e17ef0",
+    "result": "BUILD SUCCESSFUL",
+    "seconds": 110,
+    "tasks": 147,
+    "executed": 24,
+    "upToDate": 123,
+    "allThreeTestTasksExplicitRerun": true,
+    "backendTests": 315,
+    "uiTests": 298,
+    "appTests": 297,
+    "contractsTests": "NO-SOURCE"
+  },
+  "reviewFixGate": {
+    "log": "build/qa/layer-boundaries/t10b1-review-fix-gate.log",
+    "sha256": "7b2f2bc1598225478bb53efb15688d493096588631a2afc41660c96c93600552",
+    "result": "BUILD SUCCESSFUL",
+    "seconds": 70,
+    "tasks": 147,
+    "executed": 16,
+    "upToDate": 131,
+    "backendAndUiTests": "UP-TO-DATE, main gate XML",
+    "appTests": "299 executed after two fixes"
+  },
+  "tests": {
+    "backend": {
+      "suites": 62,
+      "tests": 315
+    },
+    "ui": {
+      "suites": 70,
+      "tests": 298
+    },
+    "app": {
+      "suites": 63,
+      "tests": 302
+    },
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0
+  },
+  "rootIndependentChecks": {
+    "architectureScript": "PASS",
+    "backendBoundariesScript": "PASS",
+    "backendSourceCount": 108,
+    "architectureTests": 17,
+    "backendBoundaryTests": 4,
+    "workingDiffCheck": "PASS",
+    "stagedDiffCheck": "PASS",
+    "sourceFingerprintVerified": true,
+    "logHashesAndXmlVerified": true
+  },
+  "sourceFingerprint": {
+    "paths": 26,
+    "sha256": "4eb7c9db7b3fccdbe3ca5a9e57dcfc168833368d577bda89a1b75487da5899c8"
+  },
+  "lint": {
+    "ui": {
+      "Warning": 31,
+      "Hint": 3
+    },
+    "app": {
+      "Warning": 6
+    },
+    "Error": 0
+  },
+  "safeAccessEvidence": [
+    "t10b1-call-1000.json",
+    "t10b1-call-10000.json",
+    "t10b1-metadata-cold-1000.json",
+    "t10b1-metadata-cold-10000.json",
+    "t10b1-metadata-cold.json",
+    "t10b1-metadata-warm-1000.json",
+    "t10b1-metadata-warm-10000.json",
+    "t10b1-pagination-1000.json",
+    "t10b1-pagination-10000.json",
+    "t10b1-pagination-future.json"
+  ],
+  "targetCallConsumedRows": 1,
+  "hiddenCallConsumedRows": 2,
+  "ordinaryCoreStateLoads": 0,
+  "warm": {
+    "unrelatedArchives": [
+      1000,
+      10000
+    ],
+    "rawNumberProjectionRows": [
+      1001,
+      10001
+    ],
+    "targetMetadataPayloads": [
+      1,
+      1
+    ],
+    "sourceBytes": [
+      800434,
+      800436
+    ],
+    "byteDifference": "fixture runtime cache path length; not a claim of identical byte counts"
+  },
+  "cold": {
+    "unrelatedArchives": [
+      1000,
+      10000
+    ],
+    "metadataRowsAcrossFourOperations": [
+      4004,
+      40004
+    ],
+    "sourceBytes": [
+      832404,
+      8356408
+    ],
+    "fullArchiveDecodes": 0,
+    "listArchiveDecodes": 0
+  },
+  "sourceChunkLimitBytes": 4096,
+  "coldReadsDoNotWriteD16Index": true,
+  "d16SubsequentTextTailVerified": true,
+  "sqlMeasurement": "successful result moves and source bytes; not SQLite engine scans",
+  "deviceExecuted": false,
+  "remaining": [
+    "T10b2 recording business and unique publication",
+    "T10b3 number deletion and identity adoption",
+    "T10c explicit composition and BackendContext deletion",
+    "T11 cumulative refresh protocol cleanup",
+    "T12 named operations",
+    "T13 legacy storage and directory cleanup",
+    "T14 guards and CI",
+    "T15 final acceptance and delivery"
+  ],
+  "paginationGate": {
+    "log": "build/qa/layer-boundaries/t10b1-pagination-full-gate.log",
+    "sha256": "4e2d099385b7db9c9b00d7a571dd90c02b59ccf075d61030c33f1e31f0b86963",
+    "result": "BUILD SUCCESSFUL",
+    "seconds": 69,
+    "tasks": 147,
+    "executed": 15,
+    "upToDate": 132,
+    "backendTests": "315 executed",
+    "uiTests": "298 UP-TO-DATE, original main gate XML",
+    "appTests": "302 executed"
+  },
+  "paginationAccess": {
+    "1000": {
+      "pages": 17,
+      "returned": 1000,
+      "warmRows": 968,
+      "coldRows": 968,
+      "sourceBytes": 234176,
+      "maxWarmRowsPerAllDuePage": 64,
+      "maxColdRowsPerAllDuePage": 64
+    },
+    "10000": {
+      "pages": 158,
+      "returned": 10000,
+      "warmRows": 9968,
+      "coldRows": 9968,
+      "sourceBytes": 2235644,
+      "maxWarmRowsPerAllDuePage": 64,
+      "maxColdRowsPerAllDuePage": 64
+    },
+    "futureRows": "Can require more source rows than the 64 returned candidates; separate fixture retained"
+  }
+}

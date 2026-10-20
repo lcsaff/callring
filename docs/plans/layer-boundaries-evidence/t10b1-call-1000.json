@@ -1,0 +1,6 @@
+{
+  "unrelatedCalls": 1000,
+  "targetCallConsumedRows": 1,
+  "coreStateLoads": 0,
+  "hiddenCallConsumedRows": 2
+}

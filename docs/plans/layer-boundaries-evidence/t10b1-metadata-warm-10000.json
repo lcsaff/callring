@@ -1,0 +1,11 @@
+{
+  "warmMetadataRows": 4,
+  "sourceChunkQueries": 197,
+  "metadataCharacters": 194,
+  "projectionMetadataBytes": 1532,
+  "payloadMetadataRows": 1,
+  "maxSourceChunkBytes": 4096,
+  "warmNumberRows": 10001,
+  "targetMetadataRows": 1,
+  "sourceBytes": 800435
+}
