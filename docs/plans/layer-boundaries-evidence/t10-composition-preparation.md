@@ -1,0 +1,25 @@
+# T10 装配收口补充准备（非验收）
+
+2026-10-21，基于b1bf4b0只读复核；未运行Gradle或修改业务。与t10-preparation.md合用，实施前复核T09b源版本发布变更。
+
+## 剩余 Context 消费者
+
+RuntimeService、RingtoneService、WidgetBindingsService仍用with(context)，CallringBackend还将已迁窄服务的构建、DecisionInputs补丁与command绑定放在Context。T10应在明确装配处构建这些服务；总装配可以知道全部依赖，服务只能知道自己声明的能力。DecisionInputs缓存及窄补丁保持共享生命周期，bound不能新建独立缓存或协调器。Context的io/write/validation/runtime辅助可复用既有UseCaseRunner及明确函数，不能以Context2/Dependencies包回同一组对象。
+
+SettingsApi/UiEditsApi当前只是组装已迁服务；移入CoreAssembly后删除旧Context工厂及其测试引用。checkNumber使用唯一NumberIdentity。T09b仍可能调整captureCore/完整快照入口，T10以其最终端口为准。
+
+## 必须实际消除的发布路径
+
+- WidgetBindingsService先让AndroidPreferences.save/remove内部commit，再重复publishScopes，并以capture未变时changed(preferences)兜底。相同绑定保存/不存在绑定删除仍会发布；不得将此行为原封搬到窄服务。改为最终值差异的唯一提交者，真实变化一次、noop零发布，失败零发布，命令仍记录。PreferenceStore存储实现退出业务决定与第二次发布，保留持久化失败恢复。
+- RingtoneService以全局capture前后比较推断平台是否发布，并notifyChanged(core)兜底；并发无关提交会改变判断，noop也可被兜底变更。应显式返回/提交实际delta并移除比较与fallback。音频复制/验证在fence外，最终generation保护、持久化与发布同边界；预览/停止和自然播放结束必须有同一真实runtime范围。
+- RuntimeService请求日志同步的guard、权限判定与调度次序保持。运行状态读取由窄RuntimeProbe加completeRuntimeStatus，不能经完整settings/State。读取installedWidgets应由UI桥注入，不让Graph依赖具体widget实现。
+
+## 组合与依赖
+
+CoreNumberDeletionApi与app NumberDeletionService目前各有一套顺序/数量/匹配逻辑；最终应使用同一backend组合服务及必需的录音/绑定能力，避免保留“核心版本”业务fallback。测试使用明确空能力假端口，不能据测试需求保留生产Unavailable分支。CallringBackend的Unavailable能力与Graph覆盖装配应在本片改为明确生产能力组合，评估后同步现有测试，不新增假成功默认实现。
+
+BackendGraph还承担adoptIdentity、组合command继续、自有提交、来电登记后的录音session/phoneState编排、JobScheduler具体查询及具体widget安装查询。依照Core/Recording/Conversation/UiBridgeAssembly拆分；惰性打开、close不初始化未用依赖、incoming先drain后关闭存储、不会持lifetime锁等待executor等现有行为必须保留。
+
+RecordingPorts/AiClient仍把java.io.File传入backend，Workflow构造File；该路径使用音频引用/流端口迁移后同步所有client及fake。RecordingStore.isDeleted默认false应核对真实必需能力，迁移时删除能绕过tombstone的默认实现。nextRunAt/processPending当前all()全归档扫描应改最早时间/到期候选能力；listArchives作为显式列表功能仍可读取所需集合，不将普通单号码影响预览与完整文本绑定。
+
+以上均为后续实现门，不是已完成证据。规格审查应同时核对真实publisher/sourceVersion、命令冲突与唯一累计失效，不能只检验包名移动。
