@@ -9,7 +9,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
-import com.greatwall.callring.application.api.*
+import com.greatwall.callring.contracts.runtime.*
 import com.greatwall.callring.ui.designsystem.components.ScreenFrame
 import com.greatwall.callring.ui.state.LoadState
 import com.greatwall.callring.ui.state.MutationState

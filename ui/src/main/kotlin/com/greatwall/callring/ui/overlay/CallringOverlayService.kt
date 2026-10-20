@@ -5,7 +5,8 @@ import android.content.*
 import android.os.*
 import android.provider.Settings
 import android.util.Log
-import com.greatwall.callring.application.api.*
+import com.greatwall.callring.contracts.callers.*
+import com.greatwall.callring.contracts.runtime.*
 import com.greatwall.callring.ui.app.*
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.collect

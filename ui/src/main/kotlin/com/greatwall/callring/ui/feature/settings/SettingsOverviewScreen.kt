@@ -5,7 +5,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.LocalContext
-import com.greatwall.callring.application.api.SettingsSummary
+import com.greatwall.callring.contracts.settings.SettingsSummary
 import com.greatwall.callring.ui.designsystem.components.SettingRow
 import com.greatwall.callring.ui.designsystem.components.SwitchSettingRow
 import com.greatwall.callring.ui.feature.settings.components.*

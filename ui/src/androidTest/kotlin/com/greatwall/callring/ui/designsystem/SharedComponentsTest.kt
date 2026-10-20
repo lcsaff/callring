@@ -9,7 +9,7 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.unit.dp
 import androidx.compose.material3.MaterialTheme
-import com.greatwall.callring.application.api.ColorMode
+import com.greatwall.callring.contracts.settings.ColorMode
 import com.greatwall.callring.ui.designsystem.components.ScoreBadge
 import com.greatwall.callring.ui.designsystem.components.ScreenFrame
 import org.junit.Assert.assertTrue

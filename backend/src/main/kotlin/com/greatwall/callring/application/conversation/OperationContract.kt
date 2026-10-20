@@ -12,7 +12,7 @@ fun ToolRegistry.operationContracts():List<OperationContract> = definitions.map{
         d.index in setOf(42,43,53,58,59,66,67,68,69,70,71,72)->ReceiptPolicy.FOREGROUND_OBSERVATION
         else->ReceiptPolicy.PERSISTED_READBACK
     }
-    val shared=when(d.index){7->"edits.profile";37->"edits.appearance";52->"aiSettings.patchCombined";53->"aiSettings.testSlot";63->"adoptIdentity";64->"aiSettings.getAiView";65->"aiSettings.patchAi";66->"aiSettings.patchAi via foreground";72->"aiSettings.copyConnection via foreground";in 67..71->"ForegroundActionService";else->d.name.replace('_','.')}
+    val shared=when(d.index){7->"edits.profile";37->"edits.appearance";51->"aiSettings.getRecordingView + aiSettings.getAiView";52->"aiSettings.patchCombined";53->"aiSettings.testSlot";63->"adoptIdentity";64->"aiSettings.getAiView";65->"aiSettings.patchAi";66->"aiSettings.patchAi via foreground";72->"aiSettings.copyConnection via foreground";in 67..71->"ForegroundActionService";else->d.name.replace('_','.')}
     check(if(d.write)d.index in OperationScopePlanner.writeOperations else d.index==1||d.index in ScopedToolReader.legacyReads)
     OperationContract(d.index,d.name,d.write,shared,policy)
 }

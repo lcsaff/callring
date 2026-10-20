@@ -2,8 +2,8 @@ package com.greatwall.callring.ui.app
 
 import android.os.Looper
 import androidx.activity.ComponentActivity
-import com.greatwall.callring.application.api.*
-import com.greatwall.callring.application.conversation.ForegroundActionService
+import com.greatwall.callring.contracts.ai.*
+import com.greatwall.callring.ui.testing.*
 import com.greatwall.callring.ui.testing.UiFakeApi
 import kotlinx.coroutines.*
 import org.junit.Assert.*
@@ -16,13 +16,13 @@ import org.robolectric.annotation.Config
 @Config(sdk = [35])
 class ForegroundActionHostTest {
     @Test fun rotationAttachesNewHostWithoutRelaunchingClaimedTicket() = runBlocking {
-        val foreground = ForegroundActionService()
+        val foreground = UiForegroundFixture()
         var launches = 0
         val bridge = object : ForegroundActionApi by foreground {
             override fun beginLaunch(requestId: String, token: String) = foreground.beginLaunch(requestId,token).also { if(it) launches++ }
         }
         val api = object : UiFakeApi() { override val conversation = object : ConversationApi by UnavailableConversationApi { override val foreground = bridge } }
-        val result = async { foreground.request("s","t","tool",1,ForegroundActionKind.CONFIRM,aiObject()) { true } }
+        val result = async { foreground.request() }
         yield()
         val first = Robolectric.buildActivity(ComponentActivity::class.java).setup()
         ForegroundActionHost(first.get(),api,{})

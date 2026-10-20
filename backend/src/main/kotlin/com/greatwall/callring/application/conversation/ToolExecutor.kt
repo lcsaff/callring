@@ -1,7 +1,16 @@
 package com.greatwall.callring.application.conversation
 
 import com.greatwall.callring.application.*
-import com.greatwall.callring.application.api.*
+import com.greatwall.callring.contracts.common.*
+import com.greatwall.callring.contracts.change.*
+import com.greatwall.callring.contracts.callers.*
+import com.greatwall.callring.contracts.settings.*
+import com.greatwall.callring.contracts.report.*
+import com.greatwall.callring.contracts.recording.*
+import com.greatwall.callring.contracts.ai.*
+import com.greatwall.callring.contracts.command.*
+import com.greatwall.callring.contracts.*
+import com.greatwall.callring.application.recording.policy.*
 import com.greatwall.callring.application.ports.BackendFailure
 import java.time.LocalDate
 import kotlinx.coroutines.CancellationException
@@ -144,7 +153,7 @@ class ToolExecutor(
                 48 -> bound.widgets.saveBinding(a.l("widgetId").exactInt(), a.s("number")).requiredValue()
                 49 -> bound.widgets.removeBinding(a.l("widgetId").exactInt()).requiredValue()
                 50 -> bound.recordings.listArchives().requiredValue()
-                51 -> { bound.recordings.getSettings().requiredValue(); mapOf("recording" to bound.aiSettings.getRecordingView().requiredValue(), "ai" to bound.aiSettings.getAiView().requiredValue()) }
+                51 -> { mapOf("recording" to bound.aiSettings.getRecordingView().requiredValue(), "ai" to bound.aiSettings.getAiView().requiredValue()) }
                 52 -> { val base = bound.aiSettings.getAiView().requiredValue(); bound.aiSettings.patchCombined(bound.aiSettings.getRecordingView().requiredValue(), a.optObj("recording")?.recordingPatch() ?: RecordingSettingsPatch(), base, a.optObj("ai")?.aiPatch(base.budget) ?: AiSettingsPatch()).requiredValue() }
                 53 -> { confirm(); status = ToolStatus.READ; bound.aiSettings.testSlot(AiSlot.valueOf(a.s("slot"))).requiredValue() }
                 54 -> bound.recordings.getArchive(a.l("callId")).requiredValue()

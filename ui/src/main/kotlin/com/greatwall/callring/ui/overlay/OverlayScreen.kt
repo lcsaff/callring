@@ -17,7 +17,7 @@ import androidx.compose.ui.semantics.*
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import com.greatwall.callring.application.api.*
+import com.greatwall.callring.contracts.callers.*
 import com.greatwall.callring.ui.designsystem.components.*
 import com.greatwall.callring.ui.feature.callers.CallerEditorForm
 import com.greatwall.callring.ui.feature.shared.*

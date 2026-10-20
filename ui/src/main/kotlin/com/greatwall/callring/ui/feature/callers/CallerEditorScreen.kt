@@ -1,10 +1,11 @@
 package com.greatwall.callring.ui.feature.callers
 
+import com.greatwall.callring.contracts.command.*
 import androidx.compose.runtime.Composable
-import com.greatwall.callring.application.api.ApiError
-import com.greatwall.callring.application.api.CallerDraft
-import com.greatwall.callring.application.api.CallerEditorData
-import com.greatwall.callring.application.api.NumberDeletionImpact
+import com.greatwall.callring.contracts.common.ApiError
+import com.greatwall.callring.contracts.callers.CallerDraft
+import com.greatwall.callring.contracts.callers.CallerEditorData
+import com.greatwall.callring.contracts.command.NumberDeletionImpact
 import com.greatwall.callring.ui.designsystem.components.ScreenFrame
 import com.greatwall.callring.ui.designsystem.components.rememberFormBack
 import com.greatwall.callring.ui.state.LoadState

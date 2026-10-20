@@ -7,7 +7,9 @@ import androidx.compose.ui.test.junit4.StateRestorationTester
 import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
 import com.greatwall.callring.ui.app.CallringApp
-import com.greatwall.callring.application.api.*
+import com.greatwall.callring.contracts.common.*
+import com.greatwall.callring.contracts.callers.*
+import com.greatwall.callring.contracts.settings.*
 import com.greatwall.callring.ui.designsystem.components.ScreenFrame
 import com.greatwall.callring.ui.feature.shared.MutationFeedback
 import com.greatwall.callring.ui.feature.settings.SettingsOverviewScreen

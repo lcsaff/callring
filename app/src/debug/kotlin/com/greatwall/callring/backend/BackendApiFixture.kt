@@ -11,7 +11,9 @@ import android.database.sqlite.SQLiteDatabase
 import android.net.Uri
 import android.os.ParcelFileDescriptor
 import android.provider.OpenableColumns
-import com.greatwall.callring.application.api.*
+import com.greatwall.callring.contracts.common.*
+import com.greatwall.callring.contracts.callers.*
+import com.greatwall.callring.contracts.settings.*
 import com.greatwall.callring.bootstrap.*
 import com.greatwall.callring.platform.UiNotificationEntryPoints
 import java.io.Closeable

@@ -3,7 +3,9 @@ package com.greatwall.callring.platform.ai
 import android.database.Cursor
 import android.net.Uri
 import android.provider.DocumentsContract
-import com.greatwall.callring.application.api.*
+import com.greatwall.callring.contracts.common.*
+import com.greatwall.callring.contracts.recording.*
+import com.greatwall.callring.contracts.ai.*
 import com.greatwall.callring.application.ports.*
 import com.greatwall.callring.application.conversation.ForegroundResourceRegistry
 import java.util.UUID

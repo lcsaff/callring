@@ -29,7 +29,7 @@ android {
 }
 
 dependencies {
-    implementation project(':backend')
+    implementation project(':contracts')
     implementation platform("androidx.compose:compose-bom:${rootProject.ext.callringVersions.composeBom}")
     implementation 'androidx.compose.ui:ui'
     implementation 'androidx.compose.ui:ui-tooling-preview'

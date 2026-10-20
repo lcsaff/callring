@@ -1,6 +1,7 @@
 package com.greatwall.callring.ui.widget
 
-import com.greatwall.callring.application.api.*
+import com.greatwall.callring.contracts.common.*
+import com.greatwall.callring.contracts.settings.*
 import com.greatwall.callring.ui.testing.UiFakeApi
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll

@@ -3,9 +3,9 @@ package com.greatwall.callring.ui.designsystem
 import androidx.compose.material3.ColorScheme
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.luminance
-import com.greatwall.callring.application.api.AppearanceSettings
-import com.greatwall.callring.application.api.ColorMode
-import com.greatwall.callring.application.api.ThemeSelection
+import com.greatwall.callring.contracts.settings.AppearanceSettings
+import com.greatwall.callring.contracts.settings.ColorMode
+import com.greatwall.callring.contracts.settings.ThemeSelection
 import org.junit.Assert.*
 import org.junit.Test
 

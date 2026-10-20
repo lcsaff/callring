@@ -1,7 +1,7 @@
 package com.greatwall.callring.platform
 
-import com.greatwall.callring.application.api.ApiError
-import com.greatwall.callring.application.api.ErrorCode
+import com.greatwall.callring.contracts.common.ApiError
+import com.greatwall.callring.contracts.common.ErrorCode
 import com.greatwall.callring.application.ports.BackendFailure
 import java.util.concurrent.CancellationException
 import org.junit.Assert.*

@@ -1,7 +1,7 @@
 package com.greatwall.callring.platform.ai
 
 import com.greatwall.callring.application.BusinessRevisionCoordinator
-import com.greatwall.callring.application.api.*
+import com.greatwall.callring.contracts.change.*
 import org.junit.Assert.*
 import org.junit.Test
 import org.junit.runner.RunWith

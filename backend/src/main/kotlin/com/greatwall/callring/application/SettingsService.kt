@@ -1,6 +1,8 @@
 package com.greatwall.callring.application
 
-import com.greatwall.callring.application.api.*
+import com.greatwall.callring.contracts.common.*
+import com.greatwall.callring.contracts.settings.*
+import com.greatwall.callring.contracts.runtime.*
 import com.greatwall.callring.application.ports.*
 import com.greatwall.callring.domain.*
 import java.time.*
@@ -98,7 +100,7 @@ internal fun createSettingsApi(context: BackendContext): SettingsApi =
                     requireField(name.isNotEmpty(), "name", "name.required")
                     requireField(command.level > 0, "level", "level.invalid")
                     mutate { s ->
-                        requireField(command.id == null || command.id > 0, "id", "id.invalid")
+                        requireField(command.id == null || requireNotNull(command.id) > 0, "id", "id.invalid")
                         if (command.id != null && command.id !in s.positions)
                             fail(ErrorCode.NOT_FOUND, "position.not_found")
                         requireField(

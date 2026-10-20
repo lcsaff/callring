@@ -1,6 +1,16 @@
 ﻿package com.greatwall.callring.ui.widget
 
-import com.greatwall.callring.application.api.*
+import com.greatwall.callring.contracts.common.*
+import com.greatwall.callring.contracts.change.*
+import com.greatwall.callring.contracts.callers.*
+import com.greatwall.callring.contracts.settings.*
+import com.greatwall.callring.contracts.report.*
+import com.greatwall.callring.contracts.runtime.*
+import com.greatwall.callring.contracts.widget.*
+import com.greatwall.callring.contracts.recording.*
+import com.greatwall.callring.contracts.ai.*
+import com.greatwall.callring.contracts.command.*
+import com.greatwall.callring.contracts.*
 import com.greatwall.callring.ui.state.*
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow

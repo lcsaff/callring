@@ -2,7 +2,9 @@ package com.greatwall.callring.ui.app
 
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createComposeRule
-import com.greatwall.callring.application.api.*
+import com.greatwall.callring.contracts.common.*
+import com.greatwall.callring.contracts.callers.*
+import com.greatwall.callring.contracts.settings.*
 import com.greatwall.callring.ui.designsystem.CallringTheme
 import com.greatwall.callring.ui.feature.home.HomeScreen
 import com.greatwall.callring.ui.feature.settings.*

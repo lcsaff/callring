@@ -13,7 +13,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
-import com.greatwall.callring.application.api.*
+import com.greatwall.callring.contracts.common.*
+import com.greatwall.callring.contracts.settings.*
 import com.greatwall.callring.ui.designsystem.components.EmptyContent
 import com.greatwall.callring.ui.designsystem.components.SettingRow
 import com.greatwall.callring.ui.designsystem.components.*

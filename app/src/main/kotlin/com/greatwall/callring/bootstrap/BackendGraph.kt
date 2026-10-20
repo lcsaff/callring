@@ -4,7 +4,14 @@ import android.Manifest
 import android.content.Context
 import android.content.pm.PackageManager
 import com.greatwall.callring.application.CallringBackend
-import com.greatwall.callring.application.api.*
+import com.greatwall.callring.contracts.common.*
+import com.greatwall.callring.contracts.callers.*
+import com.greatwall.callring.contracts.runtime.*
+import com.greatwall.callring.contracts.widget.*
+import com.greatwall.callring.contracts.recording.*
+import com.greatwall.callring.contracts.ai.*
+import com.greatwall.callring.contracts.command.*
+import com.greatwall.callring.contracts.*
 import com.greatwall.callring.data.SqliteBackendStore
 import com.greatwall.callring.platform.*
 import com.greatwall.callring.platform.calling.AndroidCallWorkLease

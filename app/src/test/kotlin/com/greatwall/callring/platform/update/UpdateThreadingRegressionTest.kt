@@ -1,6 +1,7 @@
 package com.greatwall.callring.platform.update
 
-import com.greatwall.callring.application.api.*
+import com.greatwall.callring.contracts.runtime.*
+import com.greatwall.callring.contracts.common.*
 import java.io.File
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.runBlocking

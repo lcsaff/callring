@@ -5,7 +5,7 @@ import androidx.compose.foundation.selection.selectable
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.Role
-import com.greatwall.callring.application.api.PositionSettings
+import com.greatwall.callring.contracts.settings.PositionSettings
 import com.greatwall.callring.ui.feature.settings.components.*
 import com.greatwall.callring.ui.state.LoadState
 import com.greatwall.callring.ui.state.MutationState

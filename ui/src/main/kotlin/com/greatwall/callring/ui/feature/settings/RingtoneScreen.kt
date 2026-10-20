@@ -6,7 +6,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import com.greatwall.callring.application.api.*
+import com.greatwall.callring.contracts.settings.*
 import com.greatwall.callring.ui.designsystem.components.SettingRow
 import com.greatwall.callring.ui.designsystem.components.SwitchSettingRow
 import com.greatwall.callring.ui.designsystem.components.ConfirmAction

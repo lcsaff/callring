@@ -18,7 +18,9 @@ import androidx.glance.text.FontWeight
 import androidx.glance.text.Text
 import androidx.glance.text.TextStyle
 import androidx.glance.unit.ColorProvider
-import com.greatwall.callring.application.api.*
+import com.greatwall.callring.contracts.common.*
+import com.greatwall.callring.contracts.change.*
+import com.greatwall.callring.contracts.settings.*
 import com.greatwall.callring.ui.app.UiApiOwner
 import com.greatwall.callring.ui.designsystem.ThemeRegistry
 import com.greatwall.callring.ui.designsystem.usesDarkColors

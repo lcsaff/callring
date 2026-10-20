@@ -4,7 +4,10 @@ import android.database.sqlite.SQLiteDatabase
 import android.os.Bundle
 import android.os.SystemClock
 import android.test.InstrumentationTestCase
-import com.greatwall.callring.application.api.*
+import com.greatwall.callring.contracts.common.*
+import com.greatwall.callring.contracts.callers.*
+import com.greatwall.callring.contracts.settings.*
+import com.greatwall.callring.contracts.report.*
 import com.greatwall.callring.domain.SystemCallRecord
 import java.time.Instant
 import java.time.LocalDate

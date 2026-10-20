@@ -1,7 +1,10 @@
 package com.greatwall.callring
 
 import com.greatwall.callring.application.CoreNumberDeletionApi
-import com.greatwall.callring.application.api.*
+import com.greatwall.callring.contracts.common.*
+import com.greatwall.callring.contracts.callers.*
+import com.greatwall.callring.contracts.widget.*
+import com.greatwall.callring.contracts.command.*
 import com.greatwall.callring.application.requiredValue
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.*

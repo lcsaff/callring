@@ -1,6 +1,7 @@
 package com.greatwall.callring.ui.feature.home
 
-import com.greatwall.callring.application.api.*
+import com.greatwall.callring.contracts.common.*
+import com.greatwall.callring.contracts.callers.*
 import com.greatwall.callring.ui.testing.UiFakeApi
 import kotlinx.coroutines.test.*
 import org.junit.Assert.*

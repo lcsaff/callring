@@ -1,7 +1,7 @@
 package com.greatwall.callring.ui.feature.settings
 
-import com.greatwall.callring.application.api.TimeWindow
-import com.greatwall.callring.application.api.WorkScheduleSettings
+import com.greatwall.callring.contracts.settings.TimeWindow
+import com.greatwall.callring.contracts.settings.WorkScheduleSettings
 import org.junit.Assert.assertEquals
 import org.junit.Test
 

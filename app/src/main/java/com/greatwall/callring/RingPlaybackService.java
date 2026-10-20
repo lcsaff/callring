@@ -27,8 +27,8 @@ import com.greatwall.callring.bootstrap.BackendProvider;
 import com.greatwall.callring.bootstrap.BackendGraph;
 import com.greatwall.callring.platform.DiagnosticEvent;
 import com.greatwall.callring.platform.calling.AndroidCallEnvironment;
-import com.greatwall.callring.application.api.PlaybackMode;
-import com.greatwall.callring.application.api.PlaybackState;
+import com.greatwall.callring.contracts.runtime.PlaybackMode;
+import com.greatwall.callring.contracts.runtime.PlaybackState;
 
 public class RingPlaybackService extends Service {
     public static final String PREPARE = "prepare", CANCEL = "cancel", PREVIEW = "preview", STOP = "stop";

@@ -1,6 +1,6 @@
 package com.greatwall.callring.ui.widget
 
-import com.greatwall.callring.application.api.*
+import com.greatwall.callring.contracts.change.*
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.test.*

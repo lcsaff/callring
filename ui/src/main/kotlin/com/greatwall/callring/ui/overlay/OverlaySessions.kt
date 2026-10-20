@@ -1,7 +1,8 @@
 package com.greatwall.callring.ui.overlay
 
-import com.greatwall.callring.application.api.IncomingCallUiRequest
-import com.greatwall.callring.application.api.PhoneActivity
+import com.greatwall.callring.contracts.runtime.*
+import com.greatwall.callring.contracts.callers.IncomingCallUiRequest
+import com.greatwall.callring.contracts.runtime.PhoneActivity
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 

@@ -1,5 +1,6 @@
 package com.greatwall.callring.platform.ai
 
+import com.greatwall.callring.contracts.command.*
 import android.content.ContentValues
 import android.content.Context
 import android.database.sqlite.SQLiteDatabase
@@ -12,7 +13,10 @@ import com.greatwall.callring.application.RecordingStore
 import com.greatwall.callring.application.BusinessRevisionCoordinator
 import com.greatwall.callring.platform.updatePreferences
 import com.greatwall.callring.application.RecordingCall
-import com.greatwall.callring.application.api.*
+import com.greatwall.callring.contracts.recording.*
+import com.greatwall.callring.contracts.ai.*
+import com.greatwall.callring.application.recording.model.*
+import com.greatwall.callring.application.recording.policy.*
 import org.json.JSONArray
 import org.json.JSONObject
 import java.security.KeyStore

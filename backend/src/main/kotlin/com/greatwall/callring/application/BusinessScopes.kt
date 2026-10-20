@@ -1,6 +1,8 @@
 package com.greatwall.callring.application
 
-import com.greatwall.callring.application.api.*
+import com.greatwall.callring.contracts.settings.*
+import com.greatwall.callring.contracts.ai.*
+import com.greatwall.callring.application.recording.model.*
 import com.greatwall.callring.domain.BackendState
 
 /** Ephemeral comparison inside shared writes. Neither values nor entity keys are diagnostic data. */

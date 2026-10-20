@@ -6,7 +6,7 @@ import android.media.MediaExtractor
 import android.media.MediaFormat
 import com.greatwall.callring.application.AiClient
 import com.greatwall.callring.application.AiFailure
-import com.greatwall.callring.application.api.AiConnection
+import com.greatwall.callring.application.recording.model.AiConnection
 import java.io.File
 import java.nio.ByteOrder
 

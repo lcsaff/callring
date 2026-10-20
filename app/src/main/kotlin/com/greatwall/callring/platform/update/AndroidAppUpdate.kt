@@ -1,13 +1,14 @@
 package com.greatwall.callring.platform.update
 
+import com.greatwall.callring.contracts.runtime.*
 import android.content.Context
-import com.greatwall.callring.application.api.ApiError
-import com.greatwall.callring.application.api.ApiResult
-import com.greatwall.callring.application.api.AppReleaseInfo
-import com.greatwall.callring.application.api.AppUpdateApi
-import com.greatwall.callring.application.api.ErrorCode
-import com.greatwall.callring.application.api.UpdatePhase
-import com.greatwall.callring.application.api.UpdateStatus
+import com.greatwall.callring.contracts.common.ApiError
+import com.greatwall.callring.contracts.common.ApiResult
+import com.greatwall.callring.contracts.runtime.AppReleaseInfo
+import com.greatwall.callring.contracts.runtime.AppUpdateApi
+import com.greatwall.callring.contracts.common.ErrorCode
+import com.greatwall.callring.contracts.runtime.UpdatePhase
+import com.greatwall.callring.contracts.runtime.UpdateStatus
 import java.io.File
 import java.io.IOException
 import java.net.HttpURLConnection

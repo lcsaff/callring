@@ -26,7 +26,8 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.greatwall.callring.ui.app.UiApiOwner
 import com.greatwall.callring.ui.app.uiViewModel
 import com.greatwall.callring.ui.app.ThemeWindowSupport
-import com.greatwall.callring.application.api.*
+import com.greatwall.callring.contracts.common.*
+import com.greatwall.callring.contracts.callers.*
 import com.greatwall.callring.ui.state.LoadState
 import com.greatwall.callring.ui.state.MutationState
 import com.greatwall.callring.ui.designsystem.CallringTheme

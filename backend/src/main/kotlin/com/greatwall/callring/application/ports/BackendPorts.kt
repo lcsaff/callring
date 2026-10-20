@@ -1,6 +1,11 @@
 package com.greatwall.callring.application.ports
 
-import com.greatwall.callring.application.api.*
+import com.greatwall.callring.contracts.command.*
+import com.greatwall.callring.contracts.common.*
+import com.greatwall.callring.contracts.settings.*
+import com.greatwall.callring.contracts.runtime.*
+import com.greatwall.callring.contracts.widget.*
+import com.greatwall.callring.application.recording.policy.*
 import com.greatwall.callring.domain.BackendState
 import com.greatwall.callring.domain.AuditRecord
 import com.greatwall.callring.domain.CalendarImport

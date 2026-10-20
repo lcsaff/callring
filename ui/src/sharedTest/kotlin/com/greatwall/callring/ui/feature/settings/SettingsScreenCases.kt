@@ -8,7 +8,11 @@ import androidx.compose.ui.test.junit4.StateRestorationTester
 import androidx.compose.foundation.layout.Column
 import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.semantics.SemanticsProperties
-import com.greatwall.callring.application.api.*
+import com.greatwall.callring.contracts.common.*
+import com.greatwall.callring.contracts.callers.*
+import com.greatwall.callring.contracts.settings.*
+import com.greatwall.callring.contracts.report.*
+import com.greatwall.callring.contracts.runtime.*
 import com.greatwall.callring.ui.designsystem.CallringTheme
 import com.greatwall.callring.ui.designsystem.DefaultAppearance
 import com.greatwall.callring.ui.feature.settings.components.FieldError

@@ -1,6 +1,7 @@
 package com.greatwall.callring.application.ports
 
-import com.greatwall.callring.application.api.*
+import com.greatwall.callring.contracts.ai.*
+import com.greatwall.callring.application.recording.model.*
 import com.greatwall.callring.application.conversation.ToolDefinition
 
 data class ConversationRequest(val snapshot: AiJson=AiJson.Null, val messages: List<ConversationMessage>, val tools: List<ToolDefinition>, val output: Long, val compatibility: ConversationCompatibility = ConversationCompatibility.AUTO,val context:AiJson=AiJson.Null)

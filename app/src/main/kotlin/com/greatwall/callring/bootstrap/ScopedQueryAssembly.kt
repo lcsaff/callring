@@ -1,7 +1,10 @@
 package com.greatwall.callring.bootstrap
 
 import com.greatwall.callring.application.BusinessRevisionCoordinator
-import com.greatwall.callring.application.api.*
+import com.greatwall.callring.contracts.runtime.*
+import com.greatwall.callring.contracts.widget.*
+import com.greatwall.callring.contracts.ai.*
+import com.greatwall.callring.contracts.*
 import com.greatwall.callring.application.conversation.*
 import com.greatwall.callring.application.ports.*
 import com.greatwall.callring.application.requiredValue

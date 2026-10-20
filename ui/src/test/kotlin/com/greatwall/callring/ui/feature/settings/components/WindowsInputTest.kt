@@ -1,6 +1,6 @@
 package com.greatwall.callring.ui.feature.settings.components
 
-import com.greatwall.callring.application.api.TimeWindow
+import com.greatwall.callring.contracts.settings.TimeWindow
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Test

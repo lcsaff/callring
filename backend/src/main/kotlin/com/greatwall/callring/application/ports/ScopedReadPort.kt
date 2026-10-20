@@ -1,6 +1,7 @@
 package com.greatwall.callring.application.ports
 
-import com.greatwall.callring.application.api.*
+import com.greatwall.callring.contracts.common.*
+import com.greatwall.callring.contracts.ai.*
 
 data class SourceRow(val key:String,val value:AiJson.Obj,val textFields:Map<String,Long> = emptyMap(),val cursorKey:String=key)
 data class SourcePage(val rows:List<SourceRow>,val matchedTotal:Long?,val nextKey:String?=null,val complete:Boolean=nextKey==null,val status:QueryStatus=if(nextKey==null) QueryStatus.COMPLETE else QueryStatus.PARTIAL,val reason:String?=null)

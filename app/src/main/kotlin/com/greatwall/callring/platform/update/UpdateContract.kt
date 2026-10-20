@@ -1,7 +1,8 @@
 package com.greatwall.callring.platform.update
 
-import com.greatwall.callring.application.api.AppReleaseInfo
-import com.greatwall.callring.application.api.UpdatePhase
+import com.greatwall.callring.contracts.runtime.*
+import com.greatwall.callring.contracts.runtime.AppReleaseInfo
+import com.greatwall.callring.contracts.runtime.UpdatePhase
 import java.io.File
 import java.security.MessageDigest
 import java.time.Instant

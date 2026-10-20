@@ -1,6 +1,6 @@
 package com.greatwall.callring.application.conversation
 
-import com.greatwall.callring.application.api.*
+import com.greatwall.callring.contracts.ai.*
 
 class SecretRedactor(secrets: List<String>) {
     /** Longest possible encoded representation; used only for bounded source lookaround. */

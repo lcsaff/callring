@@ -1,6 +1,8 @@
 package com.greatwall.callring.domain
 
-import com.greatwall.callring.application.api.*
+import com.greatwall.callring.contracts.callers.*
+import com.greatwall.callring.contracts.settings.*
+import com.greatwall.callring.contracts.ai.*
 import java.time.ZoneId
 import java.util.Collections
 

@@ -2,7 +2,8 @@ package com.greatwall.callring.ui.app
 
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createComposeRule
-import com.greatwall.callring.application.api.*
+import com.greatwall.callring.contracts.ai.*
+import com.greatwall.callring.ui.testing.*
 import com.greatwall.callring.ui.testing.UiFakeApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import org.junit.Assert.*

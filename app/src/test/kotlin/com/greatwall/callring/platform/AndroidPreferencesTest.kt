@@ -1,7 +1,8 @@
 package com.greatwall.callring.platform
 
 import android.content.SharedPreferences
-import com.greatwall.callring.application.api.*
+import com.greatwall.callring.contracts.settings.*
+import com.greatwall.callring.contracts.widget.*
 import com.greatwall.callring.application.ports.BackendFailure
 import org.junit.Assert.*
 import org.junit.Test

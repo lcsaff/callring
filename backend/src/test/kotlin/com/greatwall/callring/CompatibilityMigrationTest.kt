@@ -1,12 +1,14 @@
 package com.greatwall.callring
 
-import com.greatwall.callring.application.api.AiConnection
-import com.greatwall.callring.application.api.AiProtocol
-import com.greatwall.callring.application.api.ConversationCompatibility
-import com.greatwall.callring.application.api.ProviderProfile
-import com.greatwall.callring.application.api.RecordingSettings
-import com.greatwall.callring.application.api.normalized
-import com.greatwall.callring.application.api.resolveConversationProfile
+import com.greatwall.callring.application.recording.policy.*
+import com.greatwall.callring.contracts.ai.*
+import com.greatwall.callring.application.recording.model.AiConnection
+import com.greatwall.callring.contracts.ai.AiProtocol
+import com.greatwall.callring.contracts.ai.ConversationCompatibility
+import com.greatwall.callring.contracts.ai.ProviderProfile
+import com.greatwall.callring.application.recording.model.RecordingSettings
+import com.greatwall.callring.application.recording.policy.normalized
+import com.greatwall.callring.application.recording.policy.resolveConversationProfile
 import org.junit.Assert.assertEquals
 import org.junit.Test
 

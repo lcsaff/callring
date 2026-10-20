@@ -3,7 +3,9 @@ package com.greatwall.callring.ui.feature.callers
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.unit.dp
-import com.greatwall.callring.application.api.*
+import com.greatwall.callring.contracts.common.*
+import com.greatwall.callring.contracts.callers.*
+import com.greatwall.callring.contracts.settings.*
 import com.greatwall.callring.ui.designsystem.CallringTheme
 import com.greatwall.callring.ui.state.*
 import org.junit.Assert.*

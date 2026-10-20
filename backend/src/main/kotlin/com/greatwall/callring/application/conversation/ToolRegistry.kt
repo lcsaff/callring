@@ -1,6 +1,10 @@
 package com.greatwall.callring.application.conversation
 
-import com.greatwall.callring.application.api.*
+import com.greatwall.callring.contracts.common.*
+import com.greatwall.callring.contracts.report.*
+import com.greatwall.callring.contracts.runtime.*
+import com.greatwall.callring.contracts.ai.*
+import com.greatwall.callring.application.recording.policy.*
 
 data class ToolDefinition(val index: Int, val name: String, val schema: AiJson.Obj, val write: Boolean, val description:String=toolPurpose(index,name)) { val id get() = if(index<=72) "O%02d".format(index) else "X%02d".format(index-72) }
 class ToolRegistry {

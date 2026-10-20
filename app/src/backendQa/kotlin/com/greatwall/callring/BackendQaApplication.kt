@@ -1,7 +1,8 @@
 package com.greatwall.callring
 
 import android.app.*
-import com.greatwall.callring.application.api.*
+import com.greatwall.callring.contracts.callers.*
+import com.greatwall.callring.contracts.settings.*
 import com.greatwall.callring.bootstrap.*
 import com.greatwall.callring.platform.UiNotificationEntryPoints
 

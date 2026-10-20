@@ -1,6 +1,8 @@
 package com.greatwall.callring.application
 
-import com.greatwall.callring.application.api.*
+import com.greatwall.callring.contracts.common.*
+import com.greatwall.callring.contracts.callers.*
+import com.greatwall.callring.contracts.*
 import com.greatwall.callring.application.ports.BackendFailure
 
 /** Used by both the archive form and the conversation tool; inferred identity is never adopted. */

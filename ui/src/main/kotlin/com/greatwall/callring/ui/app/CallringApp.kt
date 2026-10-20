@@ -15,7 +15,10 @@ import androidx.navigation.NavType
 import androidx.navigation.compose.*
 import androidx.navigation.navArgument
 import androidx.window.core.layout.WindowSizeClass
-import com.greatwall.callring.application.api.*
+import com.greatwall.callring.contracts.common.*
+import com.greatwall.callring.contracts.callers.*
+import com.greatwall.callring.contracts.runtime.*
+import com.greatwall.callring.contracts.*
 import com.greatwall.callring.ui.designsystem.*
 import com.greatwall.callring.ui.feature.callers.*
 import com.greatwall.callring.ui.feature.home.*

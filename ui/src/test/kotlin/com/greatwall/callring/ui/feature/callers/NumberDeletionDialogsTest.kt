@@ -1,9 +1,10 @@
 package com.greatwall.callring.ui.feature.callers
 
+import com.greatwall.callring.contracts.command.*
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createComposeRule
-import com.greatwall.callring.application.api.NumberDeletionImpact
+import com.greatwall.callring.contracts.command.NumberDeletionImpact
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith

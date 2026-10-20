@@ -1,7 +1,8 @@
 package com.greatwall.callring
 
 import com.greatwall.callring.application.*
-import com.greatwall.callring.application.api.*
+import com.greatwall.callring.contracts.callers.*
+import com.greatwall.callring.contracts.ai.*
 import com.greatwall.callring.domain.*
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.*

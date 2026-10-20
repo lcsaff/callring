@@ -1,7 +1,13 @@
 package com.greatwall.callring.platform.ai
 
+import com.greatwall.callring.application.recording.policy.*
+import com.greatwall.callring.contracts.command.*
 import com.greatwall.callring.application.BusinessRevisionCoordinator
-import com.greatwall.callring.application.api.*
+import com.greatwall.callring.contracts.common.*
+import com.greatwall.callring.contracts.runtime.*
+import com.greatwall.callring.contracts.recording.*
+import com.greatwall.callring.contracts.ai.*
+import com.greatwall.callring.application.recording.model.*
 import com.greatwall.callring.application.ports.BackendFailure
 import kotlinx.coroutines.*
 
@@ -24,7 +30,7 @@ class AiSettingsService(
             ThinkingSupport.CUSTOM_GATEWAY -> "thinking.custom_gateway"
             else -> policy.reason
         }
-        return AiConnectionView(protocol, url, model, apiKey.isNotEmpty(), resolveConversationProfile(this, compatibility), thinkingMode, policy.support, notice)
+        return AiConnectionView(protocol, url, model, apiKey.isNotEmpty(), resolveConversationProfile(this, compatibility), thinkingMode, policy.support, notice, resolveConversationProfile(this, ConversationCompatibility.AUTO))
     }
     private fun RecordingSettings.aiView() = AiSettingsView(analysis.view(conversationCompatibility), transcription.view(), conversationBudget, revision("aiConfig"), conversationCompatibility)
     private fun RecordingSettings.recordingView(version: Long = revision("recordingConfig")): RecordingSettingsView {

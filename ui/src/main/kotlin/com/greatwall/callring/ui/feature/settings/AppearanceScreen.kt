@@ -18,7 +18,7 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
-import com.greatwall.callring.application.api.*
+import com.greatwall.callring.contracts.settings.*
 import com.greatwall.callring.ui.designsystem.CallringTheme
 import com.greatwall.callring.ui.designsystem.DefaultAppearance
 import com.greatwall.callring.ui.designsystem.ThemeRegistry

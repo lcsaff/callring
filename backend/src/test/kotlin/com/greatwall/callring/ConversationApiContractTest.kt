@@ -1,6 +1,6 @@
 package com.greatwall.callring
 
-import com.greatwall.callring.application.api.CallringUiApi
+import com.greatwall.callring.contracts.CallringUiApi
 import org.junit.Assert.assertTrue
 import org.junit.Test
 

@@ -1,7 +1,8 @@
 package com.greatwall.callring.data
 
 import android.database.sqlite.SQLiteDatabase
-import com.greatwall.callring.application.api.*
+import com.greatwall.callring.contracts.settings.*
+import com.greatwall.callring.contracts.ai.*
 import com.greatwall.callring.domain.BackendState
 import com.greatwall.callring.domain.StatisticsInterval
 import org.json.JSONObject

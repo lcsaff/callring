@@ -1,6 +1,10 @@
 package com.greatwall.callring.application
 
-import com.greatwall.callring.application.api.*
+import com.greatwall.callring.application.recording.policy.*
+import com.greatwall.callring.contracts.common.*
+import com.greatwall.callring.contracts.callers.*
+import com.greatwall.callring.contracts.settings.*
+import com.greatwall.callring.contracts.command.*
 import java.util.UUID
 
 /** Merge only dirty fields, then use the original validator and guarded publication path. */

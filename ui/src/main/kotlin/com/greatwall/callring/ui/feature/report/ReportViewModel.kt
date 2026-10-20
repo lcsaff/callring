@@ -1,7 +1,9 @@
 package com.greatwall.callring.ui.feature.report
 
 import androidx.lifecycle.SavedStateHandle
-import com.greatwall.callring.application.api.*
+import com.greatwall.callring.contracts.common.*
+import com.greatwall.callring.contracts.change.*
+import com.greatwall.callring.contracts.report.*
 import com.greatwall.callring.ui.state.*
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.*

@@ -1,6 +1,9 @@
 package com.greatwall.callring.ui.format
 
-import com.greatwall.callring.application.api.*
+import com.greatwall.callring.contracts.common.*
+import com.greatwall.callring.contracts.callers.*
+import com.greatwall.callring.contracts.settings.*
+import com.greatwall.callring.contracts.report.*
 import java.time.ZoneId
 import org.junit.Assert.*
 import org.junit.Test

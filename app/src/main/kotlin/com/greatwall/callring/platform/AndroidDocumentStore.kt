@@ -2,7 +2,8 @@ package com.greatwall.callring.platform
 
 import android.content.ContentResolver
 import android.net.Uri
-import com.greatwall.callring.application.api.*
+import com.greatwall.callring.contracts.common.*
+import com.greatwall.callring.application.recording.policy.*
 import com.greatwall.callring.application.ports.*
 import com.greatwall.callring.data.WorkConfigCodec
 import com.greatwall.callring.domain.CalendarImport

@@ -19,9 +19,9 @@ import androidx.compose.ui.unit.dp
 import com.google.android.material.color.utilities.DynamicScheme
 import com.google.android.material.color.utilities.Hct
 import com.google.android.material.color.utilities.SchemeMonochrome
-import com.greatwall.callring.application.api.AppearanceSettings
-import com.greatwall.callring.application.api.ColorMode
-import com.greatwall.callring.application.api.ThemeSelection
+import com.greatwall.callring.contracts.settings.AppearanceSettings
+import com.greatwall.callring.contracts.settings.ColorMode
+import com.greatwall.callring.contracts.settings.ThemeSelection
 import java.util.Collections
 
 val DefaultAppearance = AppearanceSettings(

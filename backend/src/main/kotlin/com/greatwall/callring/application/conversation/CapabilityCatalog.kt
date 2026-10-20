@@ -1,6 +1,6 @@
 package com.greatwall.callring.application.conversation
 
-import com.greatwall.callring.application.api.*
+import com.greatwall.callring.contracts.ai.*
 
 private val purposes=listOf(
     "验证号码合法性/规范号码", "读取首页概览", "检索档案分页", "读取档案编辑字段/职位选项", "读取号码通话概览", "读取最近通话",

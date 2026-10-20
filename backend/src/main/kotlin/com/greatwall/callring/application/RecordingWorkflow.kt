@@ -1,6 +1,8 @@
 package com.greatwall.callring.application
 
-import com.greatwall.callring.application.api.*
+import com.greatwall.callring.contracts.recording.*
+import com.greatwall.callring.contracts.ai.*
+import com.greatwall.callring.application.recording.policy.*
 import java.io.File
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicLong

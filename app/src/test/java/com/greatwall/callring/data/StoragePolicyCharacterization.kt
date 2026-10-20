@@ -1,6 +1,6 @@
 package com.greatwall.callring.data
 
-import com.greatwall.callring.application.api.*
+import com.greatwall.callring.contracts.callers.*
 import com.greatwall.callring.domain.BackendState
 import com.greatwall.callring.domain.CallCorrelation
 import com.greatwall.callring.domain.RawCallRecord

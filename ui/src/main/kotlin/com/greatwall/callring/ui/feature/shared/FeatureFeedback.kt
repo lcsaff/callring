@@ -4,7 +4,8 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import com.greatwall.callring.application.api.*
+import com.greatwall.callring.contracts.common.*
+import com.greatwall.callring.contracts.runtime.*
 import com.greatwall.callring.ui.designsystem.components.*
 import com.greatwall.callring.ui.format.UiLabels
 import com.greatwall.callring.ui.state.*

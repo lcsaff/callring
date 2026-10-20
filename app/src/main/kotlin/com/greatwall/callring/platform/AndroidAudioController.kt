@@ -1,5 +1,6 @@
 package com.greatwall.callring.platform
 
+import com.greatwall.callring.contracts.command.*
 import android.content.Context
 import android.content.Intent
 import android.content.SharedPreferences
@@ -8,7 +9,8 @@ import android.net.Uri
 import android.provider.OpenableColumns
 import com.greatwall.callring.R
 import com.greatwall.callring.RingPlaybackService
-import com.greatwall.callring.application.api.*
+import com.greatwall.callring.contracts.common.*
+import com.greatwall.callring.contracts.settings.*
 import com.greatwall.callring.application.ports.*
 import java.io.Closeable
 import java.io.File

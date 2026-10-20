@@ -6,8 +6,8 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
-import com.greatwall.callring.application.api.WorkScheduleSettings
-import com.greatwall.callring.application.api.TimeWindow
+import com.greatwall.callring.contracts.settings.WorkScheduleSettings
+import com.greatwall.callring.contracts.settings.TimeWindow
 import com.greatwall.callring.ui.feature.settings.components.*
 import com.greatwall.callring.ui.format.UiFormat
 import com.greatwall.callring.ui.state.*

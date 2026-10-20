@@ -1,5 +1,6 @@
 package com.greatwall.callring.ui.designsystem.components
 
+import com.greatwall.callring.contracts.ai.*
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.runtime.Composable
@@ -23,7 +24,7 @@ import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.style.TextOverflow
-import com.greatwall.callring.application.api.CallerProfile
+import com.greatwall.callring.contracts.callers.CallerProfile
 import com.greatwall.callring.ui.R
 import com.greatwall.callring.ui.designsystem.CallringSpacing
 import com.greatwall.callring.ui.designsystem.LocalCallringDarkMode

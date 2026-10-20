@@ -1,6 +1,7 @@
 package com.greatwall.callring.application
 
-import com.greatwall.callring.application.api.*
+import com.greatwall.callring.contracts.recording.*
+import com.greatwall.callring.application.recording.model.*
 import java.io.File
 
 interface RecordingStore {

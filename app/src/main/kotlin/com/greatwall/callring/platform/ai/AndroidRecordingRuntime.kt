@@ -1,5 +1,6 @@
 package com.greatwall.callring.platform.ai
 
+import com.greatwall.callring.contracts.command.*
 import com.greatwall.callring.application.ports.BackendFailure
 
 import android.content.Context
@@ -7,7 +8,12 @@ import android.media.MediaMetadataRetriever
 import android.media.MediaPlayer
 import android.net.Uri
 import com.greatwall.callring.application.*
-import com.greatwall.callring.application.api.*
+import com.greatwall.callring.contracts.common.*
+import com.greatwall.callring.contracts.runtime.*
+import com.greatwall.callring.contracts.recording.*
+import com.greatwall.callring.contracts.ai.*
+import com.greatwall.callring.application.recording.model.*
+import com.greatwall.callring.application.recording.policy.*
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -26,7 +32,7 @@ class AndroidRecordingRuntime(
     private val metadataReader: ((File) -> Pair<Long, String>)? = null,
     val coordinator: BusinessRevisionCoordinator = BusinessRevisionCoordinator(),
     private val clientFactory: (() -> AiClient)? = null,
-) : RecordingApi, AutoCloseable {
+) : RecordingCapability, AutoCloseable {
     val store by lazy { storeFactory?.invoke() ?: AndroidRecordingStore(context, namespace, coordinator = coordinator) }
     val aiSettings by lazy { AiSettingsService(store, coordinator,
         { context.checkSelfPermission(android.Manifest.permission.RECORD_AUDIO) == android.content.pm.PackageManager.PERMISSION_GRANTED },
@@ -236,8 +242,9 @@ class AndroidRecordingRuntime(
     private suspend fun folderWith(document: DocumentRef, command: CommandContext?) = result {
         sources.authorize(document.uri)
         store.updateSettings(command) { it.copy(systemFolder = document.uri) }
+        Unit
     }
-    fun bound(command: CommandContext): RecordingApi = object : RecordingApi by this {
+    fun bound(command: CommandContext): RecordingCapability = object : RecordingCapability, RecordingApi by this, RecordingConfigurationPort by this {
         override suspend fun importRecording(callId: Long, number: String, startedAt: Long, document: DocumentRef, source: RecordingSource) = result { importFile(callId, number, startedAt, document, source, command = command) }
         override suspend fun retry(callId: Long) = retryWith(callId, command)
         override suspend fun delete(callId: Long) = deleteWith(callId, command)

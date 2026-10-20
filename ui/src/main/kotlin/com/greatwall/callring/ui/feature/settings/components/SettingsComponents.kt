@@ -10,7 +10,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
-import com.greatwall.callring.application.api.TimeWindow
+import com.greatwall.callring.contracts.settings.TimeWindow
 import com.greatwall.callring.ui.designsystem.components.LoadingContent
 import com.greatwall.callring.ui.designsystem.components.ScreenFrame
 import com.greatwall.callring.ui.designsystem.components.clockTimeText

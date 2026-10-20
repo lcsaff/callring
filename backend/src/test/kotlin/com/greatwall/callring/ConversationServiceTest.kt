@@ -1,7 +1,11 @@
 package com.greatwall.callring
 
 import com.greatwall.callring.application.*
-import com.greatwall.callring.application.api.*
+import com.greatwall.callring.contracts.common.*
+import com.greatwall.callring.contracts.callers.*
+import com.greatwall.callring.contracts.settings.*
+import com.greatwall.callring.contracts.ai.*
+import com.greatwall.callring.application.recording.model.*
 import com.greatwall.callring.application.conversation.*
 import com.greatwall.callring.application.ports.*
 import kotlinx.coroutines.*
@@ -10,7 +14,6 @@ import org.junit.Assert.*
 import org.junit.Test
 
 class ConversationServiceTest {
-
 
     @Test fun actualPhaseTransitionsHaveBoundedPerTurnMonotonicTimings()=runBlocking {
         val f=ConversationFixtures();val client=Client(ArrayDeque(listOf(ConversationReply.Final("one"),ConversationReply.Final("two"))))

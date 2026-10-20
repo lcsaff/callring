@@ -6,7 +6,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.*
 import com.greatwall.callring.ui.designsystem.components.LocalFeedbackHost
 import kotlinx.coroutines.launch
-import com.greatwall.callring.application.api.DocumentRef
+import com.greatwall.callring.contracts.common.DocumentRef
 
 @Composable internal fun rememberImportPicker(mimeTypes: Array<String>, onPicked: (DocumentRef) -> Unit): () -> Unit {
     val feedback = rememberDocumentFeedback()

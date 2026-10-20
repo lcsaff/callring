@@ -6,7 +6,9 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.*
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.greatwall.callring.application.api.*
+import com.greatwall.callring.contracts.common.*
+import com.greatwall.callring.contracts.recording.*
+import com.greatwall.callring.contracts.*
 import com.greatwall.callring.ui.feature.recording.*
 import com.greatwall.callring.ui.feature.ai.ScopedRecordingSettingsViewModel
 

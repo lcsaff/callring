@@ -1,7 +1,9 @@
 package com.greatwall.callring.bootstrap
 
 import com.greatwall.callring.application.*
-import com.greatwall.callring.application.api.*
+import com.greatwall.callring.contracts.common.*
+import com.greatwall.callring.contracts.runtime.*
+import com.greatwall.callring.contracts.ai.*
 import com.greatwall.callring.application.conversation.*
 import com.greatwall.callring.application.ports.BackendFailure
 import com.greatwall.callring.platform.AndroidDiagnosticsStore

@@ -6,7 +6,7 @@ import android.app.job.JobScheduler
 import android.app.job.JobService
 import android.content.ComponentName
 import android.content.Context
-import com.greatwall.callring.application.api.ApiResult
+import com.greatwall.callring.contracts.common.ApiResult
 import com.greatwall.callring.bootstrap.BackendProvider
 import com.greatwall.callring.platform.CalendarRefreshPolicy
 import com.greatwall.callring.platform.JobRuns

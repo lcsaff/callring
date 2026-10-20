@@ -4,7 +4,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import com.greatwall.callring.application.api.CalendarInfo
+import com.greatwall.callring.contracts.settings.CalendarInfo
 import com.greatwall.callring.ui.designsystem.components.BrandButton
 import com.greatwall.callring.ui.feature.settings.components.*
 import com.greatwall.callring.ui.state.LoadState

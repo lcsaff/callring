@@ -1,5 +1,6 @@
 package com.greatwall.callring.ui.feature.callers
 
+import com.greatwall.callring.contracts.command.*
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -15,8 +16,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
-import com.greatwall.callring.application.api.ApiError
-import com.greatwall.callring.application.api.NumberDeletionImpact
+import com.greatwall.callring.contracts.common.ApiError
+import com.greatwall.callring.contracts.command.NumberDeletionImpact
 import com.greatwall.callring.ui.state.MutationState
 
 /** 删除号码的两次确认：先看影响范围，再要求输入号码后 4 位并勾选不可恢复。 */

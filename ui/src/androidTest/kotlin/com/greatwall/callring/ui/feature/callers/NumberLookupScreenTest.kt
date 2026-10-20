@@ -2,7 +2,7 @@ package com.greatwall.callring.ui.feature.callers
 
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createComposeRule
-import com.greatwall.callring.application.api.NumberCheck
+import com.greatwall.callring.contracts.callers.NumberCheck
 import com.greatwall.callring.ui.designsystem.CallringTheme
 import org.junit.Assert.assertEquals
 import org.junit.Rule

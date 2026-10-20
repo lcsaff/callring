@@ -2,6 +2,8 @@
 from pathlib import Path
 import re
 import sys
+import hashlib
+import json
 
 ROOT = Path(__file__).resolve().parents[1]
 BASE = Path("app/src/main/java/com/greatwall/callring")
@@ -24,7 +26,9 @@ def without_comments(source):
 
 
 def declarations(source):
-    return re.sub(r',(?=\))', '', re.sub(r'\s+', '', without_comments(source)))
+    # Whitespace inside wire strings is significant; normalize only outside literals.
+    return re.sub(r'(""".*?"""|"(?:\\.|[^"\\])*")|\s+',
+                  lambda match: match.group(1) or '', without_comments(source), flags=re.S)
 
 
 STRING = re.compile(r'""".*?"""|"(?:\\.|[^"\\])*"', re.S)
@@ -55,34 +59,13 @@ def arguments(text, opening):
     return None
 
 
-def constructor(text, name):
-    match = re.search(r'\bdata\s+class\s+' + re.escape(name) + r'\s*\(', text)
-    if not match:
-        return None
-    opening = match.end() - 1
-    parts = arguments(text, opening)
-    return (opening, *parts) if parts else None
+def contract_inventory(files):
+    return json.dumps({name: {"sha256": hashlib.sha256(declarations(source).encode("utf-8")).hexdigest(),
+                             "declarations": [name for row in re.findall(r"^(?:(?:data|sealed|enum)\s+)?(?:class|interface|object)\s+(\w+)|^fun\s+(?:[\w<>?]+\.)?(\w+)\s*\(|^const val (\w+)", source, re.M) for name in row if name]}
+                       for name, source in sorted(files.items())}, ensure_ascii=False, indent=2)
 
-
-def compatible_v1(actual, contract):
-    actual, contract = without_comments(actual), without_comments(contract)
-    approved = {'ApiError': ['valaiFailure:ConversationFailure?=null'],
-                'SaveCallerProfile': ['valbaseline:CallerDraft?=null', 'valdirtyFields:Set<String>?=null']}
-    for name, allowed in approved.items():
-        found, original = constructor(actual, name), constructor(contract, name)
-        if found is None or original is None:
-            return False
-        opening, spans, closing = found
-        old_opening, old_spans, old_closing = original
-        old = [declarations(contract[a:b]) for a, b in old_spans]
-        fields = [declarations(actual[a:b]) for a, b in spans]
-        suffix = fields[len(old):]
-        if fields[:len(old)] != old or len(suffix) != len(set(suffix)):
-            return False
-        if suffix != [value for value in allowed if value in suffix]:
-            return False
-        actual = actual[:opening+1] + contract[old_opening+1:old_closing] + actual[closing:]
-    return declarations(actual) == declarations(contract)
+def compatible_inventory(files, inventory):
+    return contract_inventory(files) == inventory.strip()
 
 
 def has_presentation_literal(path, source):
@@ -129,10 +112,24 @@ def check():
                 errors.append(f"{path.relative_to(ROOT)}: forbidden business dependency {pattern}")
         if has_presentation_literal(path, text):
             errors.append(f"{path.relative_to(ROOT)}: localized presentation text in JVM backend")
-    contract = ROOT / "docs/contracts/CallringUiApi.kt"
-    actual = ROOT / "backend/src/main/kotlin/com/greatwall/callring/application/api/CallringUiApi.kt"
-    if not actual.exists() or not compatible_v1(actual.read_text(encoding="utf-8"), contract.read_text(encoding="utf-8")):
-        errors.append("Production API differs from shared v1 contract")
+    # The v1 snapshot is historical. Current source is reviewed against the T03 inventory.
+    contract_root = ROOT / "contracts/src/main/kotlin/com/greatwall/callring/contracts"
+    files = {p.relative_to(contract_root).as_posix(): p.read_text(encoding="utf-8") for p in contract_root.rglob("*.kt")}
+    current = ROOT / "docs/contracts/current-api.md"
+    document = current.read_text(encoding="utf-8") if current.exists() else ""
+    inventory = re.search(r"<!-- contract-inventory -->\s*```json\n(.*?)\n```", document, re.S)
+    if not inventory or not compatible_inventory(files, inventory.group(1)):
+        errors.append("Current contracts differ from reviewed docs/contracts/current-api.md inventory")
+    for approved in ("RecordingApi.getSettings/saveSettings/testConnection", "RecordingApi.setSystemFolder", "AiConnectionView.copyToAnalysisProfile", "CallringUiApi abstract capabilities", "ConversationBudget.validate"):
+        if approved not in document: errors.append("Missing approved internal signature change: " + approved)
+    golden = ROOT / "docs/contracts/ai-operation-compatibility.json"
+    if not golden.exists() or hashlib.sha256(golden.read_text(encoding="utf-8").encode("utf-8")).hexdigest() != "7e9735f0718740ef8c19785d61866ef6beec1b26e869aa074f87472b913113a1":
+        errors.append("AI operation compatibility golden changed; preserve the reviewed external schema")
+    compatibility_test = ROOT / "backend/src/test/kotlin/com/greatwall/callring/ToolCompatibilityBaselineTest.kt"
+    if not compatibility_test.exists() or 'ai-operation-compatibility.json' not in compatibility_test.read_text(encoding="utf-8"):
+        errors.append("Missing external AI compatibility test against baseline golden")
+    from check_architecture import check as check_architecture
+    errors.extend(check_architecture(ROOT))
     for directory in (ROOT / "app/src/main/kotlin/com/greatwall/callring/data",
                       ROOT / "app/src/main/kotlin/com/greatwall/callring/platform",
                       ROOT / "app/src/main/java/com/greatwall/callring/data"):
@@ -164,4 +161,4 @@ if __name__ == "__main__":
     if errors:
         print("\n".join(errors))
         sys.exit(1)
-    print(f"PASS: {len(sources)} JVM sources; no Android/UI/presentation dependencies; v1 preserved with approved optional additions")
+    print(f"PASS: {len(sources)} JVM sources; no Android/UI/presentation dependencies; current contract inventory and AI compatibility golden preserved")

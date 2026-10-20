@@ -2,7 +2,9 @@ package com.greatwall.callring.data
 
 import android.database.sqlite.SQLiteDatabase
 import android.test.InstrumentationTestCase
-import com.greatwall.callring.application.api.*
+import com.greatwall.callring.contracts.callers.*
+import com.greatwall.callring.contracts.settings.*
+import com.greatwall.callring.contracts.ai.*
 import com.greatwall.callring.domain.AuditRecord
 import com.greatwall.callring.domain.LeaveRecord
 import com.greatwall.callring.domain.PositionRecord

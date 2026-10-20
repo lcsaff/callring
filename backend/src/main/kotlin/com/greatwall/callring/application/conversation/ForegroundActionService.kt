@@ -1,6 +1,7 @@
 package com.greatwall.callring.application.conversation
 
-import com.greatwall.callring.application.api.*
+import com.greatwall.callring.contracts.command.*
+import com.greatwall.callring.contracts.ai.*
 import java.time.Clock
 import java.util.UUID
 import kotlinx.coroutines.*

@@ -1,9 +1,10 @@
 package com.greatwall.callring.platform.update
 
-import com.greatwall.callring.application.api.ApiResult
-import com.greatwall.callring.application.api.AppReleaseInfo
-import com.greatwall.callring.application.api.AppVersionInfo
-import com.greatwall.callring.application.api.UpdatePhase
+import com.greatwall.callring.contracts.runtime.*
+import com.greatwall.callring.contracts.common.ApiResult
+import com.greatwall.callring.contracts.runtime.AppReleaseInfo
+import com.greatwall.callring.contracts.runtime.AppVersionInfo
+import com.greatwall.callring.contracts.runtime.UpdatePhase
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
@@ -77,7 +78,7 @@ class AndroidAppUpdateTest {
         )))
     }
 
-    private suspend fun awaitPhase(api: AndroidAppUpdate, phase: UpdatePhase, timeoutMs: Long = 10_000): com.greatwall.callring.application.api.UpdateStatus {
+    private suspend fun awaitPhase(api: AndroidAppUpdate, phase: UpdatePhase, timeoutMs: Long = 10_000): com.greatwall.callring.contracts.runtime.UpdateStatus {
         val deadline = System.currentTimeMillis() + timeoutMs
         while (System.currentTimeMillis() < deadline) {
             val status = api.status().ok()

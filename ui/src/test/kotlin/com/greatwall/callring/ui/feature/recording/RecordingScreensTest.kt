@@ -3,7 +3,11 @@ package com.greatwall.callring.ui.feature.recording
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createComposeRule
-import com.greatwall.callring.application.api.*
+import com.greatwall.callring.contracts.common.*
+import com.greatwall.callring.contracts.callers.*
+import com.greatwall.callring.contracts.report.*
+import com.greatwall.callring.contracts.recording.*
+import com.greatwall.callring.ui.testing.*
 import com.greatwall.callring.ui.designsystem.CallringTheme
 import com.greatwall.callring.ui.state.*
 import org.junit.Assert.*

@@ -3,8 +3,8 @@ package com.greatwall.callring.ui.feature.settings
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createComposeRule
-import com.greatwall.callring.application.api.TimeWindow
-import com.greatwall.callring.application.api.WorkScheduleSettings
+import com.greatwall.callring.contracts.settings.TimeWindow
+import com.greatwall.callring.contracts.settings.WorkScheduleSettings
 import com.greatwall.callring.ui.designsystem.CallringTheme
 import com.greatwall.callring.ui.state.LoadState
 import com.greatwall.callring.ui.state.MutationState

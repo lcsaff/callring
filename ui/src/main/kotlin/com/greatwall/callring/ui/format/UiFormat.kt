@@ -1,10 +1,10 @@
 package com.greatwall.callring.ui.format
 
-import com.greatwall.callring.application.api.CallDecision
-import com.greatwall.callring.application.api.CallResult
-import com.greatwall.callring.application.api.PositionRelation
-import com.greatwall.callring.application.api.ScoreSummary
-import com.greatwall.callring.application.api.WorkReason
+import com.greatwall.callring.contracts.callers.CallDecision
+import com.greatwall.callring.contracts.callers.CallResult
+import com.greatwall.callring.contracts.settings.PositionRelation
+import com.greatwall.callring.contracts.report.ScoreSummary
+import com.greatwall.callring.contracts.callers.WorkReason
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter

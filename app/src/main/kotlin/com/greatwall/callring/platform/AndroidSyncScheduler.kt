@@ -6,7 +6,8 @@ import android.content.ComponentName
 import android.content.Context
 import android.provider.CallLog
 import com.greatwall.callring.SyncJobService
-import com.greatwall.callring.application.api.*
+import com.greatwall.callring.contracts.common.*
+import com.greatwall.callring.contracts.runtime.*
 import com.greatwall.callring.application.ports.*
 
 class AndroidSyncScheduler(private val context: Context) : SyncScheduler {

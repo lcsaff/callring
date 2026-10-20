@@ -1,12 +1,16 @@
 ﻿package com.greatwall.callring.ui.widget
 
+import com.greatwall.callring.contracts.command.*
+import com.greatwall.callring.contracts.ai.*
+import com.greatwall.callring.contracts.recording.*
+import com.greatwall.callring.contracts.runtime.*
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createComposeRule
-import com.greatwall.callring.application.api.ApiError
-import com.greatwall.callring.application.api.ErrorCode
+import com.greatwall.callring.contracts.common.ApiError
+import com.greatwall.callring.contracts.common.ErrorCode
 import com.greatwall.callring.ui.designsystem.CallringTheme
 import com.greatwall.callring.ui.state.MutationState
 import org.junit.Assert.*

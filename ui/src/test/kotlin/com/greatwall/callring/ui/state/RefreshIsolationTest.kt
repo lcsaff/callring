@@ -1,9 +1,9 @@
 package com.greatwall.callring.ui.state
 
-import com.greatwall.callring.application.api.ApiResult
-import com.greatwall.callring.application.api.ChangeFeed
-import com.greatwall.callring.application.api.DataChange
-import com.greatwall.callring.application.api.DataDomain
+import com.greatwall.callring.contracts.common.ApiResult
+import com.greatwall.callring.contracts.change.ChangeFeed
+import com.greatwall.callring.contracts.change.DataChange
+import com.greatwall.callring.contracts.change.DataDomain
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableSharedFlow

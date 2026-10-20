@@ -1,6 +1,6 @@
 package com.greatwall.callring.platform.calling
 
-import com.greatwall.callring.application.api.CallDecision
+import com.greatwall.callring.contracts.callers.CallDecision
 import com.greatwall.callring.domain.IncomingDecision
 import java.util.concurrent.CompletableFuture
 

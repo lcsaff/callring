@@ -1,6 +1,6 @@
 package com.greatwall.callring.application.conversation
 
-import com.greatwall.callring.application.api.*
+import com.greatwall.callring.contracts.common.*
 import com.greatwall.callring.application.ports.BackendFailure
 
 data class DirectoryNode(val id: String, val name: String, val mime: String, val modified: Long?, val size: Long?, val directory: Boolean = false)

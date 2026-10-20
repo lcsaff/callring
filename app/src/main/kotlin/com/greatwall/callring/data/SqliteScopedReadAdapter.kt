@@ -1,9 +1,13 @@
 package com.greatwall.callring.data
 
+import com.greatwall.callring.application.recording.policy.*
 import android.database.Cursor
 import android.database.DatabaseUtils
 import android.database.sqlite.SQLiteDatabase
-import com.greatwall.callring.application.api.*
+import com.greatwall.callring.contracts.common.*
+import com.greatwall.callring.contracts.callers.*
+import com.greatwall.callring.contracts.settings.*
+import com.greatwall.callring.contracts.ai.*
 import com.greatwall.callring.application.ports.*
 import com.greatwall.callring.application.safeValue
 import com.greatwall.callring.application.StreamingReportAccumulator

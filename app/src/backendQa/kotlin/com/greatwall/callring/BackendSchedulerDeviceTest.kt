@@ -1,11 +1,12 @@
 package com.greatwall.callring
 
+import com.greatwall.callring.contracts.runtime.*
 import android.app.job.JobInfo
 import android.app.job.JobScheduler
 import android.content.ComponentName
 import android.provider.CallLog
 import android.test.InstrumentationTestCase
-import com.greatwall.callring.application.api.SyncRequestState
+import com.greatwall.callring.contracts.runtime.SyncRequestState
 import com.greatwall.callring.platform.AndroidSyncScheduler
 
 /** Tests only this separate QA package's jobs. Never observes or changes system call records. */

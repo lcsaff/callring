@@ -1,6 +1,7 @@
 package com.greatwall.callring.domain
 
-import com.greatwall.callring.application.api.*
+import com.greatwall.callring.contracts.callers.*
+import com.greatwall.callring.contracts.settings.*
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId

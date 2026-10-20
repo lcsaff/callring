@@ -1,8 +1,10 @@
 package com.greatwall.callring.platform
 
+import com.greatwall.callring.contracts.ai.*
+import com.greatwall.callring.contracts.runtime.*
 import android.content.SharedPreferences
 import android.util.Log
-import com.greatwall.callring.application.api.DiagnosticEntry
+import com.greatwall.callring.contracts.runtime.DiagnosticEntry
 import java.io.Closeable
 import java.time.Clock
 import java.util.concurrent.Executors
@@ -30,21 +32,21 @@ class AndroidDiagnosticsStore(
     private val coordinator: com.greatwall.callring.application.BusinessRevisionCoordinator = com.greatwall.callring.application.BusinessRevisionCoordinator(),
 ) : Closeable {
     fun scopedReads():com.greatwall.callring.application.ports.ScopedReadPort {
-        val base=com.greatwall.callring.bootstrap.ValueScopedReadSource(setOf(com.greatwall.callring.application.api.AiDomain.D20),{coordinator.capture().values.getValue("diagnostics")}){spec->
+        val base=com.greatwall.callring.bootstrap.ValueScopedReadSource(setOf(com.greatwall.callring.contracts.ai.AiDomain.D20),{coordinator.capture().values.getValue("diagnostics")}){spec->
             require(spec.projection=="default")
             storedEntries().map{(key,entry)->
                 val points=entry.message.codePointCount(0,entry.message.length).toLong()
-                com.greatwall.callring.application.ports.SourceRow(key,com.greatwall.callring.application.api.aiObject(
-                    "occurredAt" to com.greatwall.callring.application.api.aiNumber(entry.occurredAtEpochMillis),
-                    "legacyTime" to (entry.legacyTimeText?.let{com.greatwall.callring.application.api.aiString(it)}?:com.greatwall.callring.application.api.AiJson.Null),
-                    "message" to if(points>4096)com.greatwall.callring.application.api.AiJson.Null else com.greatwall.callring.application.api.aiString(entry.message)),
+                com.greatwall.callring.application.ports.SourceRow(key,com.greatwall.callring.contracts.ai.aiObject(
+                    "occurredAt" to com.greatwall.callring.contracts.ai.aiNumber(entry.occurredAtEpochMillis),
+                    "legacyTime" to (entry.legacyTimeText?.let{com.greatwall.callring.contracts.ai.aiString(it)}?:com.greatwall.callring.contracts.ai.AiJson.Null),
+                    "message" to if(points>4096)com.greatwall.callring.contracts.ai.AiJson.Null else com.greatwall.callring.contracts.ai.aiString(entry.message)),
                     if(points>4096)mapOf("message" to points)else emptyMap())
             }
         }
         return object:com.greatwall.callring.application.ports.ScopedReadPort by base {
-            override fun text(domain:com.greatwall.callring.application.api.AiDomain,key:String,field:String,start:Long,maxChars:Int):com.greatwall.callring.application.ports.SourceText {
+            override fun text(domain:com.greatwall.callring.contracts.ai.AiDomain,key:String,field:String,start:Long,maxChars:Int):com.greatwall.callring.application.ports.SourceText {
                 require(field=="message")
-                val message=storedEntries().firstOrNull{it.first==key}?.second?.message?:throw com.greatwall.callring.application.ports.BackendFailure(com.greatwall.callring.application.api.ApiError(com.greatwall.callring.application.api.ErrorCode.NOT_FOUND,"ai.not_found"))
+                val message=storedEntries().firstOrNull{it.first==key}?.second?.message?:throw com.greatwall.callring.application.ports.BackendFailure(com.greatwall.callring.contracts.common.ApiError(com.greatwall.callring.contracts.common.ErrorCode.NOT_FOUND,"ai.not_found"))
                 return com.greatwall.callring.bootstrap.sliceSourceText(message,start,maxChars)
             }
         }

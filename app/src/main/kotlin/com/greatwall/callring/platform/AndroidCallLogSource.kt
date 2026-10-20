@@ -2,7 +2,7 @@ package com.greatwall.callring.platform
 
 import android.content.ContentResolver
 import android.provider.CallLog
-import com.greatwall.callring.application.api.CallResult
+import com.greatwall.callring.contracts.callers.CallResult
 import com.greatwall.callring.domain.SystemCallRecord
 
 /**

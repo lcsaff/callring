@@ -20,7 +20,12 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.*
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.greatwall.callring.application.api.*
+import com.greatwall.callring.contracts.common.*
+import com.greatwall.callring.contracts.callers.*
+import com.greatwall.callring.contracts.runtime.*
+import com.greatwall.callring.contracts.ai.*
+import com.greatwall.callring.contracts.command.*
+import com.greatwall.callring.contracts.*
 import com.greatwall.callring.ui.feature.callers.NumberDeletionDialogs
 import com.greatwall.callring.ui.feature.ai.*
 import com.greatwall.callring.ui.overlay.CallringOverlayService

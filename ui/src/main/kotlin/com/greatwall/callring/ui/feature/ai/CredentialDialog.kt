@@ -11,7 +11,9 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
-import com.greatwall.callring.application.api.*
+import com.greatwall.callring.contracts.common.*
+import com.greatwall.callring.contracts.recording.*
+import com.greatwall.callring.contracts.ai.*
 import kotlinx.coroutines.launch
 
 /** Plaintext exists only in this local, unsaved composition. */
@@ -77,7 +79,7 @@ data class CredentialDraft(val slot: AiSlot, val base: AiSettingsView, val conne
         if(to == AiSlot.TRANSCRIPTION) Text("转写将保持 OpenAI 协议，分析的兼容方式保持不变；目标解析方式：STANDARD。")
         else view?.let{value->
             val source=if(from==AiSlot.ANALYSIS)value.analysis else value.transcription
-            val profile=runCatching{resolveConversationProfile(AiConnection(source.protocol,source.url,model=source.model),ConversationCompatibility.AUTO)}.getOrNull()
+            val profile=source.copyToAnalysisProfile
             Text("分析兼容方式将重置为 AUTO；目标解析方式：${profile?.name?:"配置需修正"}。保存后会停止使用旧连接的沟通。")
         }
         Text("保存会替换目标连接；源或目标已变化时会拒绝。")

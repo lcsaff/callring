@@ -1,6 +1,9 @@
 package com.greatwall.callring.ui.app
 
-import com.greatwall.callring.application.api.*
+import com.greatwall.callring.contracts.common.*
+import com.greatwall.callring.contracts.recording.*
+import com.greatwall.callring.contracts.ai.*
+import com.greatwall.callring.ui.testing.*
 import com.greatwall.callring.ui.feature.ai.AiSettingsUi
 import com.greatwall.callring.ui.feature.ai.AiSettingsViewModel
 import com.greatwall.callring.ui.testing.UiFakeApi

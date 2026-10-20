@@ -1,5 +1,6 @@
 package com.greatwall.callring.platform.update
 
+import com.greatwall.callring.contracts.runtime.*
 import android.content.Context
 import android.content.Intent
 import android.content.pm.ApplicationInfo
@@ -7,8 +8,8 @@ import android.content.pm.PackageManager
 import android.net.Uri
 import android.provider.Settings
 import androidx.core.content.FileProvider
-import com.greatwall.callring.application.api.AppReleaseInfo
-import com.greatwall.callring.application.api.AppVersionInfo
+import com.greatwall.callring.contracts.runtime.AppReleaseInfo
+import com.greatwall.callring.contracts.runtime.AppVersionInfo
 import java.io.File
 
 internal data class UpdateBuildInfo(

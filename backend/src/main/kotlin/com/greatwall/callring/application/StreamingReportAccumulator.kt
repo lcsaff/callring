@@ -1,6 +1,9 @@
 package com.greatwall.callring.application
 
-import com.greatwall.callring.application.api.*
+import com.greatwall.callring.contracts.common.*
+import com.greatwall.callring.contracts.callers.*
+import com.greatwall.callring.contracts.settings.*
+import com.greatwall.callring.contracts.report.*
 
 /** Shared by UI reports and source-level streaming aggregates. Input order is ascending event time. */
 class StreamingReportAccumulator(private val settings:ScoreSettings,private val range:TimeRange,private val includeSaturatedMax:Boolean=false) {

@@ -1,12 +1,13 @@
 package com.greatwall.callring.ui.app
 
+import com.greatwall.callring.contracts.ai.*
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onAllNodesWithText
-import com.greatwall.callring.application.api.ConversationMessage
-import com.greatwall.callring.application.api.ConversationState
+import com.greatwall.callring.contracts.ai.ConversationMessage
+import com.greatwall.callring.contracts.ai.ConversationState
 import com.greatwall.callring.ui.feature.conversation.ConversationScreen
 import org.junit.Rule
 import org.junit.Test

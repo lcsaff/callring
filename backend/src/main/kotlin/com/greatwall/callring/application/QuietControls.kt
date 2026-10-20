@@ -1,6 +1,6 @@
 package com.greatwall.callring.application
 
-import com.greatwall.callring.application.api.*
+import com.greatwall.callring.contracts.settings.*
 import com.greatwall.callring.domain.BackendState
 
 /** All mode writes share one remembered setting; disabling never destroys the time windows. */

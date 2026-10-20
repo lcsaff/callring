@@ -1,12 +1,13 @@
 @file:Suppress("DEPRECATION")
 package com.greatwall.callring.platform.update
 
+import com.greatwall.callring.contracts.runtime.*
 import android.content.Intent
 import android.os.Bundle
 import android.os.SystemClock
 import android.test.InstrumentationTestCase
 import android.view.accessibility.AccessibilityNodeInfo
-import com.greatwall.callring.application.api.*
+import com.greatwall.callring.contracts.common.*
 import com.greatwall.callring.ui.app.CallringActivity
 import com.greatwall.callring.ui.app.UiDestination
 import com.greatwall.callring.ui.feature.settings.SettingsPage

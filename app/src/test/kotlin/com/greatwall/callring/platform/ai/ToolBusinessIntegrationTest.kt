@@ -5,7 +5,18 @@ import android.database.*
 import android.net.Uri
 import android.os.ParcelFileDescriptor
 import com.greatwall.callring.application.*
-import com.greatwall.callring.application.api.*
+import com.greatwall.callring.contracts.common.*
+import com.greatwall.callring.contracts.callers.*
+import com.greatwall.callring.contracts.settings.*
+import com.greatwall.callring.contracts.report.*
+import com.greatwall.callring.contracts.runtime.*
+import com.greatwall.callring.contracts.widget.*
+import com.greatwall.callring.contracts.recording.*
+import com.greatwall.callring.contracts.ai.*
+import com.greatwall.callring.contracts.command.*
+import com.greatwall.callring.contracts.*
+import com.greatwall.callring.application.recording.model.*
+import com.greatwall.callring.application.recording.policy.*
 import com.greatwall.callring.application.conversation.*
 import com.greatwall.callring.application.ports.*
 import com.greatwall.callring.data.SqliteBackendStore
@@ -243,8 +254,12 @@ class ToolBusinessIntegrationTest {
             val receipt = withTimeout(10000) { executor.execute(call,scope("op")) }
             assertTrue("${definition.id} ${definition.name}: $receipt",receipt.status in setOf(ToolStatus.READ,ToolStatus.COMMITTED,ToolStatus.QUEUED,ToolStatus.LAUNCHED))
             assertNull("${definition.id}: ${receipt.error}",receipt.error)
-            val expected = when(definition.index) { 7 -> "edits.profile"; 37 -> "edits.appearance"; 51 -> "recordings.getSettings"; 52 -> "ai.patchCombined"; 53 -> "ai.testSlot"; 63 -> "root.adoptIdentity"; 64 -> "ai.getAiView"; 65 -> "ai.patchAi"; 66 -> "ai.patchAi"; 67,68 -> "runtime.getStatus"; 69 -> "widgets.listBindings"; 70 -> "foreground.TEST_OVERLAY"; 71 -> "callers.getCallDetail"; 72 -> "ai.copyConnection"; else -> definition.name.replace('_','.') }
+            val expected = when(definition.index) { 7 -> "edits.profile"; 37 -> "edits.appearance"; 51 -> "ai.getRecordingView"; 52 -> "ai.patchCombined"; 53 -> "ai.testSlot"; 63 -> "root.adoptIdentity"; 64 -> "ai.getAiView"; 65 -> "ai.patchAi"; 66 -> "ai.patchAi"; 67,68 -> "runtime.getStatus"; 69 -> "widgets.listBindings"; 70 -> "foreground.TEST_OVERLAY"; 71 -> "callers.getCallDetail"; 72 -> "ai.copyConnection"; else -> definition.name.replace('_','.') }
             assertTrue("${definition.id} missing real API $expected in ${fixture.calls}",expected in fixture.calls)
+            if(definition.index == 51) {
+                assertTrue("O51 must read the AI safe view", "ai.getAiView" in fixture.calls)
+                assertFalse("O51 must not read raw credential settings", "recordings.getSettings" in fixture.calls)
+            }
             assertFalse(receipt.value.encode().contains("fixture-secret-"))
             assertFalse(receipt.value.encode().contains("content://"))
             if(definition.index == 7) { val saved = root.callers.getEditor("31234").requiredValue().draft; assertEquals("changed",saved.name); assertEquals(1L,saved.positionId); assertTrue(saved.whitelisted) }

@@ -1,6 +1,7 @@
 package com.greatwall.callring.platform.ai
 
-import com.greatwall.callring.application.api.*
+import com.greatwall.callring.contracts.recording.*
+import com.greatwall.callring.application.recording.model.*
 import org.junit.Assert.*
 import org.junit.Test
 import org.junit.runner.RunWith

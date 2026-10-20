@@ -14,3 +14,23 @@
 10. Report/overlay overview 的质量含运行权限，需要补 RUNTIME 依赖；overlay 的纯外观读取优先窄化 DTO，避免为了订阅完整 SettingsSummary 放大查询。
 
 对应生产源：RecordingApi.kt、CredentialDialog.kt、UI/sharedTest、BusinessState.kt、WorkClassifier.kt、DecisionSnapshot.kt、LazyBackendStore.kt、BusinessRevisionCoordinator.kt、SqliteScopedReadAdapter.kt、SnapshotViewModel.kt、WidgetModel.kt、OverlayViewModel.kt、ReportCalculator.kt。实现检查点必须逐项验证，不能将这份清单当修复结果。
+
+11. 报表边界澄清：现有 StreamingReportAccumulator.accept 首先排除统计区间外记录，重复呼叫 previous 仅在区间内更新。因此本次不得把区间前一通话加入重复扣分；设计中的必要边界输入只在既有算法实际需要时加载，不能改变当前范围内评分。跨午夜工作窗口的前一日配置/时段依赖则仍要保留。
+
+## T04 输入面清单（基于83f6932只读核对）
+
+六个 domain 源码使用15个需独立的契约类型：WorkScheduleSettings、CalendarYear、DateOverride、QuietSettings、QuietMode、ScoreSettings、TimeWindow、CallResult、CallDecision、CallSource、ClassificationFact、WorkReason、WorkStatus、WorkDayKind、DateOverrideKind。不要把 CallerProfile/PositionOption/DataQuality/CalendarInfo/Page/ApiError 等展示聚合复制进领域。
+
+累加器额外需要原生 TimeRange/ScoreSummary/ReportTotals。纯数值/日期/窗口校验移领域，API fieldErrors 和分页/DTO 组装保留 application。枚举转换使用穷尽 when，不以 ordinal、别名或无检查的 name/valueOf 掩盖遗漏。
+
+WorkClassifier 应依赖 WorkInputs（完整工作历史、日历、覆盖、请假、leaveVersion），DecisionInputs 再加白名单、免打扰、统计区间、overlay。DecisionSnapshot 深冻结嵌套集合并只持有这些输入。保留生效时间/版本排序、前历史兜底、前日跨午夜、DST gap/overlap、[start,end)、原始事实不随更正改变。
+
+跨层改动需同时覆盖 application projections/Context 输入输出/CoreSnapshotProjection.safeValue、app 的 CallStore/SettingsStore/ScheduleStore/LegacyValueCodec/WorkConfigCodec/StorageMigration/CallringDatabase/SqliteScopedReadAdapter/AndroidCallLogSource。快照 JSON 必须先转公开 DTO，不能让 serializer 未识别的新 domain 类型静默降级。
+
+File 参数的 AI 客户端/HTTP/流/协程执行仍是 application ports 与 app adapter，不随纯厂商策略迁入 domain。
+
+## T05 额外前置约束
+
+- 业务服务拿到的事务能力应按业务片收窄，不能向每个服务注入可访问所有核心表的会话或重新造一个万能 Context。底层同库资源统一，外层可提供按能力投影的事务接口。
+- 生命周期锁可保护完整数据库操作，但 ScopedReadPort.version 的 coordinator 读取必须在资源/SQL 操作锁之外；否则形成 fence→resource 与 resource→fence 反向等待。关闭检查与版本观察需分开设计。
+- 所有存储范围/表/行探针先在旧实现记录，再切新适配器。累计订阅与第一片精准写同时落地，不等 T11。

@@ -1,6 +1,8 @@
 package com.greatwall.callring.ui.format
 
-import com.greatwall.callring.application.api.*
+import com.greatwall.callring.contracts.settings.*
+import com.greatwall.callring.contracts.report.*
+import com.greatwall.callring.contracts.runtime.*
 
 object UiLabels {
     fun quiet(value: QuietMode) = when (value) {

@@ -1,6 +1,7 @@
 package com.greatwall.callring.bootstrap
 
-import com.greatwall.callring.application.api.*
+import com.greatwall.callring.contracts.common.*
+import com.greatwall.callring.contracts.ai.*
 import com.greatwall.callring.application.ports.*
 import java.util.TreeMap
 

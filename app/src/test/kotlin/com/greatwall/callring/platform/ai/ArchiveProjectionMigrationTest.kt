@@ -1,7 +1,9 @@
 package com.greatwall.callring.platform.ai
 
 import android.database.sqlite.SQLiteDatabase
-import com.greatwall.callring.application.api.*
+import com.greatwall.callring.contracts.common.*
+import com.greatwall.callring.contracts.recording.*
+import com.greatwall.callring.contracts.ai.*
 import com.greatwall.callring.application.conversation.QueryService
 import com.greatwall.callring.application.requiredValue
 import kotlinx.coroutines.runBlocking

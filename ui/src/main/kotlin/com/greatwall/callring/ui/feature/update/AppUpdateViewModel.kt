@@ -1,6 +1,7 @@
 package com.greatwall.callring.ui.feature.update
 
-import com.greatwall.callring.application.api.*
+import com.greatwall.callring.contracts.common.*
+import com.greatwall.callring.contracts.runtime.*
 import com.greatwall.callring.ui.state.*
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.MutableStateFlow

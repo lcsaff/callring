@@ -1,5 +1,7 @@
 package com.greatwall.callring.ui.app
 
+import com.greatwall.callring.contracts.ai.*
+import com.greatwall.callring.contracts.runtime.*
 import android.Manifest
 import android.app.role.RoleManager
 import android.appwidget.AppWidgetManager
@@ -15,8 +17,8 @@ import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.*
 import androidx.lifecycle.lifecycleScope
-import com.greatwall.callring.application.api.Capability
-import com.greatwall.callring.application.api.CallDetail
+import com.greatwall.callring.contracts.runtime.Capability
+import com.greatwall.callring.contracts.callers.CallDetail
 import com.greatwall.callring.ui.widget.CallringWidgetReceiver
 import com.greatwall.callring.ui.overlay.CallringOverlayService
 import kotlinx.coroutines.launch
@@ -92,20 +94,20 @@ class CallringActivity : ComponentActivity() {
     private fun openApplicationSettings() = actionHost.openApplicationSettings()
     private fun previewCall(call: CallDetail) {
         when(actionHost.previewCall(call)) {
-            com.greatwall.callring.application.api.ForegroundResultStatus.DENIED -> requestCapability(Capability.OVERLAY)
-            com.greatwall.callring.application.api.ForegroundResultStatus.UNAVAILABLE -> notifyUser("系统未允许显示来电卡片")
+            com.greatwall.callring.contracts.ai.ForegroundResultStatus.DENIED -> requestCapability(Capability.OVERLAY)
+            com.greatwall.callring.contracts.ai.ForegroundResultStatus.UNAVAILABLE -> notifyUser("系统未允许显示来电卡片")
             else -> Unit
         }
     }
     private fun testOverlay() {
         when(actionHost.testOverlay()) {
-            com.greatwall.callring.application.api.ForegroundResultStatus.DENIED -> { notifyUser("开启悬浮窗权限后，请再次测试"); requestCapability(Capability.OVERLAY) }
-            com.greatwall.callring.application.api.ForegroundResultStatus.UNAVAILABLE -> notifyUser("系统未允许显示测试卡片")
+            com.greatwall.callring.contracts.ai.ForegroundResultStatus.DENIED -> { notifyUser("开启悬浮窗权限后，请再次测试"); requestCapability(Capability.OVERLAY) }
+            com.greatwall.callring.contracts.ai.ForegroundResultStatus.UNAVAILABLE -> notifyUser("系统未允许显示测试卡片")
             else -> Unit
         }
     }
     private fun pinWidget() {
-        if(actionHost.pinWidget() == com.greatwall.callring.application.api.ForegroundResultStatus.LAUNCHED) notifyUser("已发起桌面添加，请以系统桌面为准")
+        if(actionHost.pinWidget() == com.greatwall.callring.contracts.ai.ForegroundResultStatus.LAUNCHED) notifyUser("已发起桌面添加，请以系统桌面为准")
         else notifyUser("请在桌面长按并选择添加小组件")
     }
     companion object {

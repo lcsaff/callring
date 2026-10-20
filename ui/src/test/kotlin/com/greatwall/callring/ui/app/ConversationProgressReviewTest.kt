@@ -4,7 +4,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createComposeRule
-import com.greatwall.callring.application.api.*
+import com.greatwall.callring.contracts.ai.*
 import com.greatwall.callring.ui.feature.conversation.ConversationScreen
 import org.junit.Rule
 import org.junit.Test

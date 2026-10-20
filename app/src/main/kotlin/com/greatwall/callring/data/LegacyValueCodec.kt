@@ -1,6 +1,6 @@
 package com.greatwall.callring.data
 
-import com.greatwall.callring.application.api.*
+import com.greatwall.callring.contracts.callers.*
 
 /** The sole compatibility boundary for human-readable values in schema versions 1–3. */
 object LegacyValueCodec {

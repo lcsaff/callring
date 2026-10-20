@@ -11,7 +11,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.ImeAction
 import com.greatwall.callring.ui.designsystem.components.ConfirmAction
 import com.greatwall.callring.ui.designsystem.components.formKeyboardActions
-import com.greatwall.callring.application.api.ScoreSettings
+import com.greatwall.callring.contracts.settings.ScoreSettings
 import com.greatwall.callring.ui.feature.settings.components.*
 import com.greatwall.callring.ui.state.*
 

@@ -2,7 +2,7 @@ package com.greatwall.callring.ui.feature.settings
 
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
-import com.greatwall.callring.application.api.*
+import com.greatwall.callring.contracts.settings.*
 import com.greatwall.callring.ui.designsystem.components.SwitchSettingRow
 import com.greatwall.callring.ui.feature.settings.components.*
 import com.greatwall.callring.ui.format.UiLabels

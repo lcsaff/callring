@@ -11,7 +11,7 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
-import com.greatwall.callring.application.api.*
+import com.greatwall.callring.contracts.settings.*
 import com.greatwall.callring.ui.designsystem.components.SwitchSettingRow
 import com.greatwall.callring.ui.designsystem.components.rememberFormBack
 import com.greatwall.callring.ui.feature.settings.components.*

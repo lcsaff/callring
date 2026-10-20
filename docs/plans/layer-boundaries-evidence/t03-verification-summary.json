@@ -1,0 +1,1228 @@
+{
+  "baseCommit": "83f6932",
+  "phase": "T03 contracts extraction",
+  "contractsTest": "NO-SOURCE",
+  "modules": {
+    "backend": {
+      "totals": {
+        "tests": 223,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      "classes": [
+        {
+          "name": "com.greatwall.callring.BusinessRevisionCoordinatorTest",
+          "tests": 4,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "com.greatwall.callring.CallCorrelationTest",
+          "tests": 4,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "com.greatwall.callring.CallringBackendTest",
+          "tests": 37,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "com.greatwall.callring.CapabilityCatalogTest",
+          "tests": 1,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "com.greatwall.callring.ChunkRedactionTest",
+          "tests": 1,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "com.greatwall.callring.CompatibilityMigrationTest",
+          "tests": 3,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "com.greatwall.callring.ConfirmationTargetTest",
+          "tests": 1,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "com.greatwall.callring.ContextAssemblerTest",
+          "tests": 3,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "com.greatwall.callring.ContextBudgetTest",
+          "tests": 2,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "com.greatwall.callring.ConversationApiContractTest",
+          "tests": 1,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "com.greatwall.callring.ConversationLazyTest",
+          "tests": 1,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "com.greatwall.callring.ConversationServiceTest",
+          "tests": 16,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "com.greatwall.callring.CoreSnapshotProjectionTest",
+          "tests": 1,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "com.greatwall.callring.DeletionVerificationRegressionTest",
+          "tests": 5,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "com.greatwall.callring.DirectoryEnumeratorTest",
+          "tests": 3,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "com.greatwall.callring.DomainRegressionTest",
+          "tests": 29,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "com.greatwall.callring.DraftMergeTest",
+          "tests": 3,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "com.greatwall.callring.ForegroundActionServiceTest",
+          "tests": 2,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "com.greatwall.callring.ForegroundLockOrderTest",
+          "tests": 1,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "com.greatwall.callring.ForegroundResourceRegistryTest",
+          "tests": 1,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "com.greatwall.callring.NumberDeletionRegressionTest",
+          "tests": 4,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "com.greatwall.callring.NumberDeletionToolTest",
+          "tests": 1,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "com.greatwall.callring.OperationScopePlannerTest",
+          "tests": 4,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "com.greatwall.callring.QueryObservationIsolationTest",
+          "tests": 1,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "com.greatwall.callring.ReadbackDocumentStoreTest",
+          "tests": 2,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "com.greatwall.callring.ReceiptVerifierTest",
+          "tests": 8,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "com.greatwall.callring.RecordingAssociationTest",
+          "tests": 4,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "com.greatwall.callring.RecordingServiceTest",
+          "tests": 3,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "com.greatwall.callring.RecordingWorkflowTest",
+          "tests": 9,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "com.greatwall.callring.ScopedAggregateTest",
+          "tests": 1,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "com.greatwall.callring.ScopedQueryContractTest",
+          "tests": 3,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "com.greatwall.callring.ScopedRevisionTest",
+          "tests": 3,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "com.greatwall.callring.ScopedToolReaderTest",
+          "tests": 2,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "com.greatwall.callring.SecretRedactorTest",
+          "tests": 2,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "com.greatwall.callring.SharedBusinessCommandsTest",
+          "tests": 1,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "com.greatwall.callring.StepLedgerTest",
+          "tests": 2,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "com.greatwall.callring.TaskPlannerTest",
+          "tests": 2,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "com.greatwall.callring.ThinkingPolicyMatrixTest",
+          "tests": 10,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "com.greatwall.callring.ThinkingPolicyResolverTest",
+          "tests": 5,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "com.greatwall.callring.ThinkingToolApiCompatibilityTest",
+          "tests": 6,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "com.greatwall.callring.ToolBatchEngineTest",
+          "tests": 17,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "com.greatwall.callring.ToolCompatibilityBaselineTest",
+          "tests": 1,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "com.greatwall.callring.ToolOperationCoverageTest",
+          "tests": 3,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "com.greatwall.callring.ToolRegistryTest",
+          "tests": 2,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "com.greatwall.callring.WorkClassifierTest",
+          "tests": 8,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        }
+      ]
+    },
+    "ui": {
+      "totals": {
+        "tests": 283,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      "classes": [
+        {
+          "name": "com.greatwall.callring.ui.app.AiCompatibilityComposeTest",
+          "tests": 1,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "com.greatwall.callring.ui.app.AiCompatibilityUiTest",
+          "tests": 4,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "com.greatwall.callring.ui.app.CallringActivityTest",
+          "tests": 6,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "com.greatwall.callring.ui.app.ConfirmationSummaryTest",
+          "tests": 1,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "com.greatwall.callring.ui.app.ConversationComposerTest",
+          "tests": 2,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "com.greatwall.callring.ui.app.ConversationConnectionRegressionTest",
+          "tests": 1,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "com.greatwall.callring.ui.app.ConversationCopyTest",
+          "tests": 7,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "com.greatwall.callring.ui.app.ConversationLayoutTest",
+          "tests": 2,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "com.greatwall.callring.ui.app.ConversationNavigationTest",
+          "tests": 5,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "com.greatwall.callring.ui.app.ConversationProgressReviewTest",
+          "tests": 3,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "com.greatwall.callring.ui.app.ConversationReviewUiTest",
+          "tests": 2,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "com.greatwall.callring.ui.app.ConversationStateUiTest",
+          "tests": 1,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "com.greatwall.callring.ui.app.CredentialDialogTest",
+          "tests": 1,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "com.greatwall.callring.ui.app.FirstConnectionUiTest",
+          "tests": 2,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "com.greatwall.callring.ui.app.ForegroundActionHostTest",
+          "tests": 1,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "com.greatwall.callring.ui.app.HomeStructureJvmTest",
+          "tests": 4,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "com.greatwall.callring.ui.app.MarkdownCompatibilityTest",
+          "tests": 1,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "com.greatwall.callring.ui.app.RenderedDestinationTest",
+          "tests": 1,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "com.greatwall.callring.ui.app.UiDestinationTest",
+          "tests": 3,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "com.greatwall.callring.ui.app.UiNavigationStateTest",
+          "tests": 1,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "com.greatwall.callring.ui.designsystem.BrandButtonJvmTest",
+          "tests": 1,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "com.greatwall.callring.ui.designsystem.components.ScreenFrameCompactTitleTest",
+          "tests": 3,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "com.greatwall.callring.ui.designsystem.InteractionJvmTest",
+          "tests": 8,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "com.greatwall.callring.ui.designsystem.PickerLayoutJvmTest",
+          "tests": 5,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "com.greatwall.callring.ui.designsystem.ScorePaletteTest",
+          "tests": 4,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "com.greatwall.callring.ui.designsystem.ThemeTest",
+          "tests": 11,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "com.greatwall.callring.ui.feature.ai.AiSettingsScreenTest",
+          "tests": 6,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "com.greatwall.callring.ui.feature.callers.CallerEditorViewModelTest",
+          "tests": 4,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "com.greatwall.callring.ui.feature.callers.CallerListScreenJvmTest",
+          "tests": 10,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "com.greatwall.callring.ui.feature.callers.CallerListViewModelTest",
+          "tests": 4,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "com.greatwall.callring.ui.feature.callers.NumberDeletionDialogsTest",
+          "tests": 2,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "com.greatwall.callring.ui.feature.callers.NumberLookupViewModelTest",
+          "tests": 1,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "com.greatwall.callring.ui.feature.home.HomeQuietScreenJvmTest",
+          "tests": 5,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "com.greatwall.callring.ui.feature.home.HomeQuietViewModelTest",
+          "tests": 4,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "com.greatwall.callring.ui.feature.home.HomeViewModelTest",
+          "tests": 2,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "com.greatwall.callring.ui.feature.recording.RecordingArchiveListTest",
+          "tests": 2,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "com.greatwall.callring.ui.feature.recording.RecordingScreensTest",
+          "tests": 6,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "com.greatwall.callring.ui.feature.recording.RecordingViewModelsTest",
+          "tests": 2,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "com.greatwall.callring.ui.feature.report.ReportScreenJvmTest",
+          "tests": 2,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "com.greatwall.callring.ui.feature.report.ReportViewModelTest",
+          "tests": 2,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "com.greatwall.callring.ui.feature.settings.AppearanceViewModelTest",
+          "tests": 5,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "com.greatwall.callring.ui.feature.settings.components.WindowsInputTest",
+          "tests": 4,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "com.greatwall.callring.ui.feature.settings.RuntimeOverlayTestScreenJvmTest",
+          "tests": 1,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "com.greatwall.callring.ui.feature.settings.ScoreSettingsViewModelTest",
+          "tests": 1,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "com.greatwall.callring.ui.feature.settings.SettingsDraftCodecsTest",
+          "tests": 4,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "com.greatwall.callring.ui.feature.settings.SettingsScreensJvmTest",
+          "tests": 41,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "com.greatwall.callring.ui.feature.settings.SharedWorkScheduleScreenJvmTest",
+          "tests": 4,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "com.greatwall.callring.ui.feature.settings.UnifiedWorkScheduleTest",
+          "tests": 3,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "com.greatwall.callring.ui.feature.settings.WorkScheduleViewModelTest",
+          "tests": 2,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "com.greatwall.callring.ui.feature.shared.PageControlsTest",
+          "tests": 5,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "com.greatwall.callring.ui.feature.update.AppUpdateScreenTest",
+          "tests": 9,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "com.greatwall.callring.ui.feature.update.AppUpdateViewModelTest",
+          "tests": 5,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "com.greatwall.callring.ui.format.UiFormatTest",
+          "tests": 5,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "com.greatwall.callring.ui.overlay.OverlayControllerTest",
+          "tests": 5,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "com.greatwall.callring.ui.overlay.OverlaySessionsTest",
+          "tests": 14,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "com.greatwall.callring.ui.overlay.OverlayTestPreviewScreenJvmTest",
+          "tests": 1,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "com.greatwall.callring.ui.overlay.OverlayTestPreviewTest",
+          "tests": 2,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "com.greatwall.callring.ui.overlay.OverlayViewModelTest",
+          "tests": 2,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "com.greatwall.callring.ui.overlay.OverlayVisibilityTest",
+          "tests": 3,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "com.greatwall.callring.ui.overlay.OverlayWindowJvmTest",
+          "tests": 1,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "com.greatwall.callring.ui.overlay.WindowPlacementTest",
+          "tests": 2,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "com.greatwall.callring.ui.state.ImmediateEditorTest",
+          "tests": 5,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "com.greatwall.callring.ui.state.RefreshIsolationTest",
+          "tests": 3,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "com.greatwall.callring.ui.state.RequestLoaderTest",
+          "tests": 7,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "com.greatwall.callring.ui.state.SnapshotViewModelTest",
+          "tests": 2,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "com.greatwall.callring.ui.widget.WidgetConfigurationModelTest",
+          "tests": 5,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "com.greatwall.callring.ui.widget.WidgetModelTest",
+          "tests": 8,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "com.greatwall.callring.ui.widget.WidgetUpdatesTest",
+          "tests": 1,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        }
+      ]
+    },
+    "app": {
+      "totals": {
+        "tests": 220,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      "classes": [
+        {
+          "name": "com.greatwall.callring.bootstrap.CompleteSnapshotAssemblyTest",
+          "tests": 1,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "com.greatwall.callring.bootstrap.LazyBackendStoreTest",
+          "tests": 2,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "com.greatwall.callring.bootstrap.NumberDeletionIntegrationTest",
+          "tests": 6,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "com.greatwall.callring.bootstrap.ScopedQueryAssemblyTest",
+          "tests": 1,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "com.greatwall.callring.CallStateSnapshotTest",
+          "tests": 1,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "com.greatwall.callring.data.CoreSnapshotSourceTest",
+          "tests": 2,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "com.greatwall.callring.data.LocalAccessContractTest",
+          "tests": 2,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "com.greatwall.callring.data.QuietModeMemoryStoreTest",
+          "tests": 4,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "com.greatwall.callring.data.SqliteScopedReadTest",
+          "tests": 6,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "com.greatwall.callring.data.StoragePolicyCharacterization",
+          "tests": 8,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "com.greatwall.callring.platform.ai.AiSettingsServiceTest",
+          "tests": 7,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "com.greatwall.callring.platform.ai.AndroidRecordingStoreTest",
+          "tests": 6,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "com.greatwall.callring.platform.ai.ArchiveBoundedParserTest",
+          "tests": 5,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "com.greatwall.callring.platform.ai.ArchiveProjectionMigrationTest",
+          "tests": 3,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "com.greatwall.callring.platform.ai.CompatibleAiClientTest",
+          "tests": 24,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "com.greatwall.callring.platform.ai.ConversationCompatibilityTest",
+          "tests": 5,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "com.greatwall.callring.platform.ai.ConversationProtocolTest",
+          "tests": 9,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "com.greatwall.callring.platform.ai.IndependentRecordingRuntimeTest",
+          "tests": 5,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "com.greatwall.callring.platform.ai.PcmWaveChunksTest",
+          "tests": 2,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "com.greatwall.callring.platform.ai.ProviderProfileTest",
+          "tests": 3,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "com.greatwall.callring.platform.ai.RecordingCommandContextTest",
+          "tests": 2,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "com.greatwall.callring.platform.ai.RecordingFolderViewTest",
+          "tests": 1,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "com.greatwall.callring.platform.ai.RecordingPublicationTest",
+          "tests": 1,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "com.greatwall.callring.platform.ai.RecordingScopedQueryTest",
+          "tests": 1,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "com.greatwall.callring.platform.ai.RecordingSnapshotSourceTest",
+          "tests": 2,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "com.greatwall.callring.platform.ai.ScopedDirectoryTest",
+          "tests": 1,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "com.greatwall.callring.platform.ai.SpecialSecretWireRegressionTest",
+          "tests": 1,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "com.greatwall.callring.platform.ai.ThinkingModeInjectionTest",
+          "tests": 4,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "com.greatwall.callring.platform.ai.ToolBusinessIntegrationTest",
+          "tests": 4,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "com.greatwall.callring.platform.AndroidPreferencesTest",
+          "tests": 2,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "com.greatwall.callring.platform.CalendarRefreshPolicyTest",
+          "tests": 2,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "com.greatwall.callring.platform.calling.IncomingCallCoordinatorTest",
+          "tests": 13,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "com.greatwall.callring.platform.calling.ScreeningControllerTest",
+          "tests": 12,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "com.greatwall.callring.platform.HolidayCalendarSourceTest",
+          "tests": 5,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "com.greatwall.callring.platform.JobRunsTest",
+          "tests": 3,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "com.greatwall.callring.platform.PlatformSafetyTest",
+          "tests": 12,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "com.greatwall.callring.platform.PlaybackCommandDispatchTest",
+          "tests": 5,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "com.greatwall.callring.platform.PublicationAdaptersTest",
+          "tests": 1,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "com.greatwall.callring.platform.RuntimeSnapshotsTest",
+          "tests": 3,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "com.greatwall.callring.platform.update.AndroidAppUpdateTest",
+          "tests": 13,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "com.greatwall.callring.platform.update.GitHubReleaseClientTest",
+          "tests": 6,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "com.greatwall.callring.platform.update.UpdateContractTest",
+          "tests": 8,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "com.greatwall.callring.platform.update.UpdateThreadingRegressionTest",
+          "tests": 1,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "com.greatwall.callring.platform.update.UpdateVerificationTest",
+          "tests": 7,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "com.greatwall.callring.PreparationGateTest",
+          "tests": 3,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "com.greatwall.callring.SessionGateTest",
+          "tests": 5,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        }
+      ]
+    }
+  },
+  "logs": {
+    "t03-architecture-check.log": {
+      "sha256": "8bffd7dee18fe8da405646338848960a13831fdc7b3150017321f3e0b5b34260",
+      "bytes": 78
+    },
+    "t03-architecture-red.log": {
+      "sha256": "93e0b622e9c4757d089aa78e3bf32f1acb591365ae0514a8a500cc4cae902693",
+      "bytes": 5822
+    },
+    "t03-architecture-tests.log": {
+      "sha256": "3c40e33a8e8bfc102f646bdae5a739f1eaf1035c4fe475491376478cf2b02c02",
+      "bytes": 112
+    },
+    "t03-boundary-check.log": {
+      "sha256": "d8a39eb11069ded81379ab91c9234eb465f4f4c445745c6be27222ec63458097",
+      "bytes": 129
+    },
+    "t03-boundary-tests.log": {
+      "sha256": "351f929ed84aacafade91b6fd67dc7be9217ffaea2ca9d1c9d59bd385ba30fb6",
+      "bytes": 107
+    },
+    "t03-compile.log": {
+      "sha256": "554ec2a766f1764fa8abb843aee51aa0f52407606553c5b52388e55c6ba1b866",
+      "bytes": 24953
+    },
+    "t03-counts.log": {
+      "sha256": "5c985138d611f354778cf8715388ddca3d6e144cb611ff12ec3dd6110fa6ce53",
+      "bytes": 652
+    },
+    "t03-fixture-compile.log": {
+      "sha256": "896218e730575e256b04ff81dd4baea242e0341da97120723d5cd02deefceeec",
+      "bytes": 13624
+    },
+    "t03-gate-fifth.log": {
+      "sha256": "39b6a5bb729198f55878191e253a0d18460328c8b5ab618517c9e6886d365fe2",
+      "bytes": 9336
+    },
+    "t03-gate-first-failure.log": {
+      "sha256": "1812b6da44dddf81111521952c0d99392934ae5a18b6cb69aab8ae6cc1965329",
+      "bytes": 7638
+    },
+    "t03-gate-fourth.log": {
+      "sha256": "13aab97426629d68ebd524dcac39c6ca2ffadfe6733f4a4bf9ef9fdcd2a3f462",
+      "bytes": 15450
+    },
+    "t03-gate-second.log": {
+      "sha256": "a7d995e740a141c2bf14a432b84c90d6e8036d4f3c35f4de801e20b11dd47480",
+      "bytes": 9878
+    },
+    "t03-gate-third.log": {
+      "sha256": "06e7324281e6f186c462a0064b51753e04ac21a82791a3cdf1e7049bb2ecd8ce",
+      "bytes": 12725
+    },
+    "t03-gate.log": {
+      "sha256": "d891919f7081e3b1b7dae609a3f467a02ba853846ef3b8e1b6a84c181e1fdd83",
+      "bytes": 8770
+    },
+    "t03-preview-red.log": {
+      "sha256": "3caf3fc10cf6677828e03e8330a4db2d1bc597040cfe67f2063da5a48148cfea",
+      "bytes": 4487
+    },
+    "t03-provenance-red.log": {
+      "sha256": "9e884e442a19d508e446b9469c29e54e1f281fd4a0400846d792c372151d51b3",
+      "bytes": 1872
+    },
+    "t03-ui-androidtest-dependencies.log": {
+      "sha256": "4fc266cd25607514740874bc7f974dec12cac3fc7897568f5a785da693b91430",
+      "bytes": 79149
+    },
+    "t03-ui-compile-dependencies.log": {
+      "sha256": "074ab24f6d596ffdd788e2701ab21f77a97d14147f1dbcdfcb2ab3485bfad0f7",
+      "bytes": 67862
+    },
+    "t03-ui-test-dependencies.log": {
+      "sha256": "795970e6e9f37efb5131279c75aabe18ab3d1c0f9364f34a2582a252ef3bc87e",
+      "bytes": 82626
+    }
+  }
+}

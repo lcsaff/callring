@@ -1,19 +1,28 @@
-package com.greatwall.callring.application.api
+package com.greatwall.callring.contracts.ai
 
+import com.greatwall.callring.contracts.command.*
+import com.greatwall.callring.contracts.common.*
+import com.greatwall.callring.contracts.change.*
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.MutableStateFlow
 
 enum class ConversationPhase { IDLE, PREPARING, DISCOVERING, READING, REPAIRING, PARTIAL, CAPTURING, BUDGETING, REQUESTING, VALIDATING, EXECUTING, WAITING_FOREGROUND, COMPLETED, STOPPING, STOPPED, FAILED }
+
 enum class ToolStatus { READ, COMMITTED, QUEUED, LAUNCHED, CANCELLED, DENIED, FAILED, UNKNOWN, SKIPPED }
+
 enum class VerificationStatus { NOT_REQUIRED, PENDING, VERIFIED, COMMITTED_UNVERIFIED, FAILED }
+
 data class ToolReceipt(val operationId: String, val toolCallId: String, val status: ToolStatus, val value: AiJson = AiJson.Null, val error: ApiError? = null, val commitRevision: RevisionVector? = null, val changedDomains: Set<DataDomain> = emptySet(), val observedAt: Long = System.currentTimeMillis(),val verification:VerificationStatus=VerificationStatus.NOT_REQUIRED,val noOp:Boolean=false,val verificationEvidence:AiJson=AiJson.Null)
+
 data class ConversationMessage(val role: String, val text: String, val toolCalls: List<ConversationToolCall> = emptyList(), val receipts: List<ToolReceipt> = emptyList(), val blocks: List<AiJson> = emptyList(),val presentationKey:String?=null)
+
 data class ConversationToolCall(val id: String, val name: String, val arguments: AiJson.Obj, val argumentError: ApiError? = null, val wireArguments: String? = null)
+
 data class ConversationPhaseSpan(val phase:ConversationPhase,val startMillis:Long,val endMillis:Long)
 
 data class ConversationState(val sessionId: String, val phase: ConversationPhase = ConversationPhase.IDLE, val messages: List<ConversationMessage> = emptyList(), val receipts: List<ToolReceipt> = emptyList(), val error: ApiError? = null, val target: String = "", val budgetBytes: Long = 0,val exchanges:List<ExchangeMetrics> = emptyList(),val sourceQueries:Long=0,val workCount:Int=0,val outcome:AiJson=AiJson.Null,val continuableTasks:List<String> = emptyList(),val phaseSpans:List<ConversationPhaseSpan> = emptyList(),val diagnosticsComplete:Boolean=true) {
     val busy get() = phase !in setOf(ConversationPhase.IDLE, ConversationPhase.COMPLETED, ConversationPhase.PARTIAL, ConversationPhase.STOPPED, ConversationPhase.FAILED)
 }
+
 interface ConversationApi {
     val state: StateFlow<ConversationState>
     val foreground: ForegroundActionApi
@@ -23,8 +32,11 @@ interface ConversationApi {
     suspend fun stop(expectedSessionId: String): ApiResult<Unit>
     suspend fun newSession(expectedSessionId: String): ApiResult<Unit>
 }
+
 enum class ForegroundActionKind { CAPABILITY, APP_SETTINGS, PIN_WIDGET, TEST_OVERLAY, PREVIEW_CALL, IMPORT_AUDIO, IMPORT_RECORDING, IMPORT_CALENDAR, SELECT_FOLDER, EXPORT_CSV, CONFIRM, CREDENTIAL, COPY_CONNECTION, TEST_CONNECTION }
+
 enum class ForegroundResultStatus { VERIFIED, LAUNCHED, CANCELLED, DENIED, UNAVAILABLE, STALE, EXPIRED, UNKNOWN }
+
 sealed class ConfirmationTarget {
     data class Position(val id: Long, val name: String, val level: Int, val active: Boolean) : ConfirmationTarget()
     data class Leave(val id: Long, val start: Long, val end: Long, val note: String) : ConfirmationTarget()
@@ -40,26 +52,15 @@ sealed class ConfirmationTarget {
         val widgetBindingCount: Int,
     ) : ConfirmationTarget()
 }
+
 data class ForegroundTicket(val requestId: String, val sessionId: String, val turnId: String, val toolCallId: String, val generation: Long, val kind: ForegroundActionKind, val parameters: AiJson.Obj, val createdAt: Long, val expiresAt: Long, val launched: Boolean = false, val commandContext: CommandContext? = null, val confirmation: ConfirmationTarget? = null)
+
 data class ForegroundHostResult(val status: ForegroundResultStatus, val document: DocumentRef? = null, val error: ApiError? = null)
+
 interface ForegroundActionApi {
     val pending: StateFlow<ForegroundTicket?>
     fun attachHost(): String
     fun detachHost(token: String)
     fun beginLaunch(requestId: String, token: String): Boolean
     fun deliver(requestId: String, result: ForegroundHostResult): Boolean
-}
-object UnavailableForegroundActionApi : ForegroundActionApi {
-    override val pending = MutableStateFlow<ForegroundTicket?>(null)
-    override fun attachHost() = ""
-    override fun detachHost(token: String) = Unit
-    override fun beginLaunch(requestId: String, token: String) = false
-    override fun deliver(requestId: String, result: ForegroundHostResult) = false
-}
-object UnavailableConversationApi : ConversationApi {
-    override val state = MutableStateFlow(ConversationState("unavailable"))
-    override val foreground = UnavailableForegroundActionApi
-    override suspend fun send(expectedSessionId: String, text: String) = aiUnavailable()
-    override suspend fun stop(expectedSessionId: String) = aiUnavailable()
-    override suspend fun newSession(expectedSessionId: String) = aiUnavailable()
 }

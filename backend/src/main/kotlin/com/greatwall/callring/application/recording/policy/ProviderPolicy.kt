@@ -1,20 +1,35 @@
-package com.greatwall.callring.application.api
+package com.greatwall.callring.application.recording.policy
 
+import com.greatwall.callring.contracts.ai.*
 import java.net.URI
+import com.greatwall.callring.application.recording.model.*
+import com.greatwall.callring.contracts.recording.*
 
-/** 用户可见的思考模式：只有开与关。 */
-enum class ThinkingMode { ENABLED, DISABLED }
+fun ConversationBudget.validate() { require(context in 8192..1048576 && output in 1024..16384 && output < context) { "ai.budget_invalid" } }
 
-/** 解析结论：可用、非官方网关（可用但参数可能不被执行）、不支持、未识别。 */
-enum class ThinkingSupport { AVAILABLE, CUSTOM_GATEWAY, UNSUPPORTED, UNRECOGNIZED }
+fun resolveConversationProfile(connection: AiConnection, compatibility: ConversationCompatibility = ConversationCompatibility.AUTO): ProviderProfile {
+    if (connection.protocol == AiProtocol.ANTHROPIC) return ProviderProfile.ANTHROPIC
+    if (compatibility == ConversationCompatibility.STANDARD) return ProviderProfile.STANDARD
+    val supported = connection.model == "qwen3.8-flash" || connection.model.matches(Regex("qwen3\\.8-flash-\\d{4}-\\d{2}-\\d{2}"))
+    val uri = runCatching { URI(connection.url.trim()) }.getOrNull()
+    val official = uri?.scheme == "https" && uri.rawUserInfo == null && uri.port in listOf(-1,443) &&
+        uri.host?.lowercase() in setOf("dashscope.aliyuncs.com", "dashscope-intl.aliyuncs.com", "dashscope-us.aliyuncs.com")
+    return if(supported && official) ProviderProfile.QWEN_FAST else ProviderProfile.STANDARD
+}
 
-/** 内部派生的厂商合同，不落库、不展示。 */
+/** 旧“高级兼容”已废弃：QWEN_FAST 一律归一为 AUTO，读取、写入与补丁都走这里。 */
+
+fun ConversationCompatibility.normalized(): ConversationCompatibility =
+    if (this == ConversationCompatibility.QWEN_FAST) ConversationCompatibility.AUTO else this
+
 enum class ThinkingContract { QWEN, DEEPSEEK, MIMO, UNCONFIRMED }
 
 /** 一个思考参数；HTTP JSON 请求体顶层字段，值按 JSON 文本保存。 */
+
 data class ThinkingParameter(val key: String, val jsonValue: String)
 
 /** 一次解析的不可变结论，供客户端按开关状态取参数。 */
+
 data class ThinkingPolicy(
     val contract: ThinkingContract,
     val protocol: AiProtocol,
@@ -34,6 +49,7 @@ data class ThinkingPolicy(
  * 三家厂商 × 两种协议的思考开关解析。纯函数、无网络、无密钥。
  * 依据：Qwen `enable_thinking`、DeepSeek/MiMo `thinking.type`；Anthropic 协议同样用 body 的 `thinking` 对象。
  */
+
 object ThinkingPolicyResolver {
 
     private val OFFICIAL_HOSTS = mapOf(
@@ -114,6 +130,7 @@ object ThinkingPolicyResolver {
 }
 
 /** 门禁助手：只根据解析结论返回可发送状态与原因，供客户端与后台共用。 */
+
 fun ThinkingPolicy.blockReason(): String? = when (support) {
     ThinkingSupport.AVAILABLE, ThinkingSupport.CUSTOM_GATEWAY -> null
     ThinkingSupport.UNSUPPORTED -> reason

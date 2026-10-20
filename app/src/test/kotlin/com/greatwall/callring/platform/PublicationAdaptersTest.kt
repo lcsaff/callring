@@ -1,7 +1,8 @@
 package com.greatwall.callring.platform
 
 import com.greatwall.callring.application.BusinessRevisionCoordinator
-import com.greatwall.callring.application.api.*
+import com.greatwall.callring.contracts.settings.*
+import com.greatwall.callring.contracts.widget.*
 import java.time.Clock
 import org.junit.Assert.*
 import org.junit.Test

@@ -2,7 +2,8 @@ package com.greatwall.callring.ui.overlay
 
 import android.content.Context
 import androidx.test.core.app.ApplicationProvider
-import com.greatwall.callring.application.api.*
+import com.greatwall.callring.contracts.callers.*
+import com.greatwall.callring.contracts.runtime.*
 import com.greatwall.callring.ui.testing.UiFakeApi
 import kotlinx.coroutines.test.*
 import org.junit.Assert.*

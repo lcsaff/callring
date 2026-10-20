@@ -1,7 +1,8 @@
 package com.greatwall.callring.platform.update
 
-import com.greatwall.callring.application.api.AppVersionInfo
-import com.greatwall.callring.application.api.UpdatePhase
+import com.greatwall.callring.contracts.runtime.*
+import com.greatwall.callring.contracts.runtime.AppVersionInfo
+import com.greatwall.callring.contracts.runtime.UpdatePhase
 import org.junit.Assert.*
 import org.junit.Test
 

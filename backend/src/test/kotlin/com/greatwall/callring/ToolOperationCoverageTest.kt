@@ -1,6 +1,10 @@
 package com.greatwall.callring
 
-import com.greatwall.callring.application.api.*
+import com.greatwall.callring.contracts.command.*
+import com.greatwall.callring.contracts.common.*
+import com.greatwall.callring.contracts.callers.*
+import com.greatwall.callring.contracts.settings.*
+import com.greatwall.callring.contracts.ai.*
 import com.greatwall.callring.application.conversation.*
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.*
@@ -12,6 +16,7 @@ class ToolOperationCoverageTest {
         assertEquals(registry.definitions.map{it.index},contracts.map{it.index})
         assertEquals(72,contracts.size)
         assertTrue(contracts.all{it.sharedApi.isNotBlank()})
+        assertEquals("aiSettings.getRecordingView + aiSettings.getAiView", contracts.single{it.index==51}.sharedApi)
         assertEquals(ReceiptPolicy.QUEUED,contracts.single{it.index==46}.receiptPolicy)
         assertEquals(ReceiptPolicy.PERSISTED_READBACK,contracts.single{it.index==37}.receiptPolicy)
     }

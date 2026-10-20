@@ -1,6 +1,6 @@
 package com.greatwall.callring
 
-import com.greatwall.callring.application.api.*
+import com.greatwall.callring.contracts.ai.*
 import com.greatwall.callring.application.conversation.*
 import java.io.File
 import org.junit.Assert.*

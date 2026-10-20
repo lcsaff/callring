@@ -1,7 +1,7 @@
 package com.greatwall.callring.data
 
 import android.database.sqlite.SQLiteDatabase
-import com.greatwall.callring.application.api.*
+import com.greatwall.callring.contracts.common.*
 import com.greatwall.callring.application.ports.BackendFailure
 
 /** Runs in the same read transaction, before allocating any complete business state. */

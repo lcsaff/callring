@@ -1,9 +1,10 @@
 package com.greatwall.callring.platform.update
 
+import com.greatwall.callring.contracts.runtime.*
 import android.content.Context
 import android.content.SharedPreferences
-import com.greatwall.callring.application.api.AppReleaseInfo
-import com.greatwall.callring.application.api.UpdatePhase
+import com.greatwall.callring.contracts.runtime.AppReleaseInfo
+import com.greatwall.callring.contracts.runtime.UpdatePhase
 import org.json.JSONObject
 
 /** 应用私有存储：整个更新状态是一段稳定 JSON，写入失败由调用方转成 ApiResult.Failure。 */

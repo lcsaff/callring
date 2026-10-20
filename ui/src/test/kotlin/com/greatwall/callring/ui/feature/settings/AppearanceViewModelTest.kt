@@ -2,7 +2,10 @@ package com.greatwall.callring.ui.feature.settings
 
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModelStore
-import com.greatwall.callring.application.api.*
+import com.greatwall.callring.contracts.common.*
+import com.greatwall.callring.contracts.settings.*
+import com.greatwall.callring.contracts.command.*
+import com.greatwall.callring.contracts.*
 import com.greatwall.callring.ui.designsystem.DefaultAppearance
 import com.greatwall.callring.ui.testing.UiFakeApi
 import kotlinx.coroutines.CompletableDeferred

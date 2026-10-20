@@ -1,5 +1,6 @@
 package com.greatwall.callring.ui.app
 
+import com.greatwall.callring.contracts.ai.*
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
@@ -14,10 +15,10 @@ import androidx.compose.ui.platform.UriHandler
 import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createComposeRule
-import com.greatwall.callring.application.api.AiJson
-import com.greatwall.callring.application.api.ConversationMessage
-import com.greatwall.callring.application.api.ConversationState
-import com.greatwall.callring.application.api.ConversationToolCall
+import com.greatwall.callring.contracts.ai.AiJson
+import com.greatwall.callring.contracts.ai.ConversationMessage
+import com.greatwall.callring.contracts.ai.ConversationState
+import com.greatwall.callring.contracts.ai.ConversationToolCall
 import com.greatwall.callring.ui.feature.conversation.ConversationScreen
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull

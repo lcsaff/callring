@@ -19,8 +19,8 @@ import androidx.compose.ui.unit.dp
 import androidx.test.platform.app.InstrumentationRegistry
 import androidx.test.runner.lifecycle.ActivityLifecycleMonitorRegistry
 import androidx.test.runner.lifecycle.Stage
-import com.greatwall.callring.application.api.ColorMode
-import com.greatwall.callring.application.api.ThemeSelection
+import com.greatwall.callring.contracts.settings.ColorMode
+import com.greatwall.callring.contracts.settings.ThemeSelection
 import com.greatwall.callring.ui.designsystem.components.PrimaryAction
 import org.junit.Assert.assertEquals
 import org.junit.Rule

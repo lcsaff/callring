@@ -1,6 +1,6 @@
 package com.greatwall.callring.application
 
-import com.greatwall.callring.application.api.DocumentRef
+import com.greatwall.callring.contracts.common.DocumentRef
 import com.greatwall.callring.application.ports.DocumentStore
 import java.io.OutputStream
 import java.security.MessageDigest

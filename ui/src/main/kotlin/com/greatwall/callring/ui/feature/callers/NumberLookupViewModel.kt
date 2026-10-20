@@ -2,7 +2,7 @@ package com.greatwall.callring.ui.feature.callers
 
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
-import com.greatwall.callring.application.api.NumberCheck
+import com.greatwall.callring.contracts.callers.NumberCheck
 
 class NumberLookupViewModel(private val check: (String) -> NumberCheck, private val savedState: SavedStateHandle) : ViewModel() {
     val text = savedState.getStateFlow("number", "")

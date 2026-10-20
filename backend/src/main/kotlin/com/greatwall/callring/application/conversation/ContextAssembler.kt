@@ -1,6 +1,6 @@
 package com.greatwall.callring.application.conversation
 
-import com.greatwall.callring.application.api.*
+import com.greatwall.callring.contracts.ai.*
 
 /** UI retention and model protocol history have independent lifetimes. No second model call for summaries. */
 class ContextAssembler {

@@ -1,7 +1,10 @@
 package com.greatwall.callring.ui.feature.settings
 
 import androidx.lifecycle.SavedStateHandle
-import com.greatwall.callring.application.api.*
+import com.greatwall.callring.contracts.common.*
+import com.greatwall.callring.contracts.change.*
+import com.greatwall.callring.contracts.settings.*
+import com.greatwall.callring.contracts.*
 import com.greatwall.callring.ui.state.*
 
 class SettingsSummaryViewModel(private val api: CallringUiApi) : SnapshotViewModel<SettingsSummary>(

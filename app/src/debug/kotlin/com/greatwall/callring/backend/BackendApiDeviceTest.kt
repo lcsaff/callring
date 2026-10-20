@@ -1,10 +1,16 @@
 package com.greatwall.callring.backend
 
+import com.greatwall.callring.application.recording.policy.*
 import android.database.sqlite.SQLiteDatabase
 import android.os.SystemClock
 import android.test.InstrumentationTestCase
 import com.greatwall.callring.R
-import com.greatwall.callring.application.api.*
+import com.greatwall.callring.contracts.common.*
+import com.greatwall.callring.contracts.callers.*
+import com.greatwall.callring.contracts.settings.*
+import com.greatwall.callring.contracts.report.*
+import com.greatwall.callring.contracts.widget.*
+import com.greatwall.callring.contracts.*
 import com.greatwall.callring.domain.SystemCallRecord
 import com.greatwall.callring.platform.DiagnosticEvent
 import java.io.File

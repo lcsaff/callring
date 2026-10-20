@@ -13,7 +13,8 @@ import android.test.InstrumentationTestRunner
 import android.view.KeyEvent
 import android.view.WindowInsets
 import android.view.accessibility.AccessibilityNodeInfo
-import com.greatwall.callring.application.api.*
+import com.greatwall.callring.contracts.settings.*
+import com.greatwall.callring.contracts.ai.*
 import com.greatwall.callring.application.conversation.ForegroundActionService
 import com.greatwall.callring.application.requiredValue
 import com.greatwall.callring.bootstrap.BackendGraph

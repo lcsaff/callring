@@ -10,7 +10,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import android.os.Build
 import androidx.compose.ui.unit.dp
-import com.greatwall.callring.application.api.*
+import com.greatwall.callring.contracts.runtime.*
 import com.greatwall.callring.ui.designsystem.components.*
 import com.greatwall.callring.ui.feature.settings.components.SettingsCard
 import com.greatwall.callring.ui.feature.shared.*

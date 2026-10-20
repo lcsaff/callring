@@ -1,6 +1,6 @@
 package com.greatwall.callring.platform
 
-import com.greatwall.callring.application.api.*
+import com.greatwall.callring.contracts.runtime.*
 
 /** A service publishes observed transitions; UI polling never starts or prepares audio. */
 class PlaybackStateTracker {

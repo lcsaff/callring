@@ -3,7 +3,10 @@ package com.greatwall.callring.data
 import android.app.Notification
 import android.app.PendingIntent
 import android.content.Intent
-import com.greatwall.callring.application.api.*
+import com.greatwall.callring.contracts.common.*
+import com.greatwall.callring.contracts.callers.*
+import com.greatwall.callring.contracts.settings.*
+import com.greatwall.callring.contracts.report.*
 import com.greatwall.callring.application.requiredValue
 import com.greatwall.callring.bootstrap.BackendConfiguration
 import com.greatwall.callring.bootstrap.BackendGraph

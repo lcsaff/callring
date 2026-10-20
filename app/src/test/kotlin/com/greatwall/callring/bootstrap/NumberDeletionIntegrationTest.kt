@@ -3,7 +3,13 @@ package com.greatwall.callring.bootstrap
 import android.app.Notification
 import android.app.PendingIntent
 import android.content.Intent
-import com.greatwall.callring.application.api.*
+import com.greatwall.callring.contracts.common.*
+import com.greatwall.callring.contracts.callers.*
+import com.greatwall.callring.contracts.settings.*
+import com.greatwall.callring.contracts.widget.*
+import com.greatwall.callring.contracts.recording.*
+import com.greatwall.callring.contracts.ai.*
+import com.greatwall.callring.contracts.command.*
 import com.greatwall.callring.application.requiredValue
 import com.greatwall.callring.application.conversation.OperationScopePlanner
 import com.greatwall.callring.platform.callers.NumberDeletionService

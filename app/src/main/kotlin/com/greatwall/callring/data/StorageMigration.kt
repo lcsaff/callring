@@ -60,13 +60,13 @@ internal object StorageMigration {
                     put(
                         "decision",
                         LegacyValueCodec.encodeDecision(
-                            com.greatwall.callring.application.api.CallDecision.SYSTEM_LOG_ONLY
+                            com.greatwall.callring.contracts.callers.CallDecision.SYSTEM_LOG_ONLY
                         ),
                     )
                     put(
                         "source",
                         LegacyValueCodec.encodeSource(
-                            com.greatwall.callring.application.api.CallSource.SYSTEM_CALL_LOG
+                            com.greatwall.callring.contracts.callers.CallSource.SYSTEM_CALL_LOG
                         ),
                     )
                     put("counted", 1)
@@ -78,11 +78,11 @@ internal object StorageMigration {
                     "time" to screenTime,
                     "source" to
                         LegacyValueCodec.encodeSource(
-                            com.greatwall.callring.application.api.CallSource.SCREENING
+                            com.greatwall.callring.contracts.callers.CallSource.SCREENING
                         ),
                     "result" to
                         LegacyValueCodec.encodeResult(
-                            com.greatwall.callring.application.api.CallResult.PENDING
+                            com.greatwall.callring.contracts.callers.CallResult.PENDING
                         ),
                     "counted" to 1,
                 )

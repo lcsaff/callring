@@ -106,12 +106,12 @@ UT = ui/src/test/kotlin/com/greatwall/callring/ui
 
 **创建：** C 下设计规定的分域接口/DTO；`tools/check_architecture.py`、`tools/test_architecture.py`、`docs/contracts/current-api.md`。
 
-- [ ] 先建立架构负例：ui→backend、domain→application、contracts→Android、data→UI 均被拒绝；正例允许装配根引用具体实现。
-- [ ] 将协议声明移到 C，按业务拆分主契约；厂商策略、验证、Unavailable、内部密钥配置留给 T04/T10 的实现目标，不作为契约实现泄露。
-- [ ] 为保持本任务可编译，随抽离同步完成旧录音管理方法到内部端口的签名迁移、策略入口的初步搬迁；后续 T04/T10 再完成职责拆细。CredentialDialog 改读新增安全 copyToAnalysisProfile 投影，backend 计算复制后 AUTO 解析结果；UI 不构造 AiConnection 或调用厂商解析器。
-- [ ] 将 UI 依赖改为 contracts，backend/app 明确声明 contracts；一次更新全部消费者包引用，不添加长期旧包别名。
-- [ ] 旧 v1 文档保留为历史；边界脚本改查当前公开契约与兼容清单，不对冻结旧单文件强制逐字相等。
-- [ ] 检查 `:ui:dependencies --configuration debugCompileClasspath` 中无 backend；完成三模块定向编译及全部契约兼容测试。
+- [x] 先建立架构负例：ui→backend、domain→application、contracts→Android、data→UI 均被拒绝；正例允许装配根引用具体实现。
+- [x] 将协议声明移到 C，按业务拆分主契约；厂商策略、验证、Unavailable、内部密钥配置留给 T04/T10 的实现目标，不作为契约实现泄露。
+- [x] 为保持本任务可编译，随抽离同步完成旧录音管理方法到内部端口的签名迁移、策略入口的初步搬迁；后续 T04/T10 再完成职责拆细。CredentialDialog 改读新增安全 copyToAnalysisProfile 投影，backend 计算复制后 AUTO 解析结果；UI 不构造 AiConnection 或调用厂商解析器。
+- [x] 将 UI 依赖改为 contracts，backend/app 明确声明 contracts；一次更新全部消费者包引用，不添加长期旧包别名。
+- [x] 旧 v1 文档保留为历史；边界脚本改查当前公开契约与兼容清单，不对冻结旧单文件强制逐字相等。
+- [x] 检查 `:ui:dependencies --configuration debugCompileClasspath` 中无 backend；完成三模块定向编译及全部契约兼容测试。
 
 **门：** UI 无法编译访问 backend 实现；完整工程可构建。覆盖 A0/A4。
 

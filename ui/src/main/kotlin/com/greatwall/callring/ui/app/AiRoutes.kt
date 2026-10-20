@@ -2,7 +2,8 @@ package com.greatwall.callring.ui.app
 
 import androidx.compose.runtime.*
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.greatwall.callring.application.api.*
+import com.greatwall.callring.contracts.ai.*
+import com.greatwall.callring.contracts.*
 import com.greatwall.callring.ui.feature.ai.*
 import com.greatwall.callring.ui.feature.conversation.*
 

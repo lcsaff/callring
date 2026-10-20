@@ -1,6 +1,10 @@
 package com.greatwall.callring.application
 
-import com.greatwall.callring.application.api.*
+import com.greatwall.callring.application.recording.policy.*
+import com.greatwall.callring.contracts.common.*
+import com.greatwall.callring.contracts.callers.*
+import com.greatwall.callring.contracts.widget.*
+import com.greatwall.callring.contracts.command.*
 
 /**
  * 非 Android 组合下的核心删除（档案 + 通话 + 小组件绑定）。

@@ -1,6 +1,6 @@
 package com.greatwall.callring.bootstrap
 
-import com.greatwall.callring.application.api.AppearanceSettings
+import com.greatwall.callring.contracts.settings.AppearanceSettings
 import java.io.File
 import java.time.Clock
 import kotlinx.coroutines.CoroutineDispatcher

@@ -5,7 +5,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import com.greatwall.callring.ui.designsystem.components.*
-import com.greatwall.callring.application.api.NumberCheck
+import com.greatwall.callring.contracts.callers.NumberCheck
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.ui.text.input.KeyboardType

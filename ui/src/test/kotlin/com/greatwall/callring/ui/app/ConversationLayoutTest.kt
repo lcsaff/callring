@@ -8,7 +8,7 @@ import androidx.compose.ui.unit.Density
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.unit.dp
-import com.greatwall.callring.application.api.*
+import com.greatwall.callring.contracts.ai.*
 import com.greatwall.callring.ui.feature.conversation.ConversationScreen
 import org.junit.Assert.*
 import org.junit.Rule

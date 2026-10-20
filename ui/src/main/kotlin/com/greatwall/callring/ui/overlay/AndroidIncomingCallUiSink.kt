@@ -4,8 +4,8 @@ import android.content.Context
 import android.os.Handler
 import android.os.Looper
 import android.util.Log
-import com.greatwall.callring.application.api.IncomingCallUiRequest
-import com.greatwall.callring.application.api.IncomingCallUiSink
+import com.greatwall.callring.contracts.callers.IncomingCallUiRequest
+import com.greatwall.callring.contracts.callers.IncomingCallUiSink
 
 /** No API reads or window work on the business caller's thread. */
 class AndroidIncomingCallUiSink(context: Context) : IncomingCallUiSink {

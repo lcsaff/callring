@@ -1,7 +1,10 @@
 package com.greatwall.callring.platform
 
 import android.content.SharedPreferences
-import com.greatwall.callring.application.api.*
+import com.greatwall.callring.contracts.common.*
+import com.greatwall.callring.contracts.settings.*
+import com.greatwall.callring.contracts.widget.*
+import com.greatwall.callring.contracts.ai.*
 import com.greatwall.callring.application.ports.*
 
 internal fun SharedPreferences.Editor.commitOrThrow() {

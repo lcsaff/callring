@@ -3,7 +3,7 @@ package com.greatwall.callring.platform
 import android.app.NotificationManager
 import android.media.AudioManager
 import android.telephony.TelephonyManager
-import com.greatwall.callring.application.api.*
+import com.greatwall.callring.contracts.runtime.*
 import org.junit.Assert.*
 import org.junit.Test
 

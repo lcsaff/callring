@@ -11,7 +11,8 @@ import android.os.Build
 import android.os.PowerManager
 import android.provider.Settings
 import android.telephony.TelephonyManager
-import com.greatwall.callring.application.api.*
+import com.greatwall.callring.contracts.runtime.*
+import com.greatwall.callring.contracts.widget.*
 import com.greatwall.callring.application.ports.RuntimeProbe
 import java.time.Clock
 

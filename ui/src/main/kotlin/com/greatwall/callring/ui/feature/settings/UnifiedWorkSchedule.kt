@@ -1,7 +1,7 @@
 package com.greatwall.callring.ui.feature.settings
 
-import com.greatwall.callring.application.api.TimeWindow
-import com.greatwall.callring.application.api.WorkScheduleSettings
+import com.greatwall.callring.contracts.settings.TimeWindow
+import com.greatwall.callring.contracts.settings.WorkScheduleSettings
 
 /** Present legacy snapshots as one editable same-day schedule without changing stored history. */
 internal fun sharedWorkWindows(settings: WorkScheduleSettings): List<TimeWindow> {

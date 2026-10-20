@@ -4,7 +4,9 @@ import android.content.ContentResolver
 import android.content.Intent
 import android.net.Uri
 import android.provider.DocumentsContract
-import com.greatwall.callring.application.api.*
+import com.greatwall.callring.contracts.common.*
+import com.greatwall.callring.contracts.runtime.*
+import com.greatwall.callring.contracts.recording.*
 import com.greatwall.callring.application.conversation.DirectoryEnumerator
 import com.greatwall.callring.application.conversation.DirectoryNode
 

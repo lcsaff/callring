@@ -1,7 +1,8 @@
 package com.greatwall.callring.ui.feature.settings
 
 import androidx.compose.ui.test.*
-import com.greatwall.callring.application.api.*
+import com.greatwall.callring.contracts.common.*
+import com.greatwall.callring.contracts.settings.*
 import com.greatwall.callring.ui.designsystem.CallringTheme
 import com.greatwall.callring.ui.designsystem.DefaultAppearance
 import com.greatwall.callring.ui.state.LoadState

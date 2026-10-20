@@ -1,6 +1,5 @@
 package com.greatwall.callring.platform.ai
 
-import com.greatwall.callring.application.api.*
 import com.greatwall.callring.platform.*
 import java.time.Clock
 import org.junit.Assert.*

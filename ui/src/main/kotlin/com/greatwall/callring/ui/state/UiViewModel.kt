@@ -2,7 +2,7 @@ package com.greatwall.callring.ui.state
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.greatwall.callring.application.api.*
+import com.greatwall.callring.contracts.change.*
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 

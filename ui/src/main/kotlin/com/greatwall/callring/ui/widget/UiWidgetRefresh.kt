@@ -1,9 +1,13 @@
 ﻿package com.greatwall.callring.ui.widget
 
+import com.greatwall.callring.contracts.command.*
+import com.greatwall.callring.contracts.ai.*
+import com.greatwall.callring.contracts.recording.*
+import com.greatwall.callring.contracts.runtime.*
 import android.appwidget.AppWidgetManager
 import android.content.ComponentName
 import android.content.Context
-import com.greatwall.callring.application.api.ApiError
+import com.greatwall.callring.contracts.common.ApiError
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.update
 import androidx.glance.appwidget.GlanceAppWidgetManager

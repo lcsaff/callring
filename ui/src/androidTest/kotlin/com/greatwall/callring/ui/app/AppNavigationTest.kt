@@ -5,7 +5,7 @@ import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.unit.dp
 import com.greatwall.callring.ui.testing.UiFakeApi
 import com.greatwall.callring.ui.testing.captureArtifact
-import com.greatwall.callring.application.api.*
+import com.greatwall.callring.contracts.settings.*
 import com.greatwall.callring.ui.designsystem.DefaultAppearance
 import com.greatwall.callring.ui.designsystem.ThemeRegistry
 import kotlinx.coroutines.runBlocking

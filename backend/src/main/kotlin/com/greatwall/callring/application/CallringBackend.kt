@@ -1,6 +1,17 @@
 package com.greatwall.callring.application
 
-import com.greatwall.callring.application.api.*
+import com.greatwall.callring.contracts.common.*
+import com.greatwall.callring.contracts.change.*
+import com.greatwall.callring.contracts.callers.*
+import com.greatwall.callring.contracts.settings.*
+import com.greatwall.callring.contracts.report.*
+import com.greatwall.callring.contracts.runtime.*
+import com.greatwall.callring.contracts.widget.*
+import com.greatwall.callring.contracts.recording.*
+import com.greatwall.callring.contracts.ai.*
+import com.greatwall.callring.contracts.command.*
+import com.greatwall.callring.contracts.*
+import com.greatwall.callring.application.capability.*
 import com.greatwall.callring.application.ports.*
 import com.greatwall.callring.domain.*
 import java.time.*
@@ -35,6 +46,11 @@ class CallringBackend(
             calendarSource,
             coordinator,
         )
+    override val conversation: ConversationApi = UnavailableConversationApi
+    override val aiSettings: AiSettingsApi = UnavailableAiSettingsApi
+    override val update: AppUpdateApi = UnavailableAppUpdateApi
+    override val snapshots: AiSnapshotApi = UnavailableAiSnapshotApi
+    override val recordings: RecordingApi = UnavailableRecordingApi
     override val home: HomeApi = createHomeApi(context)
     override val callers: CallersApi = createCallersApi(context)
     override val reports: ReportsApi = createReportsApi(context)

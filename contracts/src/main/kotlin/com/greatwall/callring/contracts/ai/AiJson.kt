@@ -1,6 +1,5 @@
-package com.greatwall.callring.application.api
+package com.greatwall.callring.contracts.ai
 
-/** A deliberately small JSON tree. Numbers preserve decimal Long identities. */
 sealed class AiJson {
     data class Obj(val fields: Map<String, AiJson>) : AiJson() {
         operator fun get(key: String): AiJson = fields[key] ?: Null
@@ -31,10 +30,15 @@ sealed class AiJson {
 }
 
 fun aiObject(vararg values: Pair<String, AiJson>) = AiJson.Obj(linkedMapOf(*values))
+
 fun aiString(value: String?) = value?.let(AiJson::Str) ?: AiJson.Null
+
 fun aiNumber(value: Number?) = value?.let { AiJson.Num(it.toString()) } ?: AiJson.Null
+
 fun aiBool(value: Boolean) = AiJson.Bool(value)
 
 fun AiJson.string(): String = (this as? AiJson.Str)?.value ?: throw IllegalArgumentException("ai.argument_string")
+
 fun AiJson.long(): Long = (this as? AiJson.Num)?.value?.toLongOrNull() ?: throw IllegalArgumentException("ai.argument_integer")
+
 fun AiJson.boolean(): Boolean = (this as? AiJson.Bool)?.value ?: throw IllegalArgumentException("ai.argument_boolean")

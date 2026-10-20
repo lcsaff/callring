@@ -1,10 +1,12 @@
 package com.greatwall.callring
 
-import com.greatwall.callring.application.api.AiProtocol
-import com.greatwall.callring.application.api.ThinkingContract
-import com.greatwall.callring.application.api.ThinkingPolicyResolver
-import com.greatwall.callring.application.api.ThinkingSupport
-import com.greatwall.callring.application.api.blockReason
+import com.greatwall.callring.application.recording.policy.*
+import com.greatwall.callring.contracts.ai.*
+import com.greatwall.callring.contracts.ai.AiProtocol
+import com.greatwall.callring.application.recording.policy.ThinkingContract
+import com.greatwall.callring.application.recording.policy.ThinkingPolicyResolver
+import com.greatwall.callring.contracts.ai.ThinkingSupport
+import com.greatwall.callring.application.recording.policy.blockReason
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
@@ -32,7 +34,7 @@ class ThinkingPolicyResolverTest {
         assertFalse(policy.officialHost)
         assertEquals(ThinkingSupport.CUSTOM_GATEWAY, policy.support)
         assertNull(policy.blockReason())
-        assertTrue(policy.parameters(com.greatwall.callring.application.api.ThinkingMode.DISABLED).isNotEmpty())
+        assertTrue(policy.parameters(com.greatwall.callring.contracts.ai.ThinkingMode.DISABLED).isNotEmpty())
     }
 
     @Test fun `非https或异常端口不算官方`() {

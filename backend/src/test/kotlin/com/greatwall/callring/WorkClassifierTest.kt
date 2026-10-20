@@ -1,6 +1,7 @@
 package com.greatwall.callring
 
-import com.greatwall.callring.application.api.*
+import com.greatwall.callring.contracts.callers.*
+import com.greatwall.callring.contracts.settings.*
 import com.greatwall.callring.domain.BackendState
 import com.greatwall.callring.domain.LeaveRecord
 import com.greatwall.callring.domain.RawCallRecord

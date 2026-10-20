@@ -3,7 +3,8 @@ package com.greatwall.callring.platform.ai
 import android.database.Cursor
 import android.database.DatabaseUtils
 import android.database.sqlite.SQLiteDatabase
-import com.greatwall.callring.application.api.*
+import com.greatwall.callring.contracts.common.*
+import com.greatwall.callring.contracts.ai.*
 import com.greatwall.callring.application.ports.*
 
 internal class RecordingScopedReadAdapter(private val db:SQLiteDatabase,private val versionProvider:()->Long):ScopedReadPort {

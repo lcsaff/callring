@@ -89,6 +89,7 @@ android {
 }
 
 dependencies {
+    implementation project(':contracts')
     implementation project(':ui')
     implementation project(':backend')
     // FileProvider for the in-app update installer. `ui` declares androidx with

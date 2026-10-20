@@ -1,7 +1,10 @@
 package com.greatwall.callring.platform.ai
 
 import com.greatwall.callring.application.BusinessRevisionCoordinator
-import com.greatwall.callring.application.api.*
+import com.greatwall.callring.contracts.common.*
+import com.greatwall.callring.contracts.recording.*
+import com.greatwall.callring.contracts.ai.*
+import com.greatwall.callring.application.recording.model.*
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.first
@@ -54,6 +57,8 @@ class AiSettingsServiceTest {
         assertEquals(ConversationCompatibility.STANDARD,store.settings().conversationCompatibility)
         val api=AiSettingsService(store,coordinator,{true},{_,_->})
         assertEquals(ProviderProfile.STANDARD,api.getAiView().ok().analysis.resolvedProfile)
+        assertEquals(ProviderProfile.QWEN_FAST,api.getAiView().ok().analysis.copyToAnalysisProfile)
+        assertEquals(ProviderProfile.QWEN_FAST,api.getAiView().ok().transcription.copyToAnalysisProfile)
         api.copyConnection(AiSlot.ANALYSIS,AiSlot.TRANSCRIPTION,api.getAiView().ok().revision).ok()
         assertEquals(ConversationCompatibility.STANDARD,store.settings().conversationCompatibility)
         val result=api.copyConnection(AiSlot.TRANSCRIPTION,AiSlot.ANALYSIS,api.getAiView().ok().revision).ok()

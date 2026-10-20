@@ -1,6 +1,6 @@
 package com.greatwall.callring.ui.feature.settings
 
-import com.greatwall.callring.application.api.*
+import com.greatwall.callring.contracts.settings.*
 import java.io.*
 import java.util.Base64
 

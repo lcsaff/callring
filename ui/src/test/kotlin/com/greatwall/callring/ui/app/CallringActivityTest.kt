@@ -1,11 +1,12 @@
 package com.greatwall.callring.ui.app
 
+import com.greatwall.callring.contracts.runtime.*
 import android.Manifest
 import android.app.Application
 import android.os.Looper
-import com.greatwall.callring.application.api.ApiResult
-import com.greatwall.callring.application.api.SyncRequestReceipt
-import com.greatwall.callring.application.api.SyncRequestState
+import com.greatwall.callring.contracts.common.ApiResult
+import com.greatwall.callring.contracts.runtime.SyncRequestReceipt
+import com.greatwall.callring.contracts.runtime.SyncRequestState
 import com.greatwall.callring.ui.testing.UiFakeApi
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull

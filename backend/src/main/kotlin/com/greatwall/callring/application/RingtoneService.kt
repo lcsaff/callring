@@ -1,6 +1,8 @@
 package com.greatwall.callring.application
 
-import com.greatwall.callring.application.api.*
+import com.greatwall.callring.contracts.common.*
+import com.greatwall.callring.contracts.settings.*
+import com.greatwall.callring.contracts.runtime.*
 import com.greatwall.callring.application.ports.*
 import com.greatwall.callring.domain.*
 import java.time.*

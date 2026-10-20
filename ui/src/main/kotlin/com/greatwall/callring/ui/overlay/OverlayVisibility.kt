@@ -1,6 +1,7 @@
 package com.greatwall.callring.ui.overlay
 
-import com.greatwall.callring.application.api.PhoneActivity
+import com.greatwall.callring.contracts.runtime.*
+import com.greatwall.callring.contracts.runtime.PhoneActivity
 
 /** A screen becoming usable must not reveal a cached pre-lock ringing snapshot. */
 internal class OverlayVisibility {

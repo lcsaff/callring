@@ -2,7 +2,9 @@ package com.greatwall.callring.data
 
 import com.greatwall.callring.application.BusinessRevisionCoordinator
 import com.greatwall.callring.application.requiredValue
-import com.greatwall.callring.application.api.*
+import com.greatwall.callring.contracts.common.*
+import com.greatwall.callring.contracts.callers.*
+import com.greatwall.callring.contracts.ai.*
 import com.greatwall.callring.application.conversation.QueryService
 import com.greatwall.callring.domain.*
 import kotlinx.coroutines.runBlocking

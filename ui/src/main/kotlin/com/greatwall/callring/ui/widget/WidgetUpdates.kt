@@ -2,7 +2,8 @@ package com.greatwall.callring.ui.widget
 
 import android.content.*
 import android.util.Log
-import com.greatwall.callring.application.api.*
+import com.greatwall.callring.contracts.change.*
+import com.greatwall.callring.contracts.*
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.collect
 

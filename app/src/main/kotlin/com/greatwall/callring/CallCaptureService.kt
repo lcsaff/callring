@@ -1,5 +1,6 @@
 package com.greatwall.callring
 
+import com.greatwall.callring.contracts.recording.*
 import android.Manifest
 import android.app.Notification
 import android.app.NotificationChannel
@@ -11,7 +12,7 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.media.MediaRecorder
 import android.os.IBinder
-import com.greatwall.callring.application.api.CaptureMode
+import com.greatwall.callring.contracts.recording.CaptureMode
 import com.greatwall.callring.bootstrap.BackendProvider
 import com.greatwall.callring.application.RecordingCall
 import java.io.File

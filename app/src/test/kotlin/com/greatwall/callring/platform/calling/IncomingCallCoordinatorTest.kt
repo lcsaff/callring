@@ -1,6 +1,6 @@
 package com.greatwall.callring.platform.calling
 
-import com.greatwall.callring.application.api.*
+import com.greatwall.callring.contracts.callers.*
 import com.greatwall.callring.domain.IncomingDecision
 import java.io.Closeable
 import java.io.IOException

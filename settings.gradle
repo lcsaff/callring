@@ -7,4 +7,4 @@ pluginManagement {
 }
 
 rootProject.name = 'callring'
-include ':app', ':ui', ':backend'
+include ':app', ':ui', ':backend', ':contracts'

@@ -2,7 +2,9 @@ package com.greatwall.callring.platform.ai
 
 import android.database.DatabaseUtils
 import android.database.sqlite.SQLiteDatabase
-import com.greatwall.callring.application.api.*
+import com.greatwall.callring.contracts.common.*
+import com.greatwall.callring.contracts.recording.*
+import com.greatwall.callring.contracts.ai.*
 import com.greatwall.callring.application.ports.*
 import com.greatwall.callring.application.safeValue
 import java.util.concurrent.CancellationException
