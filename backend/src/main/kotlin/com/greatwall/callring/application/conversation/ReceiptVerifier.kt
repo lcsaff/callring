@@ -29,7 +29,7 @@ class ReceiptVerifier(private val q:QueryService) {
             val v=q.get(d,key,p).requiredValue();evidence+=aiObject("value" to v.value,"stamp" to v.stamp.json());return v.value
         }
         suspend fun page(d:AiDomain,p:String="default",f:QueryFilter=QueryFilter()):List<AiJson.Obj> {
-            val v=q.query(QuerySpec(d,p,f,limit=200)).requiredValue();if(!v.complete)throw BackendFailure(ApiError(ErrorCode.SYSTEM_RESTRICTED,"ai.verification_incomplete"));evidence+=v.json();return v.items
+            val v=q.query(QuerySpec(d,p,f,limit=200)).requiredValue();if(!v.complete || v.status !in setOf(QueryStatus.COMPLETE, QueryStatus.EMPTY))throw BackendFailure(ApiError(ErrorCode.SYSTEM_RESTRICTED,"ai.verification_incomplete"));evidence+=v.json();return v.items
         }
         suspend fun absent(d:AiDomain,key:String,p:String="default"):Boolean=when(val v=q.get(d,key,p)) {
             is ApiResult.Success->{evidence+=aiObject("value" to v.value.value,"stamp" to v.value.stamp.json());false}
@@ -83,7 +83,14 @@ class ReceiptVerifier(private val q:QueryService) {
                 65->compareAi(get(AiDomain.D14),a)
                 67->{val runtime=get(AiDomain.D19)["runtime"] as? AiJson.Obj;val capabilities=runtime?.get("capabilities") as? AiJson.Obj;capabilities?.get(a.s("capability")) in setOf(aiString("GRANTED"),aiString("NOT_REQUIRED"))}
                 66,72->{val value=get(AiDomain.D14);val expected=receiptObject();expected.fields.isNotEmpty()&&compare(value,expected)}
-                81->absent(AiDomain.D01,a.s("number"))
+                81 -> {
+                    val filter = QueryFilter(number = a.s("number"))
+                    val profileGone = absent(AiDomain.D01, a.s("number"))
+                    val callsGone = page(AiDomain.D03, f = filter).isEmpty()
+                    val archivesGone = page(AiDomain.D16, f = filter).isEmpty()
+                    val bindingsGone = page(AiDomain.D18, "bindings", filter).isEmpty()
+                    receipt.error == null && profileGone && callsGone && archivesGone && bindingsGone
+                }
                 else->false
             }
             val proof=AiJson.Arr(evidence)

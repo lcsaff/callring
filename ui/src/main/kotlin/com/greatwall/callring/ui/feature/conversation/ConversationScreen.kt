@@ -49,31 +49,6 @@ import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.*
 import com.mikepenz.markdown.m3.Markdown
 
-class ConversationViewModel(private val api: CallringUiApi, testScope: CoroutineScope? = null) : UiViewModel(testScope) {
-    val state = api.conversation.state
-    val input = MutableStateFlow("")
-    val localError = MutableStateFlow<ApiError?>(null)
-    val destination = MutableStateFlow<AiConnectionView?>(null)
-    /** 最近一次连接校验结果；true=绿点，false=红点，直到下次状态变化重新校验。 */
-    val connected = MutableStateFlow(false)
-    init {
-        scope.launch { verifyConnection() }
-        scope.launch { api.changes.observe().collect { change ->
-            when(val result = api.aiSettings.getAiView()) {
-                is ApiResult.Success -> destination.value = result.value.analysis
-                is ApiResult.Failure -> { destination.value = null; localError.value = result.error }
-            }
-            if (change.affects(setOf(DataDomain.AI_SETTINGS), null)) verifyConnection()
-        } }
-    }
-    private suspend fun verifyConnection() {
-        connected.value = api.aiSettings.testSlot(AiSlot.ANALYSIS) is ApiResult.Success
-    }
-    fun send(disclosed: AiConnectionView?) { val text = input.value; disclosed ?: return; scope.launch { when(val result = api.conversation.sendTo(state.value.sessionId,text,disclosed)) { is ApiResult.Success -> { input.value = ""; localError.value = null; connected.value = true }; is ApiResult.Failure -> localError.value = result.error } } }
-    fun continueTask(taskId:String,disclosed:AiConnectionView?) { disclosed?:return;scope.launch { when(val result=api.conversation.continueTask(state.value.sessionId,taskId,disclosed)){is ApiResult.Success->localError.value=null;is ApiResult.Failure->localError.value=result.error} } }
-    fun stop() { scope.launch { api.conversation.stop(state.value.sessionId) } }
-    fun newSession() { scope.launch { api.conversation.newSession(state.value.sessionId) } }
-}
 @Composable fun ConversationScreen(state:ConversationState,input:String,target:String,localError:ApiError?,onInput:(String)->Unit,onSend:()->Unit,onStop:()->Unit,onNew:()->Unit,onContinue:(String)->Unit={},onOpenSettings:()->Unit={},connected:Boolean=true) {
     var confirmNew by remember{mutableStateOf(false)}
     val listState=rememberLazyListState()

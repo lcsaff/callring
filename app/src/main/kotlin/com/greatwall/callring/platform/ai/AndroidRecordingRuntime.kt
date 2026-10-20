@@ -191,7 +191,16 @@ class AndroidRecordingRuntime(
     override suspend fun delete(callId: Long) = deleteWith(callId, null)
     private suspend fun deleteWith(callId: Long, command: CommandContext?) = result { coordinator.guard(command) {
         playbackGeneration.incrementAndGet()
-        synchronized(filesLock) { stopPlayer(); workflow.delete(archiveId(callId))?.audioPath?.let { ownedFile(it)?.delete() } }
+        synchronized(filesLock) {
+            stopPlayer()
+            val id = archiveId(callId)
+            // Keep the durable path until removal succeeds so a failed cleanup can be retried.
+            store.get(id)?.audioPath?.let { path ->
+                val file = ownedFile(path) ?: throw IOException("recording.audio_not_owned")
+                if (file.exists() && !file.delete()) throw IOException("recording.audio_delete_failed")
+            }
+            workflow.delete(id)
+        }
         coordinator.record(command); Unit
     } }
     private fun ownedFile(path: String): File? = File(path).canonicalFile.takeIf { it.parentFile == directory.canonicalFile }

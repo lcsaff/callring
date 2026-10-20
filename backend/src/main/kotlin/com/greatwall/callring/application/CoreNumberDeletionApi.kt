@@ -47,9 +47,11 @@ internal class CoreNumberDeletionApi(
         if (current.callCount != command.expectedCallCount || current.widgetBindingCount != command.expectedWidgetBindingCount) {
             return ApiResult.Failure(ApiError(ErrorCode.CONFLICT, "number.delete_conflict", retryable = true))
         }
-        when (val result = callers.deleteNumberCore(current.number, command.expectedCallCount)) {
-            is ApiResult.Failure -> return result
-            is ApiResult.Success -> Unit
+        if (current.profileExists || current.callCount > 0) {
+            when (val result = callers.deleteNumberCore(current.number, command.expectedCallCount)) {
+                is ApiResult.Failure -> return result
+                is ApiResult.Success -> Unit
+            }
         }
         val bindings = when (val result = widgets.listBindings()) {
             is ApiResult.Failure -> return result

@@ -69,9 +69,11 @@ internal class NumberDeletionService(
             }
         }
 
-        when (val result = core.deleteNumberCore(current.number, command.expectedCallCount)) {
-            is ApiResult.Failure -> return result
-            is ApiResult.Success -> Unit
+        if (current.profileExists || current.callCount > 0) {
+            when (val result = core.deleteNumberCore(current.number, command.expectedCallCount)) {
+                is ApiResult.Failure -> return result
+                is ApiResult.Success -> Unit
+            }
         }
 
         val bindings = when (val result = widgets.listBindings()) {

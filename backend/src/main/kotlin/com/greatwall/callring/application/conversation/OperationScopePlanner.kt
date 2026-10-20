@@ -51,8 +51,12 @@ class OperationScopePlanner(private val queries:QueryService,private val coordin
                 10->{val n=a.s("number");observe(AiDomain.D04,null,setOf("calls:$n"),filter=QueryFilter(number=n));config(setOf("score","statistics"))}
                 81->{
                     val n=a.s("number")
-                    observe(AiDomain.D01,n,setOf("profile:$n:exists"),filter=QueryFilter(number=n))
+                    observe(AiDomain.D01,n,setOf("profile:$n", "profile:$n:exists"),filter=QueryFilter(number=n))
                     observe(AiDomain.D04,null,setOf("calls:$n"),filter=QueryFilter(number=n))
+                    // Collection guards also cover records added or rebound after confirmation.
+                    // Deletion intentionally rejects intervening archive/preference writes.
+                    observe(AiDomain.D16,null,setOf("recording"),filter=QueryFilter(number=n))
+                    observe(AiDomain.D18,null,setOf("preferences"),"bindings",QueryFilter(number=n))
                 }
                 12->config(setOf("statistics"))
                 13->config(setOf("overlay"))

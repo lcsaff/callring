@@ -53,12 +53,13 @@ class CallringBackend(
 
     override fun commandApi(context: CommandContext): CallringUiApi {
         val bound = this.context.bound(context)
+        val deletion = this.context.bound(context.copy(continueOwnCommits = true))
         return object : CallringUiApi by this {
             override val callers = createCallersApi(bound)
             override val settings = createSettingsApi(bound)
             override val edits = createUiEditsApi(bound)
             override val widgets = createWidgetBindingsApi(bound)
-            override val numberDeletion = CoreNumberDeletionApi(callers, widgets)
+            override val numberDeletion = CoreNumberDeletionApi(createCallersApi(deletion), createWidgetBindingsApi(deletion))
             override val ringtone = createRingtoneApi(bound)
             override val runtime = createRuntimeApi(bound)
         }

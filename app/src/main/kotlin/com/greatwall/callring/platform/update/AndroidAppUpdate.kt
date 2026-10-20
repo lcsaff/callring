@@ -116,7 +116,10 @@ internal class AndroidAppUpdate(
         if (file == null || !file.isFile || status.phase !in setOf(UpdatePhase.VERIFIED, UpdatePhase.INSTALL_PERMISSION_REQUIRED)) {
             return@attempt synchronized(lock) { persistVerifyFailed(status, "no_verified_file") }
         }
-        val failure = verifyUpdateFile(file, latest, build().packageName, build().deviceSdk, apkInspector, installedCertificate)
+        val failure = withContext(io) {
+            val info = build()
+            verifyUpdateFile(file, latest, info.packageName, info.deviceSdk, apkInspector, installedCertificate)
+        }
         if (failure != null) {
             return@attempt synchronized(lock) {
                 file.delete()

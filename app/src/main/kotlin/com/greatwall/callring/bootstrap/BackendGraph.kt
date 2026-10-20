@@ -165,10 +165,11 @@ class BackendGraph(
         override val aiSettings: AiSettingsApi get() = this@BackendGraph.recordings.aiSettings.bound(command)
         override val numberDeletion: NumberDeletionApi
             get() {
-                val boundBackend = backend.commandApi(command)
+                val deletionCommand = command.copy(continueOwnCommits = true)
+                val boundBackend = backend.commandApi(deletionCommand)
                 return com.greatwall.callring.platform.callers.NumberDeletionService(
                     boundBackend.callers,
-                    this@BackendGraph.recordings.bound(command),
+                    this@BackendGraph.recordings.bound(deletionCommand),
                     boundBackend.widgets,
                 )
             }

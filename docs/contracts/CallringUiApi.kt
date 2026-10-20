@@ -8,6 +8,8 @@ interface CallringUiApi {
     val edits: UiEditsApi get() = UnavailableUiEditsApi
     val conversation: ConversationApi get() = UnavailableConversationApi
     val aiSettings: AiSettingsApi get() = UnavailableAiSettingsApi
+    val numberDeletion: NumberDeletionApi get() = UnavailableNumberDeletionApi
+    val update: AppUpdateApi get() = UnavailableAppUpdateApi
     val snapshots: AiSnapshotApi get() = UnavailableAiSnapshotApi
     fun commandApi(context: CommandContext): CallringUiApi = this
     suspend fun adoptIdentity(callId: Long, expectedGeneration: Long): ApiResult<CallerProfile> = aiUnavailable()
@@ -37,6 +39,10 @@ interface CallersApi {
     suspend fun getLatestCall(): ApiResult<CallDetail?>
     suspend fun saveProfile(command: SaveCallerProfile): ApiResult<CallerProfile>
     suspend fun setWhitelisted(number: String, enabled: Boolean): ApiResult<CallerProfile>
+    /** 删除前预览：档案是否存在、该号码的通话记录条数。 */
+    suspend fun numberDataImpact(number: String): ApiResult<NumberCoreImpact> = aiUnavailable()
+    /** 单事务删除档案与该号码全部通话记录；expectedCallCount 不一致时拒绝。 */
+    suspend fun deleteNumberCore(number: String, expectedCallCount: Int): ApiResult<Unit> = aiUnavailable()
 }
 
 interface ReportsApi {
@@ -122,7 +128,8 @@ data class ApiError(
     val message: String,
     val fieldErrors: Map<String, String> = emptyMap(),
     val requiredCapabilities: Set<Capability> = emptySet(),
-    val retryable: Boolean = false
+    val retryable: Boolean = false,
+    val aiFailure: ConversationFailure? = null,
 )
 
 enum class ErrorCode {
@@ -227,7 +234,9 @@ data class SaveCallerProfile(
     val name: String,
     val department: String,
     val positionId: Long?,
-    val whitelisted: Boolean? = null
+    val whitelisted: Boolean? = null,
+    val baseline:CallerDraft?=null,
+    val dirtyFields:Set<String>?=null,
 )
 
 data class CallerOverview(

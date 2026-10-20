@@ -29,7 +29,16 @@ class BusinessRevisionCoordinator {
         if (!context.active()) throw BackendFailure(ApiError(ErrorCode.CONFLICT, "ai.cancelled"))
         if (!context.mayCommit()) throw BackendFailure(ApiError(ErrorCode.CONFLICT, "action.foreground_required"))
         val scopes=context.expectedScopes
-        val changed=if(scopes==null) context.expectedVersions!=capture() else scopes.isEmpty()||context.expectedVersions.incarnation!=incarnation||scopes.any{(key,at)->at>revision||(scopeChanges[key]?:0L)>at}
+        // record() runs inside the same fence as the guarded write. Its marker is a
+        // safe continuation baseline, never a snapshot captured after yielding to others.
+        val ownMarker = if (context.continueOwnCommits) commandMarkers[context.operationId] else null
+        val ownVersions = if (context.continueOwnCommits) commandCommits[context.operationId] else null
+        val changed = if (scopes == null) {
+            (ownVersions ?: context.expectedVersions) != capture()
+        } else {
+            scopes.isEmpty() || context.expectedVersions.incarnation != incarnation ||
+                scopes.any { (key, at) -> at > revision || (scopeChanges[key] ?: 0L) > maxOf(at, ownMarker ?: at) }
+        }
         if (changed) throw BackendFailure(ApiError(ErrorCode.CONFLICT, "business.changed", retryable = true))
     } }
     fun <T> guard(context: CommandContext? = null, block: () -> T): T = synchronized(fence) { check(context); block() }

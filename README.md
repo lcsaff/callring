@@ -1,6 +1,6 @@
 # 规则来电铃声与来电管理
 
-独立 Android 应用，包名 `com.greatwall.callring`，当前版本 **0.3.7**（`versionCode 10`；版本号由根 `version.properties` 单一来源驱动，标签统一为 `v<versionName>`，如 `v0.3.7`）。规则号码完整匹配 `3[0-9]{4}`，例如 `31234`；接听使用手机原有电话应用。
+独立 Android 应用，包名 `com.greatwall.callring`，当前版本 **0.3.8**（`versionCode 11`；版本号由根 `version.properties` 单一来源驱动，标签统一为 `v<versionName>`，如 `v0.3.8`）。规则号码完整匹配 `3[0-9]{4}`，例如 `31234`；接听使用手机原有电话应用。
 
 ## 使用
 
@@ -95,7 +95,7 @@
 
 工具链：**JDK 17、Gradle 8.13、AGP 8.13.2、Kotlin/Compose compiler plugin 2.3.21、Compose BOM 2025.12.01**。Java/Kotlin JVM 目标为 1.8；minSdk 29、compileSdk 36、targetSdk 33、Build Tools 36.0.0。通过 `local.properties` 或 `ANDROID_HOME` / `ANDROID_SDK_ROOT` 配置 SDK；JDK 使用当前环境的 `JAVA_HOME`。
 
-版本只在根 `version.properties`（`versionCode`/`versionName`）维护：根 `build.gradle` 校验后注入 `app/build.gradle`，发布工具读同一文件，标签统一为 `v<versionName>`（当前 `0.3.7` / `versionCode 10`）。改版本请用 `python tools/release/version_tool.py set --code N --name X.Y.Z --published-max M`，脚本会拒绝 `0.3`、`v0.3.0`、非递增 versionCode 等输入。
+版本只在根 `version.properties`（`versionCode`/`versionName`）维护：根 `build.gradle` 校验后注入 `app/build.gradle`，发布工具读同一文件，标签统一为 `v<versionName>`（当前 `0.3.8` / `versionCode 11`）。改版本请用 `python tools/release/version_tool.py set --code N --name X.Y.Z --published-max M`，脚本会拒绝 `0.3`、`v0.3.0`、非递增 versionCode 等输入。
 
 统一验证入口（`backend` 是 `java-library`，测试任务为 `:backend:test`）：
 
