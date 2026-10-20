@@ -156,11 +156,11 @@ UT = ui/src/test/kotlin/com/greatwall/callring/ui
 
 **目标：** `B/application/settings/{QuietSettingsService,ScoreSettingsService,StatisticsSettingsService,WorkScheduleService,CalendarService,LeaveService,PositionService,AppearanceService}.kt`；SQLite 实现归 `A/data/settings`，偏好实现归 `A/data/preferences`。
 
-- [ ] 在 LocalAccessContractTest 新增硬断言：读/写免打扰、评分、悬浮开关不读 calls/profiles；外观不访问核心库；1千/1万无关通话下访问范围一致。
-- [ ] 实现单配置定向读取、原值比较、定向写入和实际 ChangeImpact；岗位唯一性/引用使用 EXISTS/目标查询。
-- [ ] 将日历/请假/工作安排的受影响区间及历史更正作为专门批处理；受影响数据分批读取，同一必要事务内提交；保留审计、配置版本、DST、原始分类。
-- [ ] 只在真实决策输入变化时更新 DecisionStateHolder；评分或外观不重建镜像。
-- [ ] 接入本切片精准通知和 UI 订阅；运行现有设置/工作安排/日历回归及 A/B 无关刷新负例。
+- [x] 在 LocalAccessContractTest 新增硬断言：读/写免打扰、评分、悬浮开关不读 calls/profiles；外观不访问核心库；1千/1万无关通话下访问范围一致。
+- [x] 实现单配置定向读取、原值比较、定向写入和实际 ChangeImpact；岗位唯一性/引用使用 EXISTS/目标查询。
+- [x] 将日历/请假/工作安排的受影响区间及历史更正作为专门批处理；受影响数据分批读取，同一必要事务内提交；保留审计、配置版本、DST、原始分类。
+- [x] 只在真实决策输入变化时更新 DecisionStateHolder；评分或外观不重建镜像。
+- [x] 接入本切片精准通知和 UI 订阅；运行现有设置/工作安排/日历回归及 A/B 无关刷新负例。
 
 **门：** 普通配置不依赖全量状态；历史更正结果不变。覆盖 P1/P2/P4，A1/A2/A3/A5。
 

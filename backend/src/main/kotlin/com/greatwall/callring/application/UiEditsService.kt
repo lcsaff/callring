@@ -25,12 +25,7 @@ internal fun createUiEditsApi(context: BackendContext): UiEditsApi = with(contex
 
         override suspend fun quiet(base: QuietSettings, value: QuietSettings) = quietService.edit(base, value)
 
-        override suspend fun work(base: WorkScheduleSettings, value: WorkScheduleSettings) = edit({
-            read { s -> currentSchedule(s).toContract().let { current -> SaveWorkSchedule(
-                merge("zoneId", base.zoneId, value.zoneId, current.zoneId),
-                merge("weekly", base.weekly, value.weekly, current.weekly),
-                merge("makeup", base.makeup, value.makeup, current.makeup)) } }
-        }) { c, v -> createSettingsApi(c).saveWorkSchedule(v) }
+        override suspend fun work(base: WorkScheduleSettings, value: WorkScheduleSettings) = workScheduleService.edit(base, value)
 
         override suspend fun score(base: ScoreSettings, value: ScoreSettings) = scoreService.edit(base, value)
 
@@ -38,15 +33,7 @@ internal fun createUiEditsApi(context: BackendContext): UiEditsApi = with(contex
 
         override suspend fun position(base: SavePosition?, value: SavePosition) = positionService.edit(base, value)
 
-        override suspend fun leave(base: SaveLeave?, value: SaveLeave) = edit({
-            if (base == null) { requireField(value.id == null, "id", "draft.baseline_required"); value }
-            else read { s ->
-                requireField(base.id == value.id, "id", "draft.identity_changed")
-                val current = s.leaves[value.id] ?: fail(ErrorCode.CONFLICT, "draft.deleted", "id")
-                value.copy(period = merge("period", base.period, value.period, LeavePeriod.Timed(current.startMillis, current.endMillis)),
-                    note = merge("note", base.note, value.note, current.note))
-            }
-        }) { c, v -> createSettingsApi(c).saveLeave(v) }
+        override suspend fun leave(base: SaveLeave?, value: SaveLeave) = leaveService.edit(base, value)
     }
 }
 

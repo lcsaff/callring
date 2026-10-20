@@ -432,7 +432,7 @@ class SqliteBackendStoreDeviceTest : InstrumentationTestCase() {
                 state.leaveVersion++
                 state.pendingAudits.add(AuditRecord("leave-delete", "1", "", at))
                 state.overlayEnabled = true
-                WorkClassifier.reclassify(state)
+                state.calls.replaceAll { _, call -> call.copy(classification = WorkClassifier.classify(state, call.time)) }
             }
             fail("Ignored leave deletion reported success")
         } catch (expected: IllegalStateException) {}

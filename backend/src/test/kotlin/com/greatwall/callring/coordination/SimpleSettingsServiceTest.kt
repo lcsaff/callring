@@ -43,6 +43,34 @@ class SimpleSettingsServiceTest {
         override fun saveAppearance(settings: AppearanceSettings) { if (fail) error("disk.failed"); value = settings; saves++ }
 
     }
+    @Test fun cancelledInvalidSavesStillThrowBeforeAnyStorageAccess() = runBlocking {
+        val coordinator = BusinessRevisionCoordinator()
+        val tx = Scores()
+        val quiet = object : QuietTransactions {
+            override fun <T> readQuiet(block: (QuietReader) -> T): T = error("unexpected.storage")
+            override fun <T> writeQuiet(block: (QuietWriter) -> T): T = error("unexpected.storage")
+        }
+        val positions = object : PositionTransactions {
+            override fun <T> readPositions(block: (PositionReader) -> T): T = error("unexpected.storage")
+            override fun <T> writePositions(block: (PositionWriter) -> T): T = error("unexpected.storage")
+        }
+        val saves: List<suspend () -> Any> = listOf(
+            { ScoreSettingsService(tx, coordinator, Dispatchers.Unconfined).save(ScoreSettings(-1, 2, 10, 30)) },
+            { QuietSettingsService(quiet, coordinator, Dispatchers.Unconfined, {}).save(QuietSettings(QuietMode.CUSTOM, false, mapOf(1 to listOf(TimeWindow(-1, 1))))) },
+            { PositionService(positions, coordinator, Dispatchers.Unconfined).save(SavePosition(null, "", 0, true)) }
+        )
+        val failures = mutableListOf<Int>()
+        saves.forEachIndexed { index, save ->
+            val scope = CoroutineScope(SupervisorJob() + Dispatchers.Unconfined)
+            val job = scope.launch {
+                currentCoroutineContext().cancel()
+                try { save(); failures += index } catch (_: CancellationException) { }
+            }
+            job.join(); scope.cancel()
+        }
+        assertEquals("cancelled invalid saves must throw for score/quiet/position", emptyList<Int>(), failures)
+        assertEquals(0, tx.reads); assertEquals(0, tx.writes)
+    }
     @Test fun invalidScoreRejectsFirstFieldBeforeOpeningStorage() = runBlocking {
         val tx = Scores(); val service = ScoreSettingsService(tx, BusinessRevisionCoordinator(), Dispatchers.Unconfined)
         val error = (service.save(ScoreSettings(-1, -2, 0, 0)) as ApiResult.Failure).error

@@ -19,11 +19,23 @@ class SimpleSettingsRefreshTest {
         val cumulative = MutableStateFlow(InvalidationSnapshot("test", 0, 0, emptyMap()))
         override fun snapshots() = cumulative
         var summaries = 0; var positions = 0; var scores = 0; var appearances = 0
+        var workReads = 0; var calendarReads = 0; var leaveReads = 0
         var enabled = false
+        var synced = false; var leaveNote: String? = null
+        var calendarGate: CompletableDeferred<Unit>? = null
         fun emit(domain: DataDomain) {
             val revision = cumulative.value.revision + 1
             cumulative.value = InvalidationSnapshot("test", 0, revision, cumulative.value.domains + (domain to DomainInvalidation(revision, revision)))
         }
+        fun emitWork(key: String) {
+            val revision = cumulative.value.revision + 1
+            val old = cumulative.value.domains[DataDomain.WORK_CALENDAR]
+            cumulative.value = InvalidationSnapshot("test", 0, revision, cumulative.value.domains +
+                (DataDomain.WORK_CALENDAR to DomainInvalidation(revision, old?.wideRevision ?: 0, old?.entityRevisions.orEmpty() + (key to revision))))
+        }
+        override suspend fun getWorkSchedule(): ApiResult.Success<WorkScheduleSettings> { workReads++; return super.getWorkSchedule() }
+        override suspend fun getCalendar(): ApiResult.Success<CalendarInfo> { calendarReads++; calendarGate?.await(); return super.getCalendar() }
+        override suspend fun getLeaves(): ApiResult<List<LeaveEntry>> { leaveReads++; return super.getLeaves() }
         override suspend fun getSummary(): ApiResult.Success<SettingsSummary> {
             summaries++
             return (super.getSummary() as ApiResult.Success).let { ApiResult.Success(it.value.copy(statisticsEnabled = enabled)) }
@@ -31,10 +43,59 @@ class SimpleSettingsRefreshTest {
         override suspend fun getPositions(): ApiResult.Success<PositionSettings> { positions++; return super.getPositions() }
         override suspend fun getScoreSettings(): ApiResult.Success<ScoreSettings> { scores++; return super.getScoreSettings() }
         override suspend fun getAppearance(): ApiResult.Success<AppearanceSettings> { appearances++; return super.getAppearance() }
+        override suspend fun synchronizeCalendar(year: Int): ApiResult<CalendarInfo> {
+            if(!synced) { synced=true; emitWork("calendar") }
+            return super.getCalendar()
+        }
+        override suspend fun saveLeave(command: SaveLeave): ApiResult<LeaveEntry> {
+            if(leaveNote != command.note) { leaveNote=command.note; emitWork("leaves") }
+            return ApiResult.Success(LeaveEntry(1,1,2,command.note,LeaveState.FINISHED))
+        }
         override suspend fun setStatisticsEnabled(enabled: Boolean): ApiResult<Unit> {
             if (this.enabled != enabled) { this.enabled = enabled; emit(DataDomain.STATISTICS) }
             return ApiResult.Success(Unit)
         }
+    }
+    @Test fun historyCommitLoadsOnceNoopAddsZeroAndLoadingRaceDoesNotLoseInvalidation() = runTest {
+        Dispatchers.setMain(UnconfinedTestDispatcher(testScheduler))
+        val store=ViewModelStore()
+        try {
+            val api=Api(); val calendar=CalendarViewModel(api); val leaves=LeavesViewModel(api)
+            store.put("calendar",calendar); store.put("leaves",leaves)
+            runCurrent(); assertEquals(1,api.calendarReads); assertEquals(1,api.leaveReads)
+            calendar.synchronize(2026); runCurrent(); assertEquals(2,api.calendarReads)
+            calendar.synchronize(2026); runCurrent(); assertEquals(2,api.calendarReads)
+            val command=SaveLeave(period=LeavePeriod.Timed(1,2),note="a")
+            leaves.save(command); runCurrent(); assertEquals(2,api.leaveReads)
+            leaves.save(command); runCurrent(); assertEquals(2,api.leaveReads)
+            assertEquals(2,api.calendarReads)
+            api.calendarGate=CompletableDeferred()
+            calendar.refresh(); runCurrent(); assertEquals(3,api.calendarReads)
+            api.emitWork("calendar"); runCurrent()
+            api.calendarGate!!.complete(Unit); api.calendarGate=null; runCurrent()
+            assertTrue(calendar.state.value.loaded)
+            assertEquals("an invalidated in-flight load must be followed by a fresh read",4,api.calendarReads)
+        } finally { store.clear(); Dispatchers.resetMain() }
+    }
+    @Test fun historySettingQueriesSubscribeToTheirOwnActualWorkSubsets() = runTest {
+        Dispatchers.setMain(UnconfinedTestDispatcher(testScheduler))
+        val store = ViewModelStore()
+        try {
+            val api = Api()
+            store.put("work", WorkScheduleViewModel(api,SavedStateHandle()))
+            store.put("calendar", CalendarViewModel(api))
+            store.put("leaves", LeavesViewModel(api))
+            runCurrent()
+            assertEquals(listOf(1,1,1),listOf(api.workReads,api.calendarReads,api.leaveReads))
+            api.emitWork("leaves"); runCurrent()
+            assertEquals(listOf(1,1,2),listOf(api.workReads,api.calendarReads,api.leaveReads))
+            api.emitWork("schedule"); runCurrent()
+            assertEquals(listOf(2,1,2),listOf(api.workReads,api.calendarReads,api.leaveReads))
+            api.emitWork("calendar"); runCurrent()
+            assertEquals(listOf(2,2,2),listOf(api.workReads,api.calendarReads,api.leaveReads))
+            api.emit(DataDomain.RECORDING_ARCHIVES); api.emit(DataDomain.AI_SETTINGS); api.emit(DataDomain.APPEARANCE); runCurrent()
+            assertEquals(listOf(2,2,2),listOf(api.workReads,api.calendarReads,api.leaveReads))
+        } finally { store.clear(); Dispatchers.resetMain() }
     }
     @Test fun summaryCommitLoadsOnceAndNoopDoesNotLoadAgain() = runTest {
         Dispatchers.setMain(UnconfinedTestDispatcher(testScheduler))

@@ -53,13 +53,6 @@ object WorkClassifier {
         )
     }
 
-    fun reclassify(state: BackendState) {
-        state.calls.replaceAll { _, call ->
-            val updated = classify(state, call.time)
-            if (updated == call.classification) call else call.copy(classification = updated)
-        }
-    }
-
     fun status(state: WorkInputs, at: Long): WorkStatus {
         val current = classify(state, at)
         val config = schedule(state, at)

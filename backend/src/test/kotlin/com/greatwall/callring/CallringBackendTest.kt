@@ -880,7 +880,7 @@ class CallringBackendTest {
             val holidays = store.state.holidays.toMap()
             val calls = store.state.calls.toMap()
             val audits = store.state.pendingAudits.toList()
-            val snapshot = api.decisionSnapshot()
+            val snapshot = api.refreshDecisionSnapshot()
             val revision = api.changes.observe().first().dataRevision
             val invalid =
                 listOf(

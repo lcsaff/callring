@@ -10,12 +10,13 @@ open class SnapshotViewModel<T>(
     domains: Set<DataDomain>,
     private val load: suspend () -> ApiResult<T>,
     testScope: CoroutineScope? = null,
-    private val refreshFromChanges: Boolean = false
+    private val refreshFromChanges: Boolean = false,
+    entities: Map<DataDomain, String> = emptyMap()
 ) : UiViewModel(testScope) {
     private val loader = RequestLoader<T>(scope)
     private val mutableState = MutableStateFlow(LoadState<T>())
     val state = if (refreshFromChanges) mutableState.asStateFlow() else loader.state
-    private val observation = ChangeObserver(changes, ChangeSubscription(domains))
+    private val observation = ChangeObserver(changes, ChangeSubscription(domains, entities))
     private val refreshCoordinator = RefreshCoordinator(scope, observation::token, {
         try { load() } catch (cancelled: CancellationException) { throw cancelled }
         catch (_: Exception) { ApiResult.Failure(ApiError(ErrorCode.INTERNAL, "设置未完成，请重试", retryable = true)) }

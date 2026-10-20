@@ -21,38 +21,6 @@ internal fun BackendContext.currentSchedule(s: BackendState) =
 internal fun BackendContext.requireIssues(issues: List<com.greatwall.callring.domain.model.SettingsIssue>) {
     issues.firstOrNull()?.let { fail(ErrorCode.VALIDATION, it.message, it.path) }
 }
-internal fun BackendContext.validateWeekly(weekly: Map<Int, List<TimeWindow>>, field: String) =
-    requireIssues(com.greatwall.callring.domain.model.SettingsRules.weekly(weekly.mapValues { (_, windows) -> windows.map { it.toDomain() } }, field))
-internal fun BackendContext.validateWindows(windows: List<TimeWindow>, field: String) =
-    requireIssues(com.greatwall.callring.domain.model.SettingsRules.windows(windows.map { it.toDomain() }, field))
-internal fun BackendContext.validateZone(zone: String, field: String = "zoneId") =
-    requireIssues(com.greatwall.callring.domain.model.SettingsRules.zone(zone, field))
-
-internal fun BackendContext.calendar(s: BackendState) =
-    CalendarInfo(
-        frozenList(s.calendarYears.values.sortedBy { it.year }.map { it.toContract() }),
-        frozenList(
-            s.overrides.values
-                .sortedBy { it.date }
-                .map { it.toContract().let { dto -> dto.copy(windows = frozenList(dto.windows)) } }
-        ),
-    )
-
-internal fun BackendContext.leaveEntry(l: LeaveRecord): LeaveEntry {
-    val now = clock.millis()
-    return LeaveEntry(
-        l.id,
-        l.startMillis,
-        l.endMillis,
-        l.note,
-        when {
-            now < l.startMillis -> LeaveState.UPCOMING
-            now >= l.endMillis -> LeaveState.FINISHED
-            else -> LeaveState.ACTIVE
-        },
-    )
-}
-
 internal fun BackendContext.widgetId(id: Int) {
     requireField(id > 0, "widgetId", "widget.id.invalid")
 }

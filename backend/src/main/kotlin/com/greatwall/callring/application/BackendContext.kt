@@ -34,6 +34,19 @@ internal class BackendContext(
     internal val decisions: AtomicReference<DecisionSnapshot?> = AtomicReference(null),
     internal val coreTransactions: com.greatwall.callring.application.ports.store.CoreUnitOfWork,
 ) {
+    private fun patchCalendarHistory(history: com.greatwall.callring.application.ports.store.WorkHistory) {
+        decisions.get()?.let { current -> decisions.set(DecisionSnapshot.capture(current.inputs.copy(
+            calendarYears = history.calendarYears, holidays = history.holidays, makeupDates = history.makeupDates, overrides = history.overrides))) }
+    }
+    private fun patchLeaveHistory(history: com.greatwall.callring.application.ports.store.WorkHistory) {
+        decisions.get()?.let { current -> decisions.set(DecisionSnapshot.capture(current.inputs.copy(leaves = history.leaves, leaveVersion = history.leaveVersion))) }
+    }
+    internal val calendarService = com.greatwall.callring.application.settings.CalendarService(coreTransactions, coordinator, dispatcher, clock, calendarSource,
+        com.greatwall.callring.application.ports.CalendarDocumentReader(documents::readCalendar), ::patchCalendarHistory, commandContext)
+    internal val leaveService = com.greatwall.callring.application.settings.LeaveService(coreTransactions, coordinator, dispatcher, clock, ::patchLeaveHistory, commandContext)
+    internal val workScheduleService = com.greatwall.callring.application.settings.WorkScheduleService(coreTransactions, coordinator, dispatcher, clock, { schedule ->
+        decisions.get()?.let { current -> decisions.set(DecisionSnapshot.capture(current.inputs.copy(schedules = current.inputs.schedules + schedule))) }
+    }, commandContext)
     internal val scoreService = com.greatwall.callring.application.settings.ScoreSettingsService(coreTransactions, coordinator, dispatcher, commandContext)
     internal val appearanceService = com.greatwall.callring.application.settings.AppearanceService(preferences, coordinator, dispatcher, commandContext)
     internal val overlayService = com.greatwall.callring.application.settings.OverlaySettingsService(coreTransactions, { runtimeProbe.getStatus().capabilities[Capability.OVERLAY] ?: AccessState.UNKNOWN }, coordinator, dispatcher, { enabled ->

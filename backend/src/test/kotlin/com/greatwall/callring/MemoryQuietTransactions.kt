@@ -7,6 +7,35 @@ import com.greatwall.callring.domain.BackendState
 /** Test-only adaptation of deterministic memory fixtures. Production has no legacy fallback. */
 internal class MemoryQuietTransactions(private val store: BackendStore) : CoreUnitOfWork {
     private fun reader(state: BackendState) = object : CoreWriteSession {
+        override fun calendarOverview() = CalendarOverview(state.calendarYears.values.sortedBy { it.year }, state.overrides.values.sortedBy { it.date })
+        override fun calendarYear(year: Int) = state.calendarYears[year]?.let { com.greatwall.callring.domain.CalendarImport(it, state.holidays.filterKeys { it.year == year }, state.makeupDates.filterTo(linkedSetOf()) { it.year == year }) }
+        override fun replaceCalendar(value: com.greatwall.callring.domain.CalendarImport) {
+            val year = value.metadata.year
+            state.calendarYears[year] = value.metadata
+            state.holidays.keys.removeAll { it.year == year }; state.holidays.putAll(value.holidays)
+            state.makeupDates.removeAll { it.year == year }; state.makeupDates.addAll(value.makeupDates)
+        }
+        override fun dateOverride(date: java.time.LocalDate) = state.overrides[date]
+        override fun putDateOverride(value: com.greatwall.callring.domain.model.DateOverride) { state.overrides[value.date] = value }
+        override fun removeDateOverride(date: java.time.LocalDate) { state.overrides.remove(date) }
+        override fun leaves() = state.leaves.values.sortedWith(compareByDescending<com.greatwall.callring.domain.LeaveRecord> { it.startMillis }.thenByDescending { it.id })
+        override fun leave(id: Long) = state.leaves[id]
+        override fun putLeave(value: com.greatwall.callring.domain.LeaveRecord, insert: Boolean): com.greatwall.callring.domain.LeaveRecord {
+            val row = if(insert) value.copy(id = state.nextLeaveId++) else value
+            state.leaves[row.id] = row; return row
+        }
+        override fun removeLeave(id: Long) { state.leaves.remove(id) }
+        override fun incrementLeaveVersion() { state.leaveVersion++ }
+        override fun appendAudit(value: com.greatwall.callring.domain.AuditRecord) { state.pendingAudits += value }
+        override fun workHistory() = WorkHistory(state.schedules.toList(),state.calendarYears.toMap(),state.holidays.toMap(),state.makeupDates.toSet(),state.overrides.toMap(),state.leaves.toMap(),state.leaveVersion)
+        override fun classificationBatch(afterId: Long, limit: Int) = state.calls.values.filter { it.id > afterId }.sortedBy { it.id }.take(limit).map { HistoricalClassification(it.id,it.number,it.time,it.classification) }
+        override fun updateClassification(before: HistoricalClassification, current: com.greatwall.callring.domain.model.ClassificationFact) { state.calls[before.id] = state.calls.getValue(before.id).copy(classification = current) }
+        override fun latestWorkSchedule() = state.schedules.maxWithOrNull(compareBy<com.greatwall.callring.domain.model.WorkScheduleSettings> { it.effectiveFromEpochMillis }.thenBy { it.configVersion })
+        override fun appendWorkSchedule(value: com.greatwall.callring.domain.model.WorkScheduleSettings): com.greatwall.callring.domain.model.WorkScheduleSettings {
+            val saved = value.copy(configVersion = state.nextConfigVersion++)
+            state.schedules += saved
+            return saved
+        }
         override fun score() = state.score
         override fun saveScore(value: com.greatwall.callring.domain.model.ScoreSettings): Boolean {
             val changed = state.score != value; state.score = value; return changed

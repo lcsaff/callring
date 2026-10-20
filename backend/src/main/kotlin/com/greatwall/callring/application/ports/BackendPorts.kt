@@ -38,13 +38,15 @@ interface PreferenceStore : com.greatwall.callring.application.ports.store.Appea
     fun removeBinding(widgetId: Int)
 }
 
-interface DocumentStore {
+fun interface CalendarDocumentReader { fun readCalendar(source: DocumentRef): CalendarImport }
+
+interface DocumentStore : CalendarDocumentReader {
     fun <T> read(source: DocumentRef, block: (InputStream) -> T): T
 
     fun <T> write(destination: DocumentRef, block: (OutputStream) -> T): T
 
     /** Parse UTF-8 JSON with a hard 1 MiB limit; reject syntax errors. Core validates semantics. */
-    fun readCalendar(source: DocumentRef): CalendarImport
+    override fun readCalendar(source: DocumentRef): CalendarImport
 }
 
 interface RuntimeProbe {

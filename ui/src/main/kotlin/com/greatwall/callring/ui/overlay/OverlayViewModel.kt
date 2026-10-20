@@ -20,7 +20,7 @@ class OverlayViewModel(
     val overview = overviewLoader.state
     private val settingsDomains = setOf(DataDomain.APPEARANCE, DataDomain.OVERLAY_SETTINGS, DataDomain.STATISTICS,
         DataDomain.QUIET_HOURS, DataDomain.POSITIONS, DataDomain.WORK_CALENDAR, DataDomain.SCORE_SETTINGS)
-    private val settingsObservation = ChangeObserver(api.changes, ChangeSubscription(settingsDomains))
+    private val settingsObservation = ChangeObserver(api.changes, ChangeSubscription(settingsDomains, mapOf(DataDomain.WORK_CALENDAR to "schedule")))
     private val mutableSettings = MutableStateFlow(LoadState<SettingsSummary>())
     val settings = mutableSettings.asStateFlow()
     private val settingsRefresh = RefreshCoordinator(scope, settingsObservation::token, {

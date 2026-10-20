@@ -7,7 +7,7 @@ import kotlinx.coroutines.*
 
 /** Executes public use cases without owning business data or external capabilities. */
 internal class UseCaseRunner(private val dispatcher: CoroutineDispatcher) {
-    suspend fun <T> io(block: () -> T): ApiResult<T> = try {
+    suspend fun <T> io(block: suspend () -> T): ApiResult<T> = try {
         withContext(dispatcher) { ApiResult.Success(block()) }
     } catch (cancelled: CancellationException) {
         throw cancelled
@@ -22,6 +22,6 @@ internal class UseCaseRunner(private val dispatcher: CoroutineDispatcher) {
     /** Once commit begins, publication survives cancellation. */
     suspend fun <T> write(block: () -> T): ApiResult<T> {
         currentCoroutineContext().ensureActive()
-        return withContext(NonCancellable) { io(block) }
+        return withContext(NonCancellable) { io { block() } }
     }
 }

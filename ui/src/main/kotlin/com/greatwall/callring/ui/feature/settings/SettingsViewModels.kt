@@ -9,7 +9,7 @@ import com.greatwall.callring.ui.state.*
 
 class SettingsSummaryViewModel(private val api: CallringUiApi) : SnapshotViewModel<SettingsSummary>(
     api.changes, setOf(DataDomain.STATISTICS, DataDomain.OVERLAY_SETTINGS, DataDomain.QUIET_HOURS,
-        DataDomain.POSITIONS, DataDomain.WORK_CALENDAR, DataDomain.SCORE_SETTINGS, DataDomain.APPEARANCE), api.settings::getSummary, refreshFromChanges = true
+        DataDomain.POSITIONS, DataDomain.WORK_CALENDAR, DataDomain.SCORE_SETTINGS, DataDomain.APPEARANCE), api.settings::getSummary, refreshFromChanges = true, entities = mapOf(DataDomain.WORK_CALENDAR to "schedule")
 ) {
     fun statistics(enabled: Boolean) = write({ api.settings.setStatisticsEnabled(enabled) })
     fun overlay(enabled: Boolean) = write({ api.settings.setOverlayEnabled(enabled) })
@@ -21,7 +21,7 @@ class QuietViewModel(api: CallringUiApi, @Suppress("UNUSED_PARAMETER") state: Sa
 
 class WorkScheduleViewModel(private val api: CallringUiApi, @Suppress("UNUSED_PARAMETER") state: SavedStateHandle) : ImmediateEditor<WorkScheduleSettings>(
     api.changes, setOf(DataDomain.WORK_CALENDAR), api.settings::getWorkSchedule,
-    { base, value -> api.edits.work(base, normalizeWorkSchedule(value)) }
+    { base, value -> api.edits.work(base, normalizeWorkSchedule(value)) }, entities = mapOf(DataDomain.WORK_CALENDAR to "schedule")
 ) {
     fun reset() = submitReset { api.settings.resetWorkSchedule() }
 }
@@ -43,7 +43,7 @@ class PositionsViewModel(private val api: CallringUiApi) : SnapshotViewModel<Pos
 }
 
 class CalendarViewModel(private val api: CallringUiApi) : SnapshotViewModel<CalendarInfo>(
-    api.changes, setOf(DataDomain.WORK_CALENDAR), api.settings::getCalendar
+    api.changes, setOf(DataDomain.WORK_CALENDAR), api.settings::getCalendar, refreshFromChanges = true, entities = mapOf(DataDomain.WORK_CALENDAR to "calendar")
 ) {
     fun synchronize(year: Int) = write({
         when (val result = api.settings.synchronizeCalendar(year)) {
@@ -55,7 +55,7 @@ class CalendarViewModel(private val api: CallringUiApi) : SnapshotViewModel<Cale
 }
 
 class LeavesViewModel(private val api: CallringUiApi) : SnapshotViewModel<List<LeaveEntry>>(
-    api.changes, setOf(DataDomain.WORK_CALENDAR), api.settings::getLeaves
+    api.changes, setOf(DataDomain.WORK_CALENDAR), api.settings::getLeaves, refreshFromChanges = true, entities = mapOf(DataDomain.WORK_CALENDAR to "leaves")
 ) {
     fun save(command: SaveLeave) = write({ api.settings.saveLeave(command) }, "请假记录已保存")
     fun saveDraft(command: SaveLeave, base: SaveLeave?) = write({ api.edits.leave(base, command) }, "请假记录已保存")

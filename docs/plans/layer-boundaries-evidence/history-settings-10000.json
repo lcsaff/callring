@@ -1,0 +1,93 @@
+{
+  "unrelatedCallCount": 10000,
+  "calendarRead": {
+    "fullStateLoads": 0,
+    "revisionDelta": 0,
+    "quietReads": 0,
+    "quietWrites": 0,
+    "publishedDomains": []
+  },
+  "overrideNoop": {
+    "fullStateLoads": 0,
+    "revisionDelta": 0,
+    "quietReads": 0,
+    "quietWrites": 0,
+    "publishedDomains": []
+  },
+  "leavesRead": {
+    "fullStateLoads": 0,
+    "revisionDelta": 0,
+    "quietReads": 0,
+    "quietWrites": 0,
+    "publishedDomains": []
+  },
+  "workRead": {
+    "fullStateLoads": 0,
+    "revisionDelta": 0,
+    "quietReads": 0,
+    "quietWrites": 0,
+    "publishedDomains": []
+  },
+  "workWrite": {
+    "fullStateLoads": 0,
+    "revisionDelta": 1,
+    "quietReads": 0,
+    "quietWrites": 0,
+    "publishedDomains": [
+      "WORK_CALENDAR"
+    ]
+  },
+  "workAppend": {
+    "fullStateLoads": 0,
+    "revisionDelta": 1,
+    "quietReads": 0,
+    "quietWrites": 0,
+    "publishedDomains": [
+      "WORK_CALENDAR"
+    ]
+  },
+  "workReset": {
+    "fullStateLoads": 0,
+    "revisionDelta": 1,
+    "quietReads": 0,
+    "quietWrites": 0,
+    "publishedDomains": [
+      "WORK_CALENDAR"
+    ]
+  },
+  "overrideCorrection": {
+    "fullStateLoads": 0,
+    "revisionDelta": 1,
+    "scope": "necessary full-history correction in batches of 256; consumed rows scale with history"
+  },
+  "overrideIdenticalNoop": {
+    "fullStateLoads": 0,
+    "revisionDelta": 0,
+    "scope": "necessary full-history correction in batches of 256; consumed rows scale with history"
+  },
+  "overrideDeleteCorrection": {
+    "fullStateLoads": 0,
+    "revisionDelta": 1,
+    "scope": "necessary full-history correction in batches of 256; consumed rows scale with history"
+  },
+  "leaveCreateCorrection": {
+    "fullStateLoads": 0,
+    "revisionDelta": 1,
+    "scope": "necessary full-history correction in batches of 256; consumed rows scale with history"
+  },
+  "leaveOnlyNoteCorrection": {
+    "fullStateLoads": 0,
+    "revisionDelta": 1,
+    "scope": "necessary full-history correction in batches of 256; consumed rows scale with history"
+  },
+  "leaveIdenticalNoop": {
+    "fullStateLoads": 0,
+    "revisionDelta": 0,
+    "scope": "necessary full-history correction in batches of 256; consumed rows scale with history"
+  },
+  "leaveDeleteCorrection": {
+    "fullStateLoads": 0,
+    "revisionDelta": 1,
+    "scope": "necessary full-history correction in batches of 256; consumed rows scale with history"
+  }
+}

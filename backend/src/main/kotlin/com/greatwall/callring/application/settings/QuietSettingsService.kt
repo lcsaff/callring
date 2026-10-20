@@ -10,7 +10,7 @@ import com.greatwall.callring.contracts.command.CommandContext
 import com.greatwall.callring.contracts.common.*
 import com.greatwall.callring.contracts.settings.*
 import com.greatwall.callring.domain.model.SettingsRules
-import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.*
 
 /** A single business entry for direct, command-bound and draft edits. */
 internal class QuietSettingsService(private val transactions: QuietTransactions,
@@ -28,6 +28,7 @@ internal class QuietSettingsService(private val transactions: QuietTransactions,
         throw BackendFailure(ApiError(ErrorCode.CONFLICT, "business.changed", retryable = true))
     }
     suspend fun save(value: QuietSettings): ApiResult<QuietSettings> {
+        currentCoroutineContext().ensureActive()
         // Validation is pure and runs before acquiring the SQL lease.
         val invalid = SettingsRules.quiet(value.toDomain()).firstOrNull()
         if (invalid != null) return ApiResult.Failure(ApiError(ErrorCode.VALIDATION, invalid.message, mapOf(invalid.path to invalid.message)))

@@ -10,7 +10,7 @@ import com.greatwall.callring.contracts.command.CommandContext
 import com.greatwall.callring.contracts.common.*
 import com.greatwall.callring.contracts.settings.ScoreSettings
 import com.greatwall.callring.domain.model.SettingsRules
-import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.*
 
 internal class ScoreSettingsService(private val transactions: ScoreTransactions,
     private val coordinator: BusinessRevisionCoordinator, dispatcher: CoroutineDispatcher,
@@ -19,6 +19,7 @@ internal class ScoreSettingsService(private val transactions: ScoreTransactions,
     private val committer = CommandCommitter(coordinator)
     suspend fun get() = runner.io { transactions.readScore { it.score().toContract() } }
     suspend fun save(value: ScoreSettings): ApiResult<ScoreSettings> {
+        currentCoroutineContext().ensureActive()
         SettingsRules.score(value.toDomain()).firstOrNull()?.let {
             return ApiResult.Failure(ApiError(ErrorCode.VALIDATION, it.message, mapOf(it.path to it.message)))
         }

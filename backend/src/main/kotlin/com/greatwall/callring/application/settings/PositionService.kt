@@ -9,7 +9,7 @@ import com.greatwall.callring.contracts.command.CommandContext
 import com.greatwall.callring.contracts.common.*
 import com.greatwall.callring.contracts.settings.*
 import com.greatwall.callring.domain.PositionRecord
-import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.*
 
 internal class PositionService(private val transactions: PositionTransactions,
     private val coordinator: BusinessRevisionCoordinator, dispatcher: CoroutineDispatcher,
@@ -18,6 +18,7 @@ internal class PositionService(private val transactions: PositionTransactions,
     private val committer = CommandCommitter(coordinator)
     suspend fun get() = runner.io { transactions.readPositions { settings(it) } }
     suspend fun save(value: SavePosition): ApiResult<PositionOption> {
+        currentCoroutineContext().ensureActive()
         if (value.name.trim().isEmpty()) return ApiResult.Failure(ApiError(ErrorCode.VALIDATION, "name.required", mapOf("name" to "name.required")))
         if (value.level <= 0) return ApiResult.Failure(ApiError(ErrorCode.VALIDATION, "level.invalid", mapOf("level" to "level.invalid")))
         return saveMerged(null, value, false)

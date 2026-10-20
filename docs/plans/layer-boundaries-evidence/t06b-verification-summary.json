@@ -1,0 +1,33 @@
+{
+  "phase": "T06b",
+  "date": "2026-10-21",
+  "productionBase": "db9b9a2",
+  "specReview": "PASS",
+  "qualityReview": "PASS",
+  "completeGate": {
+    "log": "build/qa/layer-boundaries/t06b-full-gate.log",
+    "sha256": "e21f0a079e523945cbf698356f33f2f27293182f99b9e99ef8d782b5e916afbe",
+    "result": "BUILD SUCCESSFUL",
+    "seconds": 107,
+    "tasks": 146,
+    "executed": 44,
+    "upToDate": 102,
+    "backendTests": 263,
+    "uiTests": 295,
+    "appTests": 243,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0,
+    "contractsTests": "NO-SOURCE",
+    "includes": ["Debug", "ui/app lint", "BackendQa Kotlin compilation", "UI AndroidTest Kotlin compilation"]
+  },
+  "rootIndependentChecks": {"architectureScript": "PASS", "backendBoundariesScript": "PASS", "architectureTests": 17, "backendBoundaryTests": 4, "diffCheck": "PASS"},
+  "lint": {"ui": {"Warning": 31, "Hint": 3}, "app": {"Warning": 6}, "Error": 0},
+  "safeAccessEvidence": ["history-settings-1000.json", "history-settings-10000.json", "sql-history-settings-1000.json", "sql-history-settings-10000.json"],
+  "localOperationsConstant": true,
+  "necessaryHistoryCorrections": {"batchSize": 256, "consumedCalls": [1001, 10001], "batchQueriesIncludingFinalEmpty": [5, 41], "ordinaryFullStateLoads": 0, "ordinaryCompleteSnapshots": 0},
+  "postT06aCancellationFinding": "Reproduced and fixed for quiet/score/position; included in complete gate",
+  "deviceExecuted": false,
+  "T06Complete": true,
+  "remaining": ["T07-T10 ordinary business migration", "Legacy storage/context deletion T09/T13", "Old refresh protocol deletion T11", "quiet read coarse core consistency debt"]
+}

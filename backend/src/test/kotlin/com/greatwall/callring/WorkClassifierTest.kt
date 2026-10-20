@@ -107,7 +107,8 @@ class WorkClassifierTest {
             )
         s.overrides[LocalDate.parse("2026-10-12")] =
             DateOverride(LocalDate.parse("2026-10-12"), DateOverrideKind.REST, emptyList())
-        WorkClassifier.reclassify(s)
+        val call = s.calls.getValue(1)
+        s.calls[1] = call.copy(classification = WorkClassifier.classify(s, call.time))
         assertFalse(s.calls.getValue(1).classification.working)
         assertEquals(original, s.calls.getValue(1).originalClassification)
     }

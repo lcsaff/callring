@@ -21,6 +21,7 @@ open class ImmediateEditor<T : Any>(
     private val write: suspend (base: T, value: T) -> ApiResult<T>,
     testScope: CoroutineScope? = null,
     private val editDebounceMillis: Long = 0L,
+    entities: Map<DataDomain, String> = emptyMap(),
 ) : UiViewModel(testScope) {
     private sealed interface Request<T : Any> {
         data class Edit<T : Any>(val value: T) : Request<T>
@@ -39,7 +40,7 @@ open class ImmediateEditor<T : Any>(
     private var writing = false
     private var debounce: Job? = null
     private var refreshRequested = false
-    private val observation = ChangeObserver(changes, ChangeSubscription(domains))
+    private val observation = ChangeObserver(changes, ChangeSubscription(domains, entities))
     private val refreshCoordinator = RefreshCoordinator(scope, observation::token, { attempt { load() } }, { result ->
         when (result) {
             is ApiResult.Failure -> mutableState.value = mutableState.value.copy(loading = false, error = result.error)
@@ -52,7 +53,7 @@ open class ImmediateEditor<T : Any>(
         }
     }, { loading -> mutableState.value = mutableState.value.copy(loading = loading) })
 
-    init { observeChanges(changes, domains, refresh = ::refresh) }
+    init { observation.start(scope, ::refresh) }
 
     fun refresh() {
         if (writing) { refreshRequested = true; return }

@@ -11,3 +11,5 @@
 质量收尾随后将 AndroidPreferences 中单调用的 saveAppearanceInternal 合并到同步 override。该机械清理后定向运行 PublicationAdaptersTest 和 SimpleSettingsAccessContractTest，共3项，全部通过；t06a-cleanup-followup.log 为 SUCCESS13s、52tasks。最终质量复核 PASS。没有把清理前的完整门声称为清理后的全量重跑；当前 app XML 已被定向运行替换，完整门计数为此前主负责人实际读取的结果。未执行设备测试。
 
 检查点后的追加复核：主负责人发现已取消 Job 在 quiet/score/position 纯预验证失败时可提前返回 VALIDATION，绕过原入口的取消检查；独立质量审查通过只读源码复核确认同源差异。该场景未被本检查点测试覆盖，已纳入唯一 T06b 实现者的首组真实反例和最小修复，不能将此前 PASS 解释为该边界已验证。执行与修复证据随后见 T06b 记录。
+
+后续收口：T06b 已真实复现上述三处取消差异并修复，包含在其最终263/295/243完整门和双审中，见 t06b-review.md。
