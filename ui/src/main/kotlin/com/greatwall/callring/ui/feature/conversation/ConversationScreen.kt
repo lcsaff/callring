@@ -1,8 +1,11 @@
 package com.greatwall.callring.ui.feature.conversation
 
+import android.content.ClipData
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
@@ -16,8 +19,16 @@ import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.input.pointer.PointerEventPass
+import androidx.compose.ui.input.pointer.PointerInputScope
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.ClipEntry
+import androidx.compose.ui.platform.LocalClipboard
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.onLongClick
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.foundation.lazy.LazyColumn
@@ -30,6 +41,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.greatwall.callring.application.api.*
+import com.greatwall.callring.ui.designsystem.components.LocalFeedbackHost
 import com.greatwall.callring.ui.designsystem.components.ScreenFrame
 import com.greatwall.callring.ui.feature.ai.aiErrorText
 import com.greatwall.callring.ui.state.*
@@ -92,6 +104,8 @@ class ConversationViewModel(private val api: CallringUiApi, testScope: Coroutine
                 .testTag("ai-ready-dot").semantics{contentDescription=if(ready)"已连接" else "未连接"})
         }
     }) {
+        // 反馈宿主由 ScreenFrame 提供（外层窗口可能没有）；在内容作用域内读取才能落到当前窗口的 Snackbar。
+        val copy=rememberMessageCopier()
         Column(Modifier.fillMaxSize(),verticalArrangement=Arrangement.spacedBy(8.dp)) {
             (state.error?:localError)?.let{Text(aiErrorText(it),color=MaterialTheme.colorScheme.error)}
             LazyColumn(Modifier.weight(1f).fillMaxWidth().testTag("conversation-messages").nestedScroll(historyScroll),state=listState,verticalArrangement=Arrangement.spacedBy(12.dp)) {
@@ -101,8 +115,8 @@ class ConversationViewModel(private val api: CallringUiApi, testScope: Coroutine
                     val body=when(message.presentationKey){"conversation.continue"->"继续未完成任务";"conversation.partial"->"任务尚未完成。请查看已核验、待核验及失败步骤；不会重复执行已提交操作。";else->message.text}
                     if(body.isNotEmpty()&&message.toolCalls.isEmpty()&&message.role in setOf("user","assistant")) {
                         if(message.role=="user")Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.End) {
-                            Surface(Modifier.widthIn(max=560.dp).testTag("message-user-$index"),shape=RoundedCornerShape(18.dp),color=MaterialTheme.colorScheme.primaryContainer,contentColor=MaterialTheme.colorScheme.onPrimaryContainer){Text(body,Modifier.padding(horizontal=14.dp,vertical=10.dp))}
-                        }else Column(Modifier.fillMaxWidth().testTag("message-assistant-$index")){Markdown(body)}
+                            Surface(Modifier.widthIn(max=560.dp).testTag("message-user-$index").copyableMessage(body,copy),shape=RoundedCornerShape(18.dp),color=MaterialTheme.colorScheme.primaryContainer,contentColor=MaterialTheme.colorScheme.onPrimaryContainer){Text(body,Modifier.padding(horizontal=14.dp,vertical=10.dp))}
+                        }else Column(Modifier.fillMaxWidth().testTag("message-assistant-$index").copyableMessage(body,copy)){Markdown(body)}
                     }
                     ReceiptGroup(message.receipts.distinctBy{it.operationId}.filter{it.status!=ToolStatus.READ||it.error!=null}){readingHistory=true}
                     }
@@ -134,6 +148,46 @@ class ConversationViewModel(private val api: CallringUiApi, testScope: Coroutine
         }
     }
     if(confirmNew)AlertDialog(onDismissRequest={confirmNew=false},title={Text("开始新对话？")},text={Text("将停止当前请求并清空本进程对话。已提交的修改仍保留；退出应用后不会自动恢复任务。")},confirmButton={TextButton(onClick={confirmNew=false;onNew()}){Text("开始新对话")}},dismissButton={TextButton(onClick={confirmNew=false}){Text("取消")}})
+}
+/** 长按气泡复制正文：写入剪贴板成功后震动并提示"已复制"；写入失败不提示。 */
+@Composable private fun rememberMessageCopier(): (String)->Unit {
+    val clipboard=LocalClipboard.current
+    val haptics=LocalHapticFeedback.current
+    val host=LocalFeedbackHost.current
+    val scope=rememberCoroutineScope()
+    return remember(clipboard,haptics,host,scope) { { text->
+        scope.launch {
+            val copied=runCatching{clipboard.setClipEntry(ClipEntry(ClipData.newPlainText("消息",text)))}
+            if(copied.isSuccess){haptics.performHapticFeedback(HapticFeedbackType.LongPress);host?.showSnackbar("已复制",withDismissAction=true)}
+        }
+    } }
+}
+/** 单击不改变气泡行为；长按复制正文，并把同一动作与正文合并成同一无障碍节点。 */
+private fun Modifier.copyableMessage(text:String,copy:(String)->Unit)=this
+    .pointerInput(text,copy){detectLongPressWithoutStealing{copy(text)}}
+    .semantics(mergeDescendants=true){onLongClick(label="复制"){copy(text);true}}
+/**
+ * 只观察手势、不在长按成立前消费：链接和滚动等子级手势仍由子级处理；
+ * 长按成立后消费抬手事件，避免同一次手势又把 Markdown 链接点开。
+ */
+private suspend fun PointerInputScope.detectLongPressWithoutStealing(onLongPress:()->Unit) {
+    awaitEachGesture {
+        val down=awaitFirstDown(requireUnconsumed=false,pass=PointerEventPass.Initial)
+        val releasedEarly=withTimeoutOrNull(viewConfiguration.longPressTimeoutMillis) {
+            var movedAway=false
+            while(!movedAway) {
+                val change=awaitPointerEvent(PointerEventPass.Initial).changes.firstOrNull{it.id==down.id}
+                movedAway=change==null||!change.pressed||(change.position-down.position).getDistance()>viewConfiguration.touchSlop
+            }
+            false
+        }
+        if(releasedEarly!=null)return@awaitEachGesture
+        onLongPress()
+        while(true) {
+            val change=awaitPointerEvent(PointerEventPass.Initial).changes.firstOrNull{it.id==down.id}?:break
+            if(!change.pressed){change.consume();break}
+        }
+    }
 }
 @Composable private fun PendingAssistant(label:String) {
     Row(Modifier.fillMaxWidth().testTag("assistant-pending"),verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(8.dp)) {
