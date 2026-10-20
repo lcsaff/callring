@@ -44,9 +44,11 @@ def check(root=ROOT):
             if path.suffix not in ('.kt','.java'):continue
             source=without_comments(path.read_text(encoding='utf-8'))
             references=re.sub(r'"(?:\\.|[^"\\])*"', '""', source)
+            if re.search(r'\b(?:BackendStore|BackendState|StorageSession|SqliteBackendStore|stateLoadCount|coreStateLoads|fullStateLoads|stateLoads|fullDiff|TableSnapshot|CallStore|ProfileStore|ScheduleStore|SettingsStore)\b|\b(?:resource|coreResource|store|it)\s*\.\s*legacy\b', references):
+                errors.append(f'{path.relative_to(root)}: removed full-state storage protocol')
             if numeric_operation_dispatch(path, source):
                 errors.append(f'{path.relative_to(root)}: numeric operation dispatch; use OperationId or explicit catalog policy')
-            if re.search(r'\bas\s*\??\s*(?:com\.greatwall\.callring\.data\.)?SqliteBackendStore\b|\basSqliteBackendStore\s*\(|\(\s*(?:com\.greatwall\.callring\.data\.)?SqliteBackendStore\s*\)', references):
+            if re.search(r'\bas\s*\??\s*(?:com\.greatwall\.callring\.data\.)?SqliteCoreStorageResource\b|\basSqliteCoreStorageResource\s*\(|\(\s*(?:com\.greatwall\.callring\.data\.)?SqliteCoreStorageResource\s*\)', references):
                 errors.append(f'{path.relative_to(root)}: concrete backend store cast; inject explicit resource capabilities')
             if re.search(r'\b(?:data\s+)?class\s+OperationContract\b|\bfun\s+(?:ToolRegistry\s*\.\s*)?operationContracts\s*\(', references):
                 errors.append(f'{path.relative_to(root)}: removed operation contract projection; consume OperationDefinition directly')

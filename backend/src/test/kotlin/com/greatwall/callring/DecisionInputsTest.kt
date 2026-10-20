@@ -11,20 +11,20 @@ class DecisionInputsTest {
         val windows = mutableListOf(TimeWindow(1, 2))
         val weekly = linkedMapOf(1 to windows)
         val state =
-            BackendState().apply {
+            DecisionFixture().apply {
                 schedules += WorkScheduleSettings("UTC", weekly, windows, 1, 0)
                 quiet = QuietSettings(QuietMode.CUSTOM, true, weekly)
                 overrides[java.time.LocalDate.of(2026, 1, 1)] =
                     DateOverride(java.time.LocalDate.of(2026, 1, 1), DateOverrideKind.WORK, windows)
-                profiles["30001"] = ProfileRecord("30001", whitelisted = true)
-                statisticsIntervals += StatisticsInterval(0, null)
+                whitelist += "30001"
+                intervals += StatisticsInterval(0, null)
             }
         val snapshot = DecisionSnapshot.capture(state.decisionInputs())
         windows.clear()
         weekly.clear()
         state.schedules.clear()
-        state.profiles.clear()
-        state.statisticsIntervals.clear()
+        state.whitelist.clear()
+        state.intervals.clear()
         assertEquals(listOf(TimeWindow(1, 2)), snapshot.inputs.schedules.single().weekly[1])
         assertEquals(setOf("30001"), snapshot.inputs.whitelistedNumbers)
         assertEquals(1, snapshot.inputs.statisticsIntervals.size)

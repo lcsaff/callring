@@ -27,7 +27,7 @@ class CallingSqlSemanticsTest {
     private val at = LocalAccessFixture.at
 
     private fun backend(
-        store: SqliteBackendStore,
+        store: SqliteCoreStorageResource,
         c: BusinessRevisionCoordinator = BusinessRevisionCoordinator(),
     ): CallringBackend {
         fun <T : Any> unused(type: Class<T>): T =
@@ -73,11 +73,11 @@ class CallingSqlSemanticsTest {
             coreTransactions = store.sessions, numberRecordings = com.greatwall.callring.EmptyNumberRecordings, identityArchive = { com.greatwall.callring.contracts.common.ApiResult.Success(null) }, operationActive = { true }, conversationProvider = { com.greatwall.callring.testing.FixtureConversationApi }, aiSettingsProvider = { com.greatwall.callring.testing.FixtureAiSettingsApi }, updateProvider = { com.greatwall.callring.testing.FixtureAppUpdateApi }, snapshotsProvider = { com.greatwall.callring.testing.FixtureAiSnapshotApi }, recordingsProvider = { com.greatwall.callring.testing.FixtureRecordingApi }, calendarSource = com.greatwall.callring.application.ports.CalendarSource { throw AssertionError("Unexpected calendar source") }, persistenceActive = { true })
     }
 
-    private fun enabled(store: SqliteBackendStore) {
-        store.transaction { it.statisticsIntervals += StatisticsInterval(0, null) }
+    private fun enabled(store: SqliteCoreStorageResource) {
+        store.fixtureSql { it.seedInterval(StatisticsInterval(0, null))}
     }
 
-    private fun calls(store: SqliteBackendStore) = store.read { it.calls.toMap() }
+    private fun calls(store: SqliteCoreStorageResource) = store.fullSnapshot.capture().let { it.calls.toMap() }
 
     private fun provider(log: String, number: String, time: Long, account: String? = null) =
         SystemCallRecord(
@@ -91,7 +91,7 @@ class CallingSqlSemanticsTest {
 
     @Test
     fun globalLogCorrectionReconcilesBothNumbersAndPreservesOriginal() {
-        SqliteBackendStore(context, "calling-move.db").use { store ->
+        SqliteCoreStorageResource(context, "calling-move.db").use { store ->
             enabled(store)
             val c = BusinessRevisionCoordinator()
             val api = backend(store, c)
@@ -121,7 +121,7 @@ class CallingSqlSemanticsTest {
 
     @Test
     fun linkSwapUnlinksEntireBatchBeforeReassignmentAndDuplicateLogsUseLastInput() {
-        SqliteBackendStore(context, "calling-swap.db").use { store ->
+        SqliteCoreStorageResource(context, "calling-swap.db").use { store ->
             enabled(store)
             val api = backend(store)
             val a = api.recordIncoming("31234", at, CallDecision.NORMAL_RINGING, "A")
@@ -144,8 +144,8 @@ class CallingSqlSemanticsTest {
 
     @Test
     fun historicalStatisticsAndValidationOrderAndSessionDedupArePreserved() {
-        SqliteBackendStore(context, "calling-boundaries.db").use { store ->
-            store.transaction { it.statisticsIntervals += StatisticsInterval(at, at + 100) }
+        SqliteCoreStorageResource(context, "calling-boundaries.db").use { store ->
+            store.fixtureSql { it.seedInterval(StatisticsInterval(at, at + 100))}
             val c = BusinessRevisionCoordinator()
             val api = backend(store, c)
             assertEquals(-1L, api.recordIncoming("31234", at - 1, CallDecision.NORMAL_RINGING))
@@ -192,7 +192,7 @@ class CallingSqlSemanticsTest {
 
     @Test
     fun failedBatchRollsBackInsertedProfilesCallsAndRevision() {
-        SqliteBackendStore(context, "calling-rollback.db").use { store ->
+        SqliteCoreStorageResource(context, "calling-rollback.db").use { store ->
             enabled(store)
             val c = BusinessRevisionCoordinator()
             val api = backend(store, c)
@@ -208,31 +208,29 @@ class CallingSqlSemanticsTest {
             } catch (_: BackendFailure) {}
             assertEquals(before, calls(store))
             assertEquals(0L, c.marker())
-            assertTrue(store.read { it.profiles.isEmpty() })
+            assertTrue(store.fullSnapshot.capture().let { it.profiles.isEmpty() })
         }
     }
 
     @Test
     fun pendingUsesVisibilityAndCountWithoutResultPredicateAndSaturatesBounds() {
-        SqliteBackendStore(context, "calling-pending.db").use { store ->
+        SqliteCoreStorageResource(context, "calling-pending.db").use { store ->
             enabled(store)
             val api = backend(store)
             val id = api.recordIncoming("31234", at, CallDecision.NORMAL_RINGING)
-            store.transaction { s ->
-                s.calls[id] =
-                    s.calls
-                        .getValue(id)
-                        .copy(result = com.greatwall.callring.domain.model.CallResult.ANSWERED)
+            store.fixtureSql { s ->
+                s.seedCall(s.callFact(id)!!
+                        .copy(result = com.greatwall.callring.domain.model.CallResult.ANSWERED))
             }
             assertTrue(api.hasRecentPending(at))
             assertTrue(api.hasRecentPending(at + 300000))
             assertFalse(api.hasRecentPending(at + 300001))
-            store.transaction { s ->
-                s.calls[id] = s.calls.getValue(id).copy(time = Long.MAX_VALUE)
+            store.fixtureSql { s ->
+                s.seedCall(s.callFact(id)!!.copy(time = Long.MAX_VALUE))
             }
             assertFalse(api.hasRecentPending(Long.MAX_VALUE))
-            store.transaction { s ->
-                s.calls[id] = s.calls.getValue(id).copy(time = Long.MIN_VALUE)
+            store.fixtureSql { s ->
+                s.seedCall(s.callFact(id)!!.copy(time = Long.MIN_VALUE))
             }
             assertTrue(api.hasRecentPending(Long.MIN_VALUE))
         }
@@ -240,7 +238,7 @@ class CallingSqlSemanticsTest {
 
     @Test
     fun decisionAndCorrelationWritesNeverReplaceWarmDecisionSnapshot() = runBlocking {
-        SqliteBackendStore(context, "calling-warm.db").use { store ->
+        SqliteCoreStorageResource(context, "calling-warm.db").use { store ->
             enabled(store)
             val api = backend(store)
             val snapshot = api.refreshDecisionSnapshot()
@@ -266,7 +264,7 @@ class CallingSqlSemanticsTest {
     fun ignoredInsertAndUpdateDoNotPublishOrLeavePartialFacts() {
         val name = "calling-ignore.db"
         val probe = SqlAccessProbe()
-        SqliteBackendStore(context, name, probe).use { store ->
+        SqliteCoreStorageResource(context, name, probe).use { store ->
             enabled(store)
             val c = BusinessRevisionCoordinator()
             val api = backend(store, c)
@@ -290,7 +288,7 @@ class CallingSqlSemanticsTest {
                     .sumOf { it.writtenRows },
             )
             assertTrue(calls(store).isEmpty())
-            assertTrue(store.read { it.profiles.isEmpty() })
+            assertTrue(store.fullSnapshot.capture().let { it.profiles.isEmpty() })
             sql(name) { it.execSQL("DROP TRIGGER ignore_call") }
             val id = api.recordIncoming("31234", at, CallDecision.NORMAL_RINGING)
             val marker = c.marker()
@@ -312,11 +310,11 @@ class CallingSqlSemanticsTest {
     @Test
     fun sequenceNeverReusesDeletedHighestIdAndRawColumnsSurviveTargetedDecisionWrite() {
         val name = "calling-raw.db"
-        SqliteBackendStore(context, name).use { store ->
+        SqliteCoreStorageResource(context, name).use { store ->
             enabled(store)
             val api = backend(store)
             val first = api.recordIncoming("31234", at, CallDecision.NORMAL_RINGING, "kept")
-            store.transaction { it.calls.remove(first) }
+            store.fixtureSql { check(it.delete("calls", "id=?", args(first)) == 1) }
             val next = api.recordIncoming("31234", at + 1, CallDecision.NORMAL_RINGING, "kept")
             assertTrue(next > first)
             sql(name) { db ->
@@ -351,7 +349,7 @@ class CallingSqlSemanticsTest {
     fun ignoredUnitInsertRollsBackEarlierScoreWriteAndDoesNotPublish() = runBlocking {
         val name = "calling-unit-ignore.db"
         val probe = SqlAccessProbe()
-        SqliteBackendStore(context, name, probe).use { store ->
+        SqliteCoreStorageResource(context, name, probe).use { store ->
             sql(name) { db ->
                 db.execSQL("DELETE FROM settings WHERE key IN ('off_weight','repeat_weight')")
                 db.execSQL(

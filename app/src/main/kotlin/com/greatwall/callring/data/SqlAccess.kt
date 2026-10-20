@@ -7,10 +7,7 @@ import android.database.sqlite.SQLiteDatabase
 
 /** Fixed labels only: observations never retain SQL, bind values, or exception messages. */
 enum class QueryTag {
-    SNAPSHOT_ROWS,
     LOAD_ROWS,
-    NEXT_ID_MAX,
-    SEQUENCE,
     AGGREGATE,
     SCOPED_ROWS,
     SCOPED_TEXT,
@@ -241,18 +238,4 @@ internal class SqlAccess(val database: SQLiteDatabase, private val probe: SqlAcc
     fun stringForQuery(tag: QueryTag, tables: Set<SqlTable>, sql: String, args: Array<String>?) =
         value(tag, tables) { DatabaseUtils.stringForQuery(database, sql, args) }
 
-    fun nextId(table: String): Long =
-        maxOf(
-            scalar(
-                QueryTag.NEXT_ID_MAX,
-                setOf(SqlTable.named(table)),
-                "SELECT COALESCE(MAX(id),0) FROM $table",
-            ),
-            scalar(
-                QueryTag.SEQUENCE,
-                setOf(SqlTable.SQLITE_SEQUENCE),
-                "SELECT seq FROM sqlite_sequence WHERE name=?",
-                args(table),
-            ),
-        ) + 1
 }

@@ -12,7 +12,7 @@ import com.greatwall.callring.contracts.settings.*
 import com.greatwall.callring.domain.PositionRecord
 import com.greatwall.callring.domain.ProfileRecord
 import com.greatwall.callring.domain.RawCallRecord
-import com.greatwall.callring.domain.defaultWorkSchedule
+import com.greatwall.callring.domain.model.defaultWorkSchedule
 import com.greatwall.callring.domain.model.CallDecision as DomainDecision
 import com.greatwall.callring.domain.model.CallResult as DomainResult
 import com.greatwall.callring.domain.model.CallSource as DomainSource

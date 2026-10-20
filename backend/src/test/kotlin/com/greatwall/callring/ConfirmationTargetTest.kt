@@ -71,7 +71,7 @@ class ConfirmationTargetTest {
                 assertEquals(if(changed) ToolStatus.FAILED else ToolStatus.CANCELLED,receipt.status)
                 assertEquals(0,effects)
                 if(!changed) assertEquals(before,f.coordinator.capture())
-                assertEquals("old",f.state.profiles.getValue("31234").name)
+                assertEquals("old",f.core.people.getValue("31234").name)
             }
         }
     }

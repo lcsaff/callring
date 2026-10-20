@@ -1,5 +1,6 @@
 package com.greatwall.callring.application.callers
 
+import com.greatwall.callring.domain.model.defaultWorkSchedule
 import com.greatwall.callring.application.*
 import com.greatwall.callring.application.coordination.UseCaseRunner
 import com.greatwall.callring.application.mapping.*

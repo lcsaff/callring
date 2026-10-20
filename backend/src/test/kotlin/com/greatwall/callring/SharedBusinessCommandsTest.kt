@@ -25,9 +25,9 @@ class SharedBusinessCommandsTest {
         }
         val service = com.greatwall.callring.application.recording.IdentityAdoptionService(api.recordings::getArchive, { api.callers.getEditor(it) }, { base, value, cmd -> fixture.backend.commandApi(cmd).edits.profile(base, value) }, fixture.coordinator, active = { true })
         assertTrue(service.adoptIdentity(1,8) is ApiResult.Failure)
-        assertEquals("old unit",fixture.state.profiles.getValue("31234").department)
+        assertEquals("old unit",fixture.core.people.getValue("31234").department)
         service.adoptIdentity(1,7).requiredValue()
-        val saved = fixture.state.profiles.getValue("31234")
+        val saved = fixture.core.people.getValue("31234")
         assertEquals("old name",saved.name); assertEquals("new unit",saved.department)
         assertEquals(position.id,saved.positionId); assertTrue(saved.whitelisted)
     }
@@ -48,7 +48,7 @@ class SharedBusinessCommandsTest {
             }
         }
         assertTrue(com.greatwall.callring.application.recording.IdentityAdoptionService(api.recordings::getArchive, { api.callers.getEditor(it) }, { base, value, cmd -> fixture.backend.commandApi(cmd).edits.profile(base, value) }, fixture.coordinator, active = { true }).adoptIdentity(1, 7) is ApiResult.Failure)
-        assertEquals("original", fixture.state.profiles.getValue("31234").name)
+        assertEquals("original", fixture.core.people.getValue("31234").name)
     }
     @Test fun canonicalArchiveAdoptionIgnoresUnrelatedArchiveAndDirtyMergesOtherFields() = runBlocking {
         val f = ConversationFixtures()
@@ -63,8 +63,8 @@ class SharedBusinessCommandsTest {
             },
             { base, value, cmd -> f.backend.commandApi(cmd).edits.profile(base, value) }, f.coordinator, active = { true })
         service.adoptIdentity(-1, 7).requiredValue()
-        assertEquals("self", f.state.profiles.getValue("31234").name)
-        assertTrue(f.state.profiles.getValue("31234").whitelisted)
+        assertEquals("self", f.core.people.getValue("31234").name)
+        assertTrue(f.core.people.getValue("31234").whitelisted)
     }
     @Test fun formattedArchiveProtectsNormalizedProfileBeforeEditorRead() = runBlocking {
         val f = ConversationFixtures()
@@ -79,7 +79,7 @@ class SharedBusinessCommandsTest {
             { base, value, cmd -> f.backend.commandApi(cmd).edits.profile(base, value) }, f.coordinator, active = { true })
         assertTrue(service.adoptIdentity(-1, 7) is ApiResult.Failure)
         assertEquals(0, editorReads)
-        assertEquals("foreign", f.state.profiles.getValue("31234").name)
+        assertEquals("foreign", f.core.people.getValue("31234").name)
     }
     @Test fun wrongGenerationNeverReadsOrWritesProfile() = runBlocking {
         val coordinator = BusinessRevisionCoordinator()
@@ -100,6 +100,6 @@ class SharedBusinessCommandsTest {
             { number -> f.backend.callers.getEditor(number).also { open = false } },
             { base, value, cmd -> f.backend.commandApi(cmd).edits.profile(base, value) }, f.coordinator, active = { open })
         assertEquals("ai.cancelled", (service.adoptIdentity(-1, 7) as ApiResult.Failure).error.message)
-        assertEquals("keep", f.state.profiles.getValue("31234").name)
+        assertEquals("keep", f.core.people.getValue("31234").name)
     }
 }

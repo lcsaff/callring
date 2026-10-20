@@ -28,7 +28,7 @@ class RecordingCallAccessTest {
     private fun checkGraph(size: Int) = runBlocking {
         val context = RuntimeEnvironment.getApplication()
         val name = "recording-target-$size"
-        SqliteBackendStore(context, name).use { LocalAccessFixture.seed(it, size) }
+        SqliteCoreStorageResource(context, name).use { LocalAccessFixture.seed(it, size) }
         val probe = SqlAccessProbe()
         val config = BackendConfiguration(AppearanceSettings(ThemeSelection.PRESET, "default", null, ColorMode.FOLLOW_SYSTEM),
             databaseName = name, sqlAccessProbe = probe)
@@ -41,11 +41,11 @@ class RecordingCallAccessTest {
         }).use { graph ->
             val identity = graph.api.recordings.getIdentity(1).requiredValue()
             assertEquals(LocalAccessFixture.TARGET, identity.number)
-            assertEquals(0L, graph.businessReadCounters().getValue("coreStateLoads"))
+            assertEquals(0L, graph.businessReadCounters().getValue("completeCaptures"))
             assertEquals(1L, probe.snapshot().filter { SqlTable.CALLS in it.tables }.sumOf { it.consumedRows })
-            assertTrue(probe.snapshot().none { it.tag in setOf(QueryTag.LOAD_ROWS, QueryTag.SNAPSHOT_ROWS) })
+            assertTrue(probe.snapshot().none { it.tag in setOf(QueryTag.LOAD_ROWS) })
             val observations = JSONObject().put("unrelatedCalls", size).put("targetCallConsumedRows", 1)
-                .put("coreStateLoads", graph.businessReadCounters().getValue("coreStateLoads"))
+                .put("completeCaptures", graph.businessReadCounters().getValue("completeCaptures"))
             SQLiteDatabase.openDatabase(context.getDatabasePath(name).path, null, SQLiteDatabase.OPEN_READWRITE).use { db ->
                 db.execSQL("UPDATE calls SET hidden=1 WHERE id=1")
                 db.execSQL("UPDATE calls SET linked_screen_id=1 WHERE id=2")
@@ -70,8 +70,8 @@ class RecordingCallAccessTest {
             assertEquals(independent.id, graph.api.recordings.getIdentity(independent.id).requiredValue().callId)
             graph.recordings.store.delete(independent.id)
             assertNull(graph.api.recordings.getArchive(independent.id).requiredValue())
-            assertEquals(0L, graph.businessReadCounters().getValue("coreStateLoads"))
-            assertTrue(probe.snapshot().none { it.tag in setOf(QueryTag.LOAD_ROWS, QueryTag.SNAPSHOT_ROWS) })
+            assertEquals(0L, graph.businessReadCounters().getValue("completeCaptures"))
+            assertTrue(probe.snapshot().none { it.tag in setOf(QueryTag.LOAD_ROWS) })
             File("build/qa/layer-boundaries/t10b1-call-$size.json").apply { parentFile!!.mkdirs(); writeText(observations.toString(2)) }
             Unit
 

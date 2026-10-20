@@ -1,5 +1,6 @@
 package com.greatwall.callring
 
+import com.greatwall.callring.domain.model.defaultWorkSchedule
 import com.greatwall.callring.application.CallringBackend
 import com.greatwall.callring.application.callers.callerProfile
 import com.greatwall.callring.application.report.csvCell
@@ -212,7 +213,7 @@ class DomainRegressionTest {
             assertEquals(number, matched, result.silence)
             assertEquals(number, calculations.checkNumber(number).matchesRule, result.matched)
         }
-        state.profiles["31234"] = ProfileRecord("31234", whitelisted = true)
+        state.whitelist += "31234"
         val white =
             DecisionSnapshot.capture(state.decisionInputs())
                 .evaluate("3\u00a012\u300034", at("2026-10-14T22:00:00"))
@@ -248,14 +249,14 @@ class DomainRegressionTest {
     private fun at(local: String): Long =
         LocalDateTime.parse(local).atZone(zone).toInstant().toEpochMilli()
 
-    private fun state(): BackendState =
-        BackendState().apply {
+    private fun state(): DecisionFixture =
+        DecisionFixture().apply {
             schedules += defaultWorkSchedule(zone.id)
             calendarYears[2026] = CalendarYear(2026, "source", "2025-01-01", "2026.1").toDomain()
         }
 
     private fun setWeekly(
-        state: BackendState,
+        state: DecisionFixture,
         weekly: Map<Int, List<TimeWindow>>,
         makeup: List<TimeWindow> = emptyList(),
     ) {
@@ -268,7 +269,7 @@ class DomainRegressionTest {
                 )
     }
 
-    private fun work(state: BackendState, local: String) = WorkClassifier.classify(state, at(local))
+    private fun work(state: DecisionFixture, local: String) = WorkClassifier.classify(state, at(local))
 
     @Test
     fun defaultZoneFollowsThePhoneAndSplitShiftsKeepTheirExactBoundaries() {
@@ -462,7 +463,7 @@ class DomainRegressionTest {
             val state = state()
             state.quiet = QuietSettings(case.mode, case.all, emptyMap()).toDomain()
             if (case.white)
-                state.profiles[case.number] = ProfileRecord(case.number, whitelisted = true)
+                state.whitelist += case.number
             val time = if (case.working) "2026-10-14T10:00:00" else "2026-10-14T22:00:00"
             assertEquals(
                 case.toString(),
@@ -651,29 +652,30 @@ class DomainRegressionTest {
 
     @Test
     fun positionComparisonKeepsLowerSameAndMissingBaselineSemantics() {
-        val state = BackendState()
-        state.positions[1] = PositionRecord(1, "mine", 2, true)
-        state.positions[2] = PositionRecord(2, "lower", 3, false)
-        state.positions[3] = PositionRecord(3, "same", 2, true)
-        state.myPositionId = 1
+        val positions = linkedMapOf<Long, PositionRecord>()
+        var myPositionId: Long? = null
+        positions[1] = PositionRecord(1, "mine", 2, true)
+        positions[2] = PositionRecord(2, "lower", 3, false)
+        positions[3] = PositionRecord(3, "same", 2, true)
+        myPositionId = 1
         assertEquals(
             PositionRelation.LOWER,
-            callerProfile("1", null, state.positions[2], state.positions[state.myPositionId])
+            callerProfile("1", null, positions[2], myPositionId?.let(positions::get))
                 .relation,
         )
         assertEquals(
             PositionRelation.SAME,
-            callerProfile("1", null, state.positions[3], state.positions[state.myPositionId])
+            callerProfile("1", null, positions[3], myPositionId?.let(positions::get))
                 .relation,
         )
         assertEquals(
             PositionRelation.UNKNOWN,
-            callerProfile("1", null, null, state.positions[state.myPositionId]).relation,
+            callerProfile("1", null, null, myPositionId?.let(positions::get)).relation,
         )
-        state.myPositionId = null
+        myPositionId = null
         assertEquals(
             PositionRelation.UNKNOWN,
-            callerProfile("1", null, state.positions[2], state.positions[state.myPositionId])
+            callerProfile("1", null, positions[2], myPositionId?.let(positions::get))
                 .relation,
         )
     }

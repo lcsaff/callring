@@ -11,10 +11,9 @@ import com.greatwall.callring.contracts.runtime.*
 import com.greatwall.callring.contracts.widget.*
 import com.greatwall.callring.application.ports.*
 import com.greatwall.callring.domain.AuditRecord
-import com.greatwall.callring.domain.BackendState
 import com.greatwall.callring.domain.CalendarImport
 import com.greatwall.callring.domain.RawCallRecord
-import com.greatwall.callring.domain.defaultWorkSchedule
+import com.greatwall.callring.domain.model.defaultWorkSchedule
 import java.io.*
 import java.lang.management.ManagementFactory
 import java.time.*
@@ -45,7 +44,7 @@ class CallringBackendTest {
         assertEquals(QuietMode.CUSTOM, api.settings.setQuietEnabled(true).value().mode)
     }
     @Test fun emptyHistoricalCustomResumeFallsBackWithoutEnablingInvalidMode() = runBlocking {
-        store.state.lastQuietMode = QuietMode.CUSTOM.toDomain()
+        store.lastMode = QuietMode.CUSTOM.toDomain()
         assertEquals(QuietMode.NON_WORK, api.settings.setQuietEnabled(true).value().mode)
     }
     @Test fun failedQuickQuietSaveKeepsActualModeAndRememberedMode() = runBlocking {
@@ -59,49 +58,6 @@ class CallringBackendTest {
         assertEquals(custom, api.settings.setQuietEnabled(true).value())
     }
     private val now = Instant.parse("2026-10-12T10:00:00Z").toEpochMilli()
-
-    private class MemoryStore : BackendStore {
-        var state =
-            BackendState().apply {
-                schedules += defaultWorkSchedule("UTC")
-                nextConfigVersion = 2
-            }
-        var failCommit = false
-
-        override fun <T> read(block: (BackendState) -> T) = synchronized(this) { block(state) }
-
-        override fun <T> transaction(block: (BackendState) -> T): T =
-            synchronized(this) {
-                val candidate =
-                    BackendState().apply {
-                        profiles.putAll(state.profiles)
-                        positions.putAll(state.positions)
-                        calls.putAll(state.calls)
-                        schedules.addAll(state.schedules)
-                        calendarYears.putAll(state.calendarYears)
-                        holidays.putAll(state.holidays)
-                        makeupDates.addAll(state.makeupDates)
-                        overrides.putAll(state.overrides)
-                        leaves.putAll(state.leaves)
-                        statisticsIntervals.addAll(state.statisticsIntervals)
-                        pendingAudits.addAll(state.pendingAudits)
-                        myPositionId = state.myPositionId
-                        quiet = state.quiet
-                        lastQuietMode = state.lastQuietMode
-                        score = state.score
-                        overlayEnabled = state.overlayEnabled
-                        leaveVersion = state.leaveVersion
-                        nextPositionId = state.nextPositionId
-                        nextLeaveId = state.nextLeaveId
-                        nextCallId = state.nextCallId
-                        nextConfigVersion = state.nextConfigVersion
-                    }
-                val result = block(candidate)
-                if (failCommit) throw IllegalStateException("test.commit_failure")
-                state = candidate
-                result
-            }
-    }
 
     private class Prefs : PreferenceStore {
         override fun bindingsForNumber(number: String) = listBindings().filter { com.greatwall.callring.application.sameRecordingNumber(it.number, number) }
@@ -209,7 +165,7 @@ class CallringBackendTest {
         }
     }
 
-    private val store = MemoryStore()
+    private val store = MemoryCoreUnitOfWork().apply { decision.schedules += defaultWorkSchedule("UTC"); nextSchedule = 2 }
     private val prefs = Prefs()
     private val docs = Documents()
     private val probe = Probe()
@@ -231,7 +187,7 @@ class CallringBackendTest {
             Clock.fixed(Instant.ofEpochMilli(now), ZoneOffset.UTC),
             Dispatchers.Unconfined,
             CalendarSource { annualCalendar() },
-            coreTransactions = MemoryQuietTransactions(store), numberRecordings = com.greatwall.callring.EmptyNumberRecordings, identityArchive = { com.greatwall.callring.contracts.common.ApiResult.Success(null) }, operationActive = { true }, conversationProvider = { com.greatwall.callring.testing.FixtureConversationApi }, aiSettingsProvider = { com.greatwall.callring.testing.FixtureAiSettingsApi }, updateProvider = { com.greatwall.callring.testing.FixtureAppUpdateApi }, snapshotsProvider = { com.greatwall.callring.testing.FixtureAiSnapshotApi }, recordingsProvider = { com.greatwall.callring.testing.FixtureRecordingApi }, persistenceActive = { true })
+            coreTransactions = store, numberRecordings = com.greatwall.callring.EmptyNumberRecordings, identityArchive = { com.greatwall.callring.contracts.common.ApiResult.Success(null) }, operationActive = { true }, conversationProvider = { com.greatwall.callring.testing.FixtureConversationApi }, aiSettingsProvider = { com.greatwall.callring.testing.FixtureAiSettingsApi }, updateProvider = { com.greatwall.callring.testing.FixtureAppUpdateApi }, snapshotsProvider = { com.greatwall.callring.testing.FixtureAiSnapshotApi }, recordingsProvider = { com.greatwall.callring.testing.FixtureRecordingApi }, persistenceActive = { true })
 
     @Test fun unchangedRingtoneSettingDoesNotPublish() = runBlocking {
         api.ringtone.setEnabled(false).value()
@@ -247,15 +203,15 @@ class CallringBackendTest {
         api.settings.synchronizeCalendar(2026).value()
         annualCalendar = { throw IOException("offline") }
         assertTrue(api.settings.synchronizeCalendar(2026) is ApiResult.Failure)
-        assertEquals("国庆节", store.state.holidays[day])
-        assertEquals("v1", store.state.calendarYears[2026]?.version)
+        assertEquals("国庆节", store.decision.holidays[day])
+        assertEquals("v1", store.decision.calendarYears[2026]?.version)
     }
 
     @Test
     fun annualSyncRejectsWrongYearBeforeReplacingCache() = runBlocking {
         annualCalendar = { CalendarImport(CalendarYear(2027, "source", "2026-10-01", "v").toDomain(), emptyMap(), emptySet()) }
         assertTrue(api.settings.synchronizeCalendar(2026) is ApiResult.Failure)
-        assertTrue(store.state.calendarYears.isEmpty())
+        assertTrue(store.decision.calendarYears.isEmpty())
     }
 
     @Test
@@ -280,11 +236,11 @@ class CallringBackendTest {
             mapOf(LocalDate.of(2026, 10, 1) to "国庆节"), emptySet())
         annualCalendar = { downloaded }
         api.settings.synchronizeCalendar(2026).value()
-        val audits = store.state.pendingAudits.toList()
+        val audits = store.audits.toList()
         annualCalendar = { downloaded.copy(metadata = downloaded.metadata.copy(published = "2026-10-02")) }
         api.settings.synchronizeCalendar(2026).value()
-        assertEquals(audits, store.state.pendingAudits)
-        assertEquals("2026-10-01", store.state.calendarYears[2026]?.published)
+        assertEquals(audits, store.audits)
+        assertEquals("2026-10-01", store.decision.calendarYears[2026]?.published)
     }
 
     private fun <T> ApiResult<T>.value(): T = (this as ApiResult.Success<T>).value
@@ -323,16 +279,16 @@ class CallringBackendTest {
     fun statisticsTransitionsAreIdempotentAndClosingPreservesHistory() = runBlocking {
         api.settings.setStatisticsEnabled(true).value()
         api.settings.setStatisticsEnabled(true).value()
-        assertEquals(1, store.state.statisticsIntervals.size)
+        assertEquals(1, store.decision.intervals.size)
         assertEquals(1, syncs)
         api.settings.setStatisticsEnabled(false).value()
-        assertEquals(now, store.state.statisticsIntervals.single().endMillis)
+        assertEquals(now, store.decision.intervals.single().endMillis)
     }
 
     @Test
     fun reportFilterDoesNotChangeTotalsAndExportIncludesUnresolved() = runBlocking {
-        val fact = com.greatwall.callring.domain.WorkClassifier.classify(store.state, now)
-        store.state.calls[1] =
+        val fact = com.greatwall.callring.domain.WorkClassifier.classify(store.decision, now)
+        store.calls[1] =
             RawCallRecord(
                 1,
                 "30001",
@@ -347,7 +303,7 @@ class CallringBackendTest {
                 fact,
                 fact,
             )
-        store.state.calls[2] =
+        store.calls[2] =
             RawCallRecord(
                 2,
                 "30001",
@@ -418,8 +374,8 @@ class CallringBackendTest {
 
     @Test
     fun calendarChangesReclassifyHistoryButRegularScheduleDoesNot() = runBlocking {
-        val fact = com.greatwall.callring.domain.WorkClassifier.classify(store.state, now)
-        store.state.calls[1] =
+        val fact = com.greatwall.callring.domain.WorkClassifier.classify(store.decision, now)
+        store.calls[1] =
             RawCallRecord(
                 1,
                 "30001",
@@ -435,14 +391,14 @@ class CallringBackendTest {
                 fact,
             )
         api.settings.saveWorkSchedule(SaveWorkSchedule("UTC", emptyMap(), emptyList())).value()
-        assertEquals(fact, store.state.calls.getValue(1).classification)
+        assertEquals(fact, store.calls.getValue(1).classification)
         api.settings
             .saveDateOverride(
                 DateOverride(LocalDate.parse("2026-10-12"), DateOverrideKind.REST, emptyList())
             )
             .value()
-        assertEquals(com.greatwall.callring.domain.model.WorkReason.REST_DAY, store.state.calls.getValue(1).classification.reason)
-        assertEquals(fact, store.state.calls.getValue(1).originalClassification)
+        assertEquals(com.greatwall.callring.domain.model.WorkReason.REST_DAY, store.calls.getValue(1).classification.reason)
+        assertEquals(fact, store.calls.getValue(1).originalClassification)
     }
 
     @Test
@@ -469,9 +425,9 @@ class CallringBackendTest {
             )
         assertEquals(
             evaluated.classification,
-            store.state.calls.getValue(id).originalClassification,
+            store.calls.getValue(id).originalClassification,
         )
-        assertEquals(com.greatwall.callring.domain.model.WorkReason.REST_DAY, store.state.calls.getValue(id).classification.reason)
+        assertEquals(com.greatwall.callring.domain.model.WorkReason.REST_DAY, store.calls.getValue(id).classification.reason)
     }
 
     @Test
@@ -488,8 +444,8 @@ class CallringBackendTest {
             )
         assertEquals(setOf("30001"), api.importSystemCalls(listOf(record)))
         assertTrue(api.importSystemCalls(listOf(record.copy(account = null))).isEmpty())
-        assertEquals(1, store.state.calls.size)
-        assertEquals("account", store.state.calls.values.single().account)
+        assertEquals(1, store.calls.size)
+        assertEquals("account", store.calls.values.single().account)
     }
 
     @Test
@@ -497,7 +453,7 @@ class CallringBackendTest {
         runBlocking {
             api.settings.setStatisticsEnabled(true).value()
             val original =
-                com.greatwall.callring.domain.WorkClassifier.classify(store.state, now)
+                com.greatwall.callring.domain.WorkClassifier.classify(store.decision, now)
                     .copy(reason = WorkReason.UNKNOWN.toDomain())
             api.recordIncoming("30001", now, CallDecision.QUIET_SILENCED, "account", original.toContract())
             api.importSystemCalls(
@@ -519,7 +475,7 @@ class CallringBackendTest {
             assertEquals(original.toContract(), detail.originalClassification)
             assertNotEquals(
                 original,
-                store.state.calls.values.single { it.logId != null }.originalClassification,
+                store.calls.values.single { it.logId != null }.originalClassification,
             )
             assertFalse(api.hasRecentPending(now + 1000))
         }
@@ -587,9 +543,9 @@ class CallringBackendTest {
 
     @Test
     fun scoreCountsOnlyVisibleCountedRowsAndRepeatBoundaryIsInclusive() = runBlocking {
-        val fact = com.greatwall.callring.domain.WorkClassifier.classify(store.state, now)
+        val fact = com.greatwall.callring.domain.WorkClassifier.classify(store.decision, now)
         for ((id, offset) in listOf(1L to 0L, 2L to 600000L, 3L to 1200001L)) {
-            store.state.calls[id] =
+            store.calls[id] =
                 RawCallRecord(
                     id,
                     "30001",
@@ -668,7 +624,7 @@ class CallringBackendTest {
         store.failCommit = true
         val failed = api.callers.setWhitelisted("30001", true) as ApiResult.Failure
         assertEquals(ErrorCode.STORAGE_FAILURE, failed.error.code)
-        assertFalse(store.state.profiles.getValue("30001").whitelisted)
+        assertFalse(store.people.getValue("30001").whitelisted)
         assertSame(before, api.decisionSnapshot())
         assertEquals(revision, api.changes.snapshots().value.revision)
     }
@@ -685,8 +641,8 @@ class CallringBackendTest {
         api.callers
             .saveProfile(SaveCallerProfile("30001", "=2+3", "@department", caller.id))
             .value()
-        val fact = com.greatwall.callring.domain.WorkClassifier.classify(store.state, now)
-        store.state.calls[1] =
+        val fact = com.greatwall.callring.domain.WorkClassifier.classify(store.decision, now)
+        store.calls[1] =
             RawCallRecord(
                 1,
                 "30001",
@@ -701,7 +657,7 @@ class CallringBackendTest {
                 fact,
                 fact,
             )
-        store.state.calls[2] =
+        store.calls[2] =
             RawCallRecord(
                 2,
                 "30001",
@@ -716,7 +672,7 @@ class CallringBackendTest {
                 fact,
                 fact,
             )
-        docs.beforeWrite = { store.state.myPositionId = caller.id }
+        docs.beforeWrite = { store.selectedRole = caller.id }
         val range = DateRange(LocalDate.parse("2026-10-12"), LocalDate.parse("2026-10-12"), "UTC")
         api.reports.exportCsv(ReportExportQuery("30001", range), DocumentRef("memory")).value()
         assertArrayEquals(javaClass.getResourceAsStream("/report/t09a-original.csv")!!.use { it.readBytes() }, docs.bytes.toByteArray())
@@ -780,7 +736,7 @@ class CallringBackendTest {
     fun calendarImportCorrectsOnlyCurrentFactsAndPreservesTheExactSourceAudit() = runBlocking {
         api.settings.setStatisticsEnabled(true).value()
         val callId = api.recordIncoming("30001", now, CallDecision.CUSTOM_RINGTONE)
-        val original = store.state.calls.getValue(callId)
+        val original = store.calls.getValue(callId)
         val adjustedDate = LocalDate.parse("2026-10-13")
         api.settings
             .saveDateOverride(DateOverride(adjustedDate, DateOverrideKind.REST, emptyList()))
@@ -797,13 +753,13 @@ class CallringBackendTest {
         val info = api.settings.importCalendar(DocumentRef("memory")).value()
         assertEquals(listOf(2026), info.years.map { it.year })
         assertEquals(listOf(adjustedDate), info.overrides.map { it.date })
-        val corrected = store.state.calls.getValue(callId)
+        val corrected = store.calls.getValue(callId)
         assertEquals(com.greatwall.callring.domain.model.WorkReason.HOLIDAY, corrected.classification.reason)
         assertEquals("holiday", corrected.classification.holidayName)
         assertEquals("v1", corrected.classification.calendarVersion)
         assertTrue(corrected.classification.calendarVerified)
         assertEquals(original.copy(classification = corrected.classification), corrected)
-        val audit = store.state.pendingAudits.last()
+        val audit = store.audits.last()
         assertEquals(AuditRecord("calendar", "2026", raw, now), audit)
     }
 
@@ -812,7 +768,7 @@ class CallringBackendTest {
         runBlocking {
             api.settings.setStatisticsEnabled(true).value()
             val callId = api.recordIncoming("30001", now, CallDecision.QUIET_SILENCED)
-            val original = store.state.calls.getValue(callId).originalClassification
+            val original = store.calls.getValue(callId).originalClassification
             val preservedDate = LocalDate.parse("2025-01-01")
             docs.calendar =
                 CalendarImport(
@@ -832,7 +788,7 @@ class CallringBackendTest {
                     "raw-v1",
                 )
             api.settings.importCalendar(DocumentRef("memory")).value()
-            val earlierAudits = store.state.pendingAudits.toList()
+            val earlierAudits = store.audits.toList()
             docs.calendar =
                 CalendarImport(
                     CalendarYear(2026, "replacement", "2025-02-01", "v2").toDomain(),
@@ -842,27 +798,27 @@ class CallringBackendTest {
                 )
             val info = api.settings.importCalendar(DocumentRef("memory")).value()
             assertEquals(listOf(2025, 2026), info.years.map { it.year })
-            assertEquals(mapOf(preservedDate to "previous"), store.state.holidays)
-            assertEquals(setOf(replacedDate), store.state.makeupDates)
+            assertEquals(mapOf(preservedDate to "previous"), store.decision.holidays)
+            assertEquals(setOf(replacedDate), store.decision.makeupDates)
             assertEquals(
                 com.greatwall.callring.domain.model.WorkReason.MAKEUP_WORKING,
-                store.state.calls.getValue(callId).classification.reason,
+                store.calls.getValue(callId).classification.reason,
             )
-            assertEquals(original, store.state.calls.getValue(callId).originalClassification)
-            assertEquals(earlierAudits, store.state.pendingAudits.dropLast(1))
+            assertEquals(original, store.calls.getValue(callId).originalClassification)
+            assertEquals(earlierAudits, store.audits.dropLast(1))
             assertEquals(
                 AuditRecord("calendar", "2026", "raw-v2", now),
-                store.state.pendingAudits.last(),
+                store.audits.last(),
             )
-            val committedAudits = store.state.pendingAudits.toList()
-            val committedCalls = store.state.calls.toMap()
-            val committedCalendars = store.state.calendarYears.toMap()
-            val committedSchedules = store.state.schedules.toList()
+            val committedAudits = store.audits.toList()
+            val committedCalls = store.calls.toMap()
+            val committedCalendars = store.decision.calendarYears.toMap()
+            val committedSchedules = store.decision.schedules.toList()
             api.settings.importCalendar(DocumentRef("memory")).value()
-            assertEquals(committedAudits, store.state.pendingAudits)
-            assertEquals(committedCalls, store.state.calls)
-            assertEquals(committedCalendars, store.state.calendarYears)
-            assertEquals(committedSchedules, store.state.schedules)
+            assertEquals(committedAudits, store.audits)
+            assertEquals(committedCalls, store.calls)
+            assertEquals(committedCalendars, store.decision.calendarYears)
+            assertEquals(committedSchedules, store.decision.schedules)
         }
 
     @Test
@@ -878,10 +834,10 @@ class CallringBackendTest {
                 )
             docs.calendar = valid
             api.settings.importCalendar(DocumentRef("memory")).value()
-            val calendars = store.state.calendarYears.toMap()
-            val holidays = store.state.holidays.toMap()
-            val calls = store.state.calls.toMap()
-            val audits = store.state.pendingAudits.toList()
+            val calendars = store.decision.calendarYears.toMap()
+            val holidays = store.decision.holidays.toMap()
+            val calls = store.calls.toMap()
+            val audits = store.audits.toList()
             val snapshot = api.refreshDecisionSnapshot()
             val revision = api.changes.snapshots().value.revision
             val invalid =
@@ -900,10 +856,10 @@ class CallringBackendTest {
                 docs.calendar = calendar
                 val failed = api.settings.importCalendar(DocumentRef("memory")) as ApiResult.Failure
                 assertEquals(label, ErrorCode.VALIDATION, failed.error.code)
-                assertEquals(label, calendars, store.state.calendarYears)
-                assertEquals(label, holidays, store.state.holidays)
-                assertEquals(label, calls, store.state.calls)
-                assertEquals(label, audits, store.state.pendingAudits)
+                assertEquals(label, calendars, store.decision.calendarYears)
+                assertEquals(label, holidays, store.decision.holidays)
+                assertEquals(label, calls, store.calls)
+                assertEquals(label, audits, store.audits)
                 assertSame(label, snapshot, api.decisionSnapshot())
                 assertEquals(label, revision, api.changes.snapshots().value.revision)
             }
@@ -924,9 +880,9 @@ class CallringBackendTest {
                 "A",
             )
         api.importSystemCalls(listOf(originalRecord))
-        val provider = store.state.calls.values.single { it.logId == "same-id" }
+        val provider = store.calls.values.single { it.logId == "same-id" }
         assertEquals(oldScreen, provider.linkedScreenId)
-        assertTrue(store.state.calls.getValue(oldScreen).hidden)
+        assertTrue(store.calls.getValue(oldScreen).hidden)
         val changed =
             api.importSystemCalls(
                 listOf(
@@ -939,16 +895,16 @@ class CallringBackendTest {
                 )
             )
         assertEquals(setOf("30001", "30002"), changed)
-        assertEquals(3, store.state.calls.size)
-        val moved = store.state.calls.values.single { it.logId == "same-id" }
+        assertEquals(3, store.calls.size)
+        val moved = store.calls.values.single { it.logId == "same-id" }
         assertEquals(provider.id, moved.id)
         assertEquals(newScreen, moved.linkedScreenId)
         assertEquals(provider.originalClassification, moved.originalClassification)
-        val restored = store.state.calls.getValue(oldScreen)
+        val restored = store.calls.getValue(oldScreen)
         assertFalse(restored.hidden)
         assertTrue(restored.counted)
         assertEquals(com.greatwall.callring.domain.model.CallResult.PENDING, restored.result)
-        assertTrue(store.state.calls.getValue(newScreen).hidden)
+        assertTrue(store.calls.getValue(newScreen).hidden)
         assertEquals(CallDecision.QUIET_SILENCED, api.callers.getLatestCall().value()!!.decision)
     }
 
@@ -1155,13 +1111,13 @@ class CallringBackendTest {
 
     @Test
     fun numberDeletionImpactAndCoreDeleteRemoveProfileAndAllCallsAtomically() = runBlocking {
-        val fact = com.greatwall.callring.domain.WorkClassifier.classify(store.state, now)
-        store.state.profiles["30001"] = com.greatwall.callring.domain.ProfileRecord("30001", "张三", "研发", null, false)
-        store.state.profiles["40004"] = com.greatwall.callring.domain.ProfileRecord("40004", "李四", "市场", null, false)
+        val fact = com.greatwall.callring.domain.WorkClassifier.classify(store.decision, now)
+        store.people["30001"] = com.greatwall.callring.domain.ProfileRecord("30001", "张三", "研发", null, false)
+        store.people["40004"] = com.greatwall.callring.domain.ProfileRecord("40004", "李四", "市场", null, false)
         listOf(1L, 2L).forEachIndexed { index, id ->
-            store.state.calls[id] = RawCallRecord(id, "30001", now + index, 0, CallResult.ANSWERED.toDomain(), CallDecision.NORMAL_RINGING.toDomain(), CallSource.SCREENING.toDomain(), null, null, true, fact, fact)
+            store.calls[id] = RawCallRecord(id, "30001", now + index, 0, CallResult.ANSWERED.toDomain(), CallDecision.NORMAL_RINGING.toDomain(), CallSource.SCREENING.toDomain(), null, null, true, fact, fact)
         }
-        store.state.calls[3L] = RawCallRecord(3, "40004", now, 0, CallResult.ANSWERED.toDomain(), CallDecision.NORMAL_RINGING.toDomain(), CallSource.SCREENING.toDomain(), null, null, true, fact, fact)
+        store.calls[3L] = RawCallRecord(3, "40004", now, 0, CallResult.ANSWERED.toDomain(), CallDecision.NORMAL_RINGING.toDomain(), CallSource.SCREENING.toDomain(), null, null, true, fact, fact)
 
         val impact = api.callers.numberDataImpact("30001").value()
         assertEquals("30001", impact.number)
@@ -1172,10 +1128,10 @@ class CallringBackendTest {
         assertEquals(2, api.callers.numberDataImpact("30001").value().callCount)
 
         api.callers.deleteNumberCore("30001", 2).value()
-        assertFalse(store.state.profiles.containsKey("30001"))
+        assertFalse(store.people.containsKey("30001"))
         assertEquals(0, api.callers.numberDataImpact("30001").value().callCount)
-        assertTrue(store.state.profiles.containsKey("40004"))
-        assertTrue(store.state.calls.containsKey(3L))
+        assertTrue(store.people.containsKey("40004"))
+        assertTrue(store.calls.containsKey(3L))
         assertTrue(api.callers.deleteNumberCore("30001", 0) is ApiResult.Failure)
     }
 }

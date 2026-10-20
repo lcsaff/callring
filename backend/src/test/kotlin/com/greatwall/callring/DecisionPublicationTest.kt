@@ -19,7 +19,7 @@ class DecisionPublicationTest {
         val coordinator = BusinessRevisionCoordinator()
         val snapshots = AtomicReference<DecisionSnapshot?>()
         val source =
-            BackendState()
+            DecisionFixture()
                 .decisionInputs()
                 .copy(quiet = QuietSettings(QuietMode.NON_WORK, false, emptyMap()))
         val inputs =

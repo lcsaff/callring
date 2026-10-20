@@ -22,14 +22,14 @@ import java.util.concurrent.atomic.AtomicReference
 /**
  * Disposable databases only. This test never installs itself or touches the production database.
  */
-class SqliteBackendStoreDeviceTest : InstrumentationTestCase() {
-    private lateinit var store: SqliteBackendStore
+class SqliteCoreStorageResourceDeviceTest : InstrumentationTestCase() {
+    private lateinit var store: SqliteCoreStorageResource
     private lateinit var database: String
 
     override fun setUp() {
         super.setUp()
         database = "qa-backend-${UUID.randomUUID()}.db"
-        store = SqliteBackendStore(instrumentation.targetContext, database)
+        store = SqliteCoreStorageResource(instrumentation.targetContext, database)
     }
 
     override fun tearDown() {
@@ -46,11 +46,10 @@ class SqliteBackendStoreDeviceTest : InstrumentationTestCase() {
         )
 
     fun testStableSnapshotPerformsZeroCallUpdatesAndDurationCorrectionTouchesOneRow() {
-        store.transaction { state ->
-            state.profiles["31234"] = ProfileRecord("31234")
-            val fact = WorkClassifier.classify(state, 1780275600000L)
-            state.calls[1] =
-                RawCallRecord(
+        store.fixtureSql { state ->
+            state.seedCaller(ProfileRecord("31234"))
+            val fact = WorkClassifier.classify(state.fixtureWork(), 1780275600000L)
+            state.seedCall(RawCallRecord(
                     1,
                     "31234",
                     1780275600000L,
@@ -63,8 +62,8 @@ class SqliteBackendStoreDeviceTest : InstrumentationTestCase() {
                     true,
                     fact,
                     fact,
-                )
-            state.nextCallId = 2
+                ))
+            state.seedSequence("calls", 2)
         }
         fixture().use { db ->
             db.execSQL("CREATE TABLE qa_updates(n INTEGER NOT NULL)")
@@ -73,38 +72,38 @@ class SqliteBackendStoreDeviceTest : InstrumentationTestCase() {
                 "CREATE TRIGGER qa_updates_calls AFTER UPDATE ON calls BEGIN UPDATE qa_updates SET n=n+1; END"
             )
         }
-        store.transaction {}
+        store.sessions.writeSession {}
         fixture().use { assertEquals(0L, it.scalar("SELECT n FROM qa_updates")) }
-        store.transaction { state -> state.calls[1] = state.calls.getValue(1).copy(duration = 20) }
+        store.sessions.writeCalling { writer -> val old = writer.callingCall(1)!!; writer.updateCallingCalls(listOf(old to old.copy(duration = 20))) }
         fixture().use { assertEquals(1L, it.scalar("SELECT n FROM qa_updates")) }
-        assertEquals(20L, store.read { it.calls.getValue(1).duration })
+        assertEquals(20L, store.fullSnapshot.capture().let { it.calls.getValue(1).duration })
     }
 
     fun testDeletedHighestIdentifierIsNotReusedAfterReopen() {
-        store.transaction { state ->
-            state.positions[7] = PositionRecord(7, "temporary", 1, true)
-            state.nextPositionId = 8
+        store.fixtureSql { state ->
+            state.seedPosition(PositionRecord(7, "temporary", 1, true))
+            state.seedSequence("positions", 8)
         }
-        store.transaction { it.positions.clear() }
+        store.sessions.writeSession { it.deletePosition(7) }
         store.close()
-        store = SqliteBackendStore(instrumentation.targetContext, database)
-        assertEquals(8L, store.read { it.nextPositionId })
-        store.transaction { state -> state.nextPositionId = 12 }
+        store = SqliteCoreStorageResource(instrumentation.targetContext, database)
+        assertEquals(8L, fixture().use { it.fixtureNextId("positions") })
+        store.fixtureSql { state -> state.seedSequence("positions", 12)}
         store.close()
-        store = SqliteBackendStore(instrumentation.targetContext, database)
-        assertEquals(12L, store.read { it.nextPositionId })
+        store = SqliteCoreStorageResource(instrumentation.targetContext, database)
+        assertEquals(12L, fixture().use { it.fixtureNextId("positions") })
     }
 
-    fun testInvalidMapPrimaryKeyRollsBackTheEntireSnapshot() {
+    fun testInvalidPositionConstraintRollsBackOtherWrites() {
         try {
-            store.transaction { state ->
-                state.positions[1] = PositionRecord(2, "invalid", 1, true)
-                state.overlayEnabled = true
+            store.sessions.writeSession { writer ->
+                writer.saveOverlay(true)
+                writer.putPosition(PositionRecord(0, "invalid", 0, true), true)
             }
-            fail("Mismatched primary key accepted")
-        } catch (expected: IllegalArgumentException) {}
-        assertTrue(store.read { it.positions.isEmpty() })
-        assertFalse(store.read { it.overlayEnabled })
+            fail("Invalid position accepted")
+        } catch (expected: android.database.sqlite.SQLiteConstraintException) {}
+        assertTrue(store.fullSnapshot.capture().positions.isEmpty())
+        assertFalse(store.fullSnapshot.capture().overlayEnabled)
     }
 
     fun testIgnoredSettingsWriteRollsBackOtherValues() {
@@ -114,18 +113,17 @@ class SqliteBackendStoreDeviceTest : InstrumentationTestCase() {
             )
         }
         try {
-            store.transaction { it.score = ScoreSettings(7, 3, 15, 45).toDomain() }
+            store.sessions.writeSession { it.saveScore(ScoreSettings(7, 3, 15, 45).toDomain()) }
             fail("Ignored insert accepted")
         } catch (expected: IllegalStateException) {}
-        assertEquals(ScoreSettings(5, 2, 10, 30), store.read { it.score })
+        assertEquals(ScoreSettings(5, 2, 10, 30).toDomain(), store.fullSnapshot.capture().let { it.score })
     }
 
     fun testUnknownLegacyStringsSurviveUnrelatedCallChanges() {
-        store.transaction { state ->
-            state.profiles["31234"] = ProfileRecord("31234")
-            val fact = WorkClassifier.classify(state, 1780275600000L)
-            state.calls[1] =
-                RawCallRecord(
+        store.fixtureSql { state ->
+            state.seedCaller(ProfileRecord("31234"))
+            val fact = WorkClassifier.classify(state.fixtureWork(), 1780275600000L)
+            state.seedCall(RawCallRecord(
                     1,
                     "31234",
                     1780275600000L,
@@ -141,15 +139,15 @@ class SqliteBackendStoreDeviceTest : InstrumentationTestCase() {
                     legacyResult = "old result",
                     legacyDecision = "old decision",
                     legacySource = "old source",
-                )
-            state.nextCallId = 2
+                ))
+            state.seedSequence("calls", 2)
         }
         fixture().use {
             it.execSQL(
                 "UPDATE calls SET reason='old reason',original_reason='old original' WHERE id=1"
             )
         }
-        store.transaction { state -> state.calls[1] = state.calls.getValue(1).copy(duration = 9) }
+        store.sessions.writeCalling { writer -> val old = writer.callingCall(1)!!; writer.updateCallingCalls(listOf(old to old.copy(duration = 9))) }
         fixture().use { db ->
             db.rawQuery(
                     "SELECT result,decision,source,reason,original_reason FROM calls WHERE id=1",
@@ -167,7 +165,7 @@ class SqliteBackendStoreDeviceTest : InstrumentationTestCase() {
     }
 
     fun testForeignKeysAndImmutableAuditRemainEnabled() {
-        store.transaction { it.pendingAudits.add(AuditRecord("test", "target", "raw", 1)) }
+        store.sessions.writeSession { it.appendAudit(AuditRecord("test", "target", "raw", 1)) }
         fixture().use { db ->
             try {
                 db.execSQL("UPDATE calendar_audit SET raw='changed'")
@@ -175,12 +173,12 @@ class SqliteBackendStoreDeviceTest : InstrumentationTestCase() {
             } catch (expected: android.database.sqlite.SQLiteException) {}
         }
         try {
-            store.transaction { state ->
-                state.profiles["31234"] = ProfileRecord("31234", positionId = 99)
+            store.fixtureSql { state ->
+                state.seedCaller(ProfileRecord("31234", positionId = 99))
             }
             fail("Dangling position accepted")
         } catch (expected: android.database.sqlite.SQLiteConstraintException) {}
-        assertTrue(store.read { it.profiles.isEmpty() })
+        assertTrue(store.fullSnapshot.capture().let { it.profiles.isEmpty() })
     }
 
     fun testVersionOneMigrationRestoresScreeningTimeAndKeepsOriginalFacts() {
@@ -190,14 +188,13 @@ class SqliteBackendStoreDeviceTest : InstrumentationTestCase() {
                 .atZone(ZoneId.systemDefault())
                 .toInstant()
                 .toEpochMilli()
-        store.transaction { state ->
-            state.positions[1] = PositionRecord(1, "manager", 2, true)
-            state.nextPositionId = 2
-            state.profiles["31234"] = ProfileRecord("31234", "name", "department", 1, true)
-            state.myPositionId = 1
-            val fact = WorkClassifier.classify(state, at)
-            state.calls[1] =
-                RawCallRecord(
+        store.fixtureSql { state ->
+            state.seedPosition(PositionRecord(1, "manager", 2, true))
+            state.seedSequence("positions", 2)
+            state.seedCaller(ProfileRecord("31234", "name", "department", 1, true))
+            state.execSQL("INSERT INTO settings(key,value,position_id) VALUES('my_position','1',1)")
+            val fact = WorkClassifier.classify(state.fixtureWork(), at)
+            state.seedCall(RawCallRecord(
                     1,
                     "31234",
                     at,
@@ -210,10 +207,10 @@ class SqliteBackendStoreDeviceTest : InstrumentationTestCase() {
                     true,
                     fact,
                     fact,
-                )
-            state.nextCallId = 2
+                ))
+            state.seedSequence("calls", 2)
         }
-        val original = store.read { it.calls.getValue(1).originalClassification }
+        val original = store.fullSnapshot.capture().let { it.calls.getValue(1).originalClassification }
         store.close()
         fixture().use { db ->
             db.execSQL(
@@ -232,8 +229,8 @@ class SqliteBackendStoreDeviceTest : InstrumentationTestCase() {
             )
             db.version = 1
         }
-        store = SqliteBackendStore(instrumentation.targetContext, database)
-        store.read { state ->
+        store = SqliteCoreStorageResource(instrumentation.targetContext, database)
+        store.fullSnapshot.capture().let { state ->
             assertEquals(2, state.calls.size)
             assertEquals("name", state.profiles.getValue("31234").name)
             assertEquals(1L, state.myPositionId)
@@ -261,11 +258,10 @@ class SqliteBackendStoreDeviceTest : InstrumentationTestCase() {
                 .atZone(ZoneId.systemDefault())
                 .toInstant()
                 .toEpochMilli()
-        store.transaction { state ->
-            state.profiles["31234"] = ProfileRecord("31234")
-            val fact = WorkClassifier.classify(state, at)
-            state.calls[1] =
-                RawCallRecord(
+        store.fixtureSql { state ->
+            state.seedCaller(ProfileRecord("31234"))
+            val fact = WorkClassifier.classify(state.fixtureWork(), at)
+            state.seedCall(RawCallRecord(
                     1,
                     "31234",
                     at,
@@ -278,17 +274,17 @@ class SqliteBackendStoreDeviceTest : InstrumentationTestCase() {
                     true,
                     fact,
                     fact,
-                )
-            state.nextCallId = 2
+                ))
+            state.seedSequence("calls", 2)
         }
-        val original = store.read { it.calls.getValue(1).originalClassification }
+        val original = store.fullSnapshot.capture().let { it.calls.getValue(1).originalClassification }
         store.close()
         fixture().use { db ->
             db.execSQL("UPDATE calls SET working=0,reason='工作时段外' WHERE id=1")
             db.version = 2
         }
-        store = SqliteBackendStore(instrumentation.targetContext, database)
-        store.read { state ->
+        store = SqliteCoreStorageResource(instrumentation.targetContext, database)
+        store.fullSnapshot.capture().let { state ->
             assertTrue(state.calls.getValue(1).classification.working)
             assertEquals(original, state.calls.getValue(1).originalClassification)
         }
@@ -296,11 +292,11 @@ class SqliteBackendStoreDeviceTest : InstrumentationTestCase() {
 
     fun testCalendarHolidayToMakeupReplacementAndAuditAreAtomic() {
         val date = LocalDate.of(2026, 10, 1)
-        store.transaction { state ->
-            state.holidays.remove(date)
-            state.makeupDates.add(date)
-            state.calendarYears[2026] = CalendarYear(2026, "replacement", "2026-01-01", "test").toDomain()
-            state.pendingAudits.add(AuditRecord("calendar", "2026", "exact raw document", 10))
+        store.sessions.writeSession { writer ->
+            val old = writer.calendarYear(2026)!!
+            writer.replaceCalendar(old.copy(metadata = CalendarYear(2026, "replacement", "2026-01-01", "test").toDomain(),
+                holidays = old.holidays - date, makeupDates = old.makeupDates + date))
+            writer.appendAudit(AuditRecord("calendar", "2026", "exact raw document", 10))
         }
         fixture().use { db ->
             db.rawQuery("SELECT working,name FROM calendar_days WHERE date=?", args(date)).use {
@@ -309,27 +305,26 @@ class SqliteBackendStoreDeviceTest : InstrumentationTestCase() {
                 assertEquals("调休上班", it.getString(1))
             }
         }
-        store.read { state ->
-            assertTrue(date in state.makeupDates)
-            assertFalse(date in state.holidays)
+        store.fullSnapshot.capture().let { state ->
+            assertTrue(date in state.work.makeupDates)
+            assertFalse(date in state.work.holidays)
         }
     }
 
     fun testConcurrentTransactionsCaptureAfterAcquiringTheWriterLock() {
-        store.transaction { it.profiles["31234"] = ProfileRecord("31234", "name", "department") }
-        val other = SqliteBackendStore(instrumentation.targetContext, database)
+        store.fixtureSql { it.seedCaller(ProfileRecord("31234", "name", "department"))}
+        val other = SqliteCoreStorageResource(instrumentation.targetContext, database)
         val startTogether = CountDownLatch(1)
         val done = CountDownLatch(2)
         val failure = AtomicReference<Throwable?>()
         try {
-            fun worker(connection: SqliteBackendStore) = Thread {
+            fun worker(connection: SqliteCoreStorageResource) = Thread {
                 try {
                     startTogether.await()
                     repeat(25) {
-                        connection.transaction { state ->
-                            val profile = state.profiles.getValue("31234")
-                            state.profiles["31234"] =
-                                profile.copy(whitelisted = !profile.whitelisted)
+                        connection.sessions.writeSession { writer ->
+                            val profile = writer.caller("31234")!!
+                            writer.putCaller(profile.copy(whitelisted = !profile.whitelisted), false)
                         }
                     }
                 } catch (problem: Throwable) {
@@ -343,7 +338,7 @@ class SqliteBackendStoreDeviceTest : InstrumentationTestCase() {
             startTogether.countDown()
             assertTrue("Concurrent transactions timed out", done.await(15, TimeUnit.SECONDS))
             failure.get()?.let { throw AssertionError("Concurrent transaction failed", it) }
-            store.read { state ->
+            store.fullSnapshot.capture().let { state ->
                 assertFalse(state.profiles.getValue("31234").whitelisted)
                 assertEquals("name", state.profiles.getValue("31234").name)
             }
@@ -392,15 +387,14 @@ class SqliteBackendStoreDeviceTest : InstrumentationTestCase() {
                 .atZone(ZoneId.systemDefault())
                 .toInstant()
                 .toEpochMilli()
-        store.transaction { state ->
-            state.profiles["31234"] = ProfileRecord("31234")
-            val original = WorkClassifier.classify(state, at)
-            state.leaves[1] = LeaveRecord(1, at - 1000, at + 1000, "retained leave")
-            state.nextLeaveId = 2
-            state.leaveVersion = 1
-            val current = WorkClassifier.classify(state, at)
-            state.calls[1] =
-                RawCallRecord(
+        store.fixtureSql { state ->
+            state.seedCaller(ProfileRecord("31234"))
+            val original = WorkClassifier.classify(state.fixtureWork(), at)
+            state.seedLeave(LeaveRecord(1, at - 1000, at + 1000, "retained leave"))
+            state.seedSequence("leaves", 2)
+            state.execSQL("INSERT INTO settings(key,value) VALUES('leave_version','1')")
+            val current = WorkClassifier.classify(state.fixtureWork(), at)
+            state.seedCall(RawCallRecord(
                     1,
                     "31234",
                     at,
@@ -413,11 +407,11 @@ class SqliteBackendStoreDeviceTest : InstrumentationTestCase() {
                     true,
                     current,
                     original,
-                )
-            state.nextCallId = 2
+                ))
+            state.seedSequence("calls", 2)
         }
-        val sourceBefore = store.read { it.calendarYears.getValue(2026).source }
-        val callBefore = store.read { it.calls.getValue(1) }
+        val sourceBefore = store.fullSnapshot.capture().let { it.work.calendarYears.getValue(2026).source }
+        val callBefore = store.fullSnapshot.capture().let { it.calls.getValue(1) }
         val auditsBefore = fixture().use { it.scalar("SELECT COUNT(*) FROM calendar_audit") }
         fixture().use {
             it.execSQL(
@@ -425,22 +419,23 @@ class SqliteBackendStoreDeviceTest : InstrumentationTestCase() {
             )
         }
         try {
-            store.transaction { state ->
-                state.calendarYears[2026] =
-                    state.calendarYears.getValue(2026).copy(source = "must roll back")
-                state.leaves.remove(1)
-                state.leaveVersion++
-                state.pendingAudits.add(AuditRecord("leave-delete", "1", "", at))
-                state.overlayEnabled = true
-                state.calls.replaceAll { _, call -> call.copy(classification = WorkClassifier.classify(state, call.time)) }
+            store.sessions.writeSession { writer ->
+                val old = writer.calendarYear(2026)!!
+                writer.replaceCalendar(old.copy(metadata = old.metadata.copy(source = "must roll back")))
+                writer.incrementLeaveVersion()
+                writer.appendAudit(AuditRecord("leave-delete", "1", "", at))
+                writer.saveOverlay(true)
+                val call = writer.callingCall(1)!!
+                writer.updateCallingCalls(listOf(call to call.copy(classification = WorkClassifier.classify(writer.workHistory(), call.time))))
+                writer.removeLeave(1)
             }
             fail("Ignored leave deletion reported success")
         } catch (expected: IllegalStateException) {}
-        store.read { state ->
-            assertEquals("retained leave", state.leaves.getValue(1).note)
-            assertEquals(1L, state.leaveVersion)
+        store.fullSnapshot.capture().let { state ->
+            assertEquals("retained leave", state.work.leaves.getValue(1).note)
+            assertEquals(1L, state.work.leaveVersion)
             assertEquals(callBefore, state.calls.getValue(1))
-            assertEquals(sourceBefore, state.calendarYears.getValue(2026).source)
+            assertEquals(sourceBefore, state.work.calendarYears.getValue(2026).source)
             assertFalse(state.overlayEnabled)
         }
         fixture().use {

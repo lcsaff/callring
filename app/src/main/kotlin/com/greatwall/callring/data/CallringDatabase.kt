@@ -3,8 +3,7 @@ package com.greatwall.callring.data
 import android.content.Context
 import android.database.sqlite.SQLiteDatabase
 import android.database.sqlite.SQLiteOpenHelper
-import com.greatwall.callring.domain.AuditRecord
-import com.greatwall.callring.domain.defaultWorkSchedule
+import com.greatwall.callring.domain.model.defaultWorkSchedule
 
 /** Exact shipped version-3 schema. Unsupported versions fail without deleting user data. */
 internal class CallringDatabase(private val context: Context, name: String) :
@@ -78,20 +77,19 @@ internal class CallringDatabase(private val context: Context, name: String) :
         context.assets.open("holidays-2026.json").use { stream ->
             val raw = WorkConfigCodec.readLimited(stream)
             val data = WorkConfigCodec.calendar(raw)
-            val session = StorageSession(db)
-            val state = session.load()
-            state.calendarYears[data.metadata.year] = data.metadata
-            state.holidays.putAll(data.holidays)
-            state.makeupDates.addAll(data.makeupDates)
-            state.pendingAudits.add(
-                com.greatwall.callring.domain.AuditRecord(
-                    "calendar",
-                    data.metadata.year.toString(),
-                    raw,
-                    System.currentTimeMillis(),
-                )
-            )
-            session.save(state)
+            val year = data.metadata
+            check(db.insertOrThrow("calendar_years", null, values("year" to year.year,
+                "source" to year.source, "published" to year.published, "version" to year.version)) != -1L)
+            data.holidays.forEach { (date, name) ->
+                check(db.insertOrThrow("calendar_days", null, values("date" to date.toString(),
+                    "year" to date.year, "working" to 0, "name" to name)) != -1L)
+            }
+            data.makeupDates.forEach { date ->
+                check(db.insertOrThrow("calendar_days", null, values("date" to date.toString(),
+                    "year" to date.year, "working" to 1, "name" to LegacyValueCodec.MAKEUP_DAY_NAME)) != -1L)
+            }
+            check(db.insertOrThrow("calendar_audit", null, values("kind" to "calendar",
+                "target" to year.year.toString(), "raw" to raw, "created" to System.currentTimeMillis())) != -1L)
         }
     }
 

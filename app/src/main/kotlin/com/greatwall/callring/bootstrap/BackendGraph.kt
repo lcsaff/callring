@@ -8,7 +8,7 @@ import com.greatwall.callring.application.conversation.QueryService
 import com.greatwall.callring.contracts.CallringUiApi
 import com.greatwall.callring.contracts.callers.IncomingCallUiSink
 import com.greatwall.callring.contracts.runtime.*
-import com.greatwall.callring.data.SqliteBackendStore
+import com.greatwall.callring.data.SqliteCoreStorageResource
 import com.greatwall.callring.platform.*
 import com.greatwall.callring.platform.calling.AndroidCallWorkLease
 import com.greatwall.callring.platform.calling.BackendIncomingCallEngine
@@ -33,7 +33,7 @@ class BackendGraph(
     val notifications get() = ui.notifications
     val incomingCallUi get() = ui.incomingCallUi
     private val store = StorageResources {
-        SqliteBackendStore(application, configuration.databaseName, configuration.sqlAccessProbe)
+        SqliteCoreStorageResource(application, configuration.databaseName, configuration.sqlAccessProbe)
     }
     private val core: CoreAssembly = CoreAssembly(application, configuration, coordinator, store, ui,
         ::ensureOpen, { !closed }, { !persistenceClosed }, { recordings }, { conversation }, { update })
@@ -58,7 +58,7 @@ class BackendGraph(
     val recordings get() = recordingDelegate.value
     val queries: QueryService get() = conversation.queries
     fun businessReadCounters(): Map<String, Long> = mapOf(
-        "coreOpens" to store.coreOpens.get(), "coreStateLoads" to store.stateLoadCount(),
+        "coreOpens" to store.coreOpens.get(),
         "completeCaptures" to store.completeCaptures.get(), "sourceQueries" to conversation.sourceQueries(),
         "classifications" to com.greatwall.callring.domain.WorkClassifier.evaluations.get(),
         "runtimeProbes" to AndroidRuntimeProbe.observations.get(), "quietReads" to 0L, "quietWrites" to 0L,

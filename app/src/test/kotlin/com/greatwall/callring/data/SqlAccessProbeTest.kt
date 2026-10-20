@@ -78,16 +78,18 @@ class SqlAccessProbeTest {
     }
 
     @Test
-    fun snapshotsAndPreflightAreObservedAndOriginalValuesRemainTyped() {
+    fun fullCaptureRowsAndPreflightAreObservedAndSqlValuesRemainTyped() {
         SQLiteDatabase.create(null).use { db ->
             db.execSQL("CREATE TABLE calls(id INTEGER, value BLOB, optional TEXT)")
             db.execSQL("INSERT INTO calls VALUES(1,X'0102',NULL)")
             val probe = SqlAccessProbe()
             val sql = SqlAccess(db, probe)
-            val previous = TableSnapshot(db, "calls", "id", sql).previous(1)!!
-            assertTrue(previous.get("id") is Long)
-            assertArrayEquals(byteArrayOf(1, 2), previous.getAsByteArray("value"))
-            assertNull(previous.get("optional"))
+            sql.query(QueryTag.LOAD_ROWS, "calls", null, null, null, null, null, null).use { previous ->
+                assertTrue(previous.moveToFirst())
+                assertEquals(Cursor.FIELD_TYPE_INTEGER, previous.getType(0))
+                assertArrayEquals(byteArrayOf(1, 2), previous.getBlob(1))
+                assertTrue(previous.isNull(2))
+            }
             assertEquals(1L, probe.snapshot().single().consumedRows)
             checkSnapshotSize(db, sql)
             assertEquals(
@@ -106,14 +108,13 @@ class SqlAccessProbeTest {
     fun realScopedJoinAndStatementAggregateUseTheSameInstanceProbe() {
         val context = org.robolectric.RuntimeEnvironment.getApplication()
         val probe = SqlAccessProbe()
-        SqliteBackendStore(context, "sql-probe-scoped.db", probe).use { store ->
-            store.transaction { state ->
-                state.profiles["synthetic-private"] =
-                    com.greatwall.callring.domain.ProfileRecord("synthetic-private")
+        SqliteCoreStorageResource(context, "sql-probe-scoped.db", probe).use { store ->
+            store.fixtureSql { state ->
+                state.seedCaller(com.greatwall.callring.domain.ProfileRecord("synthetic-private"))
             }
             val before = probe.snapshot().sumOf { it.calls }
             val port =
-                store.scopedReads(com.greatwall.callring.application.BusinessRevisionCoordinator())
+                store.fixtureScopedReads(com.greatwall.callring.application.BusinessRevisionCoordinator())
             val page =
                 port.query(
                     com.greatwall.callring.contracts.ai.QuerySpec(

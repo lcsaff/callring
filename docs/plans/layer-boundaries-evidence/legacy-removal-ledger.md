@@ -5,10 +5,10 @@
 | 当前旧路径 | 仍使用它的业务 | 删除门 |
 |---|---|---|
 | `BackendContext` 及扩展式旧工厂 | T10c已删除类、全部生产/测试引用和with-context工厂，bound共享独立DecisionMirror；服务只接明确窄能力 | 已关闭：完整门及双审PASS，详见t10c-review.md |
-| `BackendStore` 全状态 read/transaction、`BackendState`、`SqliteBackendStore` 全量装载/差异保存 | 初始化及旧fixture；T10b1已删recording findCall旧read，完整快照已迁专用事实 | T10b1目标录音查找已退出；T13初始化/fixture退出后彻底删除；T14检查禁止旧符号 |
-| `StorageResources` 的 legacy 资源投影 | 上述全状态调用 | 随最终旧存储消费者迁出删除，保留统一的显式资源生命周期 |
-| classifier/correlation 接受 `BackendState` 的入口及全状态决策 capture 重载 | 旧入口已删除；剩余 BackendState 的 WorkInputs 实现仅随读/快照和 fixture 继续退出 | T06b/T08 已用实际输入闭包；T09/T13 删除最后旧模型消费者 |
-| schema 初始化/升级中使用旧全状态协议 | onCreate 仍用 StorageSession.load/save；upgrade 已于T08迁出 | T13 改定向初始化；T08 已删除升级 saveCalls/State 关联入口，最终守卫不得豁免初始化 |
+| `BackendStore` 全状态 read/transaction、`BackendState`、`SqliteBackendStore` 全量装载/差异保存 | T13a已迁出onCreate及全部test/debug/backendQa fixtures；旧模型、协议、四Store、StorageSession均已删除 | T13a候选已冻结，实际门与审查见t13a证据；T14统一CI仍待执行 |
+| `StorageResources` 的 legacy 资源投影 | T13a已删除legacy/read/transaction/stateLoadCount；唯一typed CoreStorageResource生命周期保留 | T13a候选已冻结；新唯一SqliteCoreStorageResource不留alias/wrapper |
+| classifier/correlation 接受 `BackendState` 的入口及全状态决策 capture 重载 | T06b/T08/T09已删除旧业务入口；T13a删除最后测试模型消费者，纯算法用实际WorkInputs/DecisionInputs与独立call facts | T13a候选已冻结；全快照仅FullSnapshotReader专用facts |
+| schema 初始化/升级中使用旧全状态协议 | onCreate已在原SQLiteOpenHelper创建事务内定向写config/calendar/audit；upgrade已于T08迁出 | T13a新增初始化原始事实/无默认settings物化/资产失败回滚测试；不更改schema3 |
 | nullable `ChangeFeed.snapshots()` 默认实现及 UI 对旧通知的回退 | T11 已删除 nullable/default/observe/DataChange、双 loader/迁移开关和旧 fake；全部消费者及设备 fixture 只用必需累计 flow | 本片源码已删除，实际最终门与独立审查见 t11-implementation.md / t11-verification-summary.json / 负责人 review |
 | 旧通知与整库版本/全域刷新发布 | T11 已删除 coordinator 第二份 changes、observe/changed/commit/publishScopes/runtimeChanged；diagnostics 及 runtime 只发真实实体，command/domainMarker 原职责保留 | 本片源码已删除；无双发布兜底，剩余全状态初始化协议仍属 T13 |
 | AI 数字索引/顺序分派 | T12 已以单一81项 OperationCatalog/OperationId 迁移目录及全部执行链 | 本片删除 ToolDefinition/index、toolPurpose/purposes、72+9双API、旧OperationContract projection整文件及数字重载、nullable queries与旧UI只读分支；外部标识仅协议元数据。实际最终门和双审见T12证据；T13–T15仍待执行 |
@@ -64,3 +64,10 @@ T10c 候选冻结：已删除 BackendContext/with-context SettingsApi 与 UiEdit
 T10c 审查闭包补充：WidgetModel 的 quiet.enable_unavailable 第二恢复路径及 preferredMode/rememberMode、唯一 last_quiet_mode 偏好读写消费者已删除，全部改唯一 backend setQuietEnabled。CommandCommitter 必需明确 owner；九组公开 SQL writer 及非 SQL writer 共用公开 operationActive，内部 incoming/import 使用只延续至 drain 完成的 persistenceActive，无 true/default/空检查。CallringBackend.commandApi 直接返回真实 bound root，旧小服务覆写 decorator/重复实例删除。两种真实 Graph 排空测试分别核持久 link/core/archive 和冷首次观察/公开 SQL 拒绝；详见同片实施证据的真实 RED/GREEN。T11 feed 与 T13 旧存储门保持。
 
 T11 候选源码冻结：唯一 mandatory 累计 flow 覆盖生产、测试与 debug/AndroidTest fixture；旧事件协议、nullable feed、UiViewModel.observeChanges、Snapshot/HomeQuiet 双查询模式、ImmediateEditor null-token 分支、录音无 feed 模式、adoption_unavailable 与无用途 callers 参数已删除。各 route 盲刷、写成功补查和双 widget feed owner 已删除，保留显式用户刷新、真实系统/时钟/provider 观察及 WidgetRefreshSignals 错误呈现。Runtime/folder baselines 独立放在具名 observation tracker，不回塞通用版本协调器；实际授权有稳定 proof+observedAt、scoped/full-vector 最终 fence 与唯一 own marker。T12 数字语义、T13 全量初始化/fixture/目录、T14 CI整合及 T15 最终设备门仍有真实消费者与明确后续任务，不由本片代为关闭。最终验证与双审以本片证据和负责人记录为准。
+
+
+## T13a 全状态协议删除候选
+
+T13a关闭最后onCreate和test/debug/backendQa消费者，删除BackendStore/BackendState/StorageSession及旧四Store、TableSnapshot/fullDiff旧投影、stateLoadCount/coreStateLoads等不能再执行的计数。defaultWorkSchedule迁domain/model唯一实现；SQLiteDatabase.scalar、显式ID/sequence/旧编码SQL seed仅在debug测试支持，同一真实资源连接，无production测试接口。原纯算法与事务/分类/关联/CSV/ID/范围断言经现行窄入口执行，完整事实比较明确调用FullSnapshotReader。
+
+当前候选仅完成T13a行为删除。T13b仍需目录/职责归位、bootstrap查询投影、UI bridge/designsystem与组件薄壳、最终全文件清单及PROJECT/README；T14统一CI和T15设备/最终验收仍未执行。不得将此候选记为T13全部完成。实际验证、源码指纹与后续审查状态见[t13a实施证据](t13a-implementation.md)及summary。

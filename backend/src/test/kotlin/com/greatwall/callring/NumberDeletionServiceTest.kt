@@ -37,7 +37,7 @@ class NumberDeletionServiceTest {
             { ApiResult.Success(emptyList<WidgetBinding>()) }, { _, _ -> error("no bindings") }, f.coordinator, command, active = { true })
         assertTrue(service.delete(DeleteNumberCommand("31234", 0, 1, 0)) is ApiResult.Failure)
         assertEquals(0, coreDeletes)
-        assertEquals("keep", f.state.profiles.getValue("31234").name)
+        assertEquals("keep", f.core.people.getValue("31234").name)
     }
     @Test fun unrelatedCoreCommitAfterArchiveCleanupDoesNotBlockTargetDeletion() = runBlocking {
         val f = ConversationFixtures()
@@ -59,7 +59,7 @@ class NumberDeletionServiceTest {
             { n, count, cmd -> f.backend.commandApi(cmd).callers.deleteNumberCore(n, count) }, recordings,
             { ApiResult.Success(emptyList<WidgetBinding>()) }, { _, _ -> error("no bindings") }, f.coordinator, command, active = { true })
             .delete(DeleteNumberCommand("31234", 0, 1, 0)).requiredValue()
-        assertFalse(f.state.profiles.containsKey("31234"))
+        assertFalse(f.core.people.containsKey("31234"))
     }
     @Test fun previewPreservesAllCountsAndRejectsEachBusyStateAndExpectedCountConflict() = runBlocking {
         val coordinator = BusinessRevisionCoordinator()

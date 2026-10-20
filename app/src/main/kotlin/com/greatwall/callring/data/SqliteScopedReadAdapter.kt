@@ -21,7 +21,7 @@ import java.time.*
 import org.json.JSONArray
 
 /**
- * SELECT-only projections. No BackendStore.read/StorageSession, no coordinator access in a
+ * SELECT-only projections; no coordinator access in a
  * transaction.
  */
 internal class SqliteScopedReadAdapter(

@@ -24,8 +24,8 @@ class ToolBatchEngineTest {
         val source=object:ScopedReadPort {
             override val domains=AiDomain.entries.toSet()
             override fun version(domain:AiDomain)=f.coordinator.capture().values.getValue(if(domain==AiDomain.D11)"preferences"else"core")
-            override fun get(domain:AiDomain,key:String,projection:String):SourceRow? = if(domain==AiDomain.D11)SourceRow("current",safeValue(f.appearance) as AiJson.Obj)else f.state.profiles[key]?.let{SourceRow(key,aiObject("number" to aiString(key),"stored" to aiNumber(1),"name" to aiString(if(mismatchProfileReadback)"wrong"else it.name),"department" to aiString(it.department),"position_id" to aiNumber(it.positionId),"whitelisted" to aiBool(it.whitelisted)))}
-            override fun query(spec:QuerySpec,after:String?)=SourcePage(spec.filter.number?.let{get(spec.domain,it,spec.projection)}?.let{listOf(it)}?:emptyList(),if(spec.filter.number in f.state.profiles)1 else 0)
+            override fun get(domain:AiDomain,key:String,projection:String):SourceRow? = if(domain==AiDomain.D11)SourceRow("current",safeValue(f.appearance) as AiJson.Obj)else f.core.people[key]?.let{SourceRow(key,aiObject("number" to aiString(key),"stored" to aiNumber(1),"name" to aiString(if(mismatchProfileReadback)"wrong"else it.name),"department" to aiString(it.department),"position_id" to aiNumber(it.positionId),"whitelisted" to aiBool(it.whitelisted)))}
+            override fun query(spec:QuerySpec,after:String?)=SourcePage(spec.filter.number?.let{get(spec.domain,it,spec.projection)}?.let{listOf(it)}?:emptyList(),if(spec.filter.number in f.core.people)1 else 0)
         }
         val q=QueryService(listOf(source),revision=f.coordinator::marker)
         val foreground=ForegroundActionService(checkCommand = { _, _ -> true }).also{it.attachHost()}
@@ -41,7 +41,7 @@ class ToolBatchEngineTest {
         val t=Fixture();val task=t.plan(10)
         val receipts=t.engine.execute((1..10).map{t.profile("p$it","31%03d".format(it),task)})
         assertEquals(10,receipts.count{it.verification==VerificationStatus.VERIFIED})
-        assertEquals(10,t.f.state.profiles.size)
+        assertEquals(10,t.f.core.people.size)
         assertTrue(t.engine.complete)
         assertTrue(t.engine.budget.work<=64)
     }
@@ -62,7 +62,7 @@ class ToolBatchEngineTest {
         val task=t.plan(1)
         val r=t.engine.execute(listOf(t.profile("p","31234",task))).single()
         assertEquals(ToolStatus.FAILED,r.status)
-        assertEquals("existing",t.f.state.profiles.getValue("31234").name)
+        assertEquals("existing",t.f.core.people.getValue("31234").name)
         assertFalse(t.engine.complete)
     }
     @Test fun correctableEnumGetsSameWireIdFeedbackAndNewIdRepair()=runBlocking {
@@ -85,7 +85,7 @@ class ToolBatchEngineTest {
         val a=t.profile("a","31234",task).let{it.copy(arguments=AiJson.Obj(it.arguments.fields+("dependsOn" to AiJson.Arr(listOf(aiString("b"))))))}
         val b=t.profile("b","35678",task).let{it.copy(arguments=AiJson.Obj(it.arguments.fields+("dependsOn" to AiJson.Arr(listOf(aiString("a"))))))}
         assertTrue(runCatching{t.engine.execute(listOf(a,b))}.exceptionOrNull() is BackendFailure)
-        assertTrue(t.f.state.profiles.isEmpty())
+        assertTrue(t.f.core.people.isEmpty())
     }
     @Test fun discoveringDisabledToolAllowsOneUnstartedRetryWithNewId()=runBlocking {
         val t=Fixture();val call=ConversationToolCall("disabled","settings_saveAppearance",aiObject("colorMode" to aiString("DARK")))
@@ -103,7 +103,7 @@ class ToolBatchEngineTest {
         t.engine.resume(2,{true})
         assertEquals(committed,t.f.coordinator.marker())
         t.engine.execute((9..10).map{t.profile("continued$it","31%03d".format(it),task)})
-        assertEquals(10,t.f.state.profiles.size);assertTrue(t.engine.complete)
+        assertEquals(10,t.f.core.people.size);assertTrue(t.engine.complete)
         assertEquals(10,t.engine.planner.get(task).expectedCount)
     }
     @Test fun thirdRepairOfSameStepIsRejectedBeforeAnyWrite()=runBlocking {
@@ -121,7 +121,7 @@ class ToolBatchEngineTest {
             val result=runCatching{t.engine.execute(listOf(ConversationToolCall("fixed-$i",name,if(i==0)aiObject("raw" to aiString("31234"))else aiObject())))}
             if(i==4)assertTrue(result.exceptionOrNull() is BackendFailure)else assertTrue(result.isSuccess)
         }
-        assertEquals(4,t.engine.budget.repairs);assertTrue(t.f.state.profiles.isEmpty())
+        assertEquals(4,t.engine.budget.repairs);assertTrue(t.f.core.people.isEmpty())
     }
     @Test fun thirtyTwoCallReplyIsCompleteAndThirtyThreeHasZeroExecution()=runBlocking {
         val t=Fixture()
@@ -165,7 +165,7 @@ class ToolBatchEngineTest {
         assertEquals(VerificationStatus.COMMITTED_UNVERIFIED,t.engine.execute(listOf(first)).single().verification)
         val revision=t.f.coordinator.marker()
         val second=t.engine.execute(listOf(first.copy(id="new",arguments=aiObject("number" to aiString("31234"),"name" to aiString("second"))))).single()
-        assertEquals(ToolStatus.FAILED,second.status);assertEquals("first",t.f.state.profiles.getValue("31234").name);assertEquals(revision,t.f.coordinator.marker())
+        assertEquals(ToolStatus.FAILED,second.status);assertEquals("first",t.f.core.people.getValue("31234").name);assertEquals(revision,t.f.coordinator.marker())
     }
     @Test fun aDependencyMayUseARegeneratedIdForACachedCompletedStep()=runBlocking {
         val t=Fixture()
@@ -178,6 +178,6 @@ class ToolBatchEngineTest {
         val t=Fixture();val task=t.plan(1)
         t.engine.execute(listOf(t.profile("one","31234",task)))
         val extra=t.engine.execute(listOf(t.profile("extra","35678",task))).single()
-        assertEquals(ToolStatus.FAILED,extra.status);assertEquals(1,t.f.state.profiles.size)
+        assertEquals(ToolStatus.FAILED,extra.status);assertEquals(1,t.f.core.people.size)
     }
 }

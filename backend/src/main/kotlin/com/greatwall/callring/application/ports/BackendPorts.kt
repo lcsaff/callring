@@ -6,21 +6,9 @@ import com.greatwall.callring.contracts.settings.*
 import com.greatwall.callring.contracts.runtime.*
 import com.greatwall.callring.contracts.widget.*
 import com.greatwall.callring.application.recording.policy.*
-import com.greatwall.callring.domain.BackendState
-import com.greatwall.callring.domain.AuditRecord
 import com.greatwall.callring.domain.CalendarImport
 import java.io.InputStream
 import java.io.OutputStream
-
-/**
- * Implementations serialize reads and writes, use one SQL snapshot, and roll back on exceptions.
- * State belongs to the callback only; it must never escape or be reused by the adapter.
- */
-interface BackendStore {
-    fun <T> read(block: (BackendState) -> T): T
-
-    fun <T> transaction(block: (BackendState) -> T): T
-}
 
 /** Downloads a validated annual calendar; never invoked from the call decision path. */
 fun interface CalendarSource {

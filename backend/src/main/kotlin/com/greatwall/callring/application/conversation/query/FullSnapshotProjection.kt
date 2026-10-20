@@ -1,5 +1,6 @@
 package com.greatwall.callring.application.conversation.query
 
+import com.greatwall.callring.domain.model.defaultWorkSchedule
 import com.greatwall.callring.application.*
 import com.greatwall.callring.application.mapping.*
 import com.greatwall.callring.application.ports.store.*

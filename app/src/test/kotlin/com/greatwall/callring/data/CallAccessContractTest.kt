@@ -27,7 +27,7 @@ class CallAccessContractTest {
     private fun access(size: Int) = runBlocking {
         val context = RuntimeEnvironment.getApplication()
         val name = "calling-access-$size.db"
-        SqliteBackendStore(context, name).use { LocalAccessFixture.seed(it, size) }
+        SqliteCoreStorageResource(context, name).use { LocalAccessFixture.seed(it, size) }
         val probe = SqlAccessProbe()
         val config =
             BackendConfiguration(
@@ -128,7 +128,6 @@ class CallAccessContractTest {
                                         it !in
                                             setOf(
                                                 "coreOpens",
-                                                "coreStateLoads",
                                                 "completeCaptures",
                                                 "classifications",
                                                 "sourceQueries",
@@ -141,9 +140,9 @@ class CallAccessContractTest {
                             ),
                         )
                         .put(
-                            "fullStateLoads",
-                            graph.businessReadCounters().getValue("coreStateLoads") -
-                                before.getValue("coreStateLoads"),
+                            "completeCaptures",
+                            graph.businessReadCounters().getValue("completeCaptures") -
+                                before.getValue("completeCaptures"),
                         ),
                 )
                 sqlObservations.put(label, org.json.JSONArray(windows))
@@ -176,11 +175,6 @@ class CallAccessContractTest {
                             .sumOf { it.getLong("writtenRows") },
                     )
                 assertEquals(label, untouched, unrelated())
-                assertEquals(
-                    label,
-                    before.getValue("coreStateLoads"),
-                    graph.businessReadCounters().getValue("coreStateLoads"),
-                )
                 assertEquals(
                     label,
                     before.getValue("completeCaptures"),

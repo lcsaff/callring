@@ -2,7 +2,7 @@ package com.greatwall.callring.data.settings
 
 import com.greatwall.callring.application.ports.store.WorkScheduleWriter
 import com.greatwall.callring.data.*
-import com.greatwall.callring.domain.defaultWorkSchedule
+import com.greatwall.callring.domain.model.defaultWorkSchedule
 import com.greatwall.callring.domain.model.WorkScheduleSettings
 
 internal class SqliteWorkSchedule(private val sql: SqlAccess, private val checkActive: (Boolean) -> Unit) : WorkScheduleWriter {

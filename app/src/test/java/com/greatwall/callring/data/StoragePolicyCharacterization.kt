@@ -1,7 +1,6 @@
 package com.greatwall.callring.data
 
 import com.greatwall.callring.contracts.callers.*
-import com.greatwall.callring.domain.BackendState
 import com.greatwall.callring.domain.CallCorrelation
 import com.greatwall.callring.domain.RawCallRecord
 import com.greatwall.callring.domain.model.CallDecision
@@ -36,48 +35,48 @@ class StoragePolicyCharacterization {
 
     @Test
     fun ambiguityOutsideAffectedWindowPreventsAssociation() {
-        val state = BackendState()
+        val calls = linkedMapOf<Long, RawCallRecord>()
         listOf(row(1, 6000, true), row(2, 16000, true), row(3, 11000, false)).forEach {
-            state.calls[it.id] = it
+            calls[it.id] = it
         }
-        CallCorrelation.reconcile(state.calls.values.filter { it.number == "31234" }, listOf(1000))
-            .forEach { (_, after) -> state.calls[after.id] = after }
-        assertNull(state.calls.getValue(3).linkedScreenId)
-        assertFalse(state.calls.getValue(1).counted)
+        CallCorrelation.reconcile(calls.values.filter { it.number == "31234" }, listOf(1000))
+            .forEach { (_, after) -> calls[after.id] = after }
+        assertNull(calls.getValue(3).linkedScreenId)
+        assertFalse(calls.getValue(1).counted)
     }
 
     @Test
     fun unknownAccountCannotChooseBetweenTwoKnownAccounts() {
-        val state = BackendState()
+        val calls = linkedMapOf<Long, RawCallRecord>()
         listOf(row(1, 1000, true), row(2, 1000, false, "a"), row(3, 1000, false, "b")).forEach {
-            state.calls[it.id] = it
+            calls[it.id] = it
         }
-        CallCorrelation.reconcile(state.calls.values.filter { it.number == "31234" }).forEach {
+        CallCorrelation.reconcile(calls.values.filter { it.number == "31234" }).forEach {
             (_, after) ->
-            state.calls[after.id] = after
+            calls[after.id] = after
         }
-        assertFalse(state.calls.getValue(1).counted)
-        assertEquals(CallResult.UNRESOLVED, state.calls.getValue(1).result)
-        assertNull(state.calls.getValue(2).linkedScreenId)
+        assertFalse(calls.getValue(1).counted)
+        assertEquals(CallResult.UNRESOLVED, calls.getValue(1).result)
+        assertNull(calls.getValue(2).linkedScreenId)
     }
 
     @Test
     fun associationPreservesOriginalScreeningFactsAndBecomesReversible() {
-        val state = BackendState()
+        val calls = linkedMapOf<Long, RawCallRecord>()
         val screen = row(1, 1000, true)
-        state.calls[1] = screen
-        state.calls[2] = row(2, 1100, false)
-        CallCorrelation.reconcile(state.calls.values.filter { it.number == "31234" }, listOf(1000))
-            .forEach { (_, after) -> state.calls[after.id] = after }
-        assertTrue(state.calls.getValue(1).hidden)
-        assertEquals(1L, state.calls.getValue(2).linkedScreenId)
-        assertEquals(screen.originalClassification, state.calls.getValue(1).originalClassification)
-        state.calls[2] = state.calls.getValue(2).copy(time = 8000)
-        CallCorrelation.reconcile(state.calls.values.filter { it.number == "31234" }, listOf(1100))
-            .forEach { (_, after) -> state.calls[after.id] = after }
-        assertFalse(state.calls.getValue(1).hidden)
-        assertTrue(state.calls.getValue(1).counted)
-        assertNull(state.calls.getValue(2).linkedScreenId)
+        calls[1] = screen
+        calls[2] = row(2, 1100, false)
+        CallCorrelation.reconcile(calls.values.filter { it.number == "31234" }, listOf(1000))
+            .forEach { (_, after) -> calls[after.id] = after }
+        assertTrue(calls.getValue(1).hidden)
+        assertEquals(1L, calls.getValue(2).linkedScreenId)
+        assertEquals(screen.originalClassification, calls.getValue(1).originalClassification)
+        calls[2] = calls.getValue(2).copy(time = 8000)
+        CallCorrelation.reconcile(calls.values.filter { it.number == "31234" }, listOf(1100))
+            .forEach { (_, after) -> calls[after.id] = after }
+        assertFalse(calls.getValue(1).hidden)
+        assertTrue(calls.getValue(1).counted)
+        assertNull(calls.getValue(2).linkedScreenId)
     }
 
     @Test
@@ -97,7 +96,7 @@ class StoragePolicyCharacterization {
 
     @Test
     fun multipleCentersShareDegreesAndLeaveUnrelatedRowsUntouched() {
-        val state = BackendState()
+        val calls = linkedMapOf<Long, RawCallRecord>()
         listOf(
                 row(1, 1000, true),
                 row(2, 1100, false),
@@ -105,35 +104,35 @@ class StoragePolicyCharacterization {
                 row(4, 61100, false),
                 row(5, 121000, true),
             )
-            .forEach { state.calls[it.id] = it }
-        val untouched = state.calls.getValue(5)
+            .forEach { calls[it.id] = it }
+        val untouched = calls.getValue(5)
         CallCorrelation.reconcile(
-                state.calls.values.filter { it.number == "31234" },
+                calls.values.filter { it.number == "31234" },
                 listOf(1000, 61000),
             )
-            .forEach { (_, after) -> state.calls[after.id] = after }
-        assertEquals(1L, state.calls.getValue(2).linkedScreenId)
-        assertEquals(3L, state.calls.getValue(4).linkedScreenId)
-        assertSame(untouched, state.calls.getValue(5))
+            .forEach { (_, after) -> calls[after.id] = after }
+        assertEquals(1L, calls.getValue(2).linkedScreenId)
+        assertEquals(3L, calls.getValue(4).linkedScreenId)
+        assertSame(untouched, calls.getValue(5))
     }
 
     @Test
     fun timestampBoundsDoNotOverflow() {
-        val state = BackendState()
+        val calls = linkedMapOf<Long, RawCallRecord>()
         listOf(
                 row(1, Long.MIN_VALUE, true),
                 row(2, Long.MIN_VALUE + 5000, false),
                 row(3, Long.MAX_VALUE, true),
                 row(4, Long.MAX_VALUE - 5000, false),
             )
-            .forEach { state.calls[it.id] = it }
+            .forEach { calls[it.id] = it }
         CallCorrelation.reconcile(
-                state.calls.values.filter { it.number == "31234" },
+                calls.values.filter { it.number == "31234" },
                 listOf(Long.MIN_VALUE, Long.MAX_VALUE),
             )
-            .forEach { (_, after) -> state.calls[after.id] = after }
-        assertEquals(1L, state.calls.getValue(2).linkedScreenId)
-        assertEquals(3L, state.calls.getValue(4).linkedScreenId)
+            .forEach { (_, after) -> calls[after.id] = after }
+        assertEquals(1L, calls.getValue(2).linkedScreenId)
+        assertEquals(3L, calls.getValue(4).linkedScreenId)
     }
 
     @Test

@@ -39,3 +39,5 @@ ToolRegistry 的展示字面量许可当前依赖数字 index/位置参数，具
 主负责人决定：ai-operation-compatibility.json 继续冻结并保留原 pin。具名生产目录内部结构变化不构成重写 golden 或移除 pin 的理由；可增加外部字段语义比较，不能通过更新 hash 掩盖工具名/schema/标识变化。
 
 操作守卫还应拒绝把数字分派改藏到displayOrder或operationCode解析：这些字段只能服务稳定协议/元数据及发现排序，Executor/Batch/Scope/Confirmation/Verifier/Reader的行为应由OperationId或明确策略驱动。目录自身也不整文件豁免数字逻辑；保留显式定义字面量、唯一性校验和兼容导出正例，并用目录中偷偷引入numeric when的反例验证边界。
+
+T12后的当前numeric规则按已知行为文件名选择检查范围。T14还须用新建/改名operation helper的负例核对同类行为不能绕过：legacyIndex/displayOrder/operationCode解析或OperationId.ordinal的业务选择不能因移到新文件而被放过。规则应依据具名操作上下文与具体metadata字段，不泛禁正常分页index、容量、枚举/JSON处理；补合法普通索引及显式目录声明/排序正例，避免把文件名白名单换成整目录误拒。

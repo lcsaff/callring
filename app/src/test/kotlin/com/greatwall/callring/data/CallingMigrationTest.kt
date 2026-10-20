@@ -16,13 +16,13 @@ import org.robolectric.annotation.Config
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [33], manifest = Config.NONE)
 class CallingMigrationTest {
-    private lateinit var store: SqliteBackendStore
+    private lateinit var store: SqliteCoreStorageResource
     private val database = "calling-migration.db"
 
     @Before
     fun open() {
         RuntimeEnvironment.getApplication().deleteDatabase(database)
-        store = SqliteBackendStore(RuntimeEnvironment.getApplication(), database)
+        store = SqliteCoreStorageResource(RuntimeEnvironment.getApplication(), database)
     }
 
     @After
@@ -66,14 +66,13 @@ class CallingMigrationTest {
                 .atZone(ZoneId.systemDefault())
                 .toInstant()
                 .toEpochMilli()
-        store.transaction { state ->
-            state.positions[1] = PositionRecord(1, "manager", 2, true)
-            state.nextPositionId = 2
-            state.profiles["31234"] = ProfileRecord("31234", "name", "department", 1, true)
-            state.myPositionId = 1
-            val fact = WorkClassifier.classify(state, at)
-            state.calls[1] =
-                RawCallRecord(
+        store.fixtureSql { state ->
+            state.seedPosition(PositionRecord(1, "manager", 2, true))
+            state.seedSequence("positions", 2)
+            state.seedCaller(ProfileRecord("31234", "name", "department", 1, true))
+            state.execSQL("INSERT INTO settings(key,value,position_id) VALUES('my_position','1',1)")
+            val fact = WorkClassifier.classify(state.fixtureWork(), at)
+            state.seedCall(RawCallRecord(
                     1,
                     "31234",
                     at,
@@ -86,10 +85,10 @@ class CallingMigrationTest {
                     true,
                     fact,
                     fact,
-                )
-            state.nextCallId = 2
+                ))
+            state.seedSequence("calls", 2)
         }
-        val original = store.read { it.calls.getValue(1).originalClassification }
+        val original = store.fullSnapshot.capture().let { it.calls.getValue(1).originalClassification }
         store.close()
         fixture().use { db ->
             db.execSQL(
@@ -109,8 +108,8 @@ class CallingMigrationTest {
             rejectIncidentalWrites(db)
             db.version = 1
         }
-        store = SqliteBackendStore(RuntimeEnvironment.getApplication(), database)
-        store.read { state ->
+        store = SqliteCoreStorageResource(RuntimeEnvironment.getApplication(), database)
+        store.fullSnapshot.capture().let { state ->
             assertEquals(2, state.calls.size)
             assertEquals("name", state.profiles.getValue("31234").name)
             assertEquals(1L, state.myPositionId)
@@ -142,11 +141,10 @@ class CallingMigrationTest {
                 .atZone(ZoneId.systemDefault())
                 .toInstant()
                 .toEpochMilli()
-        store.transaction { state ->
-            state.profiles["31234"] = ProfileRecord("31234")
-            val fact = WorkClassifier.classify(state, at)
-            state.calls[1] =
-                RawCallRecord(
+        store.fixtureSql { state ->
+            state.seedCaller(ProfileRecord("31234"))
+            val fact = WorkClassifier.classify(state.fixtureWork(), at)
+            state.seedCall(RawCallRecord(
                     1,
                     "31234",
                     at,
@@ -159,18 +157,18 @@ class CallingMigrationTest {
                     true,
                     fact,
                     fact,
-                )
-            state.nextCallId = 2
+                ))
+            state.seedSequence("calls", 2)
         }
-        val original = store.read { it.calls.getValue(1).originalClassification }
+        val original = store.fullSnapshot.capture().let { it.calls.getValue(1).originalClassification }
         store.close()
         fixture().use { db ->
             db.execSQL("UPDATE calls SET working=0,reason='工作时段外' WHERE id=1")
             rejectIncidentalWrites(db)
             db.version = 2
         }
-        store = SqliteBackendStore(RuntimeEnvironment.getApplication(), database)
-        store.read { state ->
+        store = SqliteCoreStorageResource(RuntimeEnvironment.getApplication(), database)
+        store.fullSnapshot.capture().let { state ->
             assertTrue(state.calls.getValue(1).classification.working)
             assertEquals(original, state.calls.getValue(1).originalClassification)
         }

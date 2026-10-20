@@ -27,9 +27,9 @@ class ReportReadContractTest {
     private fun access(size: Int) = runBlocking {
         val context = RuntimeEnvironment.getApplication()
         val name = "report-home-access-$size.db"
-        SqliteBackendStore(context, name).use { store ->
+        SqliteCoreStorageResource(context, name).use { store ->
             LocalAccessFixture.seed(store, size)
-            val current = store.read { it.calls.getValue(1) }
+            val current = store.fullSnapshot.capture().let { it.calls.getValue(1) }
             store.sessions.writeCalling { writer ->
                 val original =
                     current.originalClassification.copy(
@@ -155,17 +155,9 @@ class ReportReadContractTest {
                                 .put("consumedRows", row.consumedRows - (old?.consumedRows ?: 0))
                                 .put("writtenRows", row.writtenRows - (old?.writtenRows ?: 0))
                     }
-                assertEquals(
-                    label,
-                    0L,
-                    graph.businessReadCounters().getValue("coreStateLoads") -
-                        counters.getValue("coreStateLoads"),
-                )
-                assertEquals(
-                    label,
-                    counters.getValue("completeCaptures"),
-                    graph.businessReadCounters().getValue("completeCaptures"),
-                )
+                val captureDelta = graph.businessReadCounters().getValue("completeCaptures") -
+                    counters.getValue("completeCaptures")
+                assertEquals(label, 0L, captureDelta)
                 assertEquals(label, revision, graph.coordinator.marker())
                 val callRows =
                     windows
@@ -188,8 +180,7 @@ class ReportReadContractTest {
                     label,
                     org.json
                         .JSONObject()
-                        .put("fullStateLoads", 0)
-                        .put("completeCaptures", 0)
+                        .put("completeCaptures", captureDelta)
                         .put("revisionDelta", 0)
                         .put("narrowAccess", narrow),
                 )

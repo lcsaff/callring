@@ -11,7 +11,7 @@ import com.greatwall.callring.contracts.common.*
 import com.greatwall.callring.contracts.report.*
 import com.greatwall.callring.contracts.runtime.*
 import com.greatwall.callring.domain.PositionRecord
-import com.greatwall.callring.domain.defaultWorkSchedule
+import com.greatwall.callring.domain.model.defaultWorkSchedule
 import com.greatwall.callring.domain.report.StreamingReportAccumulator
 import java.io.OutputStream
 import java.time.Clock

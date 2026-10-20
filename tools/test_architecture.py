@@ -34,7 +34,7 @@ class ArchitectureTests(unittest.TestCase):
         self.check_bad(lambda r: self.domain_source(r, "import com.greatwall.callring.contracts.settings.TimeWindow", "test"))
     def test_valid_tree(self): self.assertEqual([], check_architecture.check(self.tree()))
     def test_concrete_backend_store_cast_is_rejected(self):
-        for value in ('store as SqliteBackendStore', 'store as? com.greatwall.callring.data.SqliteBackendStore', 'store.asSqliteBackendStore()', '(SqliteBackendStore) store'):
+        for value in ('store as SqliteCoreStorageResource', 'store as? com.greatwall.callring.data.SqliteCoreStorageResource', 'store.asSqliteCoreStorageResource()', '(SqliteCoreStorageResource) store'):
             with self.subTest(value=value):
                 self.check_bad(lambda r: (r/'app/src/main/kotlin/Bad.kt').write_text('val source = ' + value))
     def test_other_sealed_or_keystore_casts_are_allowed(self):
@@ -80,4 +80,34 @@ class ArchitectureTests(unittest.TestCase):
         for declaration in ('data class OperationContract(val id:OperationId)', 'fun ToolRegistry.operationContracts() = definitions.map { it }'):
             with self.subTest(declaration=declaration):
                 self.check_bad(lambda root: (root/'backend/src/main/kotlin/Old.kt').write_text(declaration))
+    def test_removed_full_state_protocol_is_rejected_in_all_source_sets(self):
+        for source_set in ("main", "test", "debug"):
+            for text in ("interface BackendStore", "val state: BackendState", "val old = StorageSession(db)", "class SqliteBackendStore", "val n = stateLoadCount()", "val x = resource.legacy", "fun load(): BackendState", "fun transaction(block: (BackendState) -> Unit)"):
+                with self.subTest(source_set=source_set, text=text):
+                    def mutate(root):
+                        path=root/f"app/src/{source_set}/kotlin/Old.kt"
+                        path.parent.mkdir(parents=True, exist_ok=True)
+                        path.write_text(text)
+                    self.check_bad(mutate)
+    def test_removed_full_state_implementation_helpers_are_rejected(self):
+        for source_set in ("main", "test", "debug"):
+            for name in ("CallStore", "ProfileStore", "ScheduleStore", "SettingsStore"):
+                for text in (f"class {name}", f"val old: {name} = make()"):
+                    def mutate(root):
+                        path=root/f"app/src/{source_set}/kotlin/Old.kt"
+                        path.parent.mkdir(parents=True, exist_ok=True)
+                        path.write_text(text)
+                    with self.subTest(source_set=source_set, text=text): self.check_bad(mutate)
+            for text in ("fun fullDiff() {}", "val old = fullDiff()", "val stateLoads = counter", "val n = store.stateLoads.get()"):
+                def mutate(root):
+                    path=root/f"app/src/{source_set}/kotlin/Old.kt"
+                    path.parent.mkdir(parents=True, exist_ok=True)
+                    path.write_text(text)
+                with self.subTest(source_set=source_set, text=text): self.check_bad(mutate)
+    def test_current_narrow_stores_are_allowed(self):
+        text="class SqliteCallStore; class SqliteCallerStore; class RecordingSettingsStore; class WidgetBindingStore"
+        self.assertEqual([], check_architecture.check(self.tree(lambda root: (root/'app/src/main/kotlin/Good.kt').write_text(text))))
+    def test_snapshot_facts_and_value_codecs_are_allowed(self):
+        text="val facts: FullSnapshotFacts = reader.capture(); val codec = LegacyValueCodec; val x = payload as? AiJson.Obj; val y = row.legacyResult"
+        self.assertEqual([], check_architecture.check(self.tree(lambda root: (root/'app/src/main/kotlin/Good.kt').write_text(text))))
 if __name__ == '__main__': unittest.main()

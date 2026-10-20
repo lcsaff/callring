@@ -25,7 +25,7 @@ class NumberDeletionRegressionTest {
         val command = CommandContext("delete", fixture.coordinator.capture(), 1,
             expectedScopes = fixture.coordinator.expect(setOf("profile:31234:exists", "calls:31234"))) { true }
         fixture.backend.commandApi(command).numberDeletion.delete(DeleteNumberCommand("31234", 0, 0, 1)).requiredValue()
-        assertFalse(fixture.state.profiles.containsKey("31234"))
+        assertFalse(fixture.core.people.containsKey("31234"))
         assertTrue(fixture.bindings.isEmpty())
     }
 
@@ -46,7 +46,7 @@ class NumberDeletionRegressionTest {
             { number -> ApiResult.Success(fixture.bindings.values.filter { it.number == number }) },
             { binding, cmd -> if (fail) ApiResult.Failure(ApiError(ErrorCode.IO_FAILURE, "fixture")) else fixture.backend.commandApi(cmd).widgets.removeBinding(binding.widgetId) }, fixture.coordinator, active = { true })
         assertTrue(deletion.delete(DeleteNumberCommand("31234", 0, 0, 1)) is ApiResult.Failure)
-        assertFalse(fixture.state.profiles.containsKey("31234"))
+        assertFalse(fixture.core.people.containsKey("31234"))
         fail = false
         deletion.delete(DeleteNumberCommand("31234", 0, 0, 1)).requiredValue()
         assertTrue(fixture.bindings.isEmpty())

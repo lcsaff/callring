@@ -39,7 +39,7 @@ class SimpleSettingsAccessContractTest {
     private fun characterize(unrelatedCalls: Int) = runBlocking {
         val context = RuntimeEnvironment.getApplication()
         val databaseName = "simple-settings-$unrelatedCalls.db"
-        SqliteBackendStore(context, databaseName).use { LocalAccessFixture.seed(it, unrelatedCalls) }
+        SqliteCoreStorageResource(context, databaseName).use { LocalAccessFixture.seed(it, unrelatedCalls) }
         val sqlProbe = SqlAccessProbe()
         val configuration = BackendConfiguration(
             AppearanceSettings(ThemeSelection.PRESET, "default", null, ColorMode.FOLLOW_SYSTEM),
@@ -63,8 +63,8 @@ class SimpleSettingsAccessContractTest {
         })
         try {
             // Audit reads are deliberately outside measured production operations and their counters.
-            fun unrelatedFacts() = SqliteBackendStore(context, databaseName).use { store ->
-                store.read { state ->
+            fun unrelatedFacts() = SqliteCoreStorageResource(context, databaseName).use { store ->
+                store.fullSnapshot.capture().let { state ->
                     state.profiles.getValue(LocalAccessFixture.UNRELATED) to
                         state.calls.values.filter { it.number == LocalAccessFixture.UNRELATED }.sortedBy { it.id }
                 }
@@ -101,17 +101,15 @@ class SimpleSettingsAccessContractTest {
                 val after = graph.businessReadCounters()
                 val revisionDelta = graph.coordinator.marker() - beforeRevision
                 assertEquals("$name logical revision", if (name.endsWith("Read") || name.endsWith("Noop")) 0L else 1L, revisionDelta)
-                assertEquals("$name must avoid full state loading", 0L, after.getValue("coreStateLoads") - before.getValue("coreStateLoads"))
+                assertEquals("$name must avoid complete snapshot capture", 0L, after.getValue("completeCaptures") - before.getValue("completeCaptures"))
                 assertTrue("$name must avoid calls rows", sqlWindow.none { it.getJSONArray("tables").toString().contains("calls") })
                 observations.put(name, JSONObject()
-                    .put("fullStateLoads", after.getValue("coreStateLoads") - before.getValue("coreStateLoads"))
+                    .put("completeCaptures", after.getValue("completeCaptures") - before.getValue("completeCaptures"))
                     .put("revisionDelta", revisionDelta)
                     .put("quietReads", after.getValue("quietReads") - before.getValue("quietReads"))
                     .put("quietWrites", after.getValue("quietWrites") - before.getValue("quietWrites"))
                     .put("publishedDomains", JSONArray(if (revisionDelta == 0L) emptyList<String>()
                         else graph.coordinator.invalidations.snapshots.value.let { snapshot -> snapshot.domains.filterValues { it.lastAnyRevision == snapshot.revision }.keys }.map { it.name }.sorted())))
-                assertEquals("ordinary operations must not request a complete AI snapshot",
-                    before.getValue("completeCaptures"), after.getValue("completeCaptures"))
                 assertEquals("$name must preserve every unrelated profile/call fact",
                     unrelatedBefore, unrelatedFacts())
             }

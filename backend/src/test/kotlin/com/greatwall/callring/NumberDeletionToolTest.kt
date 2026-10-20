@@ -15,9 +15,9 @@ import org.junit.Test
 class NumberDeletionToolTest {
     @Test fun confirmedDeletionRemovesProfileAndCallsAndCancelledConfirmationKeepsData() = runBlocking {
         val f = ConversationFixtures()
-        val fact = WorkClassifier.classify(f.state, f.now)
+        val fact = WorkClassifier.classify(f.core.decision, f.now)
         f.backend.callers.saveProfile(SaveCallerProfile("31234", "name", "dept", null, false)).requiredValue()
-        f.state.calls[1] = RawCallRecord(1, "31234", f.now, 0, CallResult.ANSWERED.toDomain(), CallDecision.NORMAL_RINGING.toDomain(), CallSource.SCREENING.toDomain(), null, null, true, fact, fact)
+        f.core.calls[1] = RawCallRecord(1, "31234", f.now, 0, CallResult.ANSWERED.toDomain(), CallDecision.NORMAL_RINGING.toDomain(), CallSource.SCREENING.toDomain(), null, null, true, fact, fact)
         val foreground = ForegroundActionService(checkCommand = ForegroundCommandValidator(f.coordinator)::check)
         val host = foreground.attachHost()
         val executor = ToolExecutor({ f.backend }, f.coordinator, foreground, ForegroundResourceRegistry(), queries=unusedToolQueries(), documentWriteVerified={false})
@@ -32,8 +32,8 @@ class NumberDeletionToolTest {
         assertTrue(foreground.beginLaunch(ticket.requestId, host))
         foreground.deliver(ticket.requestId, ForegroundHostResult(ForegroundResultStatus.CANCELLED))
         assertEquals(ToolStatus.CANCELLED, cancelled.await().status)
-        assertTrue(f.state.profiles.containsKey("31234"))
-        assertTrue(f.state.calls.containsKey(1L))
+        assertTrue(f.core.people.containsKey("31234"))
+        assertTrue(f.core.calls.containsKey(1L))
 
         val confirmed = async { executor.execute(call("c2"), scope()) }
         val ticket2 = withTimeout(3000) { foreground.pending.first { it != null } }!!
@@ -41,7 +41,7 @@ class NumberDeletionToolTest {
         foreground.deliver(ticket2.requestId, ForegroundHostResult(ForegroundResultStatus.VERIFIED))
         val receipt = confirmed.await()
         assertEquals(ToolStatus.COMMITTED, receipt.status)
-        assertFalse(f.state.profiles.containsKey("31234"))
-        assertFalse(f.state.calls.containsKey(1L))
+        assertFalse(f.core.people.containsKey("31234"))
+        assertFalse(f.core.calls.containsKey(1L))
     }
 }

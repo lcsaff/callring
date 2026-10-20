@@ -7,13 +7,12 @@ import com.greatwall.callring.application.ports.*
 import com.greatwall.callring.application.ports.store.*
 import com.greatwall.callring.contracts.ai.*
 import com.greatwall.callring.contracts.common.*
-import com.greatwall.callring.domain.*
 import java.io.Closeable
 import java.util.concurrent.atomic.AtomicLong
 
 /** Every IO lease includes the callback, cursor consumption and transaction completion. */
 internal class StorageResources(private val factory: () -> CoreStorageResource) :
-    BackendStore, CoreUnitOfWork, FullSnapshotReader, Closeable {
+    CoreUnitOfWork, FullSnapshotReader, Closeable {
     private var instance: CoreStorageResource? = null
     private val closing = java.util.concurrent.atomic.AtomicBoolean()
     val completeCaptures = AtomicLong()
@@ -39,21 +38,9 @@ internal class StorageResources(private val factory: () -> CoreStorageResource) 
     }
 
     @Synchronized
-    fun stateLoadCount(): Long {
-        ensureOpen()
-        return instance?.stateLoadCount() ?: 0
-    }
-
-    @Synchronized
     fun narrowAccessCounts(): Map<String, Long> {
         ensureOpen()
         return instance?.narrowAccessCounts() ?: emptyMap()
-    }
-
-    override fun <T> read(block: (BackendState) -> T): T = lease { it.legacy.read(block) }
-
-    override fun <T> transaction(block: (BackendState) -> T): T = lease {
-        it.legacy.transaction(block)
     }
 
     override fun capture(): FullSnapshotFacts = lease {

@@ -16,24 +16,24 @@ class ScopedTransactionTest {
     fun disablingLegacyCustomWithoutRememberedKeyStillPersistsResumeMode() {
         val context = RuntimeEnvironment.getApplication()
         val name = "scoped-legacy-custom.db"
-        SqliteBackendStore(context, name).close()
+        SqliteCoreStorageResource(context, name).close()
         context.openOrCreateDatabase(name, 0, null).use { db ->
             db.execSQL("INSERT INTO settings(key,value) VALUES('quiet_mode','CUSTOM')")
         }
-        SqliteBackendStore(context, name).use { store ->
+        SqliteCoreStorageResource(context, name).use { store ->
             store.sessions.writeQuiet { writer ->
                 val before = writer.quiet()
                 writer.saveQuiet(before.copy(settings = before.settings.copy(mode = QuietMode.OFF)))
             }
         }
-        SqliteBackendStore(context, name).use { store ->
+        SqliteCoreStorageResource(context, name).use { store ->
             assertEquals(QuietMode.CUSTOM, store.sessions.readQuiet { it.quiet().lastMode })
         }
     }
 
     @Test
     fun quietAndStatisticsUseOneTransactionAndRollbackTogether() {
-        SqliteBackendStore(RuntimeEnvironment.getApplication(), "scoped-rollback.db").use { store ->
+        SqliteCoreStorageResource(RuntimeEnvironment.getApplication(), "scoped-rollback.db").use { store ->
             val sessions = store.sessions
             val before = sessions.readSession { it.quiet() to it.statisticsHead() }
             assertThrows(IllegalStateException::class.java) {
@@ -65,13 +65,13 @@ class ScopedTransactionTest {
                 456L,
                 sessions.readSession { it.statisticsHead().open!!.interval.startMillis },
             )
-            assertEquals(0L, store.stateLoads.get())
+            assertEquals(0L, store.completeCaptures.get())
         }
     }
 
     @Test
     fun simpleSettingsShareRollbackAndSqliteAutoincrementNeverReusesDeletedPosition() {
-        SqliteBackendStore(RuntimeEnvironment.getApplication(), "simple-shared-rollback.db").use {
+        SqliteCoreStorageResource(RuntimeEnvironment.getApplication(), "simple-shared-rollback.db").use {
             store ->
             val original = store.sessions.readSession { it.score() to it.overlay() }
             assertThrows(IllegalStateException::class.java) {
@@ -116,13 +116,13 @@ class ScopedTransactionTest {
                 store.sessions.writePositions { it.deletePosition(second.id) }
             }
             assertNotNull(store.sessions.readPositions { it.position(second.id) })
-            assertEquals(0L, store.stateLoads.get())
+            assertEquals(0L, store.completeCaptures.get())
         }
     }
 
     @Test
     fun escapedReaderAndWriterRejectUseAfterSuccessAndFailure() {
-        SqliteBackendStore(RuntimeEnvironment.getApplication(), "scoped-escape.db").use { store ->
+        SqliteCoreStorageResource(RuntimeEnvironment.getApplication(), "scoped-escape.db").use { store ->
             val reader = store.sessions.readSession { it }
             val value = store.sessions.readQuiet { it.quiet() }
             assertThrows(IllegalStateException::class.java) { reader.statisticsContains(123) }

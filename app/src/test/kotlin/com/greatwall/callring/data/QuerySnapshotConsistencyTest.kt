@@ -1,5 +1,6 @@
 package com.greatwall.callring.data
 
+import com.greatwall.callring.domain.model.defaultWorkSchedule
 import com.greatwall.callring.application.BusinessRevisionCoordinator
 import com.greatwall.callring.application.conversation.QueryService
 import com.greatwall.callring.application.coordination.ChangeImpact
@@ -25,9 +26,9 @@ class QuerySnapshotConsistencyTest {
     fun aggregateAndWorkRejectChangesToEveryNonPrimaryDependency() = runBlocking {
         for (key in listOf("score", "schedule", "overrides", "leaves")) {
             val coordinator = BusinessRevisionCoordinator()
-            SqliteBackendStore(RuntimeEnvironment.getApplication(), "dependency-race-$key.db")
+            SqliteCoreStorageResource(RuntimeEnvironment.getApplication(), "dependency-race-$key.db")
                 .use { physical ->
-                    val original = physical.scopedReads(coordinator)
+                    val original = physical.fixtureScopedReads(coordinator)
                     fun commit() {
                         physical.sessions.writeSession { writer ->
                             when (key) {
@@ -36,7 +37,7 @@ class QuerySnapshotConsistencyTest {
                                 "schedule" -> {
                                     val old =
                                         writer.latestWorkSchedule()
-                                            ?: com.greatwall.callring.domain.defaultWorkSchedule(
+                                            ?: com.greatwall.callring.domain.model.defaultWorkSchedule(
                                                 "UTC",
                                             )
                                     writer.appendWorkSchedule(
@@ -145,7 +146,7 @@ class QuerySnapshotConsistencyTest {
     fun threeRelatedSqlChangesReturnConflictInsteadOfRetaggingOldFacts() = runBlocking {
         val coordinator = BusinessRevisionCoordinator()
         val physical =
-            SqliteBackendStore(RuntimeEnvironment.getApplication(), "snapshot-related-race.db")
+            SqliteCoreStorageResource(RuntimeEnvironment.getApplication(), "snapshot-related-race.db")
         var reads = 0
         var race = true
         val resource =

@@ -29,9 +29,9 @@ class ToolOperationCoverageTest {
         val scope = ToolExecutionContext("s", "t", 1, CommandContext("op", fixture.coordinator.capture(), 1) { true })
         val receipt = executor.execute(ConversationToolCall("call", "callers_saveProfile", aiObject("number" to aiString("31234"), "name" to aiString("new"))), scope)
         assertEquals(ToolStatus.COMMITTED, receipt.status)
-        assertEquals("new", fixture.state.profiles.getValue("31234").name)
-        assertEquals(position.id, fixture.state.profiles.getValue("31234").positionId)
-        assertTrue(fixture.state.profiles.getValue("31234").whitelisted)
+        assertEquals("new", fixture.core.people.getValue("31234").name)
+        assertEquals(position.id, fixture.core.people.getValue("31234").positionId)
+        assertTrue(fixture.core.people.getValue("31234").whitelisted)
     }
     @Test fun originalInUseValidationIsPreservedAndStaleCommandsCannotSave() = runBlocking {
         val fixture = ConversationFixtures()
@@ -41,6 +41,6 @@ class ToolOperationCoverageTest {
         fixture.backend.settings.setQuietMode(QuietMode.NON_WORK)
         val receipt = executor.execute(ConversationToolCall("call", "settings_setQuietEnabled", aiObject("enabled" to aiBool(false))), ToolExecutionContext("s", "t", 1, CommandContext("op", old, 1) { true }))
         assertEquals(ToolStatus.FAILED, receipt.status)
-        assertEquals(com.greatwall.callring.domain.model.QuietMode.NON_WORK, fixture.state.quiet.mode)
+        assertEquals(com.greatwall.callring.domain.model.QuietMode.NON_WORK, fixture.core.decision.quiet.mode)
     }
 }

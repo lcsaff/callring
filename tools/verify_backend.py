@@ -63,7 +63,7 @@ def main():
         apk = metadata_path.parent / metadata["elements"][0]["outputFile"]
         adb = ["adb", "-s", args.device]
         run([*adb, "install", "-r", "-t", str(apk)], "device-install.log")
-        classes = ",".join(("com.greatwall.callring.data.SqliteBackendStoreDeviceTest",
+        classes = ",".join(("com.greatwall.callring.data.SqliteCoreStorageResourceDeviceTest",
                             "com.greatwall.callring.backend.BackendApiDeviceTest",
                             "com.greatwall.callring.backend.BackendMutationDeviceTest",
                             "com.greatwall.callring.BackendSchedulerDeviceTest"))

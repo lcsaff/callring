@@ -13,17 +13,17 @@ import org.robolectric.annotation.Config
 class CoreSnapshotSourceTest {
     @Test
     fun completeCaptureIncludesAllPagesAndPersistedAuditTail() {
-        SqliteBackendStore(RuntimeEnvironment.getApplication(), "complete_source.db").use { store ->
-            store.transaction { s ->
+        SqliteCoreStorageResource(RuntimeEnvironment.getApplication(), "complete_source.db").use { store ->
+            store.fixtureSql { s ->
                 (1..251).forEach {
-                    s.profiles[it.toString()] = ProfileRecord(it.toString(), name = "caller-$it")
+                    s.seedCaller(ProfileRecord(it.toString(), name = "caller-$it"))
                 }
-                s.pendingAudits += AuditRecord("import", "2020", "full-audit-tail", 1)
+                s.seedAudit(AuditRecord("import", "2020", "full-audit-tail", 1))
             }
-            val loads = store.stateLoads.get()
+            val loads = store.completeCaptures.get()
             store.fullSnapshot.capture().let { state ->
                 val audits = state.audits
-                assertEquals(loads, store.stateLoads.get())
+                assertEquals(loads + 1, store.completeCaptures.get())
                 assertEquals(251, state.profiles.size)
                 assertThrows(UnsupportedOperationException::class.java) {
                     (state.profiles as MutableMap).clear()
@@ -36,9 +36,9 @@ class CoreSnapshotSourceTest {
 
     @Test
     fun oversizedTextFailsBeforeDeliveringAnyState() {
-        SqliteBackendStore(RuntimeEnvironment.getApplication(), "large_source.db").use { store ->
-            store.transaction {
-                it.profiles["1"] = ProfileRecord("1", name = "x".repeat(8 * 1024 * 1024))
+        SqliteCoreStorageResource(RuntimeEnvironment.getApplication(), "large_source.db").use { store ->
+            store.fixtureSql {
+                it.seedCaller(ProfileRecord("1", name = "x".repeat(8 * 1024 * 1024)))
             }
             var delivered = false
             assertTrue(

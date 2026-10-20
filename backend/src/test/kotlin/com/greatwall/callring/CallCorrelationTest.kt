@@ -1,7 +1,6 @@
 package com.greatwall.callring
 
 import com.greatwall.callring.contracts.callers.*
-import com.greatwall.callring.domain.BackendState
 import com.greatwall.callring.domain.CallCorrelation
 import com.greatwall.callring.domain.RawCallRecord
 import com.greatwall.callring.domain.model.CallDecision
@@ -51,75 +50,75 @@ class CallCorrelationTest {
 
     @Test
     fun oneCandidateIsInsufficientWhenTheReverseSideHasMultipleCandidates() {
-        val state = BackendState()
-        state.calls[1] = screen(1, 10000)
-        state.calls[2] = screen(2, 11000)
-        state.calls[3] = provider(3, 10500)
-        val originalFacts = state.calls.mapValues { it.value.originalClassification }
-        CallCorrelation.reconcile(state.calls.values.filter { it.number == "30001" }).forEach {
+        val calls = linkedMapOf<Long, RawCallRecord>()
+        calls[1] = screen(1, 10000)
+        calls[2] = screen(2, 11000)
+        calls[3] = provider(3, 10500)
+        val originalFacts = calls.mapValues { it.value.originalClassification }
+        CallCorrelation.reconcile(calls.values.filter { it.number == "30001" }).forEach {
             (_, after) ->
-            state.calls[after.id] = after
+            calls[after.id] = after
         }
-        assertNull(state.calls.getValue(3).linkedScreenId)
+        assertNull(calls.getValue(3).linkedScreenId)
         for (id in listOf(1L, 2L)) {
-            val call = state.calls.getValue(id)
+            val call = calls.getValue(id)
             assertFalse(call.hidden)
             assertFalse(call.counted)
             assertEquals(CallResult.UNRESOLVED, call.result)
         }
-        assertEquals(originalFacts, state.calls.mapValues { it.value.originalClassification })
+        assertEquals(originalFacts, calls.mapValues { it.value.originalClassification })
     }
 
     @Test
     fun unknownScreeningAccountDoesNotChooseBetweenDifferentKnownAccounts() {
-        val state = BackendState()
-        state.calls[1] = screen(1, 10000, null)
-        state.calls[2] = provider(2, 10000, "A")
-        state.calls[3] = provider(3, 10000, "B")
-        CallCorrelation.reconcile(state.calls.values.filter { it.number == "30001" }).forEach {
+        val calls = linkedMapOf<Long, RawCallRecord>()
+        calls[1] = screen(1, 10000, null)
+        calls[2] = provider(2, 10000, "A")
+        calls[3] = provider(3, 10000, "B")
+        CallCorrelation.reconcile(calls.values.filter { it.number == "30001" }).forEach {
             (_, after) ->
-            state.calls[after.id] = after
+            calls[after.id] = after
         }
-        val unresolved = state.calls.getValue(1)
+        val unresolved = calls.getValue(1)
         assertEquals(CallResult.UNRESOLVED, unresolved.result)
         assertFalse(unresolved.hidden)
         assertFalse(unresolved.counted)
-        assertNull(state.calls.getValue(2).linkedScreenId)
-        assertNull(state.calls.getValue(3).linkedScreenId)
-        assertTrue(state.calls.getValue(2).counted)
-        assertTrue(state.calls.getValue(3).counted)
+        assertNull(calls.getValue(2).linkedScreenId)
+        assertNull(calls.getValue(3).linkedScreenId)
+        assertTrue(calls.getValue(2).counted)
+        assertTrue(calls.getValue(3).counted)
     }
 
     @Test
     fun knownAccountsAllowIndependentMutuallyUniquePairsAtTheSameTime() {
-        val state = BackendState()
-        state.calls[1] = screen(1, 10000, "A")
-        state.calls[2] = screen(2, 10000, "B")
-        state.calls[3] = provider(3, 10000, "A")
-        state.calls[4] = provider(4, 10000, "B")
-        CallCorrelation.reconcile(state.calls.values.filter { it.number == "30001" }).forEach {
+        val calls = linkedMapOf<Long, RawCallRecord>()
+        calls[1] = screen(1, 10000, "A")
+        calls[2] = screen(2, 10000, "B")
+        calls[3] = provider(3, 10000, "A")
+        calls[4] = provider(4, 10000, "B")
+        CallCorrelation.reconcile(calls.values.filter { it.number == "30001" }).forEach {
             (_, after) ->
-            state.calls[after.id] = after
+            calls[after.id] = after
         }
-        assertEquals(1L, state.calls.getValue(3).linkedScreenId)
-        assertEquals(2L, state.calls.getValue(4).linkedScreenId)
-        assertTrue(state.calls.getValue(1).hidden)
-        assertTrue(state.calls.getValue(2).hidden)
-        assertEquals(2, state.calls.values.count { !it.hidden && it.counted })
+        assertEquals(1L, calls.getValue(3).linkedScreenId)
+        assertEquals(2L, calls.getValue(4).linkedScreenId)
+        assertTrue(calls.getValue(1).hidden)
+        assertTrue(calls.getValue(2).hidden)
+        assertEquals(2, calls.values.count { !it.hidden && it.counted })
     }
 
     @Test
     fun candidateDegreeIncludesRowsBeyondTheBoundedWriteWindow() {
-        val state = BackendState()
-        state.calls[1] = screen(1, 10000)
-        state.calls[2] = provider(2, 15000)
-        state.calls[3] = screen(3, 20000)
-        val untouched = state.calls.getValue(3)
+        val calls = linkedMapOf<Long, RawCallRecord>()
+        calls[1] = screen(1, 10000)
+        calls[2] = provider(2, 15000)
+        calls[3] = screen(3, 20000)
+        val untouched = calls.getValue(3)
         // Center 5000 writes through 15000; screen 20000 still contributes to provider degree.
-        CallCorrelation.reconcile(state.calls.values.filter { it.number == "30001" }, listOf(5000))
-            .forEach { (_, after) -> state.calls[after.id] = after }
-        assertEquals(CallResult.UNRESOLVED, state.calls.getValue(1).result)
-        assertNull(state.calls.getValue(2).linkedScreenId)
-        assertEquals(untouched, state.calls.getValue(3))
+        CallCorrelation.reconcile(calls.values.filter { it.number == "30001" }, listOf(5000))
+            .forEach { (_, after) -> calls[after.id] = after }
+        assertEquals(CallResult.UNRESOLVED, calls.getValue(1).result)
+        assertNull(calls.getValue(2).linkedScreenId)
+        assertEquals(untouched, calls.getValue(3))
     }
 }

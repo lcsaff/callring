@@ -39,7 +39,7 @@ class HistorySettingsAccessContractTest {
     private fun characterize(unrelatedCalls: Int) = runBlocking {
         val context = RuntimeEnvironment.getApplication()
         val databaseName = "history-settings-$unrelatedCalls.db"
-        SqliteBackendStore(context, databaseName).use { LocalAccessFixture.seed(it, unrelatedCalls) }
+        SqliteCoreStorageResource(context, databaseName).use { LocalAccessFixture.seed(it, unrelatedCalls) }
         val sqlProbe = SqlAccessProbe()
         val configuration = BackendConfiguration(
             AppearanceSettings(ThemeSelection.PRESET, "default", null, ColorMode.FOLLOW_SYSTEM),
@@ -63,8 +63,8 @@ class HistorySettingsAccessContractTest {
         })
         try {
             // Audit reads are deliberately outside measured production operations and their counters.
-            fun unrelatedFacts() = SqliteBackendStore(context, databaseName).use { store ->
-                store.read { state ->
+            fun unrelatedFacts() = SqliteCoreStorageResource(context, databaseName).use { store ->
+                store.fullSnapshot.capture().let { state ->
                     state.profiles.getValue(LocalAccessFixture.UNRELATED) to
                         state.calls.values.filter { it.number == LocalAccessFixture.UNRELATED }.sortedBy { it.id }
                 }
@@ -101,17 +101,15 @@ class HistorySettingsAccessContractTest {
                 val after = graph.businessReadCounters()
                 val revisionDelta = graph.coordinator.marker() - beforeRevision
                 assertEquals("$name logical revision", if (name.endsWith("Read") || name.endsWith("Noop")) 0L else 1L, revisionDelta)
-                assertEquals("$name must avoid full state loading", 0L, after.getValue("coreStateLoads") - before.getValue("coreStateLoads"))
+                assertEquals("$name must avoid complete snapshot capture", 0L, after.getValue("completeCaptures") - before.getValue("completeCaptures"))
                 assertTrue("$name must avoid calls rows", sqlWindow.none { it.getJSONArray("tables").toString().contains("calls") })
                 observations.put(name, JSONObject()
-                    .put("fullStateLoads", after.getValue("coreStateLoads") - before.getValue("coreStateLoads"))
+                    .put("completeCaptures", after.getValue("completeCaptures") - before.getValue("completeCaptures"))
                     .put("revisionDelta", revisionDelta)
                     .put("quietReads", after.getValue("quietReads") - before.getValue("quietReads"))
                     .put("quietWrites", after.getValue("quietWrites") - before.getValue("quietWrites"))
                     .put("publishedDomains", JSONArray(if (revisionDelta == 0L) emptyList<String>()
                         else graph.coordinator.invalidations.snapshots.value.let { snapshot -> snapshot.domains.filterValues { it.lastAnyRevision == snapshot.revision }.keys }.map { it.name }.sorted())))
-                assertEquals("ordinary operations must not request a complete AI snapshot",
-                    before.getValue("completeCaptures"), after.getValue("completeCaptures"))
                 assertEquals("$name must preserve every unrelated profile/call fact",
                     unrelatedBefore, unrelatedFacts())
             }
@@ -130,7 +128,7 @@ class HistorySettingsAccessContractTest {
             graph.backend.refreshDecisionSnapshot()
             graph.api.settings.setQuietEnabled(true).requiredValue()
             val latestUnrelatedInputs = graph.backend.decisionSnapshot().inputs
-            val untouched = SqliteBackendStore(context,databaseName).use { it.read { s -> s.calls.toMap() } }
+            val untouched = SqliteCoreStorageResource(context,databaseName).use { it.fullSnapshot.capture().let { s -> s.calls.toMap() } }
             suspend fun correction(name: String, expectedRevision: Long = 1, operation: suspend () -> Unit) {
                 val before = graph.businessReadCounters()
                 val revision = graph.coordinator.marker()
@@ -138,7 +136,7 @@ class HistorySettingsAccessContractTest {
                 operation()
                 assertEquals(name, expectedRevision, graph.coordinator.marker() - revision)
                 val after = graph.businessReadCounters()
-                assertEquals(name, 0L, after.getValue("coreStateLoads") - before.getValue("coreStateLoads"))
+                assertEquals(name, 0L, after.getValue("completeCaptures") - before.getValue("completeCaptures"))
                 val rows = sqlProbe.snapshot().mapNotNull { row ->
                     val old = prior[row.tag to row.tables]
                     val calls = row.calls - (old?.calls ?: 0)
@@ -149,17 +147,17 @@ class HistorySettingsAccessContractTest {
                 assertTrue(name, rows.none { it.getJSONArray("tables").toString().contains("callers") })
                 if(expectedRevision == 0L) assertTrue(name, rows.none { it.getLong("writtenRows") > 0 })
                 sqlObservations.put(name, JSONArray(rows))
-                observations.put(name, JSONObject().put("fullStateLoads", 0).put("revisionDelta", expectedRevision)
+                observations.put(name, JSONObject().put("completeCaptures", after.getValue("completeCaptures") - before.getValue("completeCaptures")).put("revisionDelta", graph.coordinator.marker() - revision)
                     .put("scope", "necessary full-history correction in batches of 256; consumed rows scale with history"))
                 val decision = graph.backend.decisionSnapshot().inputs
                 assertEquals(latestUnrelatedInputs.quiet,decision.quiet)
                 assertEquals(latestUnrelatedInputs.overlayEnabled,decision.overlayEnabled)
                 assertEquals(latestUnrelatedInputs.whitelistedNumbers,decision.whitelistedNumbers)
                 assertEquals(latestUnrelatedInputs.statisticsIntervals,decision.statisticsIntervals)
-                SqliteBackendStore(context,databaseName).use { store -> store.read { state ->
+                SqliteCoreStorageResource(context,databaseName).use { store -> store.fullSnapshot.capture().let { state ->
                     state.calls.forEach { (id, call) ->
                         assertEquals("$name original/unrelated fields $id", untouched.getValue(id), call.copy(classification = untouched.getValue(id).classification))
-                        assertEquals("$name current $id", com.greatwall.callring.domain.WorkClassifier.classify(state,call.time), call.classification)
+                        assertEquals("$name current $id", com.greatwall.callring.domain.WorkClassifier.classify(state.work,call.time), call.classification)
                     }
                 } }
             }

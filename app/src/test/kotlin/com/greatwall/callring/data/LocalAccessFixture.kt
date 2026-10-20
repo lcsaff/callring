@@ -11,33 +11,33 @@ internal object LocalAccessFixture {
     const val UNRELATED = "39999"
     val at: Long = Instant.parse("2026-10-19T10:00:00Z").toEpochMilli()
 
-    fun seed(store: SqliteBackendStore, unrelatedCalls: Int) {
+    fun seed(store: SqliteCoreStorageResource, unrelatedCalls: Int) {
         require(unrelatedCalls in setOf(1_000, 10_000))
-        store.transaction { state ->
-            state.positions[1L] = PositionRecord(1L, "Synthetic role", 1, true)
-            state.nextPositionId = 2
-            state.profiles[TARGET] = ProfileRecord(TARGET, "Synthetic A", "Fixture", 1L)
-            state.profiles[UNRELATED] = ProfileRecord(UNRELATED, "Synthetic B", "Fixture", 1L)
-            state.statisticsIntervals += StatisticsInterval(0, null)
-            val originalVersion = state.schedules.maxOf { it.configVersion }
-            val history = state.schedules.maxBy { it.configVersion }.copy(
-                configVersion = state.nextConfigVersion++, effectiveFromEpochMillis = at - 3_600_000,
+        store.fixtureSql { state ->
+            state.seedPosition(PositionRecord(1L, "Synthetic role", 1, true))
+            state.seedSequence("positions", 2)
+            state.seedCaller(ProfileRecord(TARGET, "Synthetic A", "Fixture", 1L))
+            state.seedCaller(ProfileRecord(UNRELATED, "Synthetic B", "Fixture", 1L))
+            state.seedInterval(StatisticsInterval(0, null))
+            val originalVersion = state.scheduleFacts().maxOf { it.configVersion }
+            val history = state.scheduleFacts().maxBy { it.configVersion }.copy(
+                configVersion = state.fixtureNextId("config_versions"), effectiveFromEpochMillis = at - 3_600_000,
             )
-            state.schedules += history
+            state.seedSchedule(history)
             val version = history.configVersion
             val fact = ClassificationFact(true, WorkReason.WORKING, null, true, "UTC", version, null, 0)
             val original = fact.copy(working = false, reason = WorkReason.OUTSIDE_WORK_HOURS,
                 configVersion = originalVersion)
             for (index in 0..unrelatedCalls) {
                 val id = index + 1L
-                state.calls[id] = RawCallRecord(
+                state.seedCall(RawCallRecord(
                     id, if (index == 0) TARGET else UNRELATED, at + index * 1_000L, 30,
                     CallResult.ANSWERED.toDomain(), CallDecision.SYSTEM_LOG_ONLY.toDomain(), CallSource.SYSTEM_CALL_LOG.toDomain(),
                     "synthetic-$id", null, true, fact.toDomain(), original.toDomain(),
                     legacyResult = if (index == unrelatedCalls) "synthetic-legacy-result" else null,
-                )
+                ))
             }
-            state.nextCallId = unrelatedCalls + 2L
+            state.seedSequence("calls", unrelatedCalls + 2L)
         }
     }
 }

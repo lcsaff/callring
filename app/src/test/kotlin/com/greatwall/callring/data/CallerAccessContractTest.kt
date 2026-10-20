@@ -27,7 +27,7 @@ class CallerAccessContractTest {
     private fun access(size: Int) = runBlocking {
         val context = RuntimeEnvironment.getApplication()
         val name = "caller-access-$size.db"
-        SqliteBackendStore(context, name).use { LocalAccessFixture.seed(it, size) }
+        SqliteCoreStorageResource(context, name).use { LocalAccessFixture.seed(it, size) }
         val probe = SqlAccessProbe()
         val config =
             BackendConfiguration(
@@ -64,7 +64,7 @@ class CallerAccessContractTest {
                 },
             )
         try {
-            val before = graph.businessReadCounters().getValue("coreStateLoads")
+            val before = graph.businessReadCounters().getValue("completeCaptures")
             assertEquals(
                 "Synthetic A",
                 graph.api.callers.getEditor(LocalAccessFixture.TARGET).requiredValue().draft.name,
@@ -72,7 +72,7 @@ class CallerAccessContractTest {
             assertEquals(
                 "editor must not load full state",
                 before,
-                graph.businessReadCounters().getValue("coreStateLoads"),
+                graph.businessReadCounters().getValue("completeCaptures"),
             )
             assertTrue(probe.snapshot().none { SqlTable.CALLS in it.tables })
 
@@ -83,8 +83,8 @@ class CallerAccessContractTest {
                     .put("unrelatedCallCount", size)
                     .put("measurement", "query invocations / consumed rows, not engine scan rows")
             fun unrelated() =
-                SqliteBackendStore(context, name).use { store ->
-                    store.read { state ->
+                SqliteCoreStorageResource(context, name).use { store ->
+                    store.fullSnapshot.capture().let { state ->
                         state.profiles[LocalAccessFixture.UNRELATED] to
                             state.calls.values
                                 .filter { it.number == LocalAccessFixture.UNRELATED }
@@ -114,16 +114,9 @@ class CallerAccessContractTest {
                                 .put("consumedRows", row.consumedRows - (old?.consumedRows ?: 0))
                                 .put("writtenRows", row.writtenRows - (old?.writtenRows ?: 0))
                     }
-                assertEquals(
-                    label,
-                    0L,
-                    graph.businessReadCounters().getValue("coreStateLoads") -
-                        counters.getValue("coreStateLoads"),
-                )
-                assertEquals(
-                    counters.getValue("completeCaptures"),
-                    graph.businessReadCounters().getValue("completeCaptures"),
-                )
+                val captureDelta = graph.businessReadCounters().getValue("completeCaptures") -
+                    counters.getValue("completeCaptures")
+                assertEquals(label, 0L, captureDelta)
                 if (!calls)
                     assertTrue(
                         label,
@@ -133,7 +126,7 @@ class CallerAccessContractTest {
                     label,
                     org.json
                         .JSONObject()
-                        .put("fullStateLoads", 0)
+                        .put("completeCaptures", captureDelta)
                         .put("revisionDelta", graph.coordinator.marker() - revision),
                 )
                 sqlObservations.put(label, org.json.JSONArray(windows))

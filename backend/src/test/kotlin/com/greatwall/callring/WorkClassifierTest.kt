@@ -12,11 +12,10 @@ import com.greatwall.callring.domain.model.WorkDayKind
 import com.greatwall.callring.domain.model.DateOverrideKind
 import com.greatwall.callring.contracts.callers.*
 import com.greatwall.callring.contracts.settings.*
-import com.greatwall.callring.domain.BackendState
 import com.greatwall.callring.domain.LeaveRecord
 import com.greatwall.callring.domain.RawCallRecord
 import com.greatwall.callring.domain.WorkClassifier
-import com.greatwall.callring.domain.defaultWorkSchedule
+import com.greatwall.callring.domain.model.defaultWorkSchedule
 import java.time.Instant
 import java.time.LocalDate
 import org.junit.Assert.*
@@ -25,7 +24,7 @@ import org.junit.Test
 class WorkClassifierTest {
     private fun at(value: String) = Instant.parse(value).toEpochMilli()
 
-    private fun state() = BackendState().apply { schedules += defaultWorkSchedule("UTC") }
+    private fun state() = DecisionFixture().apply { schedules += defaultWorkSchedule("UTC") }
 
     @Test fun leaveDoesNotHideHolidayDayTypeAndName() {
         val s = state()
@@ -90,7 +89,8 @@ class WorkClassifierTest {
         assertTrue(WorkClassifier.classify(s, boundary - 1).working)
         assertFalse(WorkClassifier.classify(s, boundary).working)
         val original = WorkClassifier.classify(s, boundary - 1)
-        s.calls[1] =
+        val calls = linkedMapOf<Long, RawCallRecord>()
+        calls[1] =
             RawCallRecord(
                 1,
                 "30001",
@@ -107,10 +107,10 @@ class WorkClassifierTest {
             )
         s.overrides[LocalDate.parse("2026-10-12")] =
             DateOverride(LocalDate.parse("2026-10-12"), DateOverrideKind.REST, emptyList())
-        val call = s.calls.getValue(1)
-        s.calls[1] = call.copy(classification = WorkClassifier.classify(s, call.time))
-        assertFalse(s.calls.getValue(1).classification.working)
-        assertEquals(original, s.calls.getValue(1).originalClassification)
+        val call = calls.getValue(1)
+        calls[1] = call.copy(classification = WorkClassifier.classify(s, call.time))
+        assertFalse(calls.getValue(1).classification.working)
+        assertEquals(original, calls.getValue(1).originalClassification)
     }
 
     @Test

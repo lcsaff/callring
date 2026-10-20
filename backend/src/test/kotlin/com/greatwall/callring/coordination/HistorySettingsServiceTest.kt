@@ -1,5 +1,6 @@
 package com.greatwall.callring.coordination
 
+import com.greatwall.callring.domain.model.defaultWorkSchedule
 import com.greatwall.callring.application.*
 import com.greatwall.callring.application.coordination.*
 import com.greatwall.callring.application.ports.*

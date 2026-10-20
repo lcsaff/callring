@@ -1,5 +1,6 @@
 package com.greatwall.callring.platform.ai
 
+import com.greatwall.callring.data.fixtureScopedReads
 import com.greatwall.callring.application.conversation.operation.*
 import com.greatwall.callring.contracts.ai.*
 import com.greatwall.callring.contracts.callers.*
@@ -26,7 +27,7 @@ import com.greatwall.callring.application.recording.model.*
 import com.greatwall.callring.application.recording.policy.*
 import com.greatwall.callring.application.conversation.*
 import com.greatwall.callring.application.ports.*
-import com.greatwall.callring.data.SqliteBackendStore
+import com.greatwall.callring.data.SqliteCoreStorageResource
 import com.greatwall.callring.domain.*
 import com.greatwall.callring.platform.*
 import kotlinx.coroutines.*
@@ -59,7 +60,7 @@ class ToolBusinessIntegrationTest {
     private inner class Fixture(namespaceTag: String) : AutoCloseable {
         val namespace = "tool_${namespaceTag}"
         val coordinator = BusinessRevisionCoordinator()
-        val store = SqliteBackendStore(context,"$namespace.db")
+        val store = SqliteCoreStorageResource(context,"$namespace.db")
         val docs = ReadbackDocumentStore(AndroidDocumentStore(context.contentResolver))
         val audio = AndroidAudioController(context,context.getSharedPreferences("${namespace}_ring",0),{ File(context.filesDir,"${namespace}_audio") },docs)
         val preferences = AndroidPreferences(context.getSharedPreferences("${namespace}_appearance",0),context.getSharedPreferences("${namespace}_widgets",0),AppearanceSettings(ThemeSelection.PRESET,"default",null,ColorMode.FOLLOW_SYSTEM))
@@ -83,7 +84,7 @@ class ToolBusinessIntegrationTest {
             override fun aggregate(spec:AggregateSpec):AiJson {queriedDomains+=spec.domain;return port.aggregate(spec)}
         }
         val queries by lazy {
-            val core=traced(store.scopedReads(coordinator))
+            val core=traced(store.fixtureScopedReads(coordinator))
             scopedQueryApi(core,{runtime},{api()},{preferences},
                 {diagnostics},
                 SystemRecordingSource(context.contentResolver),coordinator,resources,
@@ -186,7 +187,7 @@ class ToolBusinessIntegrationTest {
                     }
                 }
             }
-            val queries=QueryService(listOf(f.store.scopedReads(f.coordinator),f.recordingStore.scopedReads()),revision=f.coordinator::marker)
+            val queries=QueryService(listOf(f.store.fixtureScopedReads(f.coordinator),f.recordingStore.scopedReads()),revision=f.coordinator::marker)
             if(kind.endsWith("after-disclosure")){
                 queries.get(AiDomain.D16,requested.toString()).requiredValue()
                 val disclosed=f.recordingStore.get(f.recordingId)!!
@@ -228,7 +229,7 @@ class ToolBusinessIntegrationTest {
                 override fun getOutputStream()=output;override fun getResponseCode():Int{sent+=org.json.JSONObject(output.toString("UTF-8"));return 200}
                 override fun getInputStream():java.io.InputStream=java.io.ByteArrayInputStream(when(round++){0->response("discover_tools",aiObject("exactNames" to AiJson.Arr(listOf(aiString("root_checkNumber")))));1->response("root_checkNumber",aiObject("raw" to aiString("31234")));else->response(null)}.toByteArray())
             }}
-            val queries=QueryService(listOf(f.store.scopedReads(f.coordinator)),revision=f.coordinator::marker)
+            val queries=QueryService(listOf(f.store.fixtureScopedReads(f.coordinator)),revision=f.coordinator::marker)
             val configured=f.recordingStore.settings().copy(analysis=f.recordingStore.settings().analysis.copy(model="qwen3.8-flash"),conversationCompatibility=ConversationCompatibility.QWEN_FAST)
             val service=ConversationService({f.api()},queries,{configured},f.coordinator,{client}, documentWriteVerified={false})
             try{

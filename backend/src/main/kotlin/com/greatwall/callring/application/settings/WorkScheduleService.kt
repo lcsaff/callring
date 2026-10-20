@@ -10,7 +10,7 @@ import com.greatwall.callring.contracts.change.DataDomain
 import com.greatwall.callring.contracts.command.CommandContext
 import com.greatwall.callring.contracts.common.*
 import com.greatwall.callring.contracts.settings.*
-import com.greatwall.callring.domain.defaultWorkSchedule
+import com.greatwall.callring.domain.model.defaultWorkSchedule
 import com.greatwall.callring.domain.model.SettingsRules
 import java.time.Clock
 import kotlinx.coroutines.CoroutineDispatcher

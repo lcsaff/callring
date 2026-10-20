@@ -25,7 +25,7 @@ import kotlinx.coroutines.flow.first
 
 /**
  * Vertical API contracts against the actual graph/adapters. Run explicitly on a disposable device.
- * Storage migration/SQL constraints are covered separately by SqliteBackendStoreDeviceTest.
+ * Storage migration/SQL constraints are covered separately by SqliteCoreStorageResourceDeviceTest.
  */
 class BackendApiDeviceTest : InstrumentationTestCase() {
     private lateinit var fixture: BackendApiFixture

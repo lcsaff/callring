@@ -14,13 +14,8 @@ import org.junit.Test
 class StorageResourcesTest {
     private class Fake : CoreStorageResource {
         var closes = 0
-        val state = BackendState()
-        override val legacy =
-            object : BackendStore {
-                override fun <T> read(block: (BackendState) -> T) = block(state)
-
-                override fun <T> transaction(block: (BackendState) -> T) = block(state)
-            }
+        var quietSettings = QuietSettings(QuietMode.OFF, false, emptyMap())
+        var lastMode = QuietMode.NON_WORK
         override val fullSnapshot = FullSnapshotReader {
             FullSnapshotFacts(
                 emptyMap(),
@@ -242,11 +237,11 @@ class StorageResourcesTest {
 
                         override fun settingsSummary(): CoreSettingsSummary = error("unused")
 
-                        override fun quiet() = QuietConfiguration(state.quiet, state.lastQuietMode)
+                        override fun quiet() = QuietConfiguration(quietSettings, lastMode)
 
                         override fun saveQuiet(value: QuietConfiguration): Boolean {
-                            state.quiet = value.settings
-                            state.lastQuietMode = value.lastMode
+                            quietSettings = value.settings
+                            lastMode = value.lastMode
                             return true
                         }
                     }
@@ -270,7 +265,7 @@ class StorageResourcesTest {
                 override fun query(spec: QuerySpec, after: String?) = query()
             }
 
-        override fun stateLoadCount() = 7L
+        override fun narrowAccessCounts() = mapOf("fixtureReads" to 7L)
 
         override fun close() {
             closes++
@@ -286,28 +281,28 @@ class StorageResourcesTest {
             fake
         }
         val source = resources.scopedReads(BusinessRevisionCoordinator())
-        assertEquals(0L, resources.stateLoadCount())
+        assertTrue(resources.narrowAccessCounts().isEmpty())
         assertEquals(0L, source.version(AiDomain.D10))
         assertTrue(source.domains.contains(AiDomain.D10))
         assertEquals(0, opens.get())
         assertEquals(42L, source.query(QuerySpec(AiDomain.D10), null).matchedTotal)
         assertEquals(QuietMode.OFF, resources.readQuiet { it.quiet().settings.mode })
-        resources.read { it.nextCallId }
+        resources.readSession { it.quiet(); 0L }
         resources.capture()
         assertEquals(1, opens.get())
-        assertEquals(7L, resources.stateLoadCount())
+        assertEquals(7L, resources.narrowAccessCounts().getValue("fixtureReads"))
         assertEquals(1L, resources.completeCaptures.get())
         resources.close()
         resources.close()
         assertEquals(1, fake.closes)
-        assertThrows(BackendFailure::class.java) { resources.read {} }
-        assertThrows(BackendFailure::class.java) { resources.transaction {} }
+        assertThrows(BackendFailure::class.java) { resources.readSession {} }
+        assertThrows(BackendFailure::class.java) { resources.writeSession {} }
         assertThrows(BackendFailure::class.java) { resources.capture() }
         assertThrows(BackendFailure::class.java) { resources.readQuiet {} }
         assertThrows(BackendFailure::class.java) { resources.writeQuiet {} }
         assertThrows(BackendFailure::class.java) { resources.readSession {} }
         assertThrows(BackendFailure::class.java) { resources.writeSession {} }
-        assertThrows(BackendFailure::class.java) { resources.stateLoadCount() }
+        assertThrows(BackendFailure::class.java) { resources.narrowAccessCounts() }
         assertThrows(BackendFailure::class.java) { source.version(AiDomain.D10) }
         assertThrows(BackendFailure::class.java) { source.query(QuerySpec(AiDomain.D10), null) }
         assertThrows(BackendFailure::class.java) { source.domains }
@@ -321,10 +316,10 @@ class StorageResourcesTest {
             if (opens.incrementAndGet() == 1) error("open failed")
             fake
         }
-        assertThrows(IllegalStateException::class.java) { resources.read {} }
+        assertThrows(IllegalStateException::class.java) { resources.readSession {} }
         val pool = Executors.newFixedThreadPool(8)
         try {
-            val jobs = (1..16).map { pool.submit<Long> { resources.read { it.nextCallId } } }
+            val jobs = (1..16).map { pool.submit<Long> { resources.readSession { it.quiet(); 0L } } }
             jobs.forEach { it.get(5, TimeUnit.SECONDS) }
             assertEquals(2, opens.get())
         } finally {
@@ -360,7 +355,7 @@ class StorageResourcesTest {
                 .yield()
             assertEquals(Thread.State.BLOCKED, closing.state)
             assertThrows(BackendFailure::class.java) { source.version(AiDomain.D10) }
-            assertThrows(BackendFailure::class.java) { resources.read {} }
+            assertThrows(BackendFailure::class.java) { resources.readSession {} }
             release.countDown()
             assertEquals(1L, query.get(5, TimeUnit.SECONDS).matchedTotal)
             closing.join(5000)

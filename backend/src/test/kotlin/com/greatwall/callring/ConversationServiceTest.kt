@@ -129,8 +129,8 @@ class ConversationServiceTest {
         reply.complete(ConversationReply.ToolBatch("",listOf(ConversationToolCall("one","settings_setQuietEnabled",aiObject("enabled" to aiBool(true))))))
         withTimeout(5000) { service.state.first { !it.busy } }
         assertEquals(ConversationPhase.COMPLETED,service.state.value.phase)
-        assertEquals(com.greatwall.callring.domain.model.QuietMode.NON_WORK,fixture.state.quiet.mode)
-        assertEquals(id,fixture.state.calls.getValue(id).id)
+        assertEquals(com.greatwall.callring.domain.model.QuietMode.NON_WORK,fixture.core.decision.quiet.mode)
+        assertEquals(id,fixture.core.calls.getValue(id).id)
         service.close()
     }
     @Test fun reusedCallIdWithDifferentArgumentsCannotExecuteAgain() = runBlocking {
@@ -142,7 +142,7 @@ class ConversationServiceTest {
         service.send(service.state.value.sessionId,"change")
         withTimeout(5000) { service.state.first { !it.busy } }
         assertEquals(ConversationPhase.PARTIAL,service.state.value.phase)
-        assertEquals(com.greatwall.callring.domain.model.QuietMode.NON_WORK,fixture.state.quiet.mode)
+        assertEquals(com.greatwall.callring.domain.model.QuietMode.NON_WORK,fixture.core.decision.quiet.mode)
         assertEquals(1L,fixture.coordinator.capture().values["core"])
         assertEquals(1,service.state.value.receipts.count{it.status==ToolStatus.COMMITTED})
         service.close()
@@ -163,7 +163,7 @@ class ConversationServiceTest {
         service.stop(session)
         assertTrue(cancelled); assertEquals(1,requests)
         assertEquals(ConversationPhase.STOPPED,service.state.value.phase)
-        assertEquals(com.greatwall.callring.domain.model.QuietMode.OFF,fixture.state.quiet.mode)
+        assertEquals(com.greatwall.callring.domain.model.QuietMode.OFF,fixture.core.decision.quiet.mode)
         service.newSession(session)
         assertNotEquals(session,service.state.value.sessionId)
         assertTrue(service.state.value.messages.isEmpty())
@@ -182,7 +182,7 @@ class ConversationServiceTest {
         withTimeout(5000) { service.state.first { !it.busy } }
         assertEquals(ConversationPhase.PARTIAL,service.state.value.phase)
         assertEquals("ai.context_budget_exceeded",service.state.value.error!!.message)
-        assertEquals(com.greatwall.callring.domain.model.QuietMode.NON_WORK,fixture.state.quiet.mode)
+        assertEquals(com.greatwall.callring.domain.model.QuietMode.NON_WORK,fixture.core.decision.quiet.mode)
         assertEquals(2,requests)
         assertEquals(1,service.state.value.receipts.count{it.status==ToolStatus.COMMITTED})
 
@@ -204,7 +204,7 @@ class ConversationServiceTest {
             assertEquals(ConversationPhase.PARTIAL,service.state.value.phase);assertEquals(listOf(task),service.state.value.continuableTasks)
             assertTrue(service.continueTask(session,task,AiConnectionView(AiProtocol.OPENAI,"https://example.com","fake",true)) is ApiResult.Success)
             withTimeout(5000){service.state.first{!it.busy}}
-            assertEquals(ConversationPhase.COMPLETED,service.state.value.phase);assertEquals(com.greatwall.callring.domain.model.QuietMode.OFF,f.state.quiet.mode);assertEquals(2L,f.coordinator.capture().values["core"])
+            assertEquals(ConversationPhase.COMPLETED,service.state.value.phase);assertEquals(com.greatwall.callring.domain.model.QuietMode.OFF,f.core.decision.quiet.mode);assertEquals(2L,f.coordinator.capture().values["core"])
             service.newSession(session)
             assertTrue(service.continueTask(service.state.value.sessionId,task,AiConnectionView(AiProtocol.OPENAI,"https://example.com","fake",true)) is ApiResult.Failure)
         }finally{service.close()}
@@ -243,7 +243,7 @@ class ConversationServiceTest {
             f.backend.settings.setQuietMode(QuietMode.NON_WORK).requiredValue()
             next.complete(ConversationReply.ToolBatch("",listOf(ConversationToolCall("save","settings_setQuietEnabled",aiObject("enabled" to aiBool(false))))))
             withTimeout(5000){service.state.first{!it.busy}}
-            assertEquals(com.greatwall.callring.domain.model.QuietMode.NON_WORK,f.state.quiet.mode);assertEquals(ConversationPhase.FAILED,service.state.value.phase);assertEquals("business.changed",service.state.value.error?.message)
+            assertEquals(com.greatwall.callring.domain.model.QuietMode.NON_WORK,f.core.decision.quiet.mode);assertEquals(ConversationPhase.FAILED,service.state.value.phase);assertEquals("business.changed",service.state.value.error?.message)
             assertTrue(service.state.value.receipts.none{it.status==ToolStatus.COMMITTED})
         }finally{service.close()}
     }
@@ -256,7 +256,7 @@ class ConversationServiceTest {
     private fun queries(f:ConversationFixtures)=QueryService(listOf(object:ScopedReadPort {
         override val domains=AiDomain.entries.toSet()
         override fun version(domain:AiDomain)=f.coordinator.capture().values.getValue("core")
-        override fun get(domain:AiDomain,key:String,projection:String)=SourceRow(key,aiObject("quiet_mode" to aiString(f.state.quiet.mode.name),"colorMode" to aiString(f.appearance.colorMode.name)))
+        override fun get(domain:AiDomain,key:String,projection:String)=SourceRow(key,aiObject("quiet_mode" to aiString(f.core.decision.quiet.mode.name),"colorMode" to aiString(f.appearance.colorMode.name)))
         override fun query(spec:QuerySpec,after:String?)=SourcePage(listOf(get(spec.domain,"current",spec.projection)),1)
     }),revision=f.coordinator::marker)
     private fun settings() = RecordingSettings(analysis = AiConnection(url = "https://example.com", apiKey = "secret", model = "fake"))
@@ -270,7 +270,7 @@ class ConversationServiceTest {
         assertTrue(service.send(session, "enable quiet") is ApiResult.Success)
         withTimeout(5000) { service.state.first { !it.busy } }
         assertEquals(ConversationPhase.FAILED, service.state.value.phase)
-        assertEquals(com.greatwall.callring.domain.model.QuietMode.OFF, f.state.quiet.mode)
+        assertEquals(com.greatwall.callring.domain.model.QuietMode.OFF, f.core.decision.quiet.mode)
         assertEquals(3, client.requests)
         service.close()
     }
@@ -283,7 +283,7 @@ class ConversationServiceTest {
         service.send(service.state.value.sessionId, "enable quiet")
         withTimeout(5000) { service.state.first { !it.busy } }
         assertEquals(ConversationPhase.COMPLETED, service.state.value.phase)
-        assertEquals(com.greatwall.callring.domain.model.QuietMode.NON_WORK, f.state.quiet.mode)
+        assertEquals(com.greatwall.callring.domain.model.QuietMode.NON_WORK, f.core.decision.quiet.mode)
         assertEquals(1L, f.coordinator.capture().values["core"])
         assertEquals(4, client.requests)
         assertTrue(service.state.value.receipts.filter{it.toolCallId=="one"}.all{it.verification==VerificationStatus.VERIFIED})

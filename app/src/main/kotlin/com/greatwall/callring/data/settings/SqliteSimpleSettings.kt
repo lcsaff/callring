@@ -120,7 +120,7 @@ internal class SqliteSimpleSettings(private val sql: SqlAccess, private val chec
         val zone = sql.rawQuery(QueryTag.SCOPED_ROWS, setOf(SqlTable.CONFIG_VERSIONS),
             "SELECT snapshot,id,effective FROM config_versions ORDER BY effective DESC,id DESC LIMIT 1", null).use { c ->
             if(c.moveToFirst()) WorkConfigCodec.decode(c.getString(0), c.getLong(1), c.getLong(2)).zoneId
-            else com.greatwall.callring.domain.defaultWorkSchedule().zoneId
+            else com.greatwall.callring.domain.model.defaultWorkSchedule().zoneId
         }
         return CoreSettingsSummary(enabled, v["overlay"] == "1", QuietMode.valueOf(v["quiet_mode"] ?: "OFF"),
             v["my_position"]?.toLong()?.let(::position), zone,
