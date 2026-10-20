@@ -1,0 +1,1310 @@
+{
+  "description": "S0 full verification after adding 6 characterization tests; no production changes",
+  "sourceBase": "af9e485",
+  "exitCode": 0,
+  "modules": {
+    "backend": {
+      "totals": {
+        "tests": 223,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      "classes": [
+        {
+          "name": "com.greatwall.callring.BusinessRevisionCoordinatorTest",
+          "tests": 4,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "sha256": "0e3635fadaff6c3442af1b0b08eb6d5fb0604b1463096573c4aafd2febf8ba57"
+        },
+        {
+          "name": "com.greatwall.callring.CallCorrelationTest",
+          "tests": 4,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "sha256": "6b46ce38eeffcbd4f5055b59a94309b8dac9dea203b14394ab5b334fcec8329f"
+        },
+        {
+          "name": "com.greatwall.callring.CallringBackendTest",
+          "tests": 37,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "sha256": "99bf0f6c662ba3addc8f3752b7afecb0511498566c8e282c0ad02fcf05cc70fb"
+        },
+        {
+          "name": "com.greatwall.callring.CapabilityCatalogTest",
+          "tests": 1,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "sha256": "1ab1bf6a677089381e5bc9571848e469cefa56f0a37aa3a33a657fb1205f9a81"
+        },
+        {
+          "name": "com.greatwall.callring.ChunkRedactionTest",
+          "tests": 1,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "sha256": "39e5299e077f1ae82a4bd28e479416958737e7b07fe8beee7790b5d04a5e600b"
+        },
+        {
+          "name": "com.greatwall.callring.CompatibilityMigrationTest",
+          "tests": 3,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "sha256": "425624dbd48b6d4ea59b5fe0be262deb202bb2a7ea7580077f9157d24b626af4"
+        },
+        {
+          "name": "com.greatwall.callring.ConfirmationTargetTest",
+          "tests": 1,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "sha256": "e1bb7ff70c808df7938ab6c978f867b0ef4ffd5dc69e547a54823975e05d7f79"
+        },
+        {
+          "name": "com.greatwall.callring.ContextAssemblerTest",
+          "tests": 3,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "sha256": "62fa1939fa510315423bbac30f7bc94267dfdffd85c59e20d631090dab765155"
+        },
+        {
+          "name": "com.greatwall.callring.ContextBudgetTest",
+          "tests": 2,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "sha256": "a23f7b5d97d8a22ca73309acca001696ef30fa6b31b78bde2cd262c00aec5584"
+        },
+        {
+          "name": "com.greatwall.callring.ConversationApiContractTest",
+          "tests": 1,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "sha256": "e80a153c000da9bab4a0222fad83964dc963f0c193e232225a3e1fd0f88d2e70"
+        },
+        {
+          "name": "com.greatwall.callring.ConversationLazyTest",
+          "tests": 1,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "sha256": "5a54f8ff8661b690caf81c45dda17db535f1b5e4545c2231b2efcd1b8fb19e6b"
+        },
+        {
+          "name": "com.greatwall.callring.ConversationServiceTest",
+          "tests": 16,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "sha256": "6cafa802f457a54e5f0bd0082ff93013047af8caaa88e248bd497e2be78d8509"
+        },
+        {
+          "name": "com.greatwall.callring.CoreSnapshotProjectionTest",
+          "tests": 1,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "sha256": "a7ee44b39e3ebc62fc6c6f669629e0bed54f8896f272e058d6b5273980921452"
+        },
+        {
+          "name": "com.greatwall.callring.DeletionVerificationRegressionTest",
+          "tests": 5,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "sha256": "82dac655089bae3f325bfc942e6cd7ac0de120ac57f0de1fd2f886f3d430b08e"
+        },
+        {
+          "name": "com.greatwall.callring.DirectoryEnumeratorTest",
+          "tests": 3,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "sha256": "4d624384f0266c258918d17777b7aa05ecb7eaf3dddaa71cece0dd4f23329288"
+        },
+        {
+          "name": "com.greatwall.callring.DomainRegressionTest",
+          "tests": 29,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "sha256": "c349cb3e3b7ba205bef4e9887f5a7db1d0ab8f661c1d064e710bf81317cfd00f"
+        },
+        {
+          "name": "com.greatwall.callring.DraftMergeTest",
+          "tests": 3,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "sha256": "b1f3889f9735d36bb456fef78474e81d9ad67c1fe408cd4126fdffdb8d796d52"
+        },
+        {
+          "name": "com.greatwall.callring.ForegroundActionServiceTest",
+          "tests": 2,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "sha256": "1d2c3b7fe89861f046de245b26773bd21d19d8105872fb003e0987009a552a0f"
+        },
+        {
+          "name": "com.greatwall.callring.ForegroundLockOrderTest",
+          "tests": 1,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "sha256": "92756ed94a221b385a91df10b20e02a251601ac51097ad2183e884477fd6baea"
+        },
+        {
+          "name": "com.greatwall.callring.ForegroundResourceRegistryTest",
+          "tests": 1,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "sha256": "aca8562a68b5727253868c313f2cf20a2b79c6ec9b058cd037dea0e4adc646ae"
+        },
+        {
+          "name": "com.greatwall.callring.NumberDeletionRegressionTest",
+          "tests": 4,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "sha256": "3aa7e10a312de1c42e0e6697d6f71113bedbbfe1fc42f42433ed8cd91473f424"
+        },
+        {
+          "name": "com.greatwall.callring.NumberDeletionToolTest",
+          "tests": 1,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "sha256": "ad1c7633f392c58c15e0ba07acdfc9fa0b9be9715d129b7463413b714c83eac4"
+        },
+        {
+          "name": "com.greatwall.callring.OperationScopePlannerTest",
+          "tests": 4,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "sha256": "d4a15651f7b4c6b54906e4f36f7ffbe2e7b10e638afb695bb2fa0f3271f4f04a"
+        },
+        {
+          "name": "com.greatwall.callring.QueryObservationIsolationTest",
+          "tests": 1,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "sha256": "100d060d5acddb537df92dd239d35e801b0eb4ac1e2376618ba24048ad75149c"
+        },
+        {
+          "name": "com.greatwall.callring.ReadbackDocumentStoreTest",
+          "tests": 2,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "sha256": "3fd5b3ad7b148b91b8ed1425eba0ee8ff70a3778149b6053a58bf4f7e9de4651"
+        },
+        {
+          "name": "com.greatwall.callring.ReceiptVerifierTest",
+          "tests": 8,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "sha256": "083b4513e465e4e705f4086b9bd05dfe1ac0bf559769ac6d0b33a10f4a678515"
+        },
+        {
+          "name": "com.greatwall.callring.RecordingAssociationTest",
+          "tests": 4,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "sha256": "075dbf78511c2b5530412e6f23665d0ceb892ab5fd55805215dcc1dc97684581"
+        },
+        {
+          "name": "com.greatwall.callring.RecordingServiceTest",
+          "tests": 3,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "sha256": "e49f8bd5038521c5b8eb01701ed2cf8e2fd4525dd0c6511d491fa97a4e958f57"
+        },
+        {
+          "name": "com.greatwall.callring.RecordingWorkflowTest",
+          "tests": 9,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "sha256": "dd55be76c9b470ffe1910c8ccbfc5a42a9415a76964d7c09009f65966c2cecad"
+        },
+        {
+          "name": "com.greatwall.callring.ScopedAggregateTest",
+          "tests": 1,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "sha256": "d2fcebaa20948e02d5f22c642dd6939775a1797e3184a04c84cfe49564dddff7"
+        },
+        {
+          "name": "com.greatwall.callring.ScopedQueryContractTest",
+          "tests": 3,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "sha256": "26ad236a884f153a4910d7e83f5e72ff3bce13fd4a51a962695153cf205e0f75"
+        },
+        {
+          "name": "com.greatwall.callring.ScopedRevisionTest",
+          "tests": 3,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "sha256": "5d92f53ce580137a9fed1d6423295c522dcba86e1af47b7af6f93d979f5d133d"
+        },
+        {
+          "name": "com.greatwall.callring.ScopedToolReaderTest",
+          "tests": 2,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "sha256": "db913bac054fde7fd18d65493d8b3608848eaec14337c5ee94a8024fbf8f2e84"
+        },
+        {
+          "name": "com.greatwall.callring.SecretRedactorTest",
+          "tests": 2,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "sha256": "22cd8eb6321b141a7b758ae5f3bcd364caaa28a794d390c8e82aefd21658ed7e"
+        },
+        {
+          "name": "com.greatwall.callring.SharedBusinessCommandsTest",
+          "tests": 1,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "sha256": "d56dc75cd1963af4f8b8285640673d966d2429eabc46361af5911bf342be34fe"
+        },
+        {
+          "name": "com.greatwall.callring.StepLedgerTest",
+          "tests": 2,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "sha256": "f84037992abe73ea386ea5cff1ca87220287edba7eb2ee810b08eb3ae0b80e69"
+        },
+        {
+          "name": "com.greatwall.callring.TaskPlannerTest",
+          "tests": 2,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "sha256": "3ec7a53f68c9841b6344a4005dc51673b3d498ea40273acd3f2a766298650ecd"
+        },
+        {
+          "name": "com.greatwall.callring.ThinkingPolicyMatrixTest",
+          "tests": 10,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "sha256": "9b045b4b9a853aa1619c1ddb5ddbf04c14755fea0bb1f29a814e9f3ba8f51636"
+        },
+        {
+          "name": "com.greatwall.callring.ThinkingPolicyResolverTest",
+          "tests": 5,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "sha256": "d6a4ba2edd3e53d8bff82c0b76dee569770a17a7c576cb548723210e9aff2eda"
+        },
+        {
+          "name": "com.greatwall.callring.ThinkingToolApiCompatibilityTest",
+          "tests": 6,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "sha256": "39fd6cd0f7ce98b31206221ebf936af265414bb0c669dc3a9abb5d48ea0faf36"
+        },
+        {
+          "name": "com.greatwall.callring.ToolBatchEngineTest",
+          "tests": 17,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "sha256": "8e512c3c8956b645cde7f7feee465d58c0213a7426b1aa58ceca6dc5d0190c4d"
+        },
+        {
+          "name": "com.greatwall.callring.ToolCompatibilityBaselineTest",
+          "tests": 1,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "sha256": "b9164f2787e17fe105ee6d0bd2bd37551694cbcca4f34a0cc4d918767803b028"
+        },
+        {
+          "name": "com.greatwall.callring.ToolOperationCoverageTest",
+          "tests": 3,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "sha256": "35027fbd0e7e10c6f9c40b269b5aa8f83f129819f0b5c210f03bdc2bbd19e4fd"
+        },
+        {
+          "name": "com.greatwall.callring.ToolRegistryTest",
+          "tests": 2,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "sha256": "558a0224a30ff8e48ba20987b0b00c7a392e19d6f1c062460713da6b1bf667b5"
+        },
+        {
+          "name": "com.greatwall.callring.WorkClassifierTest",
+          "tests": 8,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "sha256": "2415671b7eec489a540258f3351cb7eb04365f869965cc7e7f86a625bd451910"
+        }
+      ]
+    },
+    "ui": {
+      "totals": {
+        "tests": 283,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      "classes": [
+        {
+          "name": "com.greatwall.callring.ui.app.AiCompatibilityComposeTest",
+          "tests": 1,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "sha256": "e08983e320658063b63c25b327dbea4c6204cddde56ce406adb9e80678c7736b"
+        },
+        {
+          "name": "com.greatwall.callring.ui.app.AiCompatibilityUiTest",
+          "tests": 4,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "sha256": "abf0630876f1ae1efad989b1090fa4af1f8d2ff2f39719ade35ae172e392914d"
+        },
+        {
+          "name": "com.greatwall.callring.ui.app.CallringActivityTest",
+          "tests": 6,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "sha256": "2fa0156c3aa634602ab9aa0eb1263b0b3d38f16dcbd2f357b00c28b329eb19b3"
+        },
+        {
+          "name": "com.greatwall.callring.ui.app.ConfirmationSummaryTest",
+          "tests": 1,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "sha256": "520e8b0c20605b94a64b5cd557ed4830484fb806b4cb9ba7bfcff6dfdc2afa4b"
+        },
+        {
+          "name": "com.greatwall.callring.ui.app.ConversationComposerTest",
+          "tests": 2,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "sha256": "c080a77f900218a2eb51994a6457e9fe3f8b76ffac699c522b795279145597f9"
+        },
+        {
+          "name": "com.greatwall.callring.ui.app.ConversationConnectionRegressionTest",
+          "tests": 1,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "sha256": "7bef92e9ac67ab6a7a794c6dac33e94a3013f58e949bd0f7d4942650ff39e233"
+        },
+        {
+          "name": "com.greatwall.callring.ui.app.ConversationCopyTest",
+          "tests": 7,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "sha256": "2c97360100eef10310eb5206ef241a18c48f6e23fba3b3741dfcf4bef637f865"
+        },
+        {
+          "name": "com.greatwall.callring.ui.app.ConversationLayoutTest",
+          "tests": 2,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "sha256": "c031df3bd61170287d00ec47b53ff12ffe182aa15572b0e01ec51a20c20bbe98"
+        },
+        {
+          "name": "com.greatwall.callring.ui.app.ConversationNavigationTest",
+          "tests": 5,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "sha256": "9472878d839f1d5de3c2609aa7ae214acac965ef70069dfc1543947277303c1a"
+        },
+        {
+          "name": "com.greatwall.callring.ui.app.ConversationProgressReviewTest",
+          "tests": 3,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "sha256": "c8b3924e997da9c898184690c49095cf2315cc525cf0cc9fc16b6fb3b6892dd2"
+        },
+        {
+          "name": "com.greatwall.callring.ui.app.ConversationReviewUiTest",
+          "tests": 2,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "sha256": "7f4cc4e6a8009528890b6c1df4f40be81bd3ec177ea2b7e70fcf53356e26dd94"
+        },
+        {
+          "name": "com.greatwall.callring.ui.app.ConversationStateUiTest",
+          "tests": 1,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "sha256": "64d427eb1f784e741583b1d8d63aee3eb70d35b7fcd869e6789b5c6a31b188ca"
+        },
+        {
+          "name": "com.greatwall.callring.ui.app.CredentialDialogTest",
+          "tests": 1,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "sha256": "308b2e0f2f85292d65d5abf07b4d43621d481c03f82f71123f4d363a4d854291"
+        },
+        {
+          "name": "com.greatwall.callring.ui.app.FirstConnectionUiTest",
+          "tests": 2,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "sha256": "877173749c4cfbdbad9507f9d87161b07c37337dc8337c2283b158f00f6097e6"
+        },
+        {
+          "name": "com.greatwall.callring.ui.app.ForegroundActionHostTest",
+          "tests": 1,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "sha256": "268eb0356617d9657f3cff93541c945ff46ec83e3dfddc90ce4bb44c2746fa2f"
+        },
+        {
+          "name": "com.greatwall.callring.ui.app.HomeStructureJvmTest",
+          "tests": 4,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "sha256": "661bc6da9296b9fcc432fd01dcca6a99265bb7fefb273c6c97a1438b9f528999"
+        },
+        {
+          "name": "com.greatwall.callring.ui.app.MarkdownCompatibilityTest",
+          "tests": 1,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "sha256": "2086c31c90d11e39e793f5cd1544ede8dbd52ef1153cd18d31b0772fc6a9b73b"
+        },
+        {
+          "name": "com.greatwall.callring.ui.app.RenderedDestinationTest",
+          "tests": 1,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "sha256": "b534e3d85208953d33680035c0811b9e421a49e162b27fb2c1056ed4d2eb54fb"
+        },
+        {
+          "name": "com.greatwall.callring.ui.app.UiDestinationTest",
+          "tests": 3,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "sha256": "7aaf4e22192f0edd3d4ef72503db8f216297b4b51967c3c35e6fb8e64559fbd6"
+        },
+        {
+          "name": "com.greatwall.callring.ui.app.UiNavigationStateTest",
+          "tests": 1,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "sha256": "73a87b389c37cdd802fb09dbdfc7863de1e08ee2b8e40ed99b479cf7429711f2"
+        },
+        {
+          "name": "com.greatwall.callring.ui.designsystem.BrandButtonJvmTest",
+          "tests": 1,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "sha256": "3889ce605e167d88a39a1665c0ea00da65835fd2f6630590231cbafe97db58bf"
+        },
+        {
+          "name": "com.greatwall.callring.ui.designsystem.components.ScreenFrameCompactTitleTest",
+          "tests": 3,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "sha256": "d9aa49187e345f68ef884fdc59c31322937b37bdce5bdb77850738a7f6555077"
+        },
+        {
+          "name": "com.greatwall.callring.ui.designsystem.InteractionJvmTest",
+          "tests": 8,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "sha256": "57aeb487fad9de987f4629c6a0c1149c760729493e49842962a9f2130e3cbc19"
+        },
+        {
+          "name": "com.greatwall.callring.ui.designsystem.PickerLayoutJvmTest",
+          "tests": 5,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "sha256": "edbba9511c44299ab1cc68e3c2b955ad496214f194dd2a021c4eccbe671cccc7"
+        },
+        {
+          "name": "com.greatwall.callring.ui.designsystem.ScorePaletteTest",
+          "tests": 4,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "sha256": "140732f891a21695ac25d98e3005296b88a835ba8953b16a74b2562059d0d6b1"
+        },
+        {
+          "name": "com.greatwall.callring.ui.designsystem.ThemeTest",
+          "tests": 11,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "sha256": "9115a119bd54a2fbbdfec4689da81096dcf64fb2ac335f2115a4d1f5134919a4"
+        },
+        {
+          "name": "com.greatwall.callring.ui.feature.ai.AiSettingsScreenTest",
+          "tests": 6,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "sha256": "9366ae66d5ee4cb0fa865041db2f4befb16d35375291595505f0feec5300c0a9"
+        },
+        {
+          "name": "com.greatwall.callring.ui.feature.callers.CallerEditorViewModelTest",
+          "tests": 4,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "sha256": "01a30e14bd536bdb1a7ae0aa1fd724b6d8165a58b7c5028d69737c204dbeabf7"
+        },
+        {
+          "name": "com.greatwall.callring.ui.feature.callers.CallerListScreenJvmTest",
+          "tests": 10,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "sha256": "732c21d27e0a6de9546d4166f77ff212df0d89b57e5ee4e7f02d914ffd8d9d47"
+        },
+        {
+          "name": "com.greatwall.callring.ui.feature.callers.CallerListViewModelTest",
+          "tests": 4,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "sha256": "757e77d2adf31d06ad227c75663819103330f6138a122b0aa1e74fa9f94bedb4"
+        },
+        {
+          "name": "com.greatwall.callring.ui.feature.callers.NumberDeletionDialogsTest",
+          "tests": 2,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "sha256": "88868b699c362599805c99cd147a9d99329d881fe89f80e8405e2ce74cf54981"
+        },
+        {
+          "name": "com.greatwall.callring.ui.feature.callers.NumberLookupViewModelTest",
+          "tests": 1,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "sha256": "d1bf39fe10926aed4df7d7404dba11eb9f45fb6f2362d33f9691c378bbfd7416"
+        },
+        {
+          "name": "com.greatwall.callring.ui.feature.home.HomeQuietScreenJvmTest",
+          "tests": 5,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "sha256": "1f5180b2c9862e4684b33be45227ed6d2c1e68c57226405521c62d899a773857"
+        },
+        {
+          "name": "com.greatwall.callring.ui.feature.home.HomeQuietViewModelTest",
+          "tests": 4,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "sha256": "2e1a969b1cf3bae339ab7108837d74791feb5fd12ba5c832875518da1437da35"
+        },
+        {
+          "name": "com.greatwall.callring.ui.feature.home.HomeViewModelTest",
+          "tests": 2,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "sha256": "0a3bdf0a77231d7a0697e8b25f6e03035c41607b06a1ccffa22879aa7b9da31b"
+        },
+        {
+          "name": "com.greatwall.callring.ui.feature.recording.RecordingArchiveListTest",
+          "tests": 2,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "sha256": "1733c4e3cc25cbcb9a56d78c59a358be5becca7bbbface2a7b4661d8f8d762d1"
+        },
+        {
+          "name": "com.greatwall.callring.ui.feature.recording.RecordingScreensTest",
+          "tests": 6,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "sha256": "cee1fd36bf5fde735735b3ef90979dd6553a0ce8d09aec7d25737f4d158e98bf"
+        },
+        {
+          "name": "com.greatwall.callring.ui.feature.recording.RecordingViewModelsTest",
+          "tests": 2,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "sha256": "e1ba74324d332a3a84019d60f24811bd6c454aa66540b2e70d66a4144348cbee"
+        },
+        {
+          "name": "com.greatwall.callring.ui.feature.report.ReportScreenJvmTest",
+          "tests": 2,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "sha256": "924c1b9a9ca30b3b412526862fae8188bbc3eff0f6da39b8653cfe5035fc6390"
+        },
+        {
+          "name": "com.greatwall.callring.ui.feature.report.ReportViewModelTest",
+          "tests": 2,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "sha256": "afea8036ee6cd1abc9f55fdb635254f1dcbd707107092462e8aee6f5173330f7"
+        },
+        {
+          "name": "com.greatwall.callring.ui.feature.settings.AppearanceViewModelTest",
+          "tests": 5,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "sha256": "374f228020e59fcbc5992a3b828769b8a9de58a53b5fe11d1e790aa5084510ec"
+        },
+        {
+          "name": "com.greatwall.callring.ui.feature.settings.components.WindowsInputTest",
+          "tests": 4,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "sha256": "4dd657fd2bc409bf054300543d1b43fbb19c38088ced5f15f004ee70401d927c"
+        },
+        {
+          "name": "com.greatwall.callring.ui.feature.settings.RuntimeOverlayTestScreenJvmTest",
+          "tests": 1,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "sha256": "3b4aeeeb29dc7e3824f13990096689e889f7862f7fb4250019e4a5288817729f"
+        },
+        {
+          "name": "com.greatwall.callring.ui.feature.settings.ScoreSettingsViewModelTest",
+          "tests": 1,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "sha256": "5530850b718de58a160057b7d96137ddeacade15b9df150f18c49d26694933bb"
+        },
+        {
+          "name": "com.greatwall.callring.ui.feature.settings.SettingsDraftCodecsTest",
+          "tests": 4,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "sha256": "d6d751d5a7537096459d201a98c38d6e44456e55c9a9d2e034faab5dbf41f988"
+        },
+        {
+          "name": "com.greatwall.callring.ui.feature.settings.SettingsScreensJvmTest",
+          "tests": 41,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "sha256": "8f9ea47f2756ade42a0eb607984a5494993606f4cf03642fea8b53afc1c32d8a"
+        },
+        {
+          "name": "com.greatwall.callring.ui.feature.settings.SharedWorkScheduleScreenJvmTest",
+          "tests": 4,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "sha256": "d32ce05918e9de998c707c5b1d7f82c6f37ce62aa7accb19dc8eb87d6b6f06f5"
+        },
+        {
+          "name": "com.greatwall.callring.ui.feature.settings.UnifiedWorkScheduleTest",
+          "tests": 3,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "sha256": "8621676062c59d5e24479a9236dd584535cddca3f29d33db9cbfca49ab7bf1dc"
+        },
+        {
+          "name": "com.greatwall.callring.ui.feature.settings.WorkScheduleViewModelTest",
+          "tests": 2,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "sha256": "1a587dcd39b980a6186cbc2840f83618bd636c5274c69c61d5e090b82d3f4ccb"
+        },
+        {
+          "name": "com.greatwall.callring.ui.feature.shared.PageControlsTest",
+          "tests": 5,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "sha256": "29a5b4e2f46c61b7207ce0a6bf671bfa63bb4a53c581a24bd7f57afd8989ae16"
+        },
+        {
+          "name": "com.greatwall.callring.ui.feature.update.AppUpdateScreenTest",
+          "tests": 9,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "sha256": "376077183ec43703d767df752b5037a8391b64cf381ffddb8da9cb40788987d1"
+        },
+        {
+          "name": "com.greatwall.callring.ui.feature.update.AppUpdateViewModelTest",
+          "tests": 5,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "sha256": "a1969f894525631d7987713f9ef20a634dae01fff136267a8987cd9a0f27d95f"
+        },
+        {
+          "name": "com.greatwall.callring.ui.format.UiFormatTest",
+          "tests": 5,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "sha256": "2e23c0239c8b86479d2762a3457dbefc07080f5d673d63a4ffd7a58f84b526c0"
+        },
+        {
+          "name": "com.greatwall.callring.ui.overlay.OverlayControllerTest",
+          "tests": 5,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "sha256": "4864a6a7146f5ff434d7ffdc224eade83f4d5b1a13eda009a91a31b11d83ff1e"
+        },
+        {
+          "name": "com.greatwall.callring.ui.overlay.OverlaySessionsTest",
+          "tests": 14,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "sha256": "bd3095ab2c098a11daa1611ce5337a18560a8921aacf759287809290e47a6ae5"
+        },
+        {
+          "name": "com.greatwall.callring.ui.overlay.OverlayTestPreviewScreenJvmTest",
+          "tests": 1,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "sha256": "78dc6429f6bcb6533974cca44c5aceabcfd19467641d057f6ae2f48eb6d112d5"
+        },
+        {
+          "name": "com.greatwall.callring.ui.overlay.OverlayTestPreviewTest",
+          "tests": 2,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "sha256": "ef36687aca970258cdf346afcbe5e357e4113eec7aa577fa6e007666752a440b"
+        },
+        {
+          "name": "com.greatwall.callring.ui.overlay.OverlayViewModelTest",
+          "tests": 2,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "sha256": "5f08df112f76edc30ffdd372577f6d31198e3bb3c15ee9e779694c743ca10152"
+        },
+        {
+          "name": "com.greatwall.callring.ui.overlay.OverlayVisibilityTest",
+          "tests": 3,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "sha256": "098863df9b01138754a3d8dbd1e9731cd4f5e1a9d17003ba6e2252590070a761"
+        },
+        {
+          "name": "com.greatwall.callring.ui.overlay.OverlayWindowJvmTest",
+          "tests": 1,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "sha256": "fa35cb4bf4bdac42ad1f952fbbcecde19acc7e4f9ce1484781eb3e03f626be81"
+        },
+        {
+          "name": "com.greatwall.callring.ui.overlay.WindowPlacementTest",
+          "tests": 2,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "sha256": "0a0a5c4465d751321e05f46fee09ccc66bad871bc93068d6b8d34cbf0df3f3a8"
+        },
+        {
+          "name": "com.greatwall.callring.ui.state.ImmediateEditorTest",
+          "tests": 5,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "sha256": "77e067066ce4586aba1fd6ce925ce31ad54955f0183791c7a900c13fca688edf"
+        },
+        {
+          "name": "com.greatwall.callring.ui.state.RefreshIsolationTest",
+          "tests": 3,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "sha256": "eb9163ce3acd21bc5a0d55dbc9fb7e0f73e8d0e749addc39a08fb60b6ff74655"
+        },
+        {
+          "name": "com.greatwall.callring.ui.state.RequestLoaderTest",
+          "tests": 7,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "sha256": "951188395db1ee071d2792bd93d7d5ef23e642367400b16050c95852de7ec182"
+        },
+        {
+          "name": "com.greatwall.callring.ui.state.SnapshotViewModelTest",
+          "tests": 2,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "sha256": "774f232c0ae76ac4d2f90ff2bd54aafb86823f7c76f8a2231c43d1129cb66f06"
+        },
+        {
+          "name": "com.greatwall.callring.ui.widget.WidgetConfigurationModelTest",
+          "tests": 5,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "sha256": "fb9deba90ae2337755a27622c79475903db4e684de65b2c48c34b25083221783"
+        },
+        {
+          "name": "com.greatwall.callring.ui.widget.WidgetModelTest",
+          "tests": 8,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "sha256": "b06fe5fbf5df0ec1ee0663c47b064e575f0d156e4f29b8bdb00c34b2c5a40697"
+        },
+        {
+          "name": "com.greatwall.callring.ui.widget.WidgetUpdatesTest",
+          "tests": 1,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "sha256": "38b65a5b14627573494f17442bbe2318f743a4e6697f5a9fb7dd78024d94682c"
+        }
+      ]
+    },
+    "app": {
+      "totals": {
+        "tests": 220,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      "classes": [
+        {
+          "name": "com.greatwall.callring.bootstrap.CompleteSnapshotAssemblyTest",
+          "tests": 1,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "sha256": "6815372f941130a5b6e68751b9f7a1398cc9e300a054b73289c993e4c1da921f"
+        },
+        {
+          "name": "com.greatwall.callring.bootstrap.LazyBackendStoreTest",
+          "tests": 2,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "sha256": "f123893167f69bf341187357be0988d0dad0e4c7e397dca7bb3bce3eee4e778f"
+        },
+        {
+          "name": "com.greatwall.callring.bootstrap.NumberDeletionIntegrationTest",
+          "tests": 6,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "sha256": "1ad715a517b2fcc3ad14e1f67807c4fa1e94b4b065feb5e4403540df01ece87e"
+        },
+        {
+          "name": "com.greatwall.callring.bootstrap.ScopedQueryAssemblyTest",
+          "tests": 1,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "sha256": "8701a426725a2081ad92fde7bca9b8323af82b4f0c5e8ffd67e8c1df862b3f0a"
+        },
+        {
+          "name": "com.greatwall.callring.CallStateSnapshotTest",
+          "tests": 1,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "sha256": "a3fe548c4c303f6db19a539faf4a65a1bedd9e60e2022c7cf7d2fef515187a5c"
+        },
+        {
+          "name": "com.greatwall.callring.data.CoreSnapshotSourceTest",
+          "tests": 2,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "sha256": "214d25bad71d8c22dadc44dadbf82003c4d6ae86b63ecc84d9fd079bd950d69a"
+        },
+        {
+          "name": "com.greatwall.callring.data.LocalAccessContractTest",
+          "tests": 2,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "sha256": "7597594ff438f59b25014efebf5498cae54f55ae1ca7b2a2d469d0d846ec9abc"
+        },
+        {
+          "name": "com.greatwall.callring.data.QuietModeMemoryStoreTest",
+          "tests": 4,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "sha256": "a14c47cf9eb2d76dae6ed8217789bafc6c5b172e4611d4cebfb57005d009f112"
+        },
+        {
+          "name": "com.greatwall.callring.data.SqliteScopedReadTest",
+          "tests": 6,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "sha256": "e6ae3c9b37e87538ea1ea11cbdcd64e3b9e2fb90afef0357fc4912149b98d4c7"
+        },
+        {
+          "name": "com.greatwall.callring.data.StoragePolicyCharacterization",
+          "tests": 8,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "sha256": "aee1d533eebc0765597b0996aa1baaeb59a9d4f501869fabce63150f945aea60"
+        },
+        {
+          "name": "com.greatwall.callring.platform.ai.AiSettingsServiceTest",
+          "tests": 7,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "sha256": "03807b84f1bc1b39e503bbf79ac1ba49891f8ad7563725480295e0266585d3f4"
+        },
+        {
+          "name": "com.greatwall.callring.platform.ai.AndroidRecordingStoreTest",
+          "tests": 6,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "sha256": "1a6e36ad6c2a21c8cd39b174a3d5e7271c4964e4c75f191644e33426b1d4e9ba"
+        },
+        {
+          "name": "com.greatwall.callring.platform.ai.ArchiveBoundedParserTest",
+          "tests": 5,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "sha256": "12f266810c9af0c9e19408d33bf5b0898fa53929b0afc193bf61bf6694747cad"
+        },
+        {
+          "name": "com.greatwall.callring.platform.ai.ArchiveProjectionMigrationTest",
+          "tests": 3,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "sha256": "bfc5258892e58b0c6bdbfad40b0508d11df2f09f5a7e1da6cd24220ec6cae51d"
+        },
+        {
+          "name": "com.greatwall.callring.platform.ai.CompatibleAiClientTest",
+          "tests": 24,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "sha256": "7d2df47907e7b7263f4862934c4f144a815aa6d22a123e15215bde847a4a5c37"
+        },
+        {
+          "name": "com.greatwall.callring.platform.ai.ConversationCompatibilityTest",
+          "tests": 5,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "sha256": "677211657f62505e7fedaad3c6ab6f8ca57287da50669de2018f35d8d2cefb2b"
+        },
+        {
+          "name": "com.greatwall.callring.platform.ai.ConversationProtocolTest",
+          "tests": 9,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "sha256": "df23dd0fbe4ad0436aceb3915561c85ad15091f36a379354860ccee0fe50f354"
+        },
+        {
+          "name": "com.greatwall.callring.platform.ai.IndependentRecordingRuntimeTest",
+          "tests": 5,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "sha256": "dbe50ef14dc98ba295b847c8569901bbb7cfb9d9257641ac67fe26b51f74fe62"
+        },
+        {
+          "name": "com.greatwall.callring.platform.ai.PcmWaveChunksTest",
+          "tests": 2,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "sha256": "00d1af5f9e48d4cddbc3e66249041d82429abb3409cfc9f495ef27509095d4b3"
+        },
+        {
+          "name": "com.greatwall.callring.platform.ai.ProviderProfileTest",
+          "tests": 3,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "sha256": "7d72c7ae29bcf0bdb8570b420aec02cc9033b8c128b06988f9a7ea62b6033700"
+        },
+        {
+          "name": "com.greatwall.callring.platform.ai.RecordingCommandContextTest",
+          "tests": 2,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "sha256": "ce8d6b27a0beae5f626bcae6b6a2f2f06cc985f5428a6433c50f64ceaacb941a"
+        },
+        {
+          "name": "com.greatwall.callring.platform.ai.RecordingFolderViewTest",
+          "tests": 1,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "sha256": "a3e1cb66c0fed3d3986a01987047fa712a7d95c44c450a441f88eda9f17adfe7"
+        },
+        {
+          "name": "com.greatwall.callring.platform.ai.RecordingPublicationTest",
+          "tests": 1,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "sha256": "726e61b890c1dd33766642f277c30051d6357156713893fc12327e512e0d1d82"
+        },
+        {
+          "name": "com.greatwall.callring.platform.ai.RecordingScopedQueryTest",
+          "tests": 1,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "sha256": "c1ed7568620505685a94372fe7ce13f1e2c9522911c960277fa5b34935c0f09b"
+        },
+        {
+          "name": "com.greatwall.callring.platform.ai.RecordingSnapshotSourceTest",
+          "tests": 2,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "sha256": "8e312a054d3a4550b340d8e69a647097d874d1f368dec0434868a757edd5d887"
+        },
+        {
+          "name": "com.greatwall.callring.platform.ai.ScopedDirectoryTest",
+          "tests": 1,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "sha256": "7cd38130f0bacdd63268d06f04c9c0871107eacf740c6a992575b780d38d7c11"
+        },
+        {
+          "name": "com.greatwall.callring.platform.ai.SpecialSecretWireRegressionTest",
+          "tests": 1,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "sha256": "edea8b30c5ee8ace575c1a9c1cd9b2a59bd872d0956d7fc26e4918bd4675284f"
+        },
+        {
+          "name": "com.greatwall.callring.platform.ai.ThinkingModeInjectionTest",
+          "tests": 4,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "sha256": "984ab7fe410aff7f79e6b8319de672162fcb950fe4b6fa9b1e39639963ae8410"
+        },
+        {
+          "name": "com.greatwall.callring.platform.ai.ToolBusinessIntegrationTest",
+          "tests": 4,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "sha256": "b7c9c26a12da27890fcf456adf2addaffb127c2da2ac9f543e80a54d49c625cb"
+        },
+        {
+          "name": "com.greatwall.callring.platform.AndroidPreferencesTest",
+          "tests": 2,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "sha256": "d76123285dcd7fbcfc9f8b6303e5b5ed99af77bdf60a3b045e4f29bb71fdee58"
+        },
+        {
+          "name": "com.greatwall.callring.platform.CalendarRefreshPolicyTest",
+          "tests": 2,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "sha256": "eaab2384ab6de3d2071881b31f6b501f6682242caa37838e2231dabe99e9a64b"
+        },
+        {
+          "name": "com.greatwall.callring.platform.calling.IncomingCallCoordinatorTest",
+          "tests": 13,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "sha256": "1750072984a63079dd3755d9c1f3b998af0280fa8fa47f12bf3dbdfa417442e6"
+        },
+        {
+          "name": "com.greatwall.callring.platform.calling.ScreeningControllerTest",
+          "tests": 12,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "sha256": "31a8153d74a19b758208f11e1f77b2891b8f7a60e99c30cbb01e2b75b8c98514"
+        },
+        {
+          "name": "com.greatwall.callring.platform.HolidayCalendarSourceTest",
+          "tests": 5,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "sha256": "87a9a54a890342d9158dc017bc0ddcf245681ea1a12a4913e082074807b986c0"
+        },
+        {
+          "name": "com.greatwall.callring.platform.JobRunsTest",
+          "tests": 3,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "sha256": "74cce5ac97d9bf4d553d8ed8170817cfe32e4a1934418269287588515f38a6df"
+        },
+        {
+          "name": "com.greatwall.callring.platform.PlatformSafetyTest",
+          "tests": 12,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "sha256": "ceeac3bf4ee85c320d628eb0b255885a07f10fb45b8682b247aba61a6fab342c"
+        },
+        {
+          "name": "com.greatwall.callring.platform.PlaybackCommandDispatchTest",
+          "tests": 5,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "sha256": "9b31adc19afa749555069347767b5dbabeb6180e9e2f7160031289dfd477c03a"
+        },
+        {
+          "name": "com.greatwall.callring.platform.PublicationAdaptersTest",
+          "tests": 1,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "sha256": "1d26dd2a1686da588ced603229c735dc0ed34b2ecefdedb3c24b6249b3e74004"
+        },
+        {
+          "name": "com.greatwall.callring.platform.RuntimeSnapshotsTest",
+          "tests": 3,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "sha256": "e9549bca6b2dba8447c158cf0defd1b5addf0f9e4ae340d1390a0854e98b0ad1"
+        },
+        {
+          "name": "com.greatwall.callring.platform.update.AndroidAppUpdateTest",
+          "tests": 13,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "sha256": "ad99ce3cb6d097897fd0cd46176ac7da859dd5a4416d7c43008323e810534967"
+        },
+        {
+          "name": "com.greatwall.callring.platform.update.GitHubReleaseClientTest",
+          "tests": 6,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "sha256": "eca35046ffeacce9eb9908d84637e19202ad68e3f4cebbd7ed0630ecd110bb36"
+        },
+        {
+          "name": "com.greatwall.callring.platform.update.UpdateContractTest",
+          "tests": 8,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "sha256": "8f306757e772f4ff2ca2796758e8973e4809d4e2d62db557987d7883667c2bcf"
+        },
+        {
+          "name": "com.greatwall.callring.platform.update.UpdateThreadingRegressionTest",
+          "tests": 1,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "sha256": "aadbf3d811909d768e4c80600148cc05d8cdd6e5bc11bbca4a5f0e87472bbc1b"
+        },
+        {
+          "name": "com.greatwall.callring.platform.update.UpdateVerificationTest",
+          "tests": 7,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "sha256": "c075e84a5be4bd77160eb5561b956d40eb609436ffcb6e6140c6d6e7cc026ba1"
+        },
+        {
+          "name": "com.greatwall.callring.PreparationGateTest",
+          "tests": 3,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "sha256": "09a096ecbcded56a03e5432d509cc8f793ba3a587cbe39f59340876df0da1d83"
+        },
+        {
+          "name": "com.greatwall.callring.SessionGateTest",
+          "tests": 5,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "sha256": "827b80afa13a289e07706bcc0b8ccacec4c5e6eeaa84d3a76cc91f2d2503ff72"
+        }
+      ]
+    }
+  },
+  "logSha256": "cbfda88dbba0be838688646c4c582dc16b43a0b2f0cd84693ee68deee26c1aad"
+}

@@ -1,0 +1,57 @@
+{
+  "unrelatedCallCount": 1000,
+  "quietRead": {
+    "fullStateLoads": 1,
+    "revisionDelta": 0,
+    "publishedDomains": []
+  },
+  "targetProfileWrite": {
+    "fullStateLoads": 1,
+    "revisionDelta": 2,
+    "publishedDomains": [
+      "AI_SETTINGS",
+      "APPEARANCE",
+      "CALLERS",
+      "CALLS",
+      "OVERLAY_SETTINGS",
+      "POSITIONS",
+      "QUIET_HOURS",
+      "RECORDING_ARCHIVES",
+      "RECORDING_SETTINGS",
+      "REPORTS",
+      "RINGTONE",
+      "RUNTIME",
+      "SCORE_SETTINGS",
+      "STATISTICS",
+      "WIDGET_BINDINGS",
+      "WORK_CALENDAR"
+    ]
+  },
+  "targetReport": {
+    "fullStateLoads": 1,
+    "revisionDelta": 0,
+    "publishedDomains": []
+  },
+  "incomingRegistration": {
+    "fullStateLoads": 1,
+    "revisionDelta": 2,
+    "publishedDomains": [
+      "AI_SETTINGS",
+      "APPEARANCE",
+      "CALLERS",
+      "CALLS",
+      "OVERLAY_SETTINGS",
+      "POSITIONS",
+      "QUIET_HOURS",
+      "RECORDING_ARCHIVES",
+      "RECORDING_SETTINGS",
+      "REPORTS",
+      "RINGTONE",
+      "RUNTIME",
+      "SCORE_SETTINGS",
+      "STATISTICS",
+      "WIDGET_BINDINGS",
+      "WORK_CALENDAR"
+    ]
+  }
+}

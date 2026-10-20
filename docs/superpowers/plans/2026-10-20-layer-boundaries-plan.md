@@ -1,6 +1,6 @@
 # 分层边界与业务链路解耦 Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking. 本文是用户要求的分阶段实施计划；本轮只交付文档，未经后续执行指令不修改代码，不派生执行会话。
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking. 本文是用户要求的分阶段实施计划；用户后续执行授权已生效，任务在当前会话持续推进，不派生用户会话。
 
 **Goal:** 完成 app/ui/backend 的单向依赖收口、层内目录整理，并解决全量状态读写、无关刷新、AI 编号依赖、宽上下文和存储强转五项耦合。
 
@@ -12,11 +12,11 @@
 
 日期：2026-10-20。基线：`fa886a431e44424fe9b483380ea97f6d792c003b`。
 
-状态：待评审，所有任务未执行。依据：[设计方案](../specs/2026-10-20-layer-boundaries-design.md)、[文件归属清单](../specs/2026-10-20-layer-boundaries-file-map.md)。用户本轮已明确要求同时编写设计和计划，因此一并交付评审，不将计划落盘视为实施授权。
+状态：用户随后已要求本会话作为主负责人推进，实施已启动；任务实际进展及验证见 [执行记录](../../plans/layer-boundaries-evidence/execution-status.md)。依据：[设计方案](../specs/2026-10-20-layer-boundaries-design.md)、[文件归属清单](../specs/2026-10-20-layer-boundaries-file-map.md)。本计划落盘时仅授权文档，后续执行授权来自用户的新指令，不将文档落盘本身视为实施授权。
 
 ## 1. 执行约定与里程碑
 
-- 先评审设计和本计划，再开始代码实施。本轮不创建分支、不改代码、不运行应用、不访问用户数据库、不发布。
+- 设计与本计划已进入用户要求的实施阶段；在独立分支逐切片实施，不访问用户生产数据库，不自动发布 APK。上一轮“只交付文档”的边界已由新执行指令更新。
 - 执行前检查当前工作区和其他任务的修改；使用合适的当前工作区或隔离工作树，不覆盖无关改动。
 - 每个任务先建立能暴露目标耦合/语义退化的测试，再迁移实现、跑定向验证、检查差异。纯搬文件只跑相关编译和既有测试，不写机械镜像测试。
 - 机械移动提交与行为修改提交分开；每个业务切片可编译且只有一个有效写入口；提交精确暂存任务文件，禁止一揽子暂存用户改动。
@@ -78,11 +78,11 @@ UT = ui/src/test/kotlin/com/greatwall/callring/ui
 
 **证据目标：** `docs/plans/layer-boundaries-evidence/baseline.md`，只在实际执行时创建。
 
-- [ ] 记录 HEAD、工作区差异、工具链、测试和设备可用性；检查新提交是否改变本文基线。
-- [ ] 运行第 9 节当前基线命令，记录实际测试项、失败/跳过与耗时；不能沿用旧报告。
-- [ ] 建立固定的 1千/1万无关通话合成数据夹具，包含双号码、岗位引用、历史配置、录音身份及旧编码；仅用于隔离测试。
-- [ ] 在 `AT/data/LocalAccessContractTest.kt` 建立端口调用/SQL 表与返回行探针；记录读免打扰、改 A 名称、查 A 报表、登记来电目前的范围。现有耦合用 characterization 记录，不把“全量读取应成功”永久写成业务断言。
-- [ ] 补齐错误/回滚/无操作/取消基线，保存原始分类、ID 与序列、导入去重、CSV/报表样本；执行现有 DomainRegressionTest、CallCorrelationTest、StoragePolicyCharacterization 等回归。
+- [x] 记录 HEAD、工作区差异、工具链、测试和设备可用性；检查新提交是否改变本文基线。
+- [x] 运行第 9 节当前基线命令，记录实际测试项、失败/跳过与耗时；不能沿用旧报告。
+- [x] 建立固定的 1千/1万无关通话合成数据夹具，包含双号码、岗位引用、历史配置、录音身份及旧编码；仅用于隔离测试。
+- [x] 在 `AT/data/LocalAccessContractTest.kt` 先记录真实 Graph 的全状态装载、修订推进和通知领域，固定读免打扰、改 A 名称、查 A 报表、登记来电的基线。现有耦合用 characterization 记录，不把全量读取写成永久断言。SQL 表/返回行和窄端口探针在 T05 新适配器接入前建立，作为任何存储行为修改的前置门；不将全状态装载计数冒充 SQL 行数。
+- [x] 补齐错误/回滚/无操作/取消基线，保存原始分类、ID 与序列、导入去重、CSV/报表样本；执行现有 DomainRegressionTest、CallCorrelationTest、StoragePolicyCharacterization 等回归。
 
 **门：** 行为样本可重复、范围探针可信；此阶段不宣称 P1 已解决。覆盖 A1/A2/A7 的基线。
 
@@ -90,11 +90,11 @@ UT = ui/src/test/kotlin/com/greatwall/callring/ui
 
 **输入文件：** `B/application/api/*.kt`、`B/application/conversation/*.kt`、`U/state/*.kt`、所有 ViewModel、widget/overlay，以及设计 §6.4。
 
-- [ ] 在 `docs/contracts/ai-operation-compatibility.json` 逐项记录当前全部操作的 toolName、O/X code、legacyIndex、schema、默认值、读写/确认/回执分类、发现顺序；包含 extensions，不只前 72 个。
-- [ ] 记录公开 API 方法/参数/默认值、D 域、错误码和历史持久化值；拆分“公共视图”与“含密钥内部配置”。区分必须保持的对外工具协议与允许同步调整的内部 Kotlin API，登记旧录音配置管理方法移到内部端口等差异。
-- [ ] 在 `docs/plans/layer-boundaries-evidence/subscription-matrix.md` 记录每个实际消费者读取的字段和依赖领域/实体；矩阵至少覆盖首页、搜索、A/B 编辑/报表、widget i/j、overlay、归档详情、AI 配置。
-- [ ] 在 `UT/state/RefreshIsolationTest.kt` 建立真实 loader 调用计数夹具，记录当前过度刷新的入口；在后续切片将目标正反例转为必须通过的断言。
-- [ ] 复核迁移清单覆盖全部生产文件，新增的生产文件也必须归属设计中的职责目录。
+- [x] 在 `docs/contracts/ai-operation-compatibility.json` 逐项记录当前全部操作的 toolName、O/X code、legacyIndex、schema、默认值、读写/确认/回执分类、发现顺序；包含 extensions，不只前 72 个。
+- [x] 记录公开 API 方法/参数/默认值、D 域、错误码和历史持久化值；拆分“公共视图”与“含密钥内部配置”。区分必须保持的对外工具协议与允许同步调整的内部 Kotlin API，登记旧录音配置管理方法移到内部端口等差异。
+- [x] 在 `docs/plans/layer-boundaries-evidence/subscription-matrix.md` 记录每个实际消费者读取的字段和依赖领域/实体；矩阵至少覆盖首页、搜索、A/B 编辑/报表、widget i/j、overlay、归档详情、AI 配置。
+- [x] 在 `UT/state/RefreshIsolationTest.kt` 建立真实 loader 调用计数夹具，记录当前过度刷新的入口；在后续切片将目标正反例转为必须通过的断言。
+- [x] 复核迁移清单覆盖全部生产文件，新增的生产文件也必须归属设计中的职责目录。
 
 **门：** 所有操作和实际订阅者都有明确记录，兼容差异可自动比较。覆盖 A0/A3/A4。
 
@@ -141,6 +141,7 @@ UT = ui/src/test/kotlin/com/greatwall/callring/ui
 - [ ] 实现 fence→SQL 固定顺序、后台准备与可取消阶段、短小不可取消提交/发布；禁止 SQL 回调反向取得 fence。
 - [ ] 定义读令牌前后复核和单航班 pending 行为；旧 DataChange 消费者通过明确过渡适配接入，已迁移路径不得走全域通知兜底。
 - [ ] 用 T06 所需最小接口验证完整链路；此阶段不提前编写未使用的通用 repository 框架。
+- [ ] 在更改任何存储行为前补齐从 T01 分拆的 SQL 表/返回行与窄端口探针，先跑旧实现记录范围，再以相同夹具验证新适配器；未完成前不得推进 T06 的存储改造。该顺序调整只允许 contracts/模型边界先行，不放宽 A1 的最终证据要求。
 
 **门：** P5 的替换能力成立；后续片可在不取得 BackendState 的条件下完成读写。覆盖 A1/A2/A3/A6/A7。
 
@@ -346,4 +347,4 @@ python -m unittest discover -s tools -p test_backend_boundaries.py
 
 每阶段以验证通过的代码检查点提交；纯移动与行为改变分开。回退使用对应提交的逆向修改，保留工作区和数据库，不执行 reset --hard/清库/重装替代排障。本方案不引入 schema 变更；如果实现证明必须改变 schema、算法或产品语义，先记录原因、影响与新的验收范围，修订本设计后再执行。
 
-最终报告必须区分“架构/自动验证通过”和“设备真实行为已验证”。没有执行的设备或升级测试保留缺口，不勾选伪造完成。本轮文档交付后停止，不启动代码实施。
+最终报告必须区分“架构/自动验证通过”和“设备真实行为已验证”。没有执行的设备或升级测试保留缺口，不勾选伪造完成。实施依照用户后续执行指令持续推进，每阶段记录证据，不将中间检查点当作全部完成。
