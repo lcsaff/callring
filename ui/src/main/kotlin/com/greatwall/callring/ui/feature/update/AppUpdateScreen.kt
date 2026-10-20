@@ -60,11 +60,15 @@ private fun UpdateStatusBody(
             LinearProgressIndicator(Modifier.fillMaxWidth())
             Text("正在检查更新…")
         }
-        UpdatePhase.UP_TO_DATE -> Text("当前已是最新版本，无需更新。")
+        UpdatePhase.UP_TO_DATE -> {
+            Text("当前已是最新版本，无需更新。")
+            PrimaryUpdateAction("重新检查", onCheck)
+        }
         UpdatePhase.UPDATE_AVAILABLE -> PrimaryUpdateAction("下载更新", onDownload)
         UpdatePhase.UNSUPPORTED_DEVICE -> Text(updateMessage(status.failureReason ?: "update.unsupported_device"))
         UpdatePhase.NO_INSTALLABLE -> {
             Text("该版本尚未提供可安装更新。")
+            PrimaryUpdateAction("重新检查", onCheck)
             ReleasePageAction(status.releasePageUrl)
         }
         UpdatePhase.CHECK_FAILED -> {

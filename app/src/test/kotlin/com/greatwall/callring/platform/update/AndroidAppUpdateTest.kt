@@ -112,6 +112,54 @@ class AndroidAppUpdateTest {
         assertEquals("etag-1", transport.requests[2].requestHeader("If-None-Match"))
     }
 
+    @Test fun checkWithoutCachedMetadataDoesNotSendEtag() = runBlocking {
+        for (phase in listOf(UpdatePhase.UP_TO_DATE, UpdatePhase.NO_INSTALLABLE, UpdatePhase.CHECK_FAILED)) {
+            persistence.write(encodeUpdateState(PersistedUpdateState(etag = "etag-1", phase = phase)))
+            val transport = FakeTransport { connection ->
+                when {
+                    connection.url.toString() == RELEASES_API_URL ->
+                        if (connection.requestHeader("If-None-Match") != null) FakeResponse(304)
+                        else FakeResponse(200, release.toByteArray(), mapOf("ETag" to "etag-1"))
+                    else -> FakeResponse(200, manifest.toByteArray())
+                }
+            }
+            newApi(transport).use { api ->
+                assertEquals("Recovery from $phase", UpdatePhase.UPDATE_AVAILABLE, api.check().ok().phase)
+                assertNull(transport.requests.first().requestHeader("If-None-Match"))
+            }
+        }
+    }
+
+    @Test fun transientManifestFailureCanBeRetriedForTheSameRelease() = runBlocking {
+        var manifestRequests = 0
+        val transport = FakeTransport { connection ->
+            when {
+                connection.url.toString() == RELEASES_API_URL ->
+                    if (connection.requestHeader("If-None-Match") != null) FakeResponse(304)
+                    else FakeResponse(200, release.toByteArray(), mapOf("ETag" to "etag-1"))
+                ++manifestRequests == 1 -> FakeResponse(503)
+                else -> FakeResponse(200, manifest.toByteArray())
+            }
+        }
+        newApi(transport).use { api ->
+            assertEquals(UpdatePhase.CHECK_FAILED, api.check().ok().phase)
+            assertEquals(UpdatePhase.UPDATE_AVAILABLE, api.check().ok().phase)
+            assertEquals(2, manifestRequests)
+        }
+    }
+
+    @Test fun responseWithoutEtagDoesNotReuseAnOlderReleaseEtag() = runBlocking {
+        persistence.write(encodeUpdateState(PersistedUpdateState(etag = "old-etag")))
+        val transport = FakeTransport { connection ->
+            if (connection.url.toString() == RELEASES_API_URL) FakeResponse(200, release.toByteArray())
+            else FakeResponse(200, manifest.toByteArray())
+        }
+        newApi(transport).use { api ->
+            assertEquals(UpdatePhase.UPDATE_AVAILABLE, api.check().ok().phase)
+            assertNull(decodeUpdateState(persistence.read())?.etag)
+        }
+    }
+
     @Test fun downloadVerifiesAndKeepsAReusableFile() = runBlocking {
         val transport = successfulUpdateTransport(release, manifest, apk)
         val installer = FakeInstaller()

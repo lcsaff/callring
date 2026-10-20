@@ -29,6 +29,8 @@ class AppUpdateScreenTest {
     @Test fun everyPhaseExposesExactlyOnePrimaryActionOrNone() {
         val expectedActions = mapOf(
             UpdatePhase.IDLE to "检查更新",
+            UpdatePhase.UP_TO_DATE to "重新检查",
+            UpdatePhase.NO_INSTALLABLE to "重新检查",
             UpdatePhase.UPDATE_AVAILABLE to "下载更新",
             UpdatePhase.CHECK_FAILED to "重试",
             UpdatePhase.DOWNLOADING to "取消下载",
@@ -111,7 +113,18 @@ class AppUpdateScreenTest {
         } }
         compose.onNodeWithText("该版本尚未提供可安装更新。").assertExists()
         compose.onNodeWithText("打开 Release 网页手动下载").assertExists()
-        compose.onNodeWithTag("update-primary-action").assertDoesNotExist()
+        compose.onNodeWithText("重新检查").assertExists()
+    }
+
+    @Test fun upToDateCanCheckAgain() {
+        var checks = 0
+        compose.setContent { CallringTheme {
+            AppUpdateScreen(LoadState(status(UpdatePhase.UP_TO_DATE), loaded = true), MutationState(),
+                {}, {}, { checks++ }, {}, {}, {})
+        } }
+        compose.onNodeWithText("当前已是最新版本，无需更新。").assertExists()
+        compose.onNodeWithText("重新检查").performScrollTo().performClick()
+        compose.runOnIdle { assertEquals(1, checks) }
     }
 
     @Test fun statusReadFailureShowsRetryWithoutAPhase() {

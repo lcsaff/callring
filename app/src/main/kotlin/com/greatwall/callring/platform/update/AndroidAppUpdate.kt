@@ -267,7 +267,10 @@ internal class AndroidAppUpdate(
     }
 
     private fun fetchCheck(previous: PersistedUpdateState?): PersistedUpdateState {
-        return when (val latest = client.fetchLatest(previous?.etag)) {
+        // A 304 is usable only when the corresponding installable metadata still exists.
+        // Failed checks and up-to-date results retain no metadata, so fetch them afresh.
+        val cachedEtag = previous?.etag?.takeIf { previous.latest != null }
+        return when (val latest = client.fetchLatest(cachedEtag)) {
             is LatestFetch.Failed -> PersistedUpdateState(
                 etag = previous?.etag,
                 phase = UpdatePhase.CHECK_FAILED,
@@ -300,7 +303,7 @@ internal class AndroidAppUpdate(
                         info.deviceSdk,
                     )
                     PersistedUpdateState(
-                        etag = latest.etag ?: previous?.etag,
+                        etag = latest.etag,
                         phase = evaluation.phase,
                         failureReason = evaluation.failureReason,
                         checkedAtEpochMillis = clock(),
