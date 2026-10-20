@@ -1,5 +1,6 @@
 package com.greatwall.callring
 
+import com.greatwall.callring.application.conversation.operation.*
 import com.greatwall.callring.contracts.command.*
 import com.greatwall.callring.contracts.common.*
 import com.greatwall.callring.contracts.callers.*
@@ -11,21 +12,20 @@ import org.junit.Assert.*
 import org.junit.Test
 
 class ToolOperationCoverageTest {
-    @Test fun all72DefinitionsHaveSourceOrWriteScopeAndReceiptPolicy() {
-        val registry=ToolRegistry();val contracts=registry.operationContracts()
-        assertEquals(registry.definitions.map{it.index},contracts.map{it.index})
-        assertEquals(72,contracts.size)
-        assertTrue(contracts.all{it.sharedApi.isNotBlank()})
-        assertEquals("aiSettings.getRecordingView + aiSettings.getAiView", contracts.single{it.index==51}.sharedApi)
-        assertEquals(ReceiptPolicy.QUEUED,contracts.single{it.index==46}.receiptPolicy)
-        assertEquals(ReceiptPolicy.PERSISTED_READBACK,contracts.single{it.index==37}.receiptPolicy)
+    @Test fun all81DefinitionsHaveSourceOrWriteScopeAndReceiptPolicy() {
+        val definitions=ToolRegistry().definitions
+        assertEquals("Every discoverable operation requires a production definition",81,definitions.size)
+        assertTrue(definitions.all{it.sharedApi.isNotBlank()})
+        assertEquals("aiSettings.getRecordingView + aiSettings.getAiView", definitions.single{it.id==OperationId.RECORDINGS_GET_SETTINGS}.sharedApi)
+        assertEquals(ReceiptPolicy.QUEUED,definitions.single{it.id==OperationId.RUNTIME_REQUEST_CALL_LOG_SYNC}.receiptPolicy)
+        assertEquals(ReceiptPolicy.PERSISTED_READBACK,definitions.single{it.id==OperationId.SETTINGS_SAVE_APPEARANCE}.receiptPolicy)
     }
     @Test fun patchUsesActualProfileStorageAndPreservesPositionAndWhitelist() = runBlocking {
         val fixture = ConversationFixtures()
         val position = (fixture.backend.settings.savePosition(SavePosition(name = "Position", level = 1, active = true)) as ApiResult.Success).value
         fixture.backend.callers.saveProfile(SaveCallerProfile("31234", "old", "department", position.id, true))
         val foreground = ForegroundActionService(checkCommand = { _, _ -> true }).also { it.attachHost() }
-        val executor = ToolExecutor({ fixture.backend }, fixture.coordinator, foreground, ForegroundResourceRegistry())
+        val executor = ToolExecutor({ fixture.backend }, fixture.coordinator, foreground, ForegroundResourceRegistry(), queries=unusedToolQueries(), documentWriteVerified={false})
         val scope = ToolExecutionContext("s", "t", 1, CommandContext("op", fixture.coordinator.capture(), 1) { true })
         val receipt = executor.execute(ConversationToolCall("call", "callers_saveProfile", aiObject("number" to aiString("31234"), "name" to aiString("new"))), scope)
         assertEquals(ToolStatus.COMMITTED, receipt.status)
@@ -36,7 +36,7 @@ class ToolOperationCoverageTest {
     @Test fun originalInUseValidationIsPreservedAndStaleCommandsCannotSave() = runBlocking {
         val fixture = ConversationFixtures()
         val foreground = ForegroundActionService(checkCommand = { _, _ -> true }).also { it.attachHost() }
-        val executor = ToolExecutor({ fixture.backend }, fixture.coordinator, foreground, ForegroundResourceRegistry())
+        val executor = ToolExecutor({ fixture.backend }, fixture.coordinator, foreground, ForegroundResourceRegistry(), queries=unusedToolQueries(), documentWriteVerified={false})
         val old = fixture.coordinator.capture()
         fixture.backend.settings.setQuietMode(QuietMode.NON_WORK)
         val receipt = executor.execute(ConversationToolCall("call", "settings_setQuietEnabled", aiObject("enabled" to aiBool(false))), ToolExecutionContext("s", "t", 1, CommandContext("op", old, 1) { true }))

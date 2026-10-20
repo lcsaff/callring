@@ -1,5 +1,6 @@
 package com.greatwall.callring.bootstrap
 
+import com.greatwall.callring.application.conversation.operation.OperationId
 import android.app.Notification
 import android.app.PendingIntent
 import android.content.Intent
@@ -65,7 +66,7 @@ class NumberDeletionIntegrationTest {
             graph.api.callers.saveProfile(SaveCallerProfile("31234", "original", "unit", null)).requiredValue()
             graph.recordings.registrations.registerIncoming("session", "31234", 1, null, null)
             val call = ConversationToolCall("c", "callers_deleteNumber", aiObject("number" to aiString("31234")))
-            val scopes = OperationScopePlanner(graph.queries, graph.coordinator).prepare(call, 81)
+            val scopes = OperationScopePlanner(graph.queries, graph.coordinator).prepare(call, OperationId.CALLERS_DELETE_NUMBER)
             val command = CommandContext("delete", graph.coordinator.capture(), 1,
                 expectedScopes = scopes, continueOwnCommits = true) { true }
             val result = deletion(graph, command = command, recordingDelete = { id, generation, cmd ->
@@ -82,7 +83,7 @@ class NumberDeletionIntegrationTest {
         val graph = graph("delete_scopes")
         try {
             val call = ConversationToolCall("c", "callers_deleteNumber", aiObject("number" to aiString("31234")))
-            val scopes = OperationScopePlanner(graph.queries, graph.coordinator).prepare(call, 81)
+            val scopes = OperationScopePlanner(graph.queries, graph.coordinator).prepare(call, OperationId.CALLERS_DELETE_NUMBER)
             assertTrue(scopes.keys.containsAll(setOf("recording", "preferences")))
             graph.api.widgets.saveBinding(1, "31234").requiredValue()
             val command = CommandContext("delete", graph.coordinator.capture(), 1, expectedScopes = scopes) { true }
@@ -97,7 +98,7 @@ class NumberDeletionIntegrationTest {
             graph.api.callers.saveProfile(SaveCallerProfile("31234", "name", "unit", null)).requiredValue()
             graph.api.widgets.saveBinding(1, "31234").requiredValue()
             val call = ConversationToolCall("c", "callers_deleteNumber", aiObject("number" to aiString("31234")))
-            val scopes = OperationScopePlanner(graph.queries, graph.coordinator).prepare(call, 81)
+            val scopes = OperationScopePlanner(graph.queries, graph.coordinator).prepare(call, OperationId.CALLERS_DELETE_NUMBER)
             val command = CommandContext("delete", graph.coordinator.capture(), 1,
                 expectedScopes = scopes, continueOwnCommits = true) { true }
             var lists = 0

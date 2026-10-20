@@ -1,5 +1,6 @@
 package com.greatwall.callring.application.conversation
 
+import com.greatwall.callring.application.conversation.operation.*
 import com.greatwall.callring.contracts.command.*
 import com.greatwall.callring.application.*
 import com.greatwall.callring.contracts.common.*
@@ -19,9 +20,9 @@ class ToolBatchEngine(
 ) {
     var budget=TurnBudget();private set
     val ledger=StepLedger{api().checkNumber(it).normalized}
-    val planner=TaskPlanner()
-    private val scopes=OperationScopePlanner(queries,coordinator)
-    private val verifier=ReceiptVerifier(queries)
+    val planner=TaskPlanner(executor.registry.catalog)
+    private val scopes=OperationScopePlanner(queries,coordinator,executor.registry.catalog)
+    private val verifier=ReceiptVerifier(queries,executor.registry.catalog)
     private val repairable=mutableListOf<LedgerStep>()
     private val allReceipts=mutableListOf<ToolReceipt>()
     private val batchChildren=mutableMapOf<String,List<String>>()
@@ -46,13 +47,13 @@ class ToolBatchEngine(
     private fun report(receipt:ToolReceipt):ToolReceipt {allReceipts+=receipt;onReceipt(receipt);return receipt}
     private fun target(call:ConversationToolCall):Map<String,AiJson> = call.arguments.fields.filterKeys{it in setOf("number","id","callId","widgetId","date","slot","from","to","taskId")}
     private fun isRepairable(error:ApiError?)=error?.code==ErrorCode.VALIDATION&&error.message !in setOf("ai.duplicate_call_mismatch","ai.repair_target_changed","ai.task_target_changed","ai.task_required","ai.profile_exists")
-    private data class Prepared(val call:ConversationToolCall,val step:LedgerStep,val definition:ToolDefinition?,var expected:Map<String,Long> = emptyMap(),var error:ApiError?=null)
+    private data class Prepared(val call:ConversationToolCall,val step:LedgerStep,val definition:OperationDefinition?,var expected:Map<String,Long> = emptyMap(),var error:ApiError?=null)
     suspend fun execute(calls:List<ConversationToolCall>,enabledNames:Set<String>?=null):List<ToolReceipt> {
         if(reconcile){
             reconcile=false
             ledger.steps.filter{it.state==StepState.COMMITTED&&it.receipt?.status==ToolStatus.COMMITTED}.forEach{step->
-                val index=executor.registry.allDefinitions.single{it.name==step.call.name}.index
-                val receipt=metered{verifier.verify(index,step.call,step.receipt!!,adoption=step.adoption)}
+                val operation=executor.registry.definitions.single{it.name==step.call.name}.id
+                val receipt=metered{verifier.verify(operation,step.call,step.receipt!!,adoption=step.adoption)}
                 ledger.finish(step,receipt);report(receipt)
             }
         }
@@ -60,13 +61,13 @@ class ToolBatchEngine(
         val expanded=mutableListOf<ConversationToolCall>()
         val groups=linkedMapOf<String,List<String>>()
         for(call in calls) {
-            if(call.name!="callers_saveProfiles"||(enabledNames!=null&&call.name !in enabledNames)){expanded+=call;continue}
+            if(executor.registry.catalog.find(call.name)?.id!=OperationId.CALLERS_SAVE_PROFILES||(enabledNames!=null&&call.name !in enabledNames)){expanded+=call;continue}
             try {
                 executor.registry.validate(call)
                 val items=(call.arguments["items"] as AiJson.Arr).values
                 require(items.size in 1..32)
                 val task=planner.get(call.arguments.s("taskId"));require(task.kind==TaskKind.CREATE_PROFILES)
-                val children=items.mapIndexed{i,item->ConversationToolCall("item:${digest(call.id).take(32)}:$i","callers_saveProfile",AiJson.Obj((item as AiJson.Obj).fields+mapOf("taskId" to aiString(task.id))))}
+                val children=items.mapIndexed{i,item->ConversationToolCall("item:${digest(call.id).take(32)}:$i",executor.registry.catalog[OperationId.CALLERS_SAVE_PROFILE].name,AiJson.Obj((item as AiJson.Obj).fields+mapOf("taskId" to aiString(task.id))))}
                 groups[call.id]=children.map{it.id};batchChildren[call.id]=children.map{it.id};expanded+=children
             } catch(e:Exception){
                 if(e is CancellationException)throw e
@@ -75,15 +76,15 @@ class ToolBatchEngine(
         }
         if(expanded.size>64)throw BackendFailure(ApiError(ErrorCode.SYSTEM_RESTRICTED,"ai.turn_limit"))
         val pending=mutableListOf<Prepared>()
-        val writes=expanded.count{c->executor.registry.allDefinitions.any{it.name==c.name&&it.write}}
+        val writes=expanded.count{c->executor.registry.definitions.any{it.name==c.name&&it.write}}
         for(original in expanded) {
             var call=original
-            val definition=executor.registry.allDefinitions.singleOrNull{it.name==call.name}
+            val definition=executor.registry.definitions.singleOrNull{it.name==call.name}
             val write=definition?.write==true
             val explicitTask=call.arguments.optS("taskId")
-            val task=if(write&&explicitTask==null&&writes==1)planner.prepare(turn,if(definition?.index==37)TaskKind.SET_APPEARANCE else TaskKind.OPERATIONS,1)else null
+            val task=if(write&&explicitTask==null&&writes==1)planner.prepare(turn,if(definition.id==OperationId.SETTINGS_SAVE_APPEARANCE)TaskKind.SET_APPEARANCE else TaskKind.OPERATIONS,1)else null
             val taskId=explicitTask?:task?.id?:"read:$turn"
-            val old=repairable.lastOrNull{s->!s.started&&(s.call.name==call.name||executor.registry.allDefinitions.none{it.name==s.call.name})&&target(s.call).all{(k,v)->call.arguments[k]==v}}
+            val old=repairable.lastOrNull{s->!s.started&&(s.call.name==call.name||executor.registry.definitions.none{it.name==s.call.name})&&target(s.call).all{(k,v)->call.arguments[k]==v}}
             val step=if(old!=null&&(ledger.signature(call)!=old.signature||old.call.id!=call.id)){
                 if(!budget.repair(old.id))throw BackendFailure(ApiError(ErrorCode.SYSTEM_RESTRICTED,"ai.repair_limit"))
                 repairable.remove(old);ledger.repair(old,call,write,taskId)
@@ -95,22 +96,22 @@ class ToolBatchEngine(
                 if(enabledNames!=null&&call.name !in enabledNames&&groups.values.none{call.id in it})throw BackendFailure(ApiError(ErrorCode.VALIDATION,"ai.tool_not_enabled",aiFailure=ConversationFailure(AiFailureKind.NOT_ENABLED,"NOT_ENABLED")))
                 if(write&&explicitTask==null&&writes>1)throw BackendFailure(ApiError(ErrorCode.VALIDATION,"ai.task_required"))
                 if(write&&explicitTask!=null)planner.get(explicitTask)
-                if(definition?.index in setOf(7,8)) {
+                if(definition?.id in setOf(OperationId.CALLERS_SAVE_PROFILE,OperationId.CALLERS_SET_WHITELISTED)) {
                     val checked=api().checkNumber(call.arguments.s("number"))
                     if(!checked.validProfileNumber)throw BackendFailure(ApiError(ErrorCode.VALIDATION,"number.invalid",fieldErrors=mapOf("$.number" to "number.valid_profile_required")))
                     call=call.copy(arguments=AiJson.Obj(call.arguments.fields+("number" to aiString(checked.normalized))));p.step.call=call
                 }
                 if(write) {
-                    if(definition?.index==79)throw BackendFailure(ApiError(ErrorCode.VALIDATION,"ai.invalid_profile_batch"))
-                    p.expected=metered{scopes.prepare(call,definition!!.index)}
-                    if(definition.index==63)step.adoption=metered{verifier.prepareAdoption(call)}
-                    step.effectScopes=p.expected.keys.filter{definition.index !in setOf(7,8)||it.startsWith("profile:")}.toSet()
+                    if(definition.id==OperationId.CALLERS_SAVE_PROFILES)throw BackendFailure(ApiError(ErrorCode.VALIDATION,"ai.invalid_profile_batch"))
+                    p.expected=metered{scopes.prepare(call,definition.id)}
+                    if(definition.id==OperationId.RECORDINGS_ADOPT_IDENTITY)step.adoption=metered{verifier.prepareAdoption(call)}
+                    step.effectScopes=p.expected.keys.filter{definition.id !in setOf(OperationId.CALLERS_SAVE_PROFILE,OperationId.CALLERS_SET_WHITELISTED)||it.startsWith("profile:")}.toSet()
                     if(ledger.steps.any{prior->prior!==step&&prior.effectScopes.any{it in step.effectScopes}&&
                         (prior.state==StepState.UNKNOWN||prior.receipt?.verification==VerificationStatus.COMMITTED_UNVERIFIED||
                             prior.receipt?.status in setOf(ToolStatus.DENIED,ToolStatus.CANCELLED)||prior.receipt?.error?.code==ErrorCode.CONFLICT)})
                         throw BackendFailure(ApiError(ErrorCode.SYSTEM_RESTRICTED,"ai.commit_requires_review"))
                     if(explicitTask!=null&&planner.get(explicitTask).kind==TaskKind.CREATE_PROFILES) {
-                        if(definition?.index!=7)throw BackendFailure(ApiError(ErrorCode.VALIDATION,"ai.task_operation_mismatch"))
+                        if(definition.id!=OperationId.CALLERS_SAVE_PROFILE)throw BackendFailure(ApiError(ErrorCode.VALIDATION,"ai.task_operation_mismatch"))
                         val disclosed=queries.snapshotObservations()
                         val page=try{metered{queries.query(QuerySpec(AiDomain.D01,filter=QueryFilter(number=call.arguments.s("number")),limit=1)).requiredValue()}}finally{queries.restoreObservations(disclosed)}
                         if(page.items.any{sameValue(it["stored"],aiBool(true))})throw BackendFailure(ApiError(ErrorCode.CONFLICT,"ai.profile_exists"))
@@ -159,8 +160,8 @@ class ToolBatchEngine(
             else if(blocked||uncertain)receipt=failure(call,ApiError(ErrorCode.SYSTEM_RESTRICTED,"ai.dependency_failed"),ToolStatus.SKIPPED)
             else {
                 if(!active())throw CancellationException("ai.cancelled")
-                val index=p.definition!!.index
-                if(index==78) {
+                val operation=p.definition!!.id
+                if(operation==OperationId.TASK_PREPARE) {
                     budget.consume()
                     receipt=try{val plan=planner.prepare(turn,TaskKind.valueOf(call.arguments.s("kind")),call.arguments.l("expectedCount").exactInt(),(call.arguments["targets"] as? AiJson.Arr)?.values?.map{it.string()}?.toSet()?:emptySet());ToolReceipt(step.id,call.id,ToolStatus.READ,plan.json())}catch(_:IllegalArgumentException){failure(call,ApiError(ErrorCode.VALIDATION,"ai.task_target_changed"))}
                 } else {
@@ -171,7 +172,7 @@ class ToolBatchEngine(
                     try {
                         receipt=metered{executor.execute(step.call,ToolExecutionContext(session,turn,generation,command))}
                         if(p.definition.write) {
-                            receipt=metered{verifier.verify(index,step.call,receipt,adoption=step.adoption)}
+                            receipt=metered{verifier.verify(operation,step.call,receipt,adoption=step.adoption)}
                             if(receipt.commitRevision!=null)scopes.committed(command.operationId,p.expected.keys)
                         }
                     } catch(e:Exception){

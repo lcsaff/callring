@@ -1,5 +1,6 @@
 package com.greatwall.callring
 
+import com.greatwall.callring.application.conversation.operation.*
 import com.greatwall.callring.application.conversation.*
 import com.greatwall.callring.application.ports.*
 import com.greatwall.callring.application.requiredValue
@@ -214,7 +215,7 @@ class QuerySnapshotConsistencyTest {
         val result = runCatching {
             ScopedToolReader(query)
                 .read(
-                    9,
+                    OperationId.REPORTS_LOAD,
                     aiObject(
                         "number" to aiString("31234"),
                         "range" to
@@ -266,7 +267,7 @@ class QuerySnapshotConsistencyTest {
         val receipt =
             ReceiptVerifier(query)
                 .verify(
-                    63,
+                    OperationId.RECORDINGS_ADOPT_IDENTITY,
                     ConversationToolCall("c", "recording_adopt", aiObject("callId" to aiNumber(1))),
                     ToolReceipt(
                         "op",
@@ -303,7 +304,7 @@ class QuerySnapshotConsistencyTest {
         val receipt =
             ReceiptVerifier(query)
                 .verify(
-                    81,
+                    OperationId.CALLERS_DELETE_NUMBER,
                     ConversationToolCall(
                         "c",
                         "number_delete",

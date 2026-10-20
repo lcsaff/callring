@@ -1,0 +1,508 @@
+{
+  "baseline": "0330a83157d08f4feddccd8c8ff1b09e01d52380",
+  "sourceCandidate": {
+    "path": "build/qa/layer-boundaries/t12-source-candidate.json",
+    "sha256": "86729fd82a84ee046f799a92646db274d583b677eecd649e9b6aa5f27ee94fc4",
+    "paths": 38,
+    "manifestSha256": "eae254901a26efabb84a5a2a61075135c9a2f586d26e8cb1debba78d6d80e000",
+    "afterGateSha256": "86729fd82a84ee046f799a92646db274d583b677eecd649e9b6aa5f27ee94fc4",
+    "reviewState": "Root specification delta PASS and independent quality delta PASS after removal of the unused OperationContract projection."
+  },
+  "gate": {
+    "command": ".\\gradlew.bat :contracts:test :backend:test :ui:testDebugUnitTest :app:testDebugUnitTest :app:assembleDebug :ui:lintDebug :app:lintDebug :app:compileBackendQaKotlin :ui:compileDebugAndroidTestKotlin :app:compileDebugAndroidTestKotlin --console=plain",
+    "exit": 0,
+    "log": "build/qa/layer-boundaries/t12-full-gate-after-review.log",
+    "sha256": "94fb162200dd6ce43eaac7ef24661c115fe32201297f66837398daf58ef575a4",
+    "summary": [
+      "BUILD SUCCESSFUL in 1m 8s",
+      "155 actionable tasks: 16 executed, 139 up-to-date"
+    ],
+    "exitEvidence": "functions.write_stdin session 63203 completed with exit_code 0; recorded in t12-full-gate-after-review.exit."
+  },
+  "tests": {
+    "backend": {
+      "taskState": "EXECUTED",
+      "xmlGlob": "backend/build/test-results/test/TEST-*.xml",
+      "xmlFiles": 69,
+      "aggregateXmlSha256": "8fb18d43436ef59b95b6a58ae17cea8ef269a717f9eb97b5b666a1b92cd55181",
+      "timestampMin": "2026-10-20T23:18:39.017Z",
+      "timestampMax": "2026-10-20T23:18:41.236Z",
+      "tests": 360,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "ui": {
+      "taskState": "UP-TO-DATE",
+      "xmlGlob": "ui/build/test-results/testDebugUnitTest/TEST-*.xml",
+      "xmlFiles": 75,
+      "aggregateXmlSha256": "309b62e48f7949b9113b3682febd164c19b48731a4e622775ba0b8fe060e6acf",
+      "timestampMin": "2026-10-20T22:54:34.620Z",
+      "timestampMax": "2026-10-20T22:55:09.576Z",
+      "tests": 312,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "cacheNote": "No UI source changed in T12. Repaired full gate reported UP-TO-DATE; XML timestamps are retained without claiming execution."
+    },
+    "app": {
+      "taskState": "EXECUTED",
+      "xmlGlob": "app/build/test-results/testDebugUnitTest/TEST-*.xml",
+      "xmlFiles": 64,
+      "aggregateXmlSha256": "164fe08053009228bdb2eec160fa7c6d4500ca46b1307f95d995265108d8257e",
+      "timestampMin": "2026-10-20T23:18:46.781Z",
+      "timestampMax": "2026-10-20T23:19:43.812Z",
+      "tests": 332,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "contracts": {
+      "taskState": "NO-SOURCE"
+    }
+  },
+  "lint": {
+    "ui": {
+      "path": "ui/build/reports/lint-results-debug.xml",
+      "sha256": "61094a8dcd24ddb283ce063ded1fd7e83d26b9903c9a7d6a4190cbc16df7b045",
+      "severities": {
+        "Warning": 30,
+        "Hint": 3
+      },
+      "analyzeTaskState": "UP-TO-DATE",
+      "reportTaskState": "UP-TO-DATE",
+      "taskState": "EXECUTED"
+    },
+    "app": {
+      "path": "app/build/reports/lint-results-debug.xml",
+      "sha256": "870f75067afdbd0613d441d5411e734123f76480f1f3cf8b5a91c11e1e5e993a",
+      "severities": {
+        "Warning": 6
+      },
+      "analyzeTaskState": "EXECUTED",
+      "reportTaskState": "UP-TO-DATE",
+      "taskState": "EXECUTED"
+    }
+  },
+  "architecture": {
+    "negativeTests": [
+      24,
+      5
+    ],
+    "jvmSources": 120,
+    "commands": [
+      {
+        "command": "python tools/check_architecture.py",
+        "exit": 0,
+        "log": "build/qa/layer-boundaries/t12-review-guard-1.log",
+        "sha256": "8bffd7dee18fe8da405646338848960a13831fdc7b3150017321f3e0b5b34260",
+        "output": "PASS: contracts / backend / UI / app dependency directions (all source sets)"
+      },
+      {
+        "command": "python tools/check_backend_boundaries.py",
+        "exit": 0,
+        "log": "build/qa/layer-boundaries/t12-review-guard-2.log",
+        "sha256": "7afaf91f2587a18c5a6f96a6fdfb128bedfabe12d126b65463ce42fab842e8ad",
+        "output": "PASS: 120 JVM sources; no Android/UI/presentation dependencies; current contract inventory and AI compatibility golden preserved"
+      },
+      {
+        "command": "python -m unittest discover -s tools -p test_architecture.py",
+        "exit": 0,
+        "log": "build/qa/layer-boundaries/t12-review-guard-3.log",
+        "sha256": "f598a3a950644d7829ca46b21b76abb74c067bb2478b09452f8a449ee3bf1005",
+        "output": "........................\r\n----------------------------------------------------------------------\r\nRan 24 tests in 0.915s\r\n\r\nOK"
+      },
+      {
+        "command": "python -m unittest discover -s tools -p test_backend_boundaries.py",
+        "exit": 0,
+        "log": "build/qa/layer-boundaries/t12-review-guard-4.log",
+        "sha256": "f7dc1c65d9bf1c31f1cb9a0be1fc0c0840290cbe7f978a8864c6557dbd2fbb5e",
+        "output": ".....\r\n----------------------------------------------------------------------\r\nRan 5 tests in 0.002s\r\n\r\nOK"
+      },
+      {
+        "command": "git diff --check",
+        "exit": 0,
+        "log": "build/qa/layer-boundaries/t12-review-guard-5.log",
+        "sha256": "aad36d4d2518cba70413cbe86a3941b5a209bf3e8b714d3a52f551d2ca65cb47",
+        "output": "warning: in the working copy of 'app/src/test/kotlin/com/greatwall/callring/platform/ai/RecordingMetadataReadsTest.kt', LF will be replaced by CRLF the next time Git touches it\nwarning: in the working copy of 'backend/src/test/kotlin/com/greatwall/callring/MemoryQuietTransactions.kt', LF will be replaced by CRLF the next time Git touches it\nwarning: in the working copy of 'backend/src/test/kotlin/com/greatwall/callring/ReportHomeReadTest.kt', LF will be replaced by CRLF the next time Git touches it\nwarning: in the working copy of 'backend/src/test/kotlin/com/greatwall/callring/coordination/StatisticsAndOverlayServiceTest.kt', LF will be replaced by CRLF the next time Git touches it\nwarning: in the working copy of 'docs/plans/layer-boundaries-evidence/t13-removal-preparation.md', LF will be replaced by CRLF the next time Git touches it"
+      }
+    ]
+  },
+  "buildTasks": {
+    ":app:compileBackendQaKotlin": "EXECUTED",
+    ":ui:compileDebugAndroidTestKotlin": "UP-TO-DATE",
+    ":app:compileDebugAndroidTestKotlin": "NO-SOURCE",
+    ":app:assembleDebug": "EXECUTED"
+  },
+  "device": "not run",
+  "fixtures": [
+    {
+      "source": "app/build/qa/layer-boundaries/caller-access-1000.json",
+      "copy": "build/qa/layer-boundaries/t12-fixtures/layer-boundaries/caller-access-1000.json",
+      "sha256": "ea385413cc45d575482f764af5a3c90dbfb5e66437a0fc7025c53d4f42b6e05e",
+      "bytes": 642
+    },
+    {
+      "source": "app/build/qa/layer-boundaries/caller-access-10000.json",
+      "copy": "build/qa/layer-boundaries/t12-fixtures/layer-boundaries/caller-access-10000.json",
+      "sha256": "f7a5ba32176e37e9ad96e85b8ad900f2bfe72355e981da8fc04b748697766d3a",
+      "bytes": 643
+    },
+    {
+      "source": "app/build/qa/layer-boundaries/calling-access-1000.json",
+      "copy": "build/qa/layer-boundaries/t12-fixtures/layer-boundaries/calling-access-1000.json",
+      "sha256": "dcfba2f115563ba1f1917b149aae98f0fd2cb9bfb378a7b1e9da584b5d988fcb",
+      "bytes": 5444
+    },
+    {
+      "source": "app/build/qa/layer-boundaries/calling-access-10000.json",
+      "copy": "build/qa/layer-boundaries/t12-fixtures/layer-boundaries/calling-access-10000.json",
+      "sha256": "a95cfff0d048e92c1238f77132af1b7b4a02776632df681213bce7d3d577c2b8",
+      "bytes": 5445
+    },
+    {
+      "source": "app/build/qa/layer-boundaries/history-settings-1000.json",
+      "copy": "build/qa/layer-boundaries/t12-fixtures/layer-boundaries/history-settings-1000.json",
+      "sha256": "18c006c9253c27a9cebc9e5b375b495a6d339853b26a4bc9e6c82bf76bf628c6",
+      "bytes": 2394
+    },
+    {
+      "source": "app/build/qa/layer-boundaries/history-settings-10000.json",
+      "copy": "build/qa/layer-boundaries/t12-fixtures/layer-boundaries/history-settings-10000.json",
+      "sha256": "45a17423130707bc778636710a88e7b1e98ff2e82ce1f17feb90f344a4134165",
+      "bytes": 2395
+    },
+    {
+      "source": "app/build/qa/layer-boundaries/local-access-1000.json",
+      "copy": "build/qa/layer-boundaries/t12-fixtures/layer-boundaries/local-access-1000.json",
+      "sha256": "533330e1cbdbeaab8979619daef0b36df7b92e4cdd5d970a70f5fabe9db8bb1d",
+      "bytes": 1729
+    },
+    {
+      "source": "app/build/qa/layer-boundaries/local-access-10000.json",
+      "copy": "build/qa/layer-boundaries/t12-fixtures/layer-boundaries/local-access-10000.json",
+      "sha256": "2a5ccd6ceb1ade64542f88b4435faa4cae8e0f9532e56c18583c4946ee73ba6e",
+      "bytes": 1730
+    },
+    {
+      "source": "app/build/qa/layer-boundaries/settings-access-1000.json",
+      "copy": "build/qa/layer-boundaries/t12-fixtures/layer-boundaries/settings-access-1000.json",
+      "sha256": "0ba22658c41efeef19a6ff44e16f7b6b32759c9cfa854e1ec415d3a2fb1ce313",
+      "bytes": 4879
+    },
+    {
+      "source": "app/build/qa/layer-boundaries/settings-access-10000.json",
+      "copy": "build/qa/layer-boundaries/t12-fixtures/layer-boundaries/settings-access-10000.json",
+      "sha256": "564627c5c578d5f205a077ab9ebdd6ce946ace9fac70dd3c6923edf2f7fc344f",
+      "bytes": 4880
+    },
+    {
+      "source": "app/build/qa/layer-boundaries/sql-baseline-1000.json",
+      "copy": "build/qa/layer-boundaries/t12-fixtures/layer-boundaries/sql-baseline-1000.json",
+      "sha256": "707e5446f934c87b70a98e6bc891b1cca593e4a83ebafb1119def678da72b124",
+      "bytes": 15205
+    },
+    {
+      "source": "app/build/qa/layer-boundaries/sql-baseline-10000.json",
+      "copy": "build/qa/layer-boundaries/t12-fixtures/layer-boundaries/sql-baseline-10000.json",
+      "sha256": "2bc0f7967ad010ca46e61d9b39ba3259807fa56e874e60fdd649efdfbd25703f",
+      "bytes": 15212
+    },
+    {
+      "source": "app/build/qa/layer-boundaries/sql-caller-1000.json",
+      "copy": "build/qa/layer-boundaries/t12-fixtures/layer-boundaries/sql-caller-1000.json",
+      "sha256": "28dd75e65b3e4520a8c38f572394495cfd27a49de8309a3d1bbe23b602d59190",
+      "bytes": 5676
+    },
+    {
+      "source": "app/build/qa/layer-boundaries/sql-caller-10000.json",
+      "copy": "build/qa/layer-boundaries/t12-fixtures/layer-boundaries/sql-caller-10000.json",
+      "sha256": "32b192f1b0418e47285bb4bec97a2cf95f1cec8ea400c65dff08943df8a9b66a",
+      "bytes": 5677
+    },
+    {
+      "source": "app/build/qa/layer-boundaries/sql-calling-1000.json",
+      "copy": "build/qa/layer-boundaries/t12-fixtures/layer-boundaries/sql-calling-1000.json",
+      "sha256": "54a55fee1c4cc4e457718abcb18dbf53ae08dd7df8a251dfd749f0218661d109",
+      "bytes": 6944
+    },
+    {
+      "source": "app/build/qa/layer-boundaries/sql-calling-10000.json",
+      "copy": "build/qa/layer-boundaries/t12-fixtures/layer-boundaries/sql-calling-10000.json",
+      "sha256": "4af178fafeb26b623ba7791b3d8aa7269433cfcf0d340bc35ce92e0bbb831496",
+      "bytes": 6945
+    },
+    {
+      "source": "app/build/qa/layer-boundaries/sql-history-settings-1000.json",
+      "copy": "build/qa/layer-boundaries/t12-fixtures/layer-boundaries/sql-history-settings-1000.json",
+      "sha256": "43fedb35e8ede1511b673f9f8807449bff6d44ece0590fe26ccf240e2d3d0dc8",
+      "bytes": 12345
+    },
+    {
+      "source": "app/build/qa/layer-boundaries/sql-history-settings-10000.json",
+      "copy": "build/qa/layer-boundaries/t12-fixtures/layer-boundaries/sql-history-settings-10000.json",
+      "sha256": "147b1603354fb092b4d3a4f916e0fb865c382fea2b31fe8fb0fe597123225625",
+      "bytes": 12364
+    },
+    {
+      "source": "app/build/qa/layer-boundaries/sql-scoped-1000.json",
+      "copy": "build/qa/layer-boundaries/t12-fixtures/layer-boundaries/sql-scoped-1000.json",
+      "sha256": "6b8aeae4fa80fa5ace5d34f79ea3e664a543c4057c3c984020720ce5e3460567",
+      "bytes": 7037
+    },
+    {
+      "source": "app/build/qa/layer-boundaries/sql-scoped-10000.json",
+      "copy": "build/qa/layer-boundaries/t12-fixtures/layer-boundaries/sql-scoped-10000.json",
+      "sha256": "85b79d6f896b15692bfc40eb75b80acd2b465fd02f53d4cc68a18eaa1fbae936",
+      "bytes": 7038
+    },
+    {
+      "source": "app/build/qa/layer-boundaries/sql-settings-1000.json",
+      "copy": "build/qa/layer-boundaries/t12-fixtures/layer-boundaries/sql-settings-1000.json",
+      "sha256": "92e56caaaaf933f879c9d896ac12e48c1b5ef2e64bd66e0b14da40e94aa284fc",
+      "bytes": 12536
+    },
+    {
+      "source": "app/build/qa/layer-boundaries/sql-settings-10000.json",
+      "copy": "build/qa/layer-boundaries/t12-fixtures/layer-boundaries/sql-settings-10000.json",
+      "sha256": "2190177e421ebcdcdaa64c45e89598e8faf75bf7834d46010b0c8e6e790ed485",
+      "bytes": 12537
+    },
+    {
+      "source": "app/build/qa/layer-boundaries/t10b1-call-1000.json",
+      "copy": "build/qa/layer-boundaries/t12-fixtures/layer-boundaries/t10b1-call-1000.json",
+      "sha256": "c5183847f7f4e9d1a365b4f8532e679363d58289040ad1c96a7fa0a21d1bcd80",
+      "bytes": 113
+    },
+    {
+      "source": "app/build/qa/layer-boundaries/t10b1-call-10000.json",
+      "copy": "build/qa/layer-boundaries/t12-fixtures/layer-boundaries/t10b1-call-10000.json",
+      "sha256": "8f3893c75aa37f7541b0d63ac5d8c8431206f49375c34cfbbfc0ef6cb9458b52",
+      "bytes": 114
+    },
+    {
+      "source": "app/build/qa/layer-boundaries/t10b1-metadata-cold-1000.json",
+      "copy": "build/qa/layer-boundaries/t12-fixtures/layer-boundaries/t10b1-metadata-cold-1000.json",
+      "sha256": "d5cfd42e4848139e2c68e37ab7689996d7ab6e03c124f7806f0fb5183dc3aa8b",
+      "bytes": 177
+    },
+    {
+      "source": "app/build/qa/layer-boundaries/t10b1-metadata-cold-10000.json",
+      "copy": "build/qa/layer-boundaries/t12-fixtures/layer-boundaries/t10b1-metadata-cold-10000.json",
+      "sha256": "20e500d34ceb6a9e176224dd86cd59af3d71386b49d0503ad3672c0397f711d6",
+      "bytes": 182
+    },
+    {
+      "source": "app/build/qa/layer-boundaries/t10b1-metadata-cold.json",
+      "copy": "build/qa/layer-boundaries/t12-fixtures/layer-boundaries/t10b1-metadata-cold.json",
+      "sha256": "a7c26ebbf49f591912dd85495b91d2860387cec665f6122a09e8cfaf1c2693b2",
+      "bytes": 171
+    },
+    {
+      "source": "app/build/qa/layer-boundaries/t10b1-metadata-warm-1000.json",
+      "copy": "build/qa/layer-boundaries/t12-fixtures/layer-boundaries/t10b1-metadata-warm-1000.json",
+      "sha256": "d90706293157c047ee2db158939ae7a4a91caabe4deddfba1b69d910656f6f25",
+      "bytes": 257
+    },
+    {
+      "source": "app/build/qa/layer-boundaries/t10b1-metadata-warm-10000.json",
+      "copy": "build/qa/layer-boundaries/t12-fixtures/layer-boundaries/t10b1-metadata-warm-10000.json",
+      "sha256": "f650a6c1bc561b0afcafcf2b81f28ba8331c035cff25816e6db7c829356bde35",
+      "bytes": 258
+    },
+    {
+      "source": "app/build/qa/layer-boundaries/t10b1-pagination-1000.json",
+      "copy": "build/qa/layer-boundaries/t12-fixtures/layer-boundaries/t10b1-pagination-1000.json",
+      "sha256": "aab3c0ca519af5f2d95ac5b09d1ef15ab06a8941140c119fcca428b870cc144a",
+      "bytes": 2107
+    },
+    {
+      "source": "app/build/qa/layer-boundaries/t10b1-pagination-10000.json",
+      "copy": "build/qa/layer-boundaries/t12-fixtures/layer-boundaries/t10b1-pagination-10000.json",
+      "sha256": "e2386b609247db8f722ca848a015ceb924e452af2c6ede29b691917d4bced17b",
+      "bytes": 17058
+    },
+    {
+      "source": "app/build/qa/layer-boundaries/t10b1-pagination-future.json",
+      "copy": "build/qa/layer-boundaries/t12-fixtures/layer-boundaries/t10b1-pagination-future.json",
+      "sha256": "f1cf41f7ee1f0d76f94ab05a9d71979b373918d58c2d5e9b9e3ce5830240c919",
+      "bytes": 287
+    },
+    {
+      "source": "app/build/qa/layer-boundaries/t10b3-number-access-1000.json",
+      "copy": "build/qa/layer-boundaries/t12-fixtures/layer-boundaries/t10b3-number-access-1000.json",
+      "sha256": "78d19cdfa7168a815e2ade84eb32837ff9d6ffbbe7e5657a9f858f93dd5958d3",
+      "bytes": 333
+    },
+    {
+      "source": "app/build/qa/layer-boundaries/t10b3-number-access-10000.json",
+      "copy": "build/qa/layer-boundaries/t12-fixtures/layer-boundaries/t10b3-number-access-10000.json",
+      "sha256": "eade40031320b8c556c33eabc1237439eaf2e16cca769c41219eb4a62c9287fc",
+      "bytes": 335
+    },
+    {
+      "source": "app/build/qa/report-home-access-1000.json",
+      "copy": "build/qa/layer-boundaries/t12-fixtures/report-home-access-1000.json",
+      "sha256": "fbefdfb326983a33130cb5d26031b34c9715a419bfad1c98fd9ffea7c3b437f5",
+      "bytes": 1016
+    },
+    {
+      "source": "app/build/qa/report-home-access-10000.json",
+      "copy": "build/qa/layer-boundaries/t12-fixtures/report-home-access-10000.json",
+      "sha256": "de18a5f7b4bad5faa3af1882407b565119b4bdaa4bd1f732d4fdfbaada8d6ca4",
+      "bytes": 1017
+    },
+    {
+      "source": "app/build/qa/review-diagnostics.json",
+      "copy": "build/qa/layer-boundaries/t12-fixtures/review-diagnostics.json",
+      "sha256": "3d9a722f148f733425217b0f83b1d01d827f3c1c4f6a2f9fac633dfcf12cee1a",
+      "bytes": 3023
+    },
+    {
+      "source": "app/build/qa/scoped-source-access-1000.json",
+      "copy": "build/qa/layer-boundaries/t12-fixtures/scoped-source-access-1000.json",
+      "sha256": "8f669dff515916f58fe2d0c767b5ba80529df0f9d5bc953f648eae4ecbacf9ec",
+      "bytes": 341
+    },
+    {
+      "source": "app/build/qa/scoped-source-access-10000.json",
+      "copy": "build/qa/layer-boundaries/t12-fixtures/scoped-source-access-10000.json",
+      "sha256": "e0188c2d62898ff5a9987763388b4485c6e126a8918aee78d898958702171a33",
+      "bytes": 342
+    },
+    {
+      "source": "app/build/qa/sql-report-home-1000.json",
+      "copy": "build/qa/layer-boundaries/t12-fixtures/sql-report-home-1000.json",
+      "sha256": "3e24d52341043465c8db2087e8fded2a8b7165f371494796875fd41848f14c92",
+      "bytes": 4002
+    },
+    {
+      "source": "app/build/qa/sql-report-home-10000.json",
+      "copy": "build/qa/layer-boundaries/t12-fixtures/sql-report-home-10000.json",
+      "sha256": "3e24d52341043465c8db2087e8fded2a8b7165f371494796875fd41848f14c92",
+      "bytes": 4002
+    },
+    {
+      "source": "app/build/qa/sql-scoped-source-1000.json",
+      "copy": "build/qa/layer-boundaries/t12-fixtures/sql-scoped-source-1000.json",
+      "sha256": "1365a3ff5285d81758a7e2013a239ee4485de22c5a096ff6a0fbe99ac4d2dd18",
+      "bytes": 938
+    },
+    {
+      "source": "app/build/qa/sql-scoped-source-10000.json",
+      "copy": "build/qa/layer-boundaries/t12-fixtures/sql-scoped-source-10000.json",
+      "sha256": "1365a3ff5285d81758a7e2013a239ee4485de22c5a096ff6a0fbe99ac4d2dd18",
+      "bytes": 938
+    }
+  ],
+  "redEvidence": [
+    {
+      "path": "build/qa/layer-boundaries/t12-red-operation-coverage.log",
+      "exit": 1,
+      "sha256": "70d2af56ee379132c97f939287fb91ab7affe18f1dda92324c28fdf463a307bd",
+      "meaning": "Existing production contract coverage asserted 81; original implementation returned 72: 3 tests, 1 assertion failure."
+    },
+    {
+      "path": "build/qa/layer-boundaries/t12-red-catalog-validation.log",
+      "exit": 1,
+      "sha256": "12099efa4e7590be3dd7de09a1670f43022371fbf289e5960ba8bc3ff1ada696",
+      "meaning": "Catalog rejected missing fields but accepted inconsistent read/write declarations: 6 tests, 2 assertion failures."
+    },
+    {
+      "path": "build/qa/layer-boundaries/t12-red-numeric-guard.log",
+      "exit": 1,
+      "sha256": "1e05a449b630ef04e210831f8d3185a931f5ffdf169100b7c8507ab811dcf825",
+      "meaning": "35 numeric-dispatch fixture subcases accepted before guard implementation."
+    },
+    {
+      "path": "build/qa/layer-boundaries/t12-red-catalog-description-guard.log",
+      "exit": 1,
+      "sha256": "f5a34cca6e3c9f5661b4f7e3603cb35b656edef904ec8712283ca8b95426fd20",
+      "meaning": "Literal named description in the new real catalog was rejected before the precise exception."
+    },
+    {
+      "path": "build/qa/layer-boundaries/t12-red-removed-projection.log",
+      "exit": 1,
+      "sha256": "e315e2320addea32fbe4a8f81dcc8a944ec1c7c554d6565e14b76b136a8780f3",
+      "meaning": "Old OperationContract class and operationContracts forwarding projection were accepted: 24 tests / 2 rejected-fixture assertions failed before deletion guard implementation."
+    }
+  ],
+  "preparationFailures": [
+    {
+      "path": "build/qa/layer-boundaries/t12-compile-main.log",
+      "sha256": "e969a2d9ea4cd7a5717c3a2215864b72aaf0d4f71accc5096aa39555a7c55e36",
+      "classification": "Compilation/call-site migration preparation; not behavioral RED"
+    },
+    {
+      "path": "build/qa/layer-boundaries/t12-compile-tests.log",
+      "sha256": "897dc5d875b015ca8794f9940d59cf6160aff9f30977f6fc721da634eaf5f200",
+      "classification": "Compilation/call-site migration preparation; not behavioral RED"
+    },
+    {
+      "path": "build/qa/layer-boundaries/t12-compile-tests-2.log",
+      "sha256": "5a6bd9d066f0a8d7923b8dce75fba1474e114652e33ac26dac825235fe34c343",
+      "classification": "Compilation/call-site migration preparation; not behavioral RED"
+    },
+    {
+      "path": "build/qa/layer-boundaries/t12-compile-tests-3.log",
+      "sha256": "f9d03a0f1f6add26fce5ccbe025b886d1df99a2f4a8da889cd469057ff14d917",
+      "classification": "Compilation/call-site migration preparation; not behavioral RED"
+    },
+    {
+      "path": "build/qa/layer-boundaries/t12-backend-first.log",
+      "sha256": "20a594bb094c875185765b768cfc05925bda9829a9812b9dfca6bc128a281239",
+      "classification": "Compilation/call-site migration preparation; not behavioral RED"
+    },
+    {
+      "path": "build/qa/layer-boundaries/t12-catalog-test-preparation-failure.log",
+      "sha256": "9bcabedf1aa8a585624ab821ff60869070072eb12388d4f42c58a5d5f3f92cb1",
+      "classification": "Compilation/call-site migration preparation; not behavioral RED"
+    },
+    {
+      "path": "build/qa/layer-boundaries/t12-backend-app-compile.log",
+      "sha256": "85e4f878a6e12297df97bef3ba12603db21b7b8ee8c029020f74546d1d762149",
+      "classification": "Compilation/call-site migration preparation; not behavioral RED"
+    }
+  ],
+  "externalGoldenSha256": "7e9735f0718740ef8c19785d61866ef6beec1b26e869aa074f87472b913113a1",
+  "sourceAggregateAlgorithm": "sorted repository-relative path + LF + raw bytes (or DELETED) + LF",
+  "xmlAggregateAlgorithm": "sorted WindowsPath objects (Windows case-insensitive path component order), then repository-relative p.as_posix() + LF + raw XML bytes + LF",
+  "directedPipelineEvidence": [
+    {
+      "path": "build/qa/layer-boundaries/t12-projection-removal-focused.log",
+      "sha256": "bd15d44d95588f1be02bf20f1fd8eed76da66947f53c19adacb26a9caf8d1115",
+      "exit": 0
+    },
+    {
+      "path": "build/qa/layer-boundaries/t12-shuffled-full-pipeline.log",
+      "sha256": "a555646d5c16cb625bca5e01eb3d69ae80fec4a570c36e9f5cf290c4ff1e3f7d",
+      "exit": 0
+    },
+    {
+      "path": "build/qa/layer-boundaries/t12-shuffled-all81.log",
+      "sha256": "09431e61c69f2882cc802bb57bfa69fddcd537035700855439d501ddadfc4e2c",
+      "exit": 0
+    }
+  ],
+  "supersededEvidence": {
+    "gateLog": "build/qa/layer-boundaries/t12-full-gate.log",
+    "summary": "build/qa/layer-boundaries/t12-verification-summary-before-projection-review.json",
+    "sourceCandidate": "build/qa/layer-boundaries/t12-source-candidate-before-projection-review.json",
+    "fixtureArchive": "build/qa/layer-boundaries/t12-fixtures-before-projection-review",
+    "note": "Historical first gate/candidate only. Its fixture copy paths map t12-fixtures/ to t12-fixtures-before-projection-review/; originals remain untouched."
+  },
+  "investigationFailures": [
+    {
+      "path": "build/qa/layer-boundaries/t12-backend-2.log",
+      "sha256": "3bb7c1088fd429ff1dd786f2bc15a905db2e77a8c5dbdf91530bf39ef253c347",
+      "exit": 1,
+      "classification": "Unintended migration baseline regression, not claimed as test-first RED",
+      "result": "Historical runtimeDefaults allDefinitions text restored verbatim; later baseline and full backend gates passed."
+    }
+  ],
+  "whitespace": {
+    "diffCheckExit": 0,
+    "untrackedLog": "build/qa/layer-boundaries/t12-untracked-whitespace.log",
+    "untrackedSha256": "d938fa189912f8776c3deb31a6bec42f403f57b9c8e3ed936bdb076caf6bd61c"
+  }
+}

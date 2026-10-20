@@ -12,7 +12,7 @@ class BoundaryPolicyTest(unittest.TestCase):
         self.assertFalse(compatible_inventory({}, inventory))
 
     def test_protocol_metadata_exception_does_not_allow_ordinary_ui_messages(self):
-        self.assertFalse(has_presentation_literal(Path('ToolRegistry.kt'), 'ToolDefinition(73,"discover",schema,false,"发现工具")'))
+        self.assertTrue(has_presentation_literal(Path('ToolRegistry.kt'), 'ToolDefinition(73,"discover",schema,false,"发现工具")'))
         self.assertTrue(has_presentation_literal(Path('ToolRegistry.kt'), 'fun saved() = "保存成功"'))
         self.assertTrue(has_presentation_literal(Path('Another.kt'), 'val message = "保存成功"'))
 
@@ -26,10 +26,19 @@ class BoundaryPolicyTest(unittest.TestCase):
     def test_localized_metadata_does_not_exempt_the_rest_of_the_line_or_region(self):
         self.assertTrue(has_presentation_literal(Path('ToolRegistry.kt'), 'ToolDefinition(73,"discover",schema,false,"发现工具"); val unrelated="保存成功"'))
         self.assertTrue(has_presentation_literal(Path('ToolRegistry.kt'), 'ToolDefinition(73,"发现工具",schema,false,"metadata")'))
-        self.assertFalse(has_presentation_literal(Path('CapabilityCatalog.kt'), 'private val purposes=listOf("发现工具")\nfun toolPurpose()=Unit'))
+        self.assertTrue(has_presentation_literal(Path('CapabilityCatalog.kt'), 'private val purposes=listOf("发现工具")\nfun toolPurpose()=Unit'))
         self.assertTrue(has_presentation_literal(Path('CapabilityCatalog.kt'), 'private val purposes=listOf("发现工具");val unrelated="保存成功"\nfun toolPurpose()=Unit'))
         self.assertTrue(has_presentation_literal(Path('CapabilityCatalog.kt'), 'private val purposes=listOf(run { val label="保存成功"; label })\nfun toolPurpose()=Unit'))
 
+
+class NamedOperationMetadataTest(unittest.TestCase):
+    def test_only_literal_description_in_real_catalog_definition_is_metadata(self):
+        row='OperationDefinition(id=OperationId.DISCOVER_TOOLS, name="discover_tools", description="发现工具")'
+        self.assertFalse(has_presentation_literal(Path('OperationCatalog.kt'),row))
+        self.assertTrue(has_presentation_literal(Path('Another.kt'),row))
+        self.assertTrue(has_presentation_literal(Path('OperationCatalog.kt'),row+';val message="保存成功"'))
+        self.assertTrue(has_presentation_literal(Path('OperationCatalog.kt'),row.replace('name="discover_tools"','name="发现工具"')))
+        self.assertTrue(has_presentation_literal(Path('OperationCatalog.kt'),row.replace('description="发现工具"','description=run { val label="保存成功";label }')))
 
 if __name__ == '__main__':
     unittest.main()

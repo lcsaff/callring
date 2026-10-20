@@ -20,7 +20,7 @@ class NumberDeletionToolTest {
         f.state.calls[1] = RawCallRecord(1, "31234", f.now, 0, CallResult.ANSWERED.toDomain(), CallDecision.NORMAL_RINGING.toDomain(), CallSource.SCREENING.toDomain(), null, null, true, fact, fact)
         val foreground = ForegroundActionService(checkCommand = ForegroundCommandValidator(f.coordinator)::check)
         val host = foreground.attachHost()
-        val executor = ToolExecutor({ f.backend }, f.coordinator, foreground, ForegroundResourceRegistry())
+        val executor = ToolExecutor({ f.backend }, f.coordinator, foreground, ForegroundResourceRegistry(), queries=unusedToolQueries(), documentWriteVerified={false})
         fun scope() = ToolExecutionContext("s", "t", 1, CommandContext(java.util.UUID.randomUUID().toString(), f.coordinator.capture(), 1) { true })
         fun call(id: String) = ConversationToolCall(id, "callers_deleteNumber", aiObject("number" to aiString("31234")))
 

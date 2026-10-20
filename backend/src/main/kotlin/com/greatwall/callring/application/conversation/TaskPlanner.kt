@@ -1,5 +1,6 @@
 package com.greatwall.callring.application.conversation
 
+import com.greatwall.callring.application.conversation.operation.*
 import com.greatwall.callring.contracts.common.*
 import com.greatwall.callring.contracts.ai.*
 import com.greatwall.callring.application.ports.BackendFailure
@@ -9,7 +10,7 @@ enum class TaskKind { CREATE_PROFILES, SET_APPEARANCE, OPERATIONS }
 data class TaskPlan(val id:String,val userMessageRef:String,val kind:TaskKind,val expectedCount:Int,val targets:Set<String>) {
     fun json()=aiObject("taskId" to aiString(id),"kind" to aiString(kind.name),"userMessageRef" to aiString(userMessageRef),"expectedCount" to aiNumber(expectedCount.toLong()),"targets" to AiJson.Arr(targets.map(::aiString)))
 }
-class TaskPlanner {
+class TaskPlanner(private val catalog:OperationCatalog = OperationCatalog()) {
     private val plans=linkedMapOf<String,TaskPlan>()
     fun forUser(userMessageRef:String)=plans.values.filter{it.userMessageRef==userMessageRef}
     fun reset(){plans.clear()}
@@ -22,7 +23,7 @@ class TaskPlanner {
     }
     fun verifiedCount(plan:TaskPlan,steps:List<LedgerStep>):Int {
         val verified=steps.filter{it.taskId==plan.id&&it.write&&it.state==StepState.VERIFIED}
-        return if(plan.kind==TaskKind.CREATE_PROFILES)verified.filter{it.call.name=="callers_saveProfile"}.mapNotNull{(it.call.arguments["number"] as? AiJson.Str)?.value}.distinct().size else verified.size
+        return if(plan.kind==TaskKind.CREATE_PROFILES)verified.filter{catalog.find(it.call.name)?.id==OperationId.CALLERS_SAVE_PROFILE}.mapNotNull{(it.call.arguments["number"] as? AiJson.Str)?.value}.distinct().size else verified.size
     }
     fun satisfied(plan:TaskPlan,steps:List<LedgerStep>):Boolean {
         if(verifiedCount(plan,steps)!=plan.expectedCount)return false

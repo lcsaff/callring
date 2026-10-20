@@ -5,6 +5,27 @@ import sys
 from check_backend_boundaries import without_comments, has_presentation_literal
 ROOT = Path(__file__).resolve().parents[1]
 
+OPERATION_FILES = {"ToolExecutor.kt", "ToolBatchEngine.kt", "OperationScopePlanner.kt", "ConfirmationTargets.kt", "ReceiptVerifier.kt", "ScopedToolReader.kt", "OperationCatalog.kt", "TaskPlanner.kt", "ConversationService.kt"}
+
+def numeric_operation_dispatch(path, source):
+    if path.name not in OPERATION_FILES:
+        return False
+    # Strings and comments are data, never executable selectors.
+    code = re.sub(r'"(?:\\.|[^"\\])*"', '""', without_comments(source))
+    identity = r'(?:legacyIndex|index|ordinal|displayOrder|operationCode)'
+    if re.search(r'\bwhen\s*\([^)]*\b' + identity + r'\b', code):
+        return True
+    if re.search(r'\b' + identity + r'\b\s*(?:==|!=|<=|>=|<|>|!?in\b)', code):
+        return True
+    if re.search(r'\boperationCode\b[^;\n]*(?:toInt|toLong|substring|removePrefix|drop|take)\s*\(', code):
+        return True
+    # Aliasing a protocol field before branching does not change its meaning.
+    aliases = re.findall(r'\bval\s+(\w+)\s*=\s*[^;\n]*\b' + identity + r'\b[^;\n]*', code)
+    for alias in aliases:
+        if re.search(r'\b(?:when|if)\s*\([^)]*\b' + re.escape(alias) + r'\b', code):
+            return True
+    return False
+
 def check(root=ROOT):
     errors=[]
     allowed={'contracts':set(), 'backend':{'contracts'}, 'ui':{'contracts'}, 'app':{'contracts','backend','ui'}}
@@ -23,8 +44,12 @@ def check(root=ROOT):
             if path.suffix not in ('.kt','.java'):continue
             source=without_comments(path.read_text(encoding='utf-8'))
             references=re.sub(r'"(?:\\.|[^"\\])*"', '""', source)
+            if numeric_operation_dispatch(path, source):
+                errors.append(f'{path.relative_to(root)}: numeric operation dispatch; use OperationId or explicit catalog policy')
             if re.search(r'\bas\s*\??\s*(?:com\.greatwall\.callring\.data\.)?SqliteBackendStore\b|\basSqliteBackendStore\s*\(|\(\s*(?:com\.greatwall\.callring\.data\.)?SqliteBackendStore\s*\)', references):
                 errors.append(f'{path.relative_to(root)}: concrete backend store cast; inject explicit resource capabilities')
+            if re.search(r'\b(?:data\s+)?class\s+OperationContract\b|\bfun\s+(?:ToolRegistry\s*\.\s*)?operationContracts\s*\(', references):
+                errors.append(f'{path.relative_to(root)}: removed operation contract projection; consume OperationDefinition directly')
             if re.search(r'\bDataChange\b|\brefreshFromChanges\b|\bfun\s+observeChanges\b', references):
                 errors.append(f'{path.relative_to(root)}: removed legacy change protocol or dual subscription mode')
             if re.search(r'\binterface\s+ChangeFeed\b', references):

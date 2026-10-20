@@ -29,7 +29,7 @@ class ConversationProtocolTest {
     }
     @Test fun lazyRequestHasNoSnapshotAndRetainsMalformedArgumentsForPairing() {
         val call=ConversationToolCall("bad","settings_saveAppearance",aiObject(),argumentError=ApiError(ErrorCode.VALIDATION,"ai.argument_json"),wireArguments="{bad-json")
-        val request=ConversationRequest(messages=listOf(ConversationMessage("user","hello"),ConversationMessage("assistant","",listOf(call)),ConversationMessage("tool","",receipts=listOf(ToolReceipt("op","bad",ToolStatus.FAILED,error=ApiError(ErrorCode.VALIDATION,"ai.argument_json"))))),tools=ToolRegistry().allDefinitions.filter{it.name=="discover_tools"},output=4096)
+        val request=ConversationRequest(messages=listOf(ConversationMessage("user","hello"),ConversationMessage("assistant","",listOf(call)),ConversationMessage("tool","",receipts=listOf(ToolReceipt("op","bad",ToolStatus.FAILED,error=ApiError(ErrorCode.VALIDATION,"ai.argument_json"))))),tools=ToolRegistry().definitions.filter{it.name=="discover_tools"},output=4096)
         val body=JSONObject(String(CompatibleConversationClient().encode(connection,request)))
         assertEquals(4,body.getJSONArray("messages").length())
         assertFalse(body.toString().contains("Complete current business snapshot"))
@@ -91,7 +91,7 @@ class ConversationProtocolTest {
     }
     private val connection = AiConnection(url = "https://example.com/v1", model = "fixture", apiKey = "sentinel-secret")
     @Test fun defaultBudgetFitsOnlyDiscoveryAndNoDomainSnapshot() {
-        val definitions=ToolRegistry().allDefinitions.filter{it.name=="discover_tools"}
+        val definitions=ToolRegistry().definitions.filter{it.name=="discover_tools"}
         val body=CompatibleConversationClient().encode(connection,ConversationRequest(messages=listOf(ConversationMessage("user","hello")),tools=definitions,output=4096))
         val estimate=ContextBudget.check(body,ConversationBudget())
         println("DEFAULT_CONTEXT_PROOF bytes=${body.size} estimate=$estimate tools=1 businessSnapshot=false")

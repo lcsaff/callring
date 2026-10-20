@@ -67,4 +67,17 @@ class ArchitectureTests(unittest.TestCase):
     def test_removed_coordinator_publishers_are_rejected(self):
         for name in ("changed", "commit", "publishScopes", "runtimeChanged", "observe"):
             self.check_bad(lambda root: (root/'backend/src/main/kotlin/BusinessRevisionCoordinator.kt').write_text(f"class BusinessRevisionCoordinator {{ fun {name}() {{}} }}"))
+    def test_operation_dispatch_cannot_use_protocol_numbers_or_discovery_order(self):
+        for filename in ("ToolExecutor.kt", "ToolBatchEngine.kt", "OperationScopePlanner.kt", "ConfirmationTargets.kt", "ReceiptVerifier.kt", "ScopedToolReader.kt", "OperationCatalog.kt"):
+            for expression in ("when (definition.legacyIndex) { 7 -> save() }", "if (index in setOf(7,8)) save()", "when (definition.displayOrder) { 37 -> save() }", "val id = definition.operationCode.removePrefix(\"O\").toInt(); when(id) { 7 -> save() }", "when (operation.ordinal) { 7 -> save() }"):
+                with self.subTest(filename=filename, expression=expression):
+                    self.check_bad(lambda root: (root/f"backend/src/main/kotlin/{filename}").write_text(expression))
+    def test_operation_protocol_metadata_and_schema_numbers_are_allowed(self):
+        text = 'val d = OperationDefinition(legacyIndex=7, displayOrder=7, operationCode="O07"); val ordered=rows.sortedBy { it.displayOrder }; val unique=rows.map { it.legacyIndex }.distinct(); val schema=shape("max" to aiNumber(32)); when(operation) { OperationId.CALLERS_SAVE_PROFILE -> save() }'
+        root=self.tree(lambda root: (root/'backend/src/main/kotlin/OperationCatalog.kt').write_text(text))
+        self.assertEqual([],check_architecture.check(root))
+    def test_removed_operation_projection_is_rejected(self):
+        for declaration in ('data class OperationContract(val id:OperationId)', 'fun ToolRegistry.operationContracts() = definitions.map { it }'):
+            with self.subTest(declaration=declaration):
+                self.check_bad(lambda root: (root/'backend/src/main/kotlin/Old.kt').write_text(declaration))
 if __name__ == '__main__': unittest.main()

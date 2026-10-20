@@ -1,5 +1,6 @@
 package com.greatwall.callring.application.conversation
 
+import com.greatwall.callring.application.conversation.operation.*
 import com.greatwall.callring.application.*
 import com.greatwall.callring.contracts.common.*
 import com.greatwall.callring.contracts.change.*
@@ -21,7 +22,7 @@ class ConversationService(
     private val clientFactory:()->ConversationClient,
     private val scope:CoroutineScope=CoroutineScope(SupervisorJob()+Dispatchers.Default),
     val resources:ForegroundResourceRegistry=ForegroundResourceRegistry(),
-    documentWriteVerified:suspend(DocumentRef)->Boolean={false},
+    documentWriteVerified:suspend(DocumentRef)->Boolean,
 ):ConversationApi,AutoCloseable {
     private val lock=Any()
     override val state=MutableStateFlow(ConversationState(UUID.randomUUID().toString()))
@@ -112,16 +113,16 @@ class ConversationService(
             context.begin(ConversationMessage("user",sanitizer.text(text),presentationKey=if(resuming!=null)"conversation.continue"else null))
             synchronized(lock){state.value=state.value.copy(target=sanitizer.text("${configuration.analysis.url} · ${configuration.analysis.model} · ${resolveConversationProfile(configuration.analysis,configuration.conversationCompatibility)}"))}
             val operationClient=clientFactory().also{client=it}
-            val enabled=linkedSetOf("discover_tools")
+            val enabled=linkedSetOf(executor.registry.catalog[OperationId.DISCOVER_TOOLS].name)
             fun previewBudget(results:List<ToolReceipt>,reserved:Int=0):Long {
-                val request=ConversationRequest(messages=context.requestMessages()+ConversationMessage("tool","",receipts=results),tools=executor.registry.allDefinitions.filter{it.name in enabled},output=configuration.conversationBudget.output,compatibility=configuration.conversationCompatibility,context=engine?.summary()?:AiJson.Null)
+                val request=ConversationRequest(messages=context.requestMessages()+ConversationMessage("tool","",receipts=results),tools=executor.registry.definitions.filter{it.name in enabled},output=configuration.conversationBudget.output,compatibility=configuration.conversationCompatibility,context=engine?.summary()?:AiJson.Null)
                 return ContextBudget.checkReserved(operationClient.encode(configuration.analysis,request),reserved,configuration.conversationBudget)
             }
             val observer:(ToolReceipt)->Unit={receipt->
                 val list=state.value.receipts.filterNot{it.operationId==receipt.operationId}+sanitize(receipt,sanitizer).uiProjection()
                 publish(ConversationPhase.EXECUTING,receipts=list,sourceBase=sourceBase)
                 if(!paired&&activeBatch.isNotEmpty())previewBudget(activeBatch.map{call->
-                    engine?.receipts?.lastOrNull{it.toolCallId==call.id}?:if(call.name=="callers_saveProfiles")ToolReceipt("batch:${call.id}",call.id,ToolStatus.READ,aiObject("items" to AiJson.Arr(engine?.groupedReceipts(call.id)?.map{sanitize(it,sanitizer).json()}?:emptyList())))else ToolReceipt("pending",call.id,ToolStatus.SKIPPED)
+                    engine?.receipts?.lastOrNull{it.toolCallId==call.id}?:if(executor.registry.catalog.find(call.name)?.id==OperationId.CALLERS_SAVE_PROFILES)ToolReceipt("batch:${call.id}",call.id,ToolStatus.READ,aiObject("items" to AiJson.Arr(engine?.groupedReceipts(call.id)?.map{sanitize(it,sanitizer).json()}?:emptyList())))else ToolReceipt("pending",call.id,ToolStatus.SKIPPED)
                 }.map{sanitize(it,sanitizer)})
             }
             val active={generation.get()==token&&state.value.sessionId==session&&!connectionChanged}
@@ -130,7 +131,7 @@ class ConversationService(
             while(true) {
                 ensureActive(session,token);engine.budget.request()
                 publish(ConversationPhase.BUDGETING,engine=engine,sourceBase=sourceBase)
-                val request=ConversationRequest(messages=context.requestMessages(),tools=executor.registry.allDefinitions.filter{it.name in enabled},output=configuration.conversationBudget.output,compatibility=configuration.conversationCompatibility,context=aiObject("taskState" to engine.summary(),"sourcePolicy" to aiString("No business snapshot. Discover and query only data required by the current request. Incomplete pages and pending receipts are not completion.")))
+                val request=ConversationRequest(messages=context.requestMessages(),tools=executor.registry.definitions.filter{it.name in enabled},output=configuration.conversationBudget.output,compatibility=configuration.conversationCompatibility,context=aiObject("taskState" to engine.summary(),"sourcePolicy" to aiString("No business snapshot. Discover and query only data required by the current request. Incomplete pages and pending receipts are not completion.")))
                 val encoded=operationClient.encode(configuration.analysis,request)
                 val estimate=ContextBudget.check(encoded,configuration.conversationBudget)
                 publish(ConversationPhase.REQUESTING,estimate=estimate,engine=engine,sourceBase=sourceBase)
@@ -162,21 +163,21 @@ class ConversationService(
                 if(activeBatch.isEmpty()||activeBatch.size>32||activeBatch.map{it.id}.distinct().size!=activeBatch.size)throw BackendFailure(ApiError(ErrorCode.VALIDATION,"ai.invalid_tool_response"))
                 context.append(ConversationMessage("assistant",sanitizer.text(reply.text),activeBatch.map{redactToolCall(it,sanitizer)},blocks=reply.blocks.map{redactAssistantBlock(it,sanitizer)}))
                 paired=false
-                val writeItems=activeBatch.sumOf{call->if(call.name=="callers_saveProfiles")((call.arguments["items"] as? AiJson.Arr)?.values?.size?:1)else if(executor.registry.allDefinitions.any{it.name==call.name&&it.write})1 else 0}
+                val writeItems=activeBatch.sumOf{call->if(executor.registry.catalog.find(call.name)?.id==OperationId.CALLERS_SAVE_PROFILES)((call.arguments["items"] as? AiJson.Arr)?.values?.size?:1)else if(executor.registry.definitions.any{it.name==call.name&&it.write})1 else 0}
                 previewBudget(activeBatch.map{ToolReceipt("pending",it.id,ToolStatus.SKIPPED)},writeItems.coerceAtMost(64)*1024)
-                val phase=when{activeBatch.all{it.name=="discover_tools"}->ConversationPhase.DISCOVERING;activeBatch.all{call->executor.registry.allDefinitions.any{it.name==call.name&&!it.write}}->ConversationPhase.READING;else->ConversationPhase.EXECUTING}
+                val phase=when{activeBatch.all{executor.registry.catalog.find(it.name)?.id==OperationId.DISCOVER_TOOLS}->ConversationPhase.DISCOVERING;activeBatch.all{call->executor.registry.definitions.any{it.name==call.name&&!it.write}}->ConversationPhase.READING;else->ConversationPhase.EXECUTING}
                 publish(phase,engine=engine,sourceBase=sourceBase)
                 val results=engine.execute(activeBatch,enabled).map{sanitize(it,sanitizer)}
                 context.append(ConversationMessage("tool","",receipts=results));paired=true
-                results.filter{r->activeBatch.any{it.id==r.toolCallId&&it.name=="discover_tools"}&&r.error==null}.forEach{r->
-                    ((r.value as? AiJson.Obj)?.get("tools") as? AiJson.Arr)?.values?.forEach{item->val name=(item as AiJson.Obj).s("name");if(executor.registry.allDefinitions.any{it.name==name})enabled+=name}
+                results.filter{r->activeBatch.any{it.id==r.toolCallId&&executor.registry.catalog.find(it.name)?.id==OperationId.DISCOVER_TOOLS}&&r.error==null}.forEach{r->
+                    ((r.value as? AiJson.Obj)?.get("tools") as? AiJson.Arr)?.values?.forEach{item->val name=(item as AiJson.Obj).s("name");if(executor.registry.definitions.any{it.name==name})enabled+=name}
                 }
                 publish(if(results.any{it.error?.code==ErrorCode.VALIDATION})ConversationPhase.REPAIRING else ConversationPhase.EXECUTING,engine=engine,sourceBase=sourceBase)
             }
         } catch(e:Exception) {
             if(!paired) {
                 val receipts=activeBatch.map{call->
-                    engine?.receipts?.lastOrNull{it.toolCallId==call.id}?:if(call.name=="callers_saveProfiles")ToolReceipt("batch:${call.id}",call.id,ToolStatus.READ,aiObject("items" to AiJson.Arr(engine?.groupedReceipts(call.id)?.map{sanitize(it,sanitizer).json()}?:emptyList()),"complete" to aiBool(false)),verification=VerificationStatus.PENDING)else ToolReceipt("skipped",call.id,ToolStatus.SKIPPED,error=ApiError(ErrorCode.SYSTEM_RESTRICTED,"ai.turn_stopped"))
+                    engine?.receipts?.lastOrNull{it.toolCallId==call.id}?:if(executor.registry.catalog.find(call.name)?.id==OperationId.CALLERS_SAVE_PROFILES)ToolReceipt("batch:${call.id}",call.id,ToolStatus.READ,aiObject("items" to AiJson.Arr(engine?.groupedReceipts(call.id)?.map{sanitize(it,sanitizer).json()}?:emptyList()),"complete" to aiBool(false)),verification=VerificationStatus.PENDING)else ToolReceipt("skipped",call.id,ToolStatus.SKIPPED,error=ApiError(ErrorCode.SYSTEM_RESTRICTED,"ai.turn_stopped"))
                 }.map{sanitize(it,sanitizer)}
                 context.append(ConversationMessage("tool","",receipts=receipts))
             }

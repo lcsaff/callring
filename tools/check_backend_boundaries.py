@@ -43,9 +43,9 @@ def arguments(text, opening):
     pairs = {')': '(', ']': '[', '}': '{', '>': '<'}
     for i in range(start, len(text)):
         c = masked[i]
-        if c in '([{<':
+        if c in '([{':
             stack.append(c)
-        elif c in ')]}>':
+        elif c in ')]}':
             if not stack or stack[-1] != pairs[c]:
                 return None
             stack.pop()
@@ -71,22 +71,18 @@ def compatible_inventory(files, inventory):
 def has_presentation_literal(path, source):
     text = without_comments(source)
     allowed = []
-    if path.name == 'CapabilityCatalog.kt':
-        match = re.search(r'private\s+val\s+purposes\s*=\s*listOf\s*\(', text)
-        parts = arguments(text, match.end()-1) if match else None
-        if parts and all(STRING.fullmatch(text[a:b].strip()) for a, b in parts[0]):
-            allowed.extend(parts[0])
-    if path.name == 'ToolRegistry.kt':
-        for match in re.finditer(r'\bToolDefinition\s*\(', text):
+    if path.name == 'OperationCatalog.kt':
+        for match in re.finditer(r'\bOperationDefinition\s*\(', text):
             parts = arguments(text, match.end()-1)
             if not parts:
                 continue
             spans = parts[0]
-            if len(spans) != 5 or not re.fullmatch(r'\d+', text[slice(*spans[0])].strip()):
+            if not any(re.fullmatch(r'\s*id\s*=\s*OperationId\.\w+\s*', text[a:b]) for a, b in spans):
                 continue
-            start, end = spans[4]
-            if STRING.fullmatch(text[start:end].strip()):
-                allowed.append((start, end))
+            for start, end in spans:
+                field = re.fullmatch(r'\s*description\s*=\s*("(?:\\.|[^"\\])*")\s*', text[start:end], re.S)
+                if field:
+                    allowed.append((start + field.start(1), start + field.end(1)))
     for literal in STRING.finditer(text):
         if re.search(r'[\u3400-\u9fff]', literal.group()) and not any(a <= literal.start() and literal.end() <= b for a, b in allowed):
             return True

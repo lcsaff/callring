@@ -52,3 +52,11 @@ SharedComponents.kt的CallerCard直接接受CallerProfile，移feature/shared并
 bootstrap的ValueScopedReadSource仍有过滤/排序/分页/Unicode切片，应迁data/query；ScopedQueryAssembly有D11–D19投影和SourceRow构造，CompleteSnapshotAssembly有域scope/count/status与错误标注，实际投影需退出bootstrap，保留接线。sourceCount的D02/D05/D06/D07/D09/D15数据形状逻辑不能换个assembly文件就称纯装配。组件薄壳的既有ScreeningController保持唯一，不再为它新建重复控制器。
 
 测试迁移使用真实窄writer或明确的test-only分域seed/SQL事实支持，保留原完整事实比较、旧编码与回滚断言；不要把BackendState换名复制成全字段测试兼容壳，再保留旧read/transaction形状来规避删除。显式完整快照验收仍可使用既有FullSnapshotReader专用facts；普通入口访问范围则由仍真实执行的SQL/窄读取/完整capture计数证明。
+
+## T11 后的执行切片
+
+主负责人在 `0330a83` 按 git tracked 的 src/main Kotlin/Java 重新盘点：app87、backend117、contracts23、ui92，共319。T12还会变动该集合，最终清单必须从最终HEAD重新生成核对，不能照抄此数量。
+
+T13a先关闭初始化及测试夹具的全量存储协议：定向onCreate初始化、分域测试seed和事实读取、CoreStorageResource/Graph计数清理，最后删除旧四Store、State/BackendStore/StorageSession及无消费者助手。该切片保留现有目录，避免把行为和大量移动混成一次审查；完成后独立验证并建立检查点。
+
+T13b再做目录、混合职责和组件薄壳收口：data/query及backend查询投影退出bootstrap，UI视觉桥与业务卡片归位，根组件保留系统身份并委托明确控制器，所有生产/测试/debug与工具引用同步。纯移动与实际职责提取分开提交；原227文件逐项回填实际目标/删除，新文件另列完整归属，最后以最终所有src/main集合查缺失、重复和旧路径。不得通过改名全量测试壳、搬家万能上下文或保留旧包转发完成清单。

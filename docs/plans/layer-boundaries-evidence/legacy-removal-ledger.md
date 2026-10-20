@@ -11,7 +11,7 @@
 | schema 初始化/升级中使用旧全状态协议 | onCreate 仍用 StorageSession.load/save；upgrade 已于T08迁出 | T13 改定向初始化；T08 已删除升级 saveCalls/State 关联入口，最终守卫不得豁免初始化 |
 | nullable `ChangeFeed.snapshots()` 默认实现及 UI 对旧通知的回退 | T11 已删除 nullable/default/observe/DataChange、双 loader/迁移开关和旧 fake；全部消费者及设备 fixture 只用必需累计 flow | 本片源码已删除，实际最终门与独立审查见 t11-implementation.md / t11-verification-summary.json / 负责人 review |
 | 旧通知与整库版本/全域刷新发布 | T11 已删除 coordinator 第二份 changes、observe/changed/commit/publishScopes/runtimeChanged；diagnostics 及 runtime 只发真实实体，command/domainMarker 原职责保留 | 本片源码已删除；无双发布兜底，剩余全状态初始化协议仍属 T13 |
-| AI 数字索引/顺序分派 | 当前工具目录和业务命令绑定 | T12 迁为具名操作，删除按序号找行为的路径；外部现有标识仅作为协议元数据 |
+| AI 数字索引/顺序分派 | T12 已以单一81项 OperationCatalog/OperationId 迁移目录及全部执行链 | 本片删除 ToolDefinition/index、toolPurpose/purposes、72+9双API、旧OperationContract projection整文件及数字重载、nullable queries与旧UI只读分支；外部标识仅协议元数据。实际最终门和双审见T12证据；T13–T15仍待执行 |
 
 T06a 额外清理已完成并经双审：删除 `UnavailableCoreUnitOfWork` / `UnavailableQuietTransactions` 及构造器默认替代；装配显式要求必需端口，计算测试使用测试专用假实现。对应简单设置旧实现、premerge、无用验证助手和偏好重复发布均删除，见 t06a-review.md。SnapshotViewModel 的 refreshFromChanges 双路径仍有未迁移消费者，T11 必须删除该开关及旧订阅分支；一次性请求仍可使用 RequestLoader。
 

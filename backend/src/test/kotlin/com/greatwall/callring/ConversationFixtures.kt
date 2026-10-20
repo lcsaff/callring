@@ -63,3 +63,10 @@ class ConversationFixtures {
         object : SyncScheduler { override fun requestSync(atEpochMillis: Long) = SyncRequestReceipt(SyncRequestState.QUEUED, atEpochMillis) },
         Clock.fixed(Instant.ofEpochMilli(now), ZoneOffset.UTC), coordinator = coordinator, coreTransactions = MemoryQuietTransactions(store), numberRecordings = com.greatwall.callring.EmptyNumberRecordings, identityArchive = { com.greatwall.callring.contracts.common.ApiResult.Success(null) }, operationActive = { true }, conversationProvider = { com.greatwall.callring.testing.FixtureConversationApi }, aiSettingsProvider = { com.greatwall.callring.testing.FixtureAiSettingsApi }, updateProvider = { com.greatwall.callring.testing.FixtureAppUpdateApi }, snapshotsProvider = { com.greatwall.callring.testing.FixtureAiSnapshotApi }, recordingsProvider = { com.greatwall.callring.testing.FixtureRecordingApi }, calendarSource = com.greatwall.callring.application.ports.CalendarSource { throw AssertionError("Unexpected calendar source") }, persistenceActive = { true })
 }
+
+/** Write-only tests must supply the source capability explicitly and reject accidental reads. */
+fun unusedToolQueries() = com.greatwall.callring.application.conversation.QueryService(listOf(object : com.greatwall.callring.application.ports.ScopedReadPort {
+    override val domains = com.greatwall.callring.contracts.ai.AiDomain.entries.toSet()
+    override fun version(domain: com.greatwall.callring.contracts.ai.AiDomain) = 0L
+    override fun query(spec: com.greatwall.callring.contracts.ai.QuerySpec, after:String?):com.greatwall.callring.application.ports.SourcePage = error("Unexpected source query in write-only test")
+}))

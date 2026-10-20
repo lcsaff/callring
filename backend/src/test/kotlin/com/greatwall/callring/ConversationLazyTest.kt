@@ -19,7 +19,7 @@ class ConversationLazyTest {
             override suspend fun exchange(connection:AiConnection,encoded:ByteArray):ConversationReply {requests++;return ConversationReply.Final("你好")}
             override fun cancel()=Unit
         }
-        val service=ConversationService({f.backend},q,{RecordingSettings(analysis=AiConnection(url="https://example.com",apiKey="fixture",model="fixture"))},f.coordinator,{client})
+        val service=ConversationService({f.backend},q,{RecordingSettings(analysis=AiConnection(url="https://example.com",apiKey="fixture",model="fixture"))},f.coordinator,{client}, documentWriteVerified={false})
         try{service.send(service.state.value.sessionId,"你好");withTimeout(5000){service.state.first{!it.busy}};assertEquals(1,requests);assertEquals(listOf("discover_tools"),offered);assertEquals(0,q.sourceQueries.get());assertEquals(ConversationPhase.COMPLETED,service.state.value.phase)}finally{service.close()}
     }
 }

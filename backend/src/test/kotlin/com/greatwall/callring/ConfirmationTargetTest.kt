@@ -1,5 +1,6 @@
 package com.greatwall.callring
 
+import com.greatwall.callring.application.conversation.operation.*
 import com.greatwall.callring.contracts.command.*
 import com.greatwall.callring.application.*
 import com.greatwall.callring.contracts.common.*
@@ -17,7 +18,7 @@ import org.junit.Test
 
 class ConfirmationTargetTest {
     @Test fun fiveConfirmationsUseRealTargetsAndRejectCancelChangedOrMissingTargets() = runBlocking {
-        for(index in listOf(20,32,53,57,63)) {
+        for(operation in listOf(OperationId.SETTINGS_DELETE_POSITION,OperationId.SETTINGS_DELETE_LEAVE,OperationId.RECORDINGS_TEST_CONNECTION,OperationId.RECORDINGS_DELETE,OperationId.RECORDINGS_ADOPT_IDENTITY)) {
             val f = ConversationFixtures()
             f.backend.settings.savePosition(SavePosition(name = "actual-role",level = 2,active = true))
             f.backend.settings.saveLeave(SaveLeave(period = LeavePeriod.Timed(10,20),note = "actual-note"))
@@ -41,11 +42,11 @@ class ConfirmationTargetTest {
             }
             val foreground = ForegroundActionService(checkCommand = ForegroundCommandValidator(f.coordinator)::check)
             val host = foreground.attachHost()
-            val executor = ToolExecutor({ root() },f.coordinator,foreground,ForegroundResourceRegistry())
-            val definition = executor.registry.definitions.single { it.index == index }
-            fun call(id: Long = 1) = ConversationToolCall("call",definition.name,when(index) {
-                20,32 -> aiObject("id" to aiNumber(id))
-                53 -> aiObject("slot" to aiString(if(id == 1L) "ANALYSIS" else "INVALID"))
+            val executor = ToolExecutor({ root() },f.coordinator,foreground,ForegroundResourceRegistry(), queries=unusedToolQueries(), documentWriteVerified={false})
+            val definition = executor.registry.definitions.single { it.id == operation }
+            fun call(id: Long = 1) = ConversationToolCall("call",definition.name,when(operation) {
+                OperationId.SETTINGS_DELETE_POSITION,OperationId.SETTINGS_DELETE_LEAVE -> aiObject("id" to aiNumber(id))
+                OperationId.RECORDINGS_TEST_CONNECTION -> aiObject("slot" to aiString(if(id == 1L) "ANALYSIS" else "INVALID"))
                 else -> aiObject("callId" to aiNumber(id))
             })
             fun scope() = ToolExecutionContext("s","t",1,CommandContext(java.util.UUID.randomUUID().toString(),f.coordinator.capture(),1) { true })
@@ -58,10 +59,10 @@ class ConfirmationTargetTest {
                 when(val target = ticket.confirmation) {
                     is ConfirmationTarget.Position -> { assertEquals(1L,target.id); assertEquals("actual-role",target.name) }
                     is ConfirmationTarget.Leave -> { assertEquals("actual-note",target.note); assertEquals(10L,target.start) }
-                    is ConfirmationTarget.Recording -> { assertEquals("31234",target.number); assertEquals(123L,target.startedAt); if(index == 63) assertEquals("self",target.adoption!!.name) }
+                    is ConfirmationTarget.Recording -> { assertEquals("31234",target.number); assertEquals(123L,target.startedAt); if(operation == OperationId.RECORDINGS_ADOPT_IDENTITY) assertEquals("self",target.adoption!!.name) }
                     is ConfirmationTarget.Connection -> { assertEquals(AiSlot.ANALYSIS,target.slot); assertEquals("actual-model",target.connection.model) }
                     is ConfirmationTarget.NumberDeletion -> fail("Number deletion is not part of the legacy five confirmations")
-                    null -> fail("Missing authoritative target for $index")
+                    null -> fail("Missing authoritative target for $operation")
                 }
                 assertTrue(foreground.beginLaunch(ticket.requestId,host))
                 if(changed) f.backend.settings.saveScoreSettings(ScoreSettings(7,2,10,30))

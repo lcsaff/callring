@@ -1,5 +1,6 @@
 package com.greatwall.callring
 
+import com.greatwall.callring.application.conversation.operation.*
 import com.greatwall.callring.contracts.command.*
 import com.greatwall.callring.contracts.common.*
 import com.greatwall.callring.contracts.ai.*
@@ -21,7 +22,7 @@ class DeletionVerificationRegressionTest {
                 return SourcePage(rows, rows.size.toLong(), complete = !partial, status = status)
             }
         }))
-        return ReceiptVerifier(q).verify(81,
+        return ReceiptVerifier(q).verify(OperationId.CALLERS_DELETE_NUMBER,
             ConversationToolCall("c", "callers_deleteNumber", aiObject("number" to aiString("31234"))),
             ToolReceipt("op", "c", ToolStatus.COMMITTED, error = error, commitRevision = RevisionVector("test", emptyMap())))
     }
