@@ -26,7 +26,7 @@ class AiSettingsServiceTest {
 
     @Test fun combinedPublishesOneMarkerAndNoopDoesNotPublish() = runBlocking {
         val coordinator = BusinessRevisionCoordinator()
-        val store = AndroidRecordingStore(RuntimeEnvironment.getApplication(), "combined-single-marker", cipher, coordinator)
+        val store = AndroidRecordingStore(RuntimeEnvironment.getApplication(), "combined-single-marker", cipher, recordingVersion = { coordinator.capture().values.getValue("recording") })
         val api = AiSettingsService(store, coordinator, { true }, { _, _ -> }, folderView = folder)
         try {
             api.patchCombined(api.getRecordingView().ok(), RecordingSettingsPatch(recordingEnabled = PatchField.Set(true)),
@@ -41,7 +41,7 @@ class AiSettingsServiceTest {
 
     @Test fun recordingReturnKeepsItsCommittedVersionDuringAfterSave() = runBlocking {
         val coordinator = BusinessRevisionCoordinator()
-        val store = AndroidRecordingStore(RuntimeEnvironment.getApplication(), "version-after-save", cipher, coordinator)
+        val store = AndroidRecordingStore(RuntimeEnvironment.getApplication(), "version-after-save", cipher, recordingVersion = { coordinator.capture().values.getValue("recording") })
         val entered = java.util.concurrent.CountDownLatch(1)
         val release = java.util.concurrent.CountDownLatch(1)
         val api = AiSettingsService(store, coordinator, { true }, { _, _ -> }, afterSave = {
@@ -61,7 +61,7 @@ class AiSettingsServiceTest {
     }
 
     @Test fun legacyFastCompatibilityIsMigratedAndNeverBlocksModelChange()=runBlocking {
-        val coordinator=BusinessRevisionCoordinator();val store=AndroidRecordingStore(RuntimeEnvironment.getApplication(),"unsupported-fast-model",cipher,coordinator)
+        val coordinator=BusinessRevisionCoordinator();val store=AndroidRecordingStore(RuntimeEnvironment.getApplication(),"unsupported-fast-model",cipher, recordingVersion = { coordinator.capture().values.getValue("recording") })
         val original=RecordingSettings(analysis=AiConnection(url="https://example.com/v1",model="qwen3.8-flash",apiKey="fixture-private"),conversationCompatibility=ConversationCompatibility.QWEN_FAST,conversationBudget=ConversationBudget(65536,8192))
         store.persistSettings(original)
         assertEquals(ConversationCompatibility.AUTO,store.settings().conversationCompatibility)
@@ -75,7 +75,7 @@ class AiSettingsServiceTest {
         }finally{store.close()}
     }
     @Test fun unrelatedBudgetDoesNotInvalidateKeyEditOrConnectionCopy()=runBlocking {
-        val coordinator=BusinessRevisionCoordinator();val store=AndroidRecordingStore(RuntimeEnvironment.getApplication(),"ai_scope_fields",cipher,coordinator)
+        val coordinator=BusinessRevisionCoordinator();val store=AndroidRecordingStore(RuntimeEnvironment.getApplication(),"ai_scope_fields",cipher, recordingVersion = { coordinator.capture().values.getValue("recording") })
         val connection=AiConnection(url="https://example.com/v1",model="model",apiKey="fixture-private")
         store.persistSettings(RecordingSettings(analysis=connection,transcription=connection))
         val api=AiSettingsService(store,coordinator,{true},{_,_->}, folderView = folder)
@@ -90,7 +90,7 @@ class AiSettingsServiceTest {
     }
     @Test fun compatibilityIsPersistentSafeAndResetOnlyWhenCopyingIntoAnalysis() = runBlocking {
         val coordinator=BusinessRevisionCoordinator()
-        val store=AndroidRecordingStore(RuntimeEnvironment.getApplication(),"profile_copy_matrix",cipher,coordinator)
+        val store=AndroidRecordingStore(RuntimeEnvironment.getApplication(),"profile_copy_matrix",cipher, recordingVersion = { coordinator.capture().values.getValue("recording") })
         val qwen=AiConnection(url="https://dashscope.aliyuncs.com/compatible-mode/v1",model="qwen3.8-flash",apiKey="fixture-private")
         store.persistSettings(RecordingSettings(analysis=qwen,transcription=qwen,conversationCompatibility=ConversationCompatibility.STANDARD))
         assertEquals(ConversationCompatibility.STANDARD,store.settings().conversationCompatibility)
@@ -111,7 +111,7 @@ class AiSettingsServiceTest {
     @Test fun coldStartPatchCombinedWritesOnlyRequestedSlotAndRejectsStaleBase() = runBlocking {
         for(slot in AiSlot.entries) {
             val coordinator = BusinessRevisionCoordinator()
-            val store = AndroidRecordingStore(RuntimeEnvironment.getApplication(),"cold_page_$slot",cipher,coordinator)
+            val store = AndroidRecordingStore(RuntimeEnvironment.getApplication(),"cold_page_$slot",cipher, recordingVersion = { coordinator.capture().values.getValue("recording") })
             val service = AiSettingsService(store,coordinator,{ true },{ _,_ -> }, folderView = folder)
             try {
                 val aiBase = service.getAiView().ok()
@@ -136,7 +136,7 @@ class AiSettingsServiceTest {
     }
     @Test fun draftConnectionTestUsesUnsavedFieldsAndOldFixturesReceiveNewDefaultWithoutOverwritingExplicitBudget() = runBlocking {
         val coordinator = BusinessRevisionCoordinator()
-        val store = AndroidRecordingStore(RuntimeEnvironment.getApplication(), "draft_connection", cipher, coordinator)
+        val store = AndroidRecordingStore(RuntimeEnvironment.getApplication(), "draft_connection", cipher, recordingVersion = { coordinator.capture().values.getValue("recording") })
         val saved = AiConnection(url = "https://example.com", apiKey = "secret", model = "saved")
         store.persistSettings(RecordingSettings(analysis = saved))
         var tested: AiConnection? = null
@@ -157,7 +157,7 @@ class AiSettingsServiceTest {
     private fun <T> ApiResult<T>.ok(): T = (this as ApiResult.Success).value
     @Test fun interleavedPagesPreserveLatestOtherPageAndBothKeys() = runBlocking {
         val coordinator = BusinessRevisionCoordinator()
-        val store = AndroidRecordingStore(RuntimeEnvironment.getApplication(), "page_merge", cipher, coordinator)
+        val store = AndroidRecordingStore(RuntimeEnvironment.getApplication(), "page_merge", cipher, recordingVersion = { coordinator.capture().values.getValue("recording") })
         val old = AiConnection(url = "https://example.com/v1", model = "model", apiKey = "keep-both-keys")
         store.persistSettings(RecordingSettings(analysis = old, transcription = old))
         val api = AiSettingsService(store, coordinator, { true }, { _, _ -> }, folderView = folder)
@@ -172,7 +172,7 @@ class AiSettingsServiceTest {
     }
     @Test fun sameFieldConflictAndInvalidClearDoNotCommit() = runBlocking {
         val coordinator = BusinessRevisionCoordinator()
-        val store = AndroidRecordingStore(RuntimeEnvironment.getApplication(), "page_conflict", cipher, coordinator)
+        val store = AndroidRecordingStore(RuntimeEnvironment.getApplication(), "page_conflict", cipher, recordingVersion = { coordinator.capture().values.getValue("recording") })
         val old = AiConnection(url = "https://example.com/v1", model = "model", apiKey = "key")
         store.persistSettings(RecordingSettings(analysis = old))
         val api = AiSettingsService(store, coordinator, { true }, { _, _ -> }, folderView = folder)

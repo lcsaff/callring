@@ -160,7 +160,7 @@ class SimpleSettingsAccessContractTest {
                 object : com.greatwall.callring.platform.ai.RecordingCipher {
                     override fun encrypt(value: String) = value
                     override fun decrypt(value: String) = value
-                }, graph.coordinator)
+                }, recordingVersion = { graph.coordinator.capture().values.getValue("recording") })
             recordingStore.use {
                 val settings = com.greatwall.callring.application.recording.AiSettingsService(recordingStore, graph.coordinator, { true }, { _, _ -> },
                     folderView = { com.greatwall.callring.contracts.recording.RecordingFolderView(null, com.greatwall.callring.contracts.runtime.AccessState.NOT_REQUIRED) })

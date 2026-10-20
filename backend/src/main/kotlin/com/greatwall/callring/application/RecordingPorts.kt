@@ -13,23 +13,6 @@ data class NumberRecordingMetadata(val callId: Long, val generation: Long, val s
 fun sameRecordingNumber(raw: String, normalized: String): Boolean = raw == normalized ||
     raw.filter(Char::isDigit).let { it.isNotEmpty() && it == normalized.filter(Char::isDigit) }
 
-interface RecordingStore {
-    fun isDeleted(callId: Long): Boolean
-    fun settings(): RecordingSettings
-    fun get(callId: Long): CallArchive?
-    fun metadata(callId: Long, cancelled: () -> Boolean): RecordingArchiveMetadata?
-    fun generation(callId: Long): Long?
-    /** Explicit archive-list capability; ordinary lookups and scheduling must not use it. */
-    fun listArchives(): List<CallArchive>
-    fun earliestPendingAt(cancelled: () -> Boolean): Long?
-    fun dueCandidates(at: Long, afterId: Long?, limit: Int, cancelled: () -> Boolean): List<RecordingCandidate>
-    fun recentMetadata(since: Long, cancelled: () -> Boolean): List<RecordingArchiveMetadata>
-    fun numberMetadata(number: String, cancelled: () -> Boolean): List<NumberRecordingMetadata>
-    /** Expected null inserts only if missing. Generation protects replacement/deletion races. */
-    fun compareAndSet(callId: Long, expectedGeneration: Long?, value: CallArchive): Boolean
-    fun delete(callId: Long): CallArchive?
-}
-
 interface AiClient {
     fun operation(cancelled: () -> Boolean): AiClient
     fun cancel()

@@ -19,7 +19,7 @@ class ArchiveBoundedParserTest {
         val context=RuntimeEnvironment.getApplication();val namespace="v3-parser-upgrade"
         val cipher=object:RecordingCipher{override fun encrypt(value:String)=value;override fun decrypt(value:String)=value}
         val first=CallArchive(1,"999",1,generation=1,transcript="already indexed")
-        AndroidRecordingStore(context,namespace,cipher).use{assertTrue(it.compareAndSet(1,null,first))}
+        AndroidRecordingStore(context,namespace, cipher, recordingVersion = { 0L }).use{assertTrue(it.compareAndSet(1,null,first))}
         val second=RecordingJson.archive(CallArchive(2,"888",2,generation=1,transcript="😀\\\"".repeat(180000)+"UPGRADE-END")).toString()
         val path=context.getDatabasePath(namespace+"_recording.db")
         SQLiteDatabase.openDatabase(path.path,null,SQLiteDatabase.OPEN_READWRITE).use{db->
@@ -29,9 +29,9 @@ class ArchiveBoundedParserTest {
             db.execSQL("INSERT INTO archive_raw_chunks VALUES(2,1,0,?)",arrayOf(second.take(16384)))
         }
         repeat(8){
-            AndroidRecordingStore(context,namespace,cipher).use{store->store.scopedReads().query(QuerySpec(AiDomain.D16),null)}
+            AndroidRecordingStore(context,namespace, cipher, recordingVersion = { 0L }).use{store->store.scopedReads().query(QuerySpec(AiDomain.D16),null)}
         }
-        AndroidRecordingStore(context,namespace,cipher).use{store->
+        AndroidRecordingStore(context,namespace, cipher, recordingVersion = { 0L }).use{store->
             val page=store.scopedReads().query(QuerySpec(AiDomain.D16),null)
             assertTrue(page.complete);assertEquals(2L,page.matchedTotal);assertEquals(2,page.rows.size)
         }

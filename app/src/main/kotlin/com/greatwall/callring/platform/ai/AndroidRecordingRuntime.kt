@@ -1,6 +1,8 @@
 package com.greatwall.callring.platform.ai
 
 import com.greatwall.callring.application.recording.AiSettingsService
+import com.greatwall.callring.application.recording.RecordingArchiveCommands
+import com.greatwall.callring.application.recording.RecordingRegistrationService
 import com.greatwall.callring.contracts.command.*
 import com.greatwall.callring.application.ports.BackendFailure
 
@@ -34,7 +36,7 @@ class AndroidRecordingRuntime(
     val coordinator: BusinessRevisionCoordinator = BusinessRevisionCoordinator(),
     private val clientFactory: (() -> AiClient)? = null,
 ) : RecordingApi, AutoCloseable {
-    val store by lazy { storeFactory?.invoke() ?: AndroidRecordingStore(context, namespace, coordinator = coordinator) }
+    val store by lazy { storeFactory?.invoke() ?: AndroidRecordingStore(context, namespace, recordingVersion = { coordinator.capture().values.getValue("recording") }) }
     val aiSettings by lazy { AiSettingsService(store, coordinator,
         { context.checkSelfPermission(android.Manifest.permission.RECORD_AUDIO) == android.content.pm.PackageManager.PERMISSION_GRANTED },
         { connection, transcription -> client.test(connection, transcription) }, afterSave = { if (!it.recordingEnabled) stopCapture() }, folderView = sources::describe) }
@@ -48,7 +50,9 @@ class AndroidRecordingRuntime(
             file
         })
     }
-    val workflow by lazy { RecordingWorkflow(store, AndroidAudioTranscriber(client, File(context.cacheDir, namespace + "_ai_audio"))) }
+    val archiveCommands by lazy { RecordingArchiveCommands(store, store, coordinator) }
+    val registrations by lazy { RecordingRegistrationService(store, coordinator) }
+    val workflow by lazy { RecordingWorkflow(store, archiveCommands, AndroidAudioTranscriber(client, File(context.cacheDir, namespace + "_ai_audio"))) }
     private var player: MediaPlayer? = null
     private val playbackGeneration = AtomicLong()
     private var playbackCallId:Long?=null
@@ -71,10 +75,10 @@ class AndroidRecordingRuntime(
         catch (_: Exception) { ApiResult.Failure(ApiError(ErrorCode.IO_FAILURE, "recording.storage_or_network", retryable = true)) }
     }
     fun observeIncoming(sessionId: String, number: String, at: Long, account: String?): RecordingCall? = coordinator.guard { synchronized(filesLock) {
-        if (!store.settings().recordingEnabled || number.isBlank()) null else store.registerIncoming(sessionId, number, at, account)
+        if (!store.settings().recordingEnabled || number.isBlank()) null else registrations.registerIncoming(sessionId, number, at, account, null)
     } }
     fun linkStatistics(sessionId: String, statisticsId: Long) {
-        if (store.hasSession(sessionId)) store.linkStatistics(statisticsId, sessionId)
+        registrations.linkStatistics(sessionId, statisticsId, null)
     }
     private fun recordingCall(callId: Long): RecordingCall? {
         if (callId < 0) return store.findRecording(callId)
@@ -165,45 +169,55 @@ class AndroidRecordingRuntime(
     }
     private fun attach(call: RecordingCall, file: File, source: RecordingSource, duration: Long): CallArchive {
         playbackGeneration.incrementAndGet()
-        stopPlayer()
-        val old = store.get(call.id)
-        val archive = try { workflow.attach(call.id, call.number, call.startedAt, file.absolutePath, source, duration) }
-        catch (failure: Exception) { file.delete(); throw failure }
+        val playbackStopped = stopPlayer()
+        val (archive, old) = try {
+            val previous = store.get(call.id)
+            workflow.attach(call.id, call.number, call.startedAt, file.absolutePath, source, duration, null, playbackStopped) to previous
+        }
+        catch (failure: Exception) {
+            if (playbackStopped) coordinator.publishRuntime(setOf("runtime:recordingPlayback"))
+            file.delete(); throw failure
+        }
         old?.audioPath?.let { ownedFile(it)?.delete() }
         return archive
     }
     fun noteMissing(call: RecordingCall, reason: String? = null): Unit = coordinator.guard { synchronized(filesLock) {
-        if (!store.isDeleted(call.id) && store.generation(call.id) == null) store.compareAndSet(call.id, null, CallArchive(call.id, call.number, call.startedAt,
-            generation = System.currentTimeMillis() * 1000, error = reason))
+        if (!store.isDeleted(call.id) && store.generation(call.id) == null) archiveCommands.compareAndSet(call.id, null, CallArchive(call.id, call.number, call.startedAt,
+            generation = System.currentTimeMillis() * 1000, error = reason), null, false)
         Unit
     } }
     fun captureCandidate(): RecordingCall? = activeCallId()?.let(::recordingCall)
     fun captureFailure(call: RecordingCall, reason: String): Unit = coordinator.guard { synchronized(filesLock) {
         noteMissing(call, reason)
         val value = store.get(call.id)
-        if (value != null && value.audioPath == null) store.compareAndSet(call.id, value.generation,
-            value.copy(generation = value.generation + 1, error = reason))
+        if (value != null && value.audioPath == null) archiveCommands.compareAndSet(call.id, value.generation,
+            value.copy(generation = value.generation + 1, error = reason), null, false)
         Unit
     } }
     override suspend fun retry(callId: Long) = retryWith(callId, null)
     private suspend fun retryWith(callId: Long, command: CommandContext?) = result {
-        coordinator.guard(command) { workflow.retry(archiveId(callId)); coordinator.record(command) }
+        coordinator.guard(command) { workflow.retry(archiveId(callId), command) }
         runCatching { schedule(0) }; Unit
     }
     override suspend fun delete(callId: Long) = deleteWith(callId, null)
     private suspend fun deleteWith(callId: Long, command: CommandContext?) = result { coordinator.guard(command) {
         playbackGeneration.incrementAndGet()
         synchronized(filesLock) {
-            stopPlayer()
-            val id = archiveId(callId)
-            // Keep the durable path until removal succeeds so a failed cleanup can be retried.
-            store.get(id)?.audioPath?.let { path ->
-                val file = ownedFile(path) ?: throw IOException("recording.audio_not_owned")
-                if (file.exists() && !file.delete()) throw IOException("recording.audio_delete_failed")
+            val playbackStopped = stopPlayer()
+            try {
+                val id = archiveId(callId)
+                // Keep the durable path until removal succeeds so a failed cleanup can be retried.
+                store.get(id)?.audioPath?.let { path ->
+                    val file = ownedFile(path) ?: throw IOException("recording.audio_not_owned")
+                    if (file.exists() && !file.delete()) throw IOException("recording.audio_delete_failed")
+                }
+                workflow.delete(id, command, playbackStopped)
+            } catch (failure: Exception) {
+                if (playbackStopped) coordinator.publishRuntime(setOf("runtime:recordingPlayback"))
+                throw failure
             }
-            workflow.delete(id)
         }
-        coordinator.record(command); Unit
+        Unit
     } }
     private fun ownedFile(path: String): File? = File(path).canonicalFile.takeIf { it.parentFile == directory.canonicalFile }
     override suspend fun play(callId: Long): ApiResult<Unit> = playWith(callId, null)
@@ -227,7 +241,7 @@ class AndroidRecordingRuntime(
         }
     }
     private fun finishPlayback(value: MediaPlayer) { val changed = synchronized(filesLock) { if(player === value) { stopPlayer(); true } else false }; if(changed) coordinator.publishRuntime(setOf("runtime:recordingPlayback")) }
-    private fun stopPlayer() { player?.release(); player = null;playbackCallId=null }
+    private fun stopPlayer(): Boolean { val changed = player != null; player?.release(); player = null;playbackCallId=null; return changed }
     override suspend fun stop(): ApiResult<Unit> = stopWith(null)
     private suspend fun stopWith(command: CommandContext?) = result { coordinator.guard(command) {
         playbackGeneration.incrementAndGet()

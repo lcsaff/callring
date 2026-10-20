@@ -31,11 +31,11 @@ class ArchiveProjectionMigrationTest {
             db.execSQL("INSERT INTO archives VALUES(?,?,?)",arrayOf<Any>(-1,1,RecordingJson.archive(CallArchive(-1,"999",1,generation=1,transcript=transcript)).toString()))
             db.version=2
         }
-        AndroidRecordingStore(context,namespace,cipher).use{store->
+        AndroidRecordingStore(context,namespace, cipher, recordingVersion = { 0L }).use{store->
             val page=QueryService(listOf(store.scopedReads())).query(QuerySpec(AiDomain.D16)).requiredValue()
             assertFalse(page.complete);assertEquals(QueryStatus.PARTIAL,page.status)
         }
-        AndroidRecordingStore(context,namespace,cipher).use{store->
+        AndroidRecordingStore(context,namespace, cipher, recordingVersion = { 0L }).use{store->
             val api=QueryService(listOf(store.scopedReads()));var page=api.query(QuerySpec(AiDomain.D16)).requiredValue();var attempts=1
             while(!page.complete&&attempts++<8)page=api.query(QuerySpec(AiDomain.D16,cursor=page.nextCursor)).requiredValue()
             assertTrue("must finish a record larger than its per-query source budget",page.complete)
@@ -58,7 +58,7 @@ class ArchiveProjectionMigrationTest {
     }
     @Test fun corruptPayloadIsRetainedAndNeverPublishedAsEmptySuccess()=runBlocking {
         val namespace="corrupt_legacy";val payload="{broken-json";val path=legacy(namespace,payload)
-        AndroidRecordingStore(RuntimeEnvironment.getApplication(),namespace,cipher).use{store->
+        AndroidRecordingStore(RuntimeEnvironment.getApplication(),namespace, cipher, recordingVersion = { 0L }).use{store->
             val result=QueryService(listOf(store.scopedReads())).query(QuerySpec(AiDomain.D16))
             assertTrue(result is ApiResult.Failure)
         }
@@ -72,7 +72,7 @@ class ArchiveProjectionMigrationTest {
         val payload=RecordingJson.archive(CallArchive(-1,"999",1,generation=1,transcript=transcript)).toString()
         val path=legacy(namespace,payload)
         // Open once through the real upgrade path, then interrupt the next bounded index operation.
-        AndroidRecordingStore(RuntimeEnvironment.getApplication(),namespace,cipher).use{it.scopedReads()}
+        AndroidRecordingStore(RuntimeEnvironment.getApplication(),namespace, cipher, recordingVersion = { 0L }).use{it.scopedReads()}
         SQLiteDatabase.openDatabase(path.path,null,SQLiteDatabase.OPEN_READWRITE).use{db->
             val index=ArchiveProjectionIndex(db);assertFalse(index.advance(-1,1,32768).complete)
             val before=android.database.DatabaseUtils.longForQuery(db,"SELECT source_offset FROM archive_parse_progress",null)

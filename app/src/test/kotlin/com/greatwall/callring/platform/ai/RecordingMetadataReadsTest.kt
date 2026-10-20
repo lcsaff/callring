@@ -18,6 +18,7 @@ import java.io.File
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [33], manifest = Config.NONE)
 class RecordingMetadataReadsTest {
+    private val testCoordinator = com.greatwall.callring.application.BusinessRevisionCoordinator()
     private val context get() = RuntimeEnvironment.getApplication()
     private val cipher = object : RecordingCipher { override fun encrypt(value: String) = value; override fun decrypt(value: String) = value }
     @Test fun unindexedOneThousandUnrelatedArchives() = cold(1_000)
@@ -44,7 +45,7 @@ class RecordingMetadataReadsTest {
                 db.setTransactionSuccessful()
             } finally { db.endTransaction() }
         }
-        AndroidRecordingStore(context, namespace, cipher).use { store ->
+        AndroidRecordingStore(context, namespace, cipher, recordingVersion = { testCoordinator.capture().values.getValue("recording") }).use { store ->
             assertEquals(77L, store.earliestPendingAt { false })
             assertEquals(listOf(RecordingCandidate(-7, 9)), store.dueCandidates(100, null, 64) { false })
             assertEquals(listOf(-7L), store.recentMetadata(100) { false }.map { it.callId })
@@ -71,7 +72,7 @@ class RecordingMetadataReadsTest {
     private fun warm(size: Int) {
         val namespace = "metadata-warm-$size"
         val audio = File(context.cacheDir, "metadata-audio-$size").apply { writeBytes(ByteArray(73)) }
-        AndroidRecordingStore(context, namespace, cipher).use { store ->
+        AndroidRecordingStore(context, namespace, cipher, recordingVersion = { testCoordinator.capture().values.getValue("recording") }).use { store ->
             store.scopedReads() // create schema; fixtures are outside measured operations
             SQLiteDatabase.openDatabase(context.getDatabasePath(namespace + "_recording.db").path, null, SQLiteDatabase.OPEN_READWRITE).use { db ->
                 db.beginTransaction()
@@ -89,7 +90,7 @@ class RecordingMetadataReadsTest {
                     db.setTransactionSuccessful()
                 } finally { db.endTransaction() }
             }
-            val marker = store.coordinator.marker()
+            val marker = testCoordinator.marker()
             assertEquals(91L, store.earliestPendingAt { false })
             assertEquals(listOf(RecordingCandidate(-7, 8)), store.dueCandidates(100, null, 64) { false })
             assertEquals(listOf(-7L), store.recentMetadata(100) { false }.map { it.callId })
@@ -105,13 +106,13 @@ class RecordingMetadataReadsTest {
             assertEquals(0L, counts["listArchiveDecodes"] ?: 0)
             assertTrue((counts["metadataCharacters"] ?: 0) < 512)
             assertTrue((counts["maxSourceChunkBytes"] ?: 0) <= 4096)
-            assertEquals(marker, store.coordinator.marker())
+            assertEquals(marker, testCoordinator.marker())
             File("build/qa/layer-boundaries/t10b1-metadata-warm-$size.json").apply { parentFile!!.mkdirs(); writeText(JSONObject(counts).toString(2)) }
         }
     }
     @Test fun legacyMetadataStreamsLargeTextWithoutPretendingD16IsIndexed() {
         val namespace = "metadata-cold"
-        AndroidRecordingStore(context, namespace, cipher).use { it.scopedReads() }
+        AndroidRecordingStore(context, namespace, cipher, recordingVersion = { testCoordinator.capture().values.getValue("recording") }).use { it.scopedReads() }
         val path = context.getDatabasePath(namespace + "_recording.db")
         val transcript = "😀\\\"\n".repeat(250_000) + "LEGACY-尾"
         val payload = RecordingJson.archive(CallArchive(42, "١\u200B٢/٣", 200, generation = 7,
@@ -121,7 +122,7 @@ class RecordingMetadataReadsTest {
             val stale = CallArchive(42, "wrong", 0, generation = 6, status = ArchiveStatus.COMPLETE)
             ArchiveProjectionIndex(db).write(stale)
         }
-        AndroidRecordingStore(context, namespace, cipher).use { store ->
+        AndroidRecordingStore(context, namespace, cipher, recordingVersion = { testCoordinator.capture().values.getValue("recording") }).use { store ->
             assertEquals(123L, store.earliestPendingAt { false })
             assertEquals(listOf(RecordingCandidate(42, 7)), store.dueCandidates(123, null, 1) { false })
             assertEquals(1, store.numberMetadata("١٢٣") { false }.size)
@@ -158,7 +159,7 @@ class RecordingMetadataReadsTest {
         val original = RecordingJson.archive(JSONObject(payload))
         assertNull(original.audioPath)
         assertNull(original.durationMillis)
-        AndroidRecordingStore(context, namespace, cipher).use { store ->
+        AndroidRecordingStore(context, namespace, cipher, recordingVersion = { testCoordinator.capture().values.getValue("recording") }).use { store ->
             store.scopedReads()
             SQLiteDatabase.openDatabase(context.getDatabasePath(namespace + "_recording.db").path, null, SQLiteDatabase.OPEN_READWRITE).use { db ->
                 db.execSQL("INSERT INTO archives VALUES(42,3,?)", arrayOf(payload))
@@ -171,7 +172,7 @@ class RecordingMetadataReadsTest {
     }
     @Test fun cancellationAndInvalidRequiredMetadataCannotBecomeFalseEmptyResults() {
         val namespace = "metadata-cancel"
-        AndroidRecordingStore(context, namespace, cipher).use { store ->
+        AndroidRecordingStore(context, namespace, cipher, recordingVersion = { testCoordinator.capture().values.getValue("recording") }).use { store ->
             store.scopedReads()
             val path = context.getDatabasePath(namespace + "_recording.db")
             SQLiteDatabase.openDatabase(path.path, null, SQLiteDatabase.OPEN_READWRITE).use { db ->

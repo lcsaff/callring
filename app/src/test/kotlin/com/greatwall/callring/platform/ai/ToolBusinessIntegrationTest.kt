@@ -66,7 +66,7 @@ class ToolBusinessIntegrationTest {
             override fun getDiagnostics() = listOf(DiagnosticEntry(now,null,"fixture"))
             override fun getInstalledWidgets() = WidgetInstallState(listOf(1),AccessState.GRANTED)
         },audio,object : SyncScheduler { override fun requestSync(atEpochMillis: Long) = SyncRequestReceipt(SyncRequestState.QUEUED,atEpochMillis) },Clock.fixed(Instant.ofEpochMilli(now),ZoneOffset.UTC),calendarSource = CalendarSource { year -> CalendarImport(CalendarYear(year,"fixture","2026-01-01","v1").toDomain(),mapOf(LocalDate.of(year,1,1) to "fixture holiday"),emptySet()) },coordinator = coordinator, coreTransactions = store.sessions)
-        val recordingStore = AndroidRecordingStore(context,namespace,object : RecordingCipher { override fun encrypt(value: String) = java.util.Base64.getEncoder().encodeToString(value.toByteArray()); override fun decrypt(value: String) = String(java.util.Base64.getDecoder().decode(value)) },coordinator)
+        val recordingStore = AndroidRecordingStore(context,namespace,object : RecordingCipher { override fun encrypt(value: String) = java.util.Base64.getEncoder().encodeToString(value.toByteArray()); override fun decrypt(value: String) = String(java.util.Base64.getDecoder().decode(value)) }, recordingVersion = { coordinator.capture().values.getValue("recording") })
         val runtime = AndroidRecordingRuntime(context,namespace,{ null },{ null },{}, { recordingStore },metadataReader = { 1000L to "wav" },coordinator = coordinator,clientFactory = { client })
         var recordingId = -1L
         val resources = ForegroundResourceRegistry()
@@ -146,9 +146,9 @@ class ToolBusinessIntegrationTest {
             val name=when(kind){"blank-name"->"   ";"long-unicode"->"😀合成".repeat(1500);else->" Synthetic "}
             val department=if(kind=="blank-department")" \t "else" Unit "
             val old=f.recordingStore.get(f.recordingId)!!
-            f.recordingStore.compareAndSet(old.callId,old.generation,old.copy(generation=old.generation+1,analysis=CallAnalysis(name=name,organization=department)))
+            f.runtime.archiveCommands.compareAndSet(old.callId,old.generation,old.copy(generation=old.generation+1,analysis=CallAnalysis(name=name,organization=department)), null, false)
             if(kind=="legacy-unindexed")android.database.sqlite.SQLiteDatabase.openDatabase(context.getDatabasePath("${f.namespace}_recording.db").path,null,android.database.sqlite.SQLiteDatabase.OPEN_READWRITE).use{db->listOf("archive_projection","archive_text_fields","archive_text_chunks").forEach{db.delete(it,null,null)}}
-            val requested=if(kind in setOf("linked-positive","changed-linked-after-disclosure")){f.recordingStore.linkStatistics(1,"session");1L}else f.recordingId
+            val requested=if(kind in setOf("linked-positive","changed-linked-after-disclosure")){f.recordingStore.insertStatisticsLink(1,"session");1L}else f.recordingId
             if(kind=="deleted")f.runtime.delete(f.recordingId).requiredValue()
             val root=f.api()
             val wrapped=object:CallringUiApi by root {
@@ -167,14 +167,14 @@ class ToolBusinessIntegrationTest {
             if(kind.endsWith("after-disclosure")){
                 queries.get(AiDomain.D16,requested.toString()).requiredValue()
                 val disclosed=f.recordingStore.get(f.recordingId)!!
-                f.recordingStore.compareAndSet(disclosed.callId,disclosed.generation,disclosed.copy(generation=disclosed.generation+1))
+                f.runtime.archiveCommands.compareAndSet(disclosed.callId,disclosed.generation,disclosed.copy(generation=disclosed.generation+1), null, false)
             }
             val executor=ToolExecutor({wrapped},f.coordinator,f.foreground,f.resources,queries=queries)
             val engine=ToolBatchEngine({wrapped},executor,queries,f.coordinator,"s","t",1,{true})
             val host=launch {f.foreground.pending.filterNotNull().collect{ticket->
                 val token=f.foreground.attachHost()
                 if(f.foreground.beginLaunch(ticket.requestId,token)){
-                    if(kind=="generation-change"){val archive=f.recordingStore.get(f.recordingId)!!;f.recordingStore.compareAndSet(archive.callId,archive.generation,archive.copy(generation=archive.generation+1))}
+                    if(kind=="generation-change"){val archive=f.recordingStore.get(f.recordingId)!!;f.runtime.archiveCommands.compareAndSet(archive.callId,archive.generation,archive.copy(generation=archive.generation+1), null, false)}
                     if(kind=="unrelated-change")f.backend.callers.saveProfile(SaveCallerProfile("99999","unrelated","",null)).requiredValue()
                     f.foreground.deliver(ticket.requestId,ForegroundHostResult(ForegroundResultStatus.VERIFIED))
                 }
@@ -318,7 +318,7 @@ class ToolBusinessIntegrationTest {
                     20 -> fixture.backend.settings.savePosition(SavePosition(2,"changed-role",2,true)).requiredValue()
                     32 -> fixture.backend.settings.saveLeave(SaveLeave(1,LeavePeriod.Timed(now+1000,now+2000),"changed-note")).requiredValue()
                     53 -> fixture.runtime.aiSettings.patchAi(fixture.runtime.aiSettings.getAiView().requiredValue(),AiSettingsPatch(analysis = ConnectionPatch(model = PatchField.Set("changed-model")))).requiredValue()
-                    else -> { val old = fixture.recordingStore.get(fixture.recordingId)!!; assertTrue(fixture.recordingStore.compareAndSet(old.callId,old.generation,old.copy(generation = old.generation+1,analysis = CallAnalysis(name = "changed-self")))) }
+                    else -> { val old = fixture.recordingStore.get(fixture.recordingId)!!; assertTrue(fixture.runtime.archiveCommands.compareAndSet(old.callId,old.generation,old.copy(generation = old.generation+1,analysis = CallAnalysis(name = "changed-self")), null, false)) }
                 }
                 fixture.foreground.deliver(ticket.requestId,ForegroundHostResult(if(changed) ForegroundResultStatus.VERIFIED else ForegroundResultStatus.CANCELLED))
                 assertEquals(if(changed) ToolStatus.FAILED else ToolStatus.CANCELLED,withTimeout(5000) { result.await() }.status)

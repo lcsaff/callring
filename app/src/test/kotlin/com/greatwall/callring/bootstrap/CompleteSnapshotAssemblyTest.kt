@@ -54,12 +54,12 @@ class CompleteSnapshotAssemblyTest {
         }
         val graph = BackendGraph(context, configuration, notifications, object : IncomingCallUiSink { override fun show(request: IncomingCallUiRequest) = Unit })
         val cipher = object : RecordingCipher { override fun encrypt(value: String) = value; override fun decrypt(value: String) = value }
-        val store = AndroidRecordingStore(context, "small_recording", cipher, graph.coordinator)
+        val store = AndroidRecordingStore(context, "small_recording", cipher, recordingVersion = { graph.coordinator.capture().values.getValue("recording") })
         val connection = AiConnection(url = "https://example.com/v1", model = "model", apiKey = "unique-secret-sentinel")
         store.persistSettings(RecordingSettings(analysis = connection))
         val runtime = AndroidRecordingRuntime(context, "small_recording", { null }, { null }, {}, { store }, coordinator = graph.coordinator)
         graph.backend.callers.saveProfile(SaveCallerProfile("999", "person", "unit", null, false))
-        val call = store.registerIncoming("session", "999", 1, null)
+        val call = com.greatwall.callring.application.recording.RecordingRegistrationService(store, com.greatwall.callring.application.BusinessRevisionCoordinator()).registerIncoming("session", "999", 1, null, null)
         val old = store.get(call.id)!!
         store.compareAndSet(call.id, old.generation, old.copy(generation = old.generation + 1, transcript = "short transcript FULL-TAIL"))
         val snapshots = completeSnapshotApi(graph.backend, graph.fullSnapshotReader, runtime, graph.diagnostics, graph.coordinator, ForegroundResourceRegistry(), configuration.clock)

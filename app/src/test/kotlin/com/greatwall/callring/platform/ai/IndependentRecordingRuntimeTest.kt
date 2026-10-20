@@ -26,7 +26,7 @@ import java.time.format.DateTimeFormatter
 @Config(sdk = [33], manifest = Config.NONE)
 class IndependentRecordingRuntimeTest {
     @Test fun authorizedFolderDiscoveryImportsOwnEventAndRespectsDeletionWithoutStatistics() = runBlocking {
-        val store = AndroidRecordingStore(context, "folder_independent", cipher)
+        val store = AndroidRecordingStore(context, "folder_independent", cipher, recordingVersion = { 0L })
         store.persistSettings(RecordingSettings(recordingEnabled = true, systemFolder = "content://recording-fixture/tree/root"))
         val now = System.currentTimeMillis() / 1000 * 1000
         val displayName = "31234_" + DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss").withZone(ZoneId.systemDefault()).format(Instant.ofEpochMilli(now)) + ".wav"
@@ -65,7 +65,7 @@ class IndependentRecordingRuntimeTest {
         runtime.close()
     }
     @Test fun existingPositiveArchivesRemainReadableWithoutStatisticsStorage() = runBlocking {
-        val store = AndroidRecordingStore(context, "legacy_independent", cipher)
+        val store = AndroidRecordingStore(context, "legacy_independent", cipher, recordingVersion = { 0L })
         val saved = CallArchive(42, "31234", 1000, generation = 7, transcript = "saved", analysis = CallAnalysis(summary = "legacy"))
         assertTrue(store.compareAndSet(42, null, saved))
         val runtime = AndroidRecordingRuntime(context, "legacy_independent", findCall = { error("statistics unavailable") },
@@ -74,7 +74,7 @@ class IndependentRecordingRuntimeTest {
         runtime.close()
     }
     @Test fun optionalAssociationIsRetainedWhenRecordingSwitchChangesBeforeStatisticsCommit() {
-        val store = AndroidRecordingStore(context, "toggle_links", cipher)
+        val store = AndroidRecordingStore(context, "toggle_links", cipher, recordingVersion = { 0L })
         store.persistSettings(RecordingSettings(recordingEnabled = true))
         val runtime = AndroidRecordingRuntime(context, "toggle_links", findCall = { error("statistics lookup") },
             activeCallId = { null }, schedule = {}, storeFactory = { store })
@@ -90,7 +90,7 @@ class IndependentRecordingRuntimeTest {
         override fun decrypt(value: String) = String(java.util.Base64.getDecoder().decode(value))
     }
     @Test fun recordsListsAndReadsOwnCallsWithoutStatisticsDatabase() = runBlocking {
-        val store = AndroidRecordingStore(context, "independent", cipher)
+        val store = AndroidRecordingStore(context, "independent", cipher, recordingVersion = { 0L })
         store.persistSettings(RecordingSettings(recordingEnabled = true))
         val runtime = AndroidRecordingRuntime(context, "independent", findCall = { error("statistics must not be read") },
             activeCallId = { null }, schedule = {}, storeFactory = { store })
@@ -106,7 +106,7 @@ class IndependentRecordingRuntimeTest {
         runtime.close()
     }
     @Test fun disablingRecordingDoesNotCreateIndependentEvents() {
-        val store = AndroidRecordingStore(context, "disabled_recording", cipher)
+        val store = AndroidRecordingStore(context, "disabled_recording", cipher, recordingVersion = { 0L })
         val runtime = AndroidRecordingRuntime(context, "disabled_recording", findCall = { error("statistics lookup") },
             activeCallId = { null }, schedule = {}, storeFactory = { store })
         assertNull(runtime.observeIncoming("session", "31234", 1000, null))

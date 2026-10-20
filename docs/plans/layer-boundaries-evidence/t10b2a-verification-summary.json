@@ -1,0 +1,477 @@
+{
+  "productionBase": "86fdfcf1f6ed385fab1a93d6e6eaad128025cca5",
+  "head": "83b105b65aa718b5fbee96875fb7768ae4eac54c",
+  "branch": "codex/layer-boundaries",
+  "fullGate": {
+    "exit": 0,
+    "duration": "1m 9s",
+    "tasks": 147,
+    "executed": 24,
+    "upToDate": 123,
+    "contractsTest": "NO-SOURCE",
+    "device": "NOT_RUN"
+  },
+  "metrics": {
+    "t10b2a-call-1000": {
+      "unrelatedCalls": 1000,
+      "targetCallConsumedRows": 1,
+      "coreStateLoads": 0,
+      "hiddenCallConsumedRows": 2
+    },
+    "t10b2a-call-10000": {
+      "unrelatedCalls": 10000,
+      "targetCallConsumedRows": 1,
+      "coreStateLoads": 0,
+      "hiddenCallConsumedRows": 2
+    },
+    "t10b2a-metadata-cold-1000": {
+      "sourceChunkQueries": 8008,
+      "metadataCharacters": 20020,
+      "payloadMetadataRows": 4004,
+      "coldIdentityRows": 4004,
+      "maxSourceChunkBytes": 209,
+      "sourceBytes": 832404
+    },
+    "t10b2a-metadata-cold-10000": {
+      "sourceChunkQueries": 80008,
+      "metadataCharacters": 200020,
+      "payloadMetadataRows": 40004,
+      "coldIdentityRows": 40004,
+      "maxSourceChunkBytes": 210,
+      "sourceBytes": 8356408
+    },
+    "t10b2a-metadata-cold": {
+      "sourceChunkQueries": 3060,
+      "metadataCharacters": 25,
+      "payloadMetadataRows": 5,
+      "coldIdentityRows": 5,
+      "maxSourceChunkBytes": 4096,
+      "sourceBytes": 12501125
+    },
+    "t10b2a-metadata-warm-1000": {
+      "warmMetadataRows": 4,
+      "sourceChunkQueries": 197,
+      "metadataCharacters": 194,
+      "projectionMetadataBytes": 1532,
+      "payloadMetadataRows": 1,
+      "maxSourceChunkBytes": 4096,
+      "warmNumberRows": 1001,
+      "targetMetadataRows": 1,
+      "sourceBytes": 800435
+    },
+    "t10b2a-metadata-warm-10000": {
+      "warmMetadataRows": 4,
+      "sourceChunkQueries": 197,
+      "metadataCharacters": 195,
+      "projectionMetadataBytes": 1532,
+      "payloadMetadataRows": 1,
+      "maxSourceChunkBytes": 4096,
+      "warmNumberRows": 10001,
+      "targetMetadataRows": 1,
+      "sourceBytes": 800436
+    },
+    "t10b2a-pagination-1000": {
+      "fixtureRows": 1000,
+      "pageCount": 17,
+      "totals": {
+        "warmMetadataRows": 968,
+        "sourceChunkQueries": 1940,
+        "metadataCharacters": 4840,
+        "projectionMetadataBytes": 364224,
+        "payloadMetadataRows": 968,
+        "coldIdentityRows": 968,
+        "maxSourceChunkBytes": 4096,
+        "sourceBytes": 234176
+      }
+    },
+    "t10b2a-pagination-10000": {
+      "fixtureRows": 10000,
+      "pageCount": 158,
+      "totals": {
+        "warmMetadataRows": 9968,
+        "sourceChunkQueries": 19940,
+        "metadataCharacters": 49840,
+        "projectionMetadataBytes": 3760696,
+        "payloadMetadataRows": 9968,
+        "coldIdentityRows": 9968,
+        "maxSourceChunkBytes": 4096,
+        "sourceBytes": 2235644
+      }
+    },
+    "t10b2a-pagination-future": {
+      "returned": 120,
+      "totals": {
+        "warmMetadataRows": 175,
+        "sourceChunkQueries": 350,
+        "metadataCharacters": 875,
+        "projectionMetadataBytes": 65813,
+        "payloadMetadataRows": 175,
+        "coldIdentityRows": 175,
+        "maxSourceChunkBytes": 223,
+        "sourceBytes": 38679
+      }
+    }
+  },
+  "source": {
+    "count": 566,
+    "sha256": "aee9e2f921e53b32aa0d4a88a79e8f69b0be7632a1c82fdf33913caf065d21db"
+  },
+  "changedSource": {
+    "count": 28,
+    "sha256": "77b58fc6dc0b64c1c50c306ef976e2edaa6095820a26d01b5ea6a294c7f4d440"
+  },
+  "tests": {
+    "backend": {
+      "task": "EXECUTED",
+      "suites": 64,
+      "tests": 322,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "ui": {
+      "task": "UP-TO-DATE",
+      "suites": 70,
+      "tests": 298,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "app": {
+      "task": "EXECUTED",
+      "suites": 63,
+      "tests": 308,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    }
+  },
+  "lint": {
+    "ui": {
+      "path": "ui/build/reports/lint-results-debug.xml",
+      "sha256": "ad7372970e17f998564b5a8435ae38566096153b4d80e61b307ef3174722110b",
+      "counts": {
+        "Warning": 31,
+        "Hint": 3
+      }
+    },
+    "app": {
+      "path": "app/build/reports/lint-results-debug.xml",
+      "sha256": "870f75067afdbd0613d441d5411e734123f76480f1f3cf8b5a91c11e1e5e993a",
+      "counts": {
+        "Warning": 6
+      }
+    }
+  },
+  "logs": [
+    {
+      "path": "build/qa/layer-boundaries/t10b2a-architecture.log",
+      "sha256": "54f687f873fb2544620f2fa7767d02a8a4cefb0ead71b97bd38dbd40ae7b8b20"
+    },
+    {
+      "path": "build/qa/layer-boundaries/t10b2a-first-compile.log",
+      "sha256": "e6e5c0d9d9159ad247cac4840107d4e1a4aafb31dee31e2d85ca5504479531a9"
+    },
+    {
+      "path": "build/qa/layer-boundaries/t10b2a-first-green.log",
+      "sha256": "283ff69e5690f7cadc8e62633c8dbc2891a6a3135cda1662a2d3d7f82c4dd9c1"
+    },
+    {
+      "path": "build/qa/layer-boundaries/t10b2a-full-gate.log",
+      "sha256": "b0047f3f0a098378475ac0c4368f343eb3ff9dee17ff9e233ba5f410247a8d32"
+    },
+    {
+      "path": "build/qa/layer-boundaries/t10b2a-marker-red.log",
+      "sha256": "a40746e61dabeb462d4c006c1e876a63d9a1a70f2973d0cd85c6afb5e8792333"
+    },
+    {
+      "path": "build/qa/layer-boundaries/t10b2a-playback-red.log",
+      "sha256": "84cecea8ee2e51c35f181856c80172871db38de12b1022a0fca8957ce3769005"
+    },
+    {
+      "path": "build/qa/layer-boundaries/t10b2a-publication-final-green.log",
+      "sha256": "a69eb2687347c535e2ee62b981166b776cef35fe9231a014070216e74aed54fb"
+    },
+    {
+      "path": "build/qa/layer-boundaries/t10b2a-raw-red.log",
+      "sha256": "609159ac4ac4b0767c953ed3f465371a865bfd2ccc59bcbef8fb1810f6e80c0d"
+    },
+    {
+      "path": "build/qa/layer-boundaries/t10b2a-regression-2.log",
+      "sha256": "0cd88cf1d56ec3e5c8a0e5a5f16374599b89cbb570d36d1ca9d7f50e7bf190ee"
+    },
+    {
+      "path": "build/qa/layer-boundaries/t10b2a-regression.log",
+      "sha256": "0eeb506cabce7ef0d67a1c0b1ec8719e44890c779de29baa2d6fcbcbcd4db6d3"
+    },
+    {
+      "path": "build/qa/layer-boundaries/t10b2a-targeted-green.log",
+      "sha256": "72a52191e501ec9d4ae9cbef36d6cefd86aef8740cdbf26b9d6681ebeec8985d"
+    },
+    {
+      "path": "build/qa/layer-boundaries/t10b2a-transition-red.log",
+      "sha256": "32a6255cccd324903fce255bc5408a3e83bb181e39430301a704d48ce9f0e587"
+    }
+  ],
+  "redArtifacts": [
+    {
+      "path": "build/qa/layer-boundaries/t10b2a-cancel-red.xml",
+      "sha256": "4741ab5d47764edf391f6bfe2463b4aec036d0a9f09a1393ca68b86d4a392449"
+    },
+    {
+      "path": "build/qa/layer-boundaries/t10b2a-decode-red.xml",
+      "sha256": "58cff84bbbdfb8709d5dc912598d4a73a18d33406750d4d8b634404fe51086e4"
+    },
+    {
+      "path": "build/qa/layer-boundaries/t10b2a-playback-red.xml",
+      "sha256": "87659506b71193df155acb8591bc570b863d8cc7517db2546c727d33c9d88e13"
+    }
+  ],
+  "verificationSha256": "7efccbb8ae9ec040c1340c55b7638380ff268636b8fd5fbdf9e0f4a561205345",
+  "reviewFix": {
+    "capturedAt": "2026-10-20T20:49:25.687226+00:00",
+    "source": {
+      "count": 566,
+      "sha256": "de84f6d15864676db0b2a83a432f2cba17fa11ff93011a241894fcc90f16bbac",
+      "updatesFromMain": [
+        {
+          "path": "app/src/main/kotlin/com/greatwall/callring/platform/ai/AndroidRecordingStore.kt",
+          "sha256": "67fba969f4c423399566599af155b4c0ed346d8abf1dd72e77c59b870a2e7fcf"
+        },
+        {
+          "path": "app/src/test/kotlin/com/greatwall/callring/platform/ai/RecordingPublicationTest.kt",
+          "sha256": "9eef122726d722e96b552c6c2fcf06f8f3180637997d626679d65106e14a05f7"
+        },
+        {
+          "path": "backend/src/main/kotlin/com/greatwall/callring/application/recording/RecordingPersistence.kt",
+          "sha256": "a8a8046469b81cc735e458fe8e54b8676a4ce335bac207414c70546b9efdf118"
+        }
+      ]
+    },
+    "changedSource": {
+      "count": 28,
+      "sha256": "9eec4149c0594bd1015aaec8aec413e793411cc1f3428d2bb9d1db049b85ccf7",
+      "updatesFromMain": [
+        {
+          "path": "app/src/main/kotlin/com/greatwall/callring/platform/ai/AndroidRecordingStore.kt",
+          "sha256": "67fba969f4c423399566599af155b4c0ed346d8abf1dd72e77c59b870a2e7fcf"
+        },
+        {
+          "path": "app/src/test/kotlin/com/greatwall/callring/platform/ai/RecordingPublicationTest.kt",
+          "sha256": "9eef122726d722e96b552c6c2fcf06f8f3180637997d626679d65106e14a05f7"
+        },
+        {
+          "path": "backend/src/main/kotlin/com/greatwall/callring/application/recording/RecordingPersistence.kt",
+          "sha256": "a8a8046469b81cc735e458fe8e54b8676a4ce335bac207414c70546b9efdf118"
+        }
+      ]
+    },
+    "tests": {
+      "backend": {
+        "task": "EXECUTED",
+        "suites": 64,
+        "tests": 322,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0,
+        "xmlSha256": "8909c2a19180be9f9010705340b6fb0bb861326676560851f2b0750ce267c92b",
+        "firstXmlTimestamp": "2026-10-20T20:47:02.701Z",
+        "lastXmlTimestamp": "2026-10-20T20:47:04.350Z"
+      },
+      "ui": {
+        "task": "UP-TO-DATE",
+        "suites": 70,
+        "tests": 298,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0,
+        "xmlSha256": "c5f06c6cfff1c5d766a46ffeba700f002a3d39880089cc42cffca0961e5854e7",
+        "firstXmlTimestamp": "2026-10-20T20:05:30.272Z",
+        "lastXmlTimestamp": "2026-10-20T20:06:03.891Z"
+      },
+      "app": {
+        "task": "EXECUTED",
+        "suites": 63,
+        "tests": 310,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0,
+        "xmlSha256": "6cea02b7d8d045c30c1199ea205c498a685f475aeb85eb43ad569e31bb0d1f99",
+        "firstXmlTimestamp": "2026-10-20T20:47:06.782Z",
+        "lastXmlTimestamp": "2026-10-20T20:47:59.517Z"
+      }
+    },
+    "lint": {
+      "ui": {
+        "sha256": "ad7372970e17f998564b5a8435ae38566096153b4d80e61b307ef3174722110b",
+        "counts": {
+          "Warning": 31,
+          "Hint": 3
+        }
+      },
+      "app": {
+        "sha256": "870f75067afdbd0613d441d5411e734123f76480f1f3cf8b5a91c11e1e5e993a",
+        "counts": {
+          "Warning": 6
+        }
+      }
+    },
+    "logs": [
+      {
+        "path": "build/qa/layer-boundaries/t10b2a-initial-insert-green.log",
+        "sha256": "8278a315cd5e31f24fead8f8f444085765d10ee520157df888633515356351c4"
+      },
+      {
+        "path": "build/qa/layer-boundaries/t10b2a-initial-insert-red.log",
+        "sha256": "23e12cea52e00672602c4ba9f756a58e1eaaf19222a76337ca2160da0264eb65"
+      },
+      {
+        "path": "build/qa/layer-boundaries/t10b2a-review-fix-architecture.log",
+        "sha256": "8ec89b27ac029b5c9ab9d29c1dbf59af5d08b76d38575dcd1d38def999283590"
+      },
+      {
+        "path": "build/qa/layer-boundaries/t10b2a-review-fix-full-gate.log",
+        "sha256": "f1eb0178c5dca5f2c7829bdfef37f3c56a73adf1ee283bdaf0f0185fcadfd9aa"
+      }
+    ],
+    "xmlArtifacts": [
+      {
+        "path": "build/qa/layer-boundaries/t10b2a-initial-insert-green.xml",
+        "sha256": "d72d2514444a39588aa3a548974792de323d5e17c55b8ff8cf6e939144447dd1"
+      },
+      {
+        "path": "build/qa/layer-boundaries/t10b2a-initial-insert-red.xml",
+        "sha256": "1ab38121c3e42f9aebb0d4322d8ca952841fa480e3071d39d01a9da69554ef32"
+      }
+    ],
+    "metrics": {
+      "call-1000": {
+        "unrelatedCalls": 1000,
+        "targetCallConsumedRows": 1,
+        "coreStateLoads": 0,
+        "hiddenCallConsumedRows": 2
+      },
+      "call-10000": {
+        "unrelatedCalls": 10000,
+        "targetCallConsumedRows": 1,
+        "coreStateLoads": 0,
+        "hiddenCallConsumedRows": 2
+      },
+      "metadata-cold-1000": {
+        "sourceChunkQueries": 8008,
+        "metadataCharacters": 20020,
+        "payloadMetadataRows": 4004,
+        "coldIdentityRows": 4004,
+        "maxSourceChunkBytes": 209,
+        "sourceBytes": 832404
+      },
+      "metadata-cold-10000": {
+        "sourceChunkQueries": 80008,
+        "metadataCharacters": 200020,
+        "payloadMetadataRows": 40004,
+        "coldIdentityRows": 40004,
+        "maxSourceChunkBytes": 210,
+        "sourceBytes": 8356408
+      },
+      "metadata-cold": {
+        "sourceChunkQueries": 3060,
+        "metadataCharacters": 25,
+        "payloadMetadataRows": 5,
+        "coldIdentityRows": 5,
+        "maxSourceChunkBytes": 4096,
+        "sourceBytes": 12501125
+      },
+      "metadata-warm-1000": {
+        "warmMetadataRows": 4,
+        "sourceChunkQueries": 197,
+        "metadataCharacters": 191,
+        "projectionMetadataBytes": 1532,
+        "payloadMetadataRows": 1,
+        "maxSourceChunkBytes": 4096,
+        "warmNumberRows": 1001,
+        "targetMetadataRows": 1,
+        "sourceBytes": 800432
+      },
+      "metadata-warm-10000": {
+        "warmMetadataRows": 4,
+        "sourceChunkQueries": 197,
+        "metadataCharacters": 195,
+        "projectionMetadataBytes": 1532,
+        "payloadMetadataRows": 1,
+        "maxSourceChunkBytes": 4096,
+        "warmNumberRows": 10001,
+        "targetMetadataRows": 1,
+        "sourceBytes": 800436
+      },
+      "pagination-1000": {
+        "fixtureRows": 1000,
+        "pageCount": 17,
+        "totals": {
+          "warmMetadataRows": 968,
+          "sourceChunkQueries": 1940,
+          "metadataCharacters": 4840,
+          "projectionMetadataBytes": 364224,
+          "payloadMetadataRows": 968,
+          "coldIdentityRows": 968,
+          "maxSourceChunkBytes": 4096,
+          "sourceBytes": 234176
+        }
+      },
+      "pagination-10000": {
+        "fixtureRows": 10000,
+        "pageCount": 158,
+        "totals": {
+          "warmMetadataRows": 9968,
+          "sourceChunkQueries": 19940,
+          "metadataCharacters": 49840,
+          "projectionMetadataBytes": 3760696,
+          "payloadMetadataRows": 9968,
+          "coldIdentityRows": 9968,
+          "maxSourceChunkBytes": 4096,
+          "sourceBytes": 2235644
+        }
+      },
+      "pagination-future": {
+        "returned": 120,
+        "totals": {
+          "warmMetadataRows": 175,
+          "sourceChunkQueries": 350,
+          "metadataCharacters": 875,
+          "projectionMetadataBytes": 65813,
+          "payloadMetadataRows": 175,
+          "coldIdentityRows": 175,
+          "maxSourceChunkBytes": 223,
+          "sourceBytes": 38679
+        }
+      }
+    },
+    "fullGate": {
+      "exit": 0,
+      "duration": "1m 15s",
+      "tasks": 147,
+      "executed": 17,
+      "upToDate": 130,
+      "contractsTest": "NO-SOURCE",
+      "device": "NOT_RUN"
+    },
+    "priorVerification": {
+      "path": "build/qa/layer-boundaries/t10b2a-before-review-fix-verification.json",
+      "sha256": "26d51fe236901b5625d12bfb776fe15222caa8721e4afa0a73b795b4a71049a6"
+    }
+  },
+  "postGateWhitespace": {
+    "path": "backend/src/main/kotlin/com/greatwall/callring/application/recording/RecordingPersistence.kt",
+    "beforeSha256": "a8a8046469b81cc735e458fe8e54b8676a4ce335bac207414c70546b9efdf118",
+    "sha256": "5134ce4cd6777258206c538dcce3292e9bd6cbb370eb26e02aa43b6db6fb449b",
+    "change": "Remove exactly one redundant EOF empty line; no semantic change. No Gradle rerun; test results remain those of the reviewFix semantic candidate.",
+    "source": {
+      "count": 566,
+      "sha256": "e78c0c9ae81032c7efdb938d1b696b14011171ed3db0fecc9e3a67daa388cfda"
+    },
+    "changedSource": {
+      "count": 28,
+      "sha256": "e5187209de9c866eb7c16ec411f30ba27be5dbed12104f45b5d748b11281d4c0"
+    },
+    "testedChangedSourceSha256": "9eec4149c0594bd1015aaec8aec413e793411cc1f3428d2bb9d1db049b85ccf7"
+  }
+}

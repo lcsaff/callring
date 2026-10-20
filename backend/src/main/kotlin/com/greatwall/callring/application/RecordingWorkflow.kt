@@ -3,13 +3,16 @@ package com.greatwall.callring.application
 import com.greatwall.callring.contracts.recording.*
 import com.greatwall.callring.contracts.ai.*
 import com.greatwall.callring.application.recording.policy.*
+import com.greatwall.callring.application.recording.*
+import com.greatwall.callring.contracts.command.CommandContext
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicLong
 import java.util.concurrent.atomic.AtomicBoolean
 
 /** Durable state transitions; Android supplies files, networking and scheduling. */
 class RecordingWorkflow(
-    private val store: RecordingStore,
+    private val store: RecordingWorkflowReads,
+    private val commands: RecordingArchiveCommands,
     private val client: AiClient,
     private val now: () -> Long = System::currentTimeMillis,
 ) {
@@ -20,7 +23,7 @@ class RecordingWorkflow(
     fun activitySnapshot()=aiObject("running" to aiNumber(running.size.toLong()),"activeClients" to aiNumber(activeClients.size.toLong()),"cancelledOperations" to aiNumber(cancelledOperations.values.count{it.get()}.toLong()))
     private fun version(previous: Long = 0): Long = versions.updateAndGet { maxOf(it + 1, previous + 1) }
 
-    fun attach(callId: Long, number: String, startedAt: Long, path: String, source: RecordingSource, duration: Long): CallArchive {
+    fun attach(callId: Long, number: String, startedAt: Long, path: String, source: RecordingSource, duration: Long, command: CommandContext?, playbackStopped: Boolean): CallArchive {
         require(callId != 0L && number.isNotBlank() && duration > 0) { "recording.invalid_attachment" }
         val previousGeneration = store.generation(callId)
         cancelledOperations[callId]?.set(true)
@@ -30,25 +33,25 @@ class RecordingWorkflow(
             if (settings.automaticAnalysis) ArchiveStatus.QUEUED else ArchiveStatus.READY,
             source, path, if (source == RecordingSource.MICROPHONE) "recording.microphone_unverified" else "recording.unverified",
             duration)
-        check(store.compareAndSet(callId, previousGeneration, value)) { "recording.changed" }
+        check(commands.compareAndSet(callId, previousGeneration, value, command, playbackStopped)) { "recording.changed" }
         return value
     }
 
-    fun retry(callId: Long) {
+    fun retry(callId: Long, command: CommandContext?) {
         check(callId !in running) { "recording.busy" }
         val value = requireNotNull(store.get(callId)) { "recording.not_found" }
         require(value.audioPath != null) { "recording.missing_audio" }
         val config = store.settings()
         config.analysis.validate(); config.transcription.validate()
         require(config.transcription.protocol == AiProtocol.OPENAI) { "ai.transcription_requires_openai" }
-        check(store.compareAndSet(callId, value.generation, value.copy(generation = version(value.generation),
-            status = ArchiveStatus.QUEUED, attempts = 0, nextAttemptAt = 0, error = null, manualAnalysis = true))) { "recording.changed" }
+        check(commands.compareAndSet(callId, value.generation, value.copy(generation = version(value.generation),
+            status = ArchiveStatus.QUEUED, attempts = 0, nextAttemptAt = 0, error = null, manualAnalysis = true), command, false)) { "recording.changed" }
     }
 
-    fun delete(callId: Long): CallArchive? {
+    fun delete(callId: Long, command: CommandContext?, playbackStopped: Boolean): CallArchive? {
         cancelledOperations[callId]?.set(true)
         activeClients[callId]?.cancel()
-        return store.delete(callId)
+        return commands.delete(callId, command, playbackStopped)
     }
     fun cancelProcessing() {
         cancelledOperations.values.forEach { it.set(true) }
@@ -85,7 +88,7 @@ class RecordingWorkflow(
         activeClients[current.callId] = operation
         fun update(value: CallArchive): Boolean {
             val next = value.copy(generation = version(current.generation))
-            if (!store.compareAndSet(current.callId, current.generation, next)) return false
+            if (!commands.compareAndSet(current.callId, current.generation, next, null, false)) return false
             current = next; return true
         }
         try {
@@ -105,6 +108,7 @@ class RecordingWorkflow(
             }
             if (isCancelled()) throw AiFailure("recording.cancelled")
             val result = operation.analyze(config.analysis, current.transcript)
+            if (isCancelled()) throw AiFailure("recording.cancelled")
             update(current.copy(analysis = result, status = ArchiveStatus.COMPLETE, error = null,
                 nextAttemptAt = 0, analyzedAt = now(), analysisModel = config.analysis.model,
                 analysisProtocol = config.analysis.protocol))

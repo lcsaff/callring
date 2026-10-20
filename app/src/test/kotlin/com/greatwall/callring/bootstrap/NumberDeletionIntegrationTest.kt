@@ -57,7 +57,7 @@ class NumberDeletionIntegrationTest {
     @Test fun impactDoesNotUseExplicitArchiveListing() = runBlocking {
         val graph = graph("deletion_metadata")
         try {
-            graph.recordings.store.registerIncoming("session", "31234", 1, null)
+            graph.recordings.registrations.registerIncoming("session", "31234", 1, null, null)
             var lists = 0
             val recordings = object : RecordingApi by graph.recordings {
                 override suspend fun listArchives(): ApiResult<List<CallArchive>> {
@@ -74,7 +74,7 @@ class NumberDeletionIntegrationTest {
         val graph = graph("delete_profile_edited")
         try {
             graph.api.callers.saveProfile(SaveCallerProfile("31234", "original", "unit", null)).requiredValue()
-            graph.recordings.store.registerIncoming("session", "31234", 1, null)
+            graph.recordings.registrations.registerIncoming("session", "31234", 1, null, null)
             val call = ConversationToolCall("c", "callers_deleteNumber", aiObject("number" to aiString("31234")))
             val scopes = OperationScopePlanner(graph.queries, graph.coordinator).prepare(call, 81)
             val command = CommandContext("delete", graph.coordinator.capture(), 1,
@@ -150,7 +150,7 @@ class NumberDeletionIntegrationTest {
         try {
             graph.api.callers.saveProfile(SaveCallerProfile("31234", "name", "unit", null)).requiredValue()
             for (id in 1..2) graph.api.widgets.saveBinding(id, "31234").requiredValue()
-            val call = graph.recordings.store.registerIncoming("session", "31234", 1, null)
+            val call = graph.recordings.registrations.registerIncoming("session", "31234", 1, null, null)
             val old = graph.recordings.store.get(call.id)!!
             graph.recordings.directory.mkdirs()
             val audio = File(graph.recordings.directory, "fixture.wav").apply { writeBytes(byteArrayOf(1, 2)) }
@@ -168,7 +168,7 @@ class NumberDeletionIntegrationTest {
     @Test fun archiveOnlyRemnantsDoNotRequireAProfile() = runBlocking {
         val graph = graph("delete_archive_only")
         try {
-            graph.recordings.store.registerIncoming("session", "31234", 1, null)
+            graph.recordings.registrations.registerIncoming("session", "31234", 1, null, null)
             graph.api.numberDeletion.delete(DeleteNumberCommand("31234", 0, 1, 0)).requiredValue()
             assertTrue(graph.api.recordings.listArchives().requiredValue().isEmpty())
         } finally { graph.close() }
@@ -177,7 +177,7 @@ class NumberDeletionIntegrationTest {
     @Test fun failedAudioRemovalRetainsArchiveForRetry() = runBlocking {
         val graph = graph("delete_audio_failure")
         try {
-            val call = graph.recordings.store.registerIncoming("session", "31234", 1, null)
+            val call = graph.recordings.registrations.registerIncoming("session", "31234", 1, null, null)
             val old = graph.recordings.store.get(call.id)!!
             val audio = File(graph.recordings.directory, "blocked.wav").apply { mkdirs() }
             val child = File(audio, "obstruction").apply { writeText("fixture") }

@@ -22,7 +22,7 @@ import java.util.concurrent.*
 @Config(sdk = [33], manifest = Config.NONE)
 class RecordingCommandContextTest {
     @Test fun playbackFinalGenerationCheckDoesNotDecodeArchiveAgain() = runBlocking {
-        val store = AndroidRecordingStore(context, "play-generation", cipher)
+        val store = AndroidRecordingStore(context, "play-generation", cipher, recordingVersion = { 0L })
         val runtime = AndroidRecordingRuntime(context, "play-generation", { null }, { null }, {}, { store })
         runtime.directory.mkdirs()
         val audio = File(runtime.directory, "play.wav").apply { writeBytes(ByteArray(32)) }
@@ -41,7 +41,7 @@ class RecordingCommandContextTest {
     private val cipher = object : RecordingCipher { override fun encrypt(value: String) = value; override fun decrypt(value: String) = value }
     @Test fun deleteDoesNotWaitForImportPreparationAndLateImportCannotResurrectArchive() = runBlocking {
         val coordinator = BusinessRevisionCoordinator()
-        val store = AndroidRecordingStore(context, "import_race", cipher, coordinator)
+        val store = AndroidRecordingStore(context, "import_race", cipher, recordingVersion = { coordinator.capture().values.getValue("recording") })
         store.persistSettings(RecordingSettings(recordingEnabled = true))
         val entered = CountDownLatch(1); val release = CountDownLatch(1)
         val file = File(context.cacheDir, "import-race.wav").apply { writeBytes(ByteArray(32)) }
@@ -72,8 +72,8 @@ class RecordingCommandContextTest {
     }
     @Test fun staleRecordingCommandCannotRetryOrAdvanceArchiveGeneration() = runBlocking {
         val coordinator = BusinessRevisionCoordinator()
-        val store = AndroidRecordingStore(context, "record_command", cipher, coordinator)
-        val call = store.registerIncoming("one", "31234", 1, null)
+        val store = AndroidRecordingStore(context, "record_command", cipher, recordingVersion = { coordinator.capture().values.getValue("recording") })
+        val call = com.greatwall.callring.application.recording.RecordingRegistrationService(store, coordinator).registerIncoming("one", "31234", 1, null, null)
         val old = store.get(call.id)!!
         val runtime = AndroidRecordingRuntime(context, "record_command", { null }, { null }, {}, { store }, coordinator = coordinator)
         val stale = CommandContext("op", coordinator.capture(), 1) { true }

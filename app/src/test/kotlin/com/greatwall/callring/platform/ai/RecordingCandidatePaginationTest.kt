@@ -17,6 +17,7 @@ import java.io.File
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [33], manifest = Config.NONE)
 class RecordingCandidatePaginationTest {
+    private val testCoordinator = com.greatwall.callring.application.BusinessRevisionCoordinator()
     private val context get() = RuntimeEnvironment.getApplication()
     private val cipher = object : RecordingCipher { override fun encrypt(value: String) = value; override fun decrypt(value: String) = value }
     @Test fun mixedThousandDueRowsConsumeOnlyEachPartitionsCandidatePrefix() = allDue(1_000)
@@ -59,7 +60,7 @@ class RecordingCandidatePaginationTest {
                 nextAttemptAt = if (id % 3L == 0L) 200 else 0)
         }
         fixture(namespace, rows).use { store ->
-            val marker = store.coordinator.marker()
+            val marker = testCoordinator.marker()
             val actual = mutableListOf<RecordingCandidate>(); var after: Long? = null
             while (true) {
                 val page = store.dueCandidates(100, after, 7) { false }
@@ -84,12 +85,12 @@ class RecordingCandidatePaginationTest {
                 store.dueCandidates(100, 86, 64) { ++checks > 8 }
             }
             assertTrue((store.readCounters.snapshot()["sourceBytes"] ?: 0) > sourceBefore)
-            assertEquals(marker, store.coordinator.marker())
+            assertEquals(marker, testCoordinator.marker())
             assertUnchangedIndex(namespace, rows)
         }
     }
     private fun fixture(namespace: String, rows: List<CallArchive>): AndroidRecordingStore {
-        AndroidRecordingStore(context, namespace, cipher).use { it.scopedReads() }
+        AndroidRecordingStore(context, namespace, cipher, recordingVersion = { testCoordinator.capture().values.getValue("recording") }).use { it.scopedReads() }
         SQLiteDatabase.openDatabase(context.getDatabasePath(namespace + "_recording.db").path, null, SQLiteDatabase.OPEN_READWRITE).use { db ->
             db.beginTransaction()
             try {
@@ -102,7 +103,7 @@ class RecordingCandidatePaginationTest {
                 db.setTransactionSuccessful()
             } finally { db.endTransaction() }
         }
-        return AndroidRecordingStore(context, namespace, cipher)
+        return AndroidRecordingStore(context, namespace, cipher, recordingVersion = { testCoordinator.capture().values.getValue("recording") })
     }
     private fun assertUnchangedIndex(namespace: String, rows: List<CallArchive>) {
         SQLiteDatabase.openDatabase(context.getDatabasePath(namespace + "_recording.db").path, null, SQLiteDatabase.OPEN_READONLY).use { db ->

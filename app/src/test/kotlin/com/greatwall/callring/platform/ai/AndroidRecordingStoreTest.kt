@@ -13,8 +13,8 @@ import org.robolectric.annotation.Config
 @Config(sdk = [33], manifest = Config.NONE)
 class AndroidRecordingStoreTest {
     @Test fun firstIndependentIdentityCanBeReimportedAfterDeletion() {
-        val store = AndroidRecordingStore(context, "negative_reimport", cipher)
-        val call = store.registerIncoming("first", "31234", 1000, null)
+        val store = AndroidRecordingStore(context, "negative_reimport", cipher, recordingVersion = { 0L })
+        val call = com.greatwall.callring.application.recording.RecordingRegistrationService(store, com.greatwall.callring.application.BusinessRevisionCoordinator()).registerIncoming("first", "31234", 1000, null, null)
         assertEquals(-1L, call.id)
         store.delete(call.id)
         val archive = CallArchive(call.id, call.number, call.startedAt, generation = 10, status = ArchiveStatus.READY)
@@ -23,26 +23,26 @@ class AndroidRecordingStoreTest {
         assertFalse(store.isDeleted(call.id))
     }
     @Test fun independentRegistrationIsAtomicIdempotentAndDoesNotMergeDifferentSessions() {
-        val store = AndroidRecordingStore(context, "own_calls", cipher)
-        val first = store.registerIncoming("session-a", "31234", 1000, "sim-a")
+        val store = AndroidRecordingStore(context, "own_calls", cipher, recordingVersion = { 0L })
+        val first = com.greatwall.callring.application.recording.RecordingRegistrationService(store, com.greatwall.callring.application.BusinessRevisionCoordinator()).registerIncoming("session-a", "31234", 1000, "sim-a", null)
         assertTrue(first.id < 0)
-        assertEquals(first, store.registerIncoming("session-a", "31234", 1000, "sim-a"))
-        val second = store.registerIncoming("session-b", "31234", 1000, "sim-b")
+        assertEquals(first, com.greatwall.callring.application.recording.RecordingRegistrationService(store, com.greatwall.callring.application.BusinessRevisionCoordinator()).registerIncoming("session-a", "31234", 1000, "sim-a", null))
+        val second = com.greatwall.callring.application.recording.RecordingRegistrationService(store, com.greatwall.callring.application.BusinessRevisionCoordinator()).registerIncoming("session-b", "31234", 1000, "sim-b", null)
         assertNotEquals(first.id, second.id)
         assertEquals(ArchiveStatus.WAITING_RECORDING, store.get(first.id)!!.status)
         assertEquals(2, store.listArchives().size)
         store.delete(first.id)
-        store.registerIncoming("session-a", "31234", 1000, "sim-a")
+        com.greatwall.callring.application.recording.RecordingRegistrationService(store, com.greatwall.callring.application.BusinessRevisionCoordinator()).registerIncoming("session-a", "31234", 1000, "sim-a", null)
         assertNull(store.get(first.id))
         assertTrue(store.isDeleted(first.id))
     }
     @Test fun statisticalLinksUseExactSessionAndCanArriveBeforeRegistration() {
-        val store = AndroidRecordingStore(context, "links", cipher)
-        store.linkStatistics(42, "session-a")
+        val store = AndroidRecordingStore(context, "links", cipher, recordingVersion = { 0L })
+        store.insertStatisticsLink(42, "session-a")
         assertNull(store.linkedRecording(42))
-        val first = store.registerIncoming("session-a", "31234", 1000, null)
-        val second = store.registerIncoming("session-b", "31234", 1000, null)
-        store.linkStatistics(43, "session-b")
+        val first = com.greatwall.callring.application.recording.RecordingRegistrationService(store, com.greatwall.callring.application.BusinessRevisionCoordinator()).registerIncoming("session-a", "31234", 1000, null, null)
+        val second = com.greatwall.callring.application.recording.RecordingRegistrationService(store, com.greatwall.callring.application.BusinessRevisionCoordinator()).registerIncoming("session-b", "31234", 1000, null, null)
+        store.insertStatisticsLink(43, "session-b")
         assertEquals(first, store.linkedRecording(42))
         assertEquals(second, store.linkedRecording(43))
         assertEquals(first, store.findRecording(first.id))
@@ -56,10 +56,10 @@ class AndroidRecordingStoreTest {
             db.execSQL("INSERT INTO deleted_archives VALUES (43)")
             db.version = 1
         }
-        val store = AndroidRecordingStore(context, "migration", cipher)
+        val store = AndroidRecordingStore(context, "migration", cipher, recordingVersion = { 0L })
         assertEquals(entry, store.get(42))
         assertTrue(store.isDeleted(43))
-        assertTrue(store.registerIncoming("new", "31234", 2000, null).id < 0)
+        assertTrue(com.greatwall.callring.application.recording.RecordingRegistrationService(store, com.greatwall.callring.application.BusinessRevisionCoordinator()).registerIncoming("new", "31234", 2000, null, null).id < 0)
         assertEquals(entry, store.get(42))
     }
     private val context get() = RuntimeEnvironment.getApplication()
@@ -68,19 +68,19 @@ class AndroidRecordingStoreTest {
         override fun decrypt(value: String) = String(java.util.Base64.getDecoder().decode(value))
     }
     @Test fun settingsAreEncryptedAndNamespacesAreIsolated() {
-        val a = AndroidRecordingStore(context, "a", cipher)
-        val b = AndroidRecordingStore(context, "b", cipher)
+        val a = AndroidRecordingStore(context, "a", cipher, recordingVersion = { 0L })
+        val b = AndroidRecordingStore(context, "b", cipher, recordingVersion = { 0L })
         val connection = AiConnection(url = "https://example.com/prefix/v1", apiKey = "unique-private-key", model = "custom")
         a.persistSettings(RecordingSettings(analysis = connection, transcription = connection))
         assertFalse(context.getSharedPreferences("a_recording", 0).all.toString().contains("unique-private-key"))
-        assertEquals("unique-private-key", AndroidRecordingStore(context, "a", cipher).settings().analysis.apiKey)
+        assertEquals("unique-private-key", AndroidRecordingStore(context, "a", cipher, recordingVersion = { 0L }).settings().analysis.apiKey)
         assertEquals("", b.settings().analysis.apiKey)
     }
     @Test fun archiveCompareAndSetSurvivesReopenAndRejectsLateWrites() {
-        val store = AndroidRecordingStore(context, "archive", cipher)
+        val store = AndroidRecordingStore(context, "archive", cipher, recordingVersion = { 0L })
         val entry = CallArchive(1, "31234", 100, generation = 123, transcript = "test", analysis = CallAnalysis(summary = "summary"))
         assertTrue(store.compareAndSet(1, null, entry))
-        val reopened = AndroidRecordingStore(context, "archive", cipher)
+        val reopened = AndroidRecordingStore(context, "archive", cipher, recordingVersion = { 0L })
         assertEquals(entry, reopened.get(1))
         assertFalse(reopened.compareAndSet(1, 999, entry.copy(generation = 1000)))
         reopened.delete(1)

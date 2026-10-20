@@ -47,3 +47,8 @@ T10b1 源码正式冻结待规格→质量双审：已删除 RecordingStore/Andr
 
 
 T10b1质量P2分页补证：已消除dueCandidates每页扫描全部剩余warm/cold源的可避免放大；两个有序分区各收齐limit个真正due后停止，再合并全局前limit，future额外读取如实披露。只有RecordingMetadataReads与新增SQLite分页测试变化，未新增兼容入口/索引写。分页补完整门backend315/app302实际执行、UI298沿主门XML，完整561/变动26路径指纹及10k总19936源行安全计数见t10b1实施证据补节。重新冻结待规格核变化与质量复审，不表示后续T10b2/b3已经完成。
+
+
+T10b2a 候选实现正式冻结：AndroidRecordingStore 已完全移除 coordinator/guard/业务差异发布/旧 registerIncoming、linkStatistics、hasSession 与 Internal 写包装；明确 recordingVersion getter 必传。唯一 backend RecordingArchiveCommands/RecordingRegistrationService 负责实际 CAS/delete/registration/link 的精确一次 marker、recording source/集合scope、RECORDING_ARCHIVES实体及 command 记录；Workflow 改实际窄 reads+commands。旧 RecordingStore 聚合接口零类型消费者后立即删除，无alias/default/shim。原Runtime仍是T10b2b未迁API/媒体/身份业务的真实消费者；只最小连接attach/delete实际stop与失败runtime，使新精准发布不依赖旧全域兜底。b2b/b3/c/T11/T13剩余边界见 [t10b2a实施证据](t10b2a-implementation.md)，本段不表示整片T10b2或双审已通过。完整门backend322/app308实执行、UI298缓存，111JVM及17/4守卫通过；未设备。
+
+T10b2a规格P2补门：初始archive插入改即时changes判据，并对零行且目标不存在回滚event/archive；合法首个负ID正常建索引。闲置RecordingArchiveQueries零typed消费者后删除，无未来预留。相对主门仅3路径修复，最终backend322/app310实际执行、UI298缓存全0失败，源码重新冻结，详见同一实施证据补节。

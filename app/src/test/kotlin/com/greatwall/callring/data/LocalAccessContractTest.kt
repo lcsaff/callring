@@ -81,11 +81,11 @@ class LocalAccessContractTest {
             val sqlObservations = JSONObject().put("unrelatedCallCount", unrelatedCalls)
                 .put("implementationBaseSha", "b3f4ab7")
                 .put("measurement", "query calls and successful cursor moves / scalar results; not SQLite scan rows")
-            val recording = graph.recordings.store.registerIncoming(
-                "synthetic-access-session", LocalAccessFixture.TARGET, LocalAccessFixture.at, null,
+            val recording = graph.recordings.registrations.registerIncoming(
+                "synthetic-access-session", LocalAccessFixture.TARGET, LocalAccessFixture.at, null, null,
             )
             assertTrue("recording identity is independent of positive statistics IDs", recording.id < 0)
-            graph.recordings.store.linkStatistics(1L, "synthetic-access-session")
+            graph.recordings.store.insertStatisticsLink(1L, "synthetic-access-session")
             val identity = graph.recordings.getIdentity(recording.id).requiredValue()
             assertEquals(LocalAccessFixture.TARGET, identity.number)
             suspend fun measure(name: String, operation: suspend () -> Unit) {
