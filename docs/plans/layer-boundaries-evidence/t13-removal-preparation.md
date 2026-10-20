@@ -22,3 +22,11 @@ stateLoads/stateLoadCount/businessReadCounters 属于迁移观测；最终保留
 稳定版本未发现quiet restore生产入口。restoreBuiltIn是ringtone，不能作为quiet旧writer证据。quiet真实写入口是save/mode/enabled/edit→typed writeQuiet/saveQuiet，变化推进quiet scope。旧SettingsStore.save仍有四个quiet key写能力；剩余业务没有直接修改state.quiet，初始化只加calendar，升级只saveCalls。删除旧SettingsStore写能力后，quiet.get仅复核quiet，补无关core提交不重读/相关提交不能旧值贴新marker/last-mode-only推进scope的测试。不能以泛称“restore”延后删除。
 
 建议顺序：来电/关联/预热→报表/source/full snapshot→recording findCall→初始化/升级专用SQL→fixture迁移→旧模型/Store/session/overload/空壳计数全部删除→精确符号负例防回流。独立codec、原schema/约束、sqlite_sequence与历史协议数据仍由唯一实现正确处理。
+
+## 根组件薄壳补充（b1bf4b0只读预查）
+
+RuleScreeningService已把截止时间业务委托ScreeningController；其Android Call/ResultReceiver/Handler适配仍可留壳。SyncJobService、CalendarSyncJobService、RecordingJobService、RuntimeReceiver还包含任务/事件编排，应各归entrypoint/jobs或entrypoint/runtime控制器；CallCaptureService、RingPlaybackService依文件清单拆出录音/播放控制器，系统组件FQCN保持。纯移动不顺带重写生命周期算法。
+
+提取必须保持：Calendar job IDs76/77、6小时周期、1000ms启动及按databaseName隔离的calendar_sync偏好；Recording job ID73140、持久/网络约束/60秒退避、独立导入失败仍处理已导入项目；Sync的CONTENT_JOB_ID与原观察重挂/停止令牌/异步jobFinished分支。RuntimeReceiver保留广播action集合、goAsync→finally.finish、phone state的session与capture次序。上层静态schedule入口可以作为实际Android组件适配委托保留，不能保留第二份业务实现。
+
+控制器注入明确的调度、权限、后台执行与完成回调，避免强持完整Service/BackendGraph作为万能上下文。现有JobRuns的旧任务完成不能结束新任务、close停止、取消和来电期限测试优先复用；机械提取不为每个委托创建镜像测试。Manifest、ComponentName、PendingIntent/Job身份及backendQa显式runner类名需同步核对。此节未执行组件/设备验证。
