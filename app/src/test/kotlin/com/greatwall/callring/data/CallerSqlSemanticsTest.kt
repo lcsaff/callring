@@ -433,6 +433,44 @@ class CallerSqlSemanticsTest {
         }
 
     @Test
+    fun callerMutationsWriteOnlyChangedColumnsAndPreserveNullableWhitelist() =
+        runBlocking<Unit> {
+            val name = "caller-owned-columns.db"
+            SqliteCoreStorageResource(context, name).use { store ->
+                store.fixtureSql { state ->
+                    state.seedPosition(com.greatwall.callring.domain.model.PositionRecord(1, "position", 2, true))
+                    state.seedCaller(ProfileRecord("31234", "original", "department", 1, false))
+                }
+                val api = backend(store)
+                context.openOrCreateDatabase(name, 0, null).use { db ->
+                    db.execSQL("CREATE TRIGGER whitelist_only BEFORE UPDATE OF number,name,department,position_id ON callers BEGIN SELECT RAISE(ABORT,'profile columns must not be written'); END")
+                }
+                val enabled = api.callers.setWhitelisted("3-1234", true).requiredValue()
+                assertEquals(ProfileRecord("31234", "original", "department", 1, true), store.sessions.readCaller { it.caller("31234") })
+                assertTrue(enabled.whitelisted)
+                val oldSnapshot = api.refreshDecisionSnapshot()
+                context.openOrCreateDatabase(name, 0, null).use { db ->
+                    db.execSQL("DROP TRIGGER whitelist_only")
+                    db.execSQL("UPDATE callers SET whitelist=0 WHERE number='31234'")
+                    db.execSQL("CREATE TRIGGER profile_only BEFORE UPDATE OF number,whitelist ON callers BEGIN SELECT RAISE(ABORT,'whitelist must not be written'); END")
+                }
+                val edited = api.callers.saveProfile(SaveCallerProfile("31234", "edited", "edited department", null, null)).requiredValue()
+                assertFalse(edited.whitelisted)
+                assertNull(api.callers.getEditor("31234").requiredValue().draft.positionId)
+                assertEquals(ProfileRecord("31234", "edited", "edited department", null, false), store.sessions.readCaller { it.caller("31234") })
+                assertFalse(api.decisionSnapshot().evaluate("31234", at).whitelisted)
+                assertTrue(oldSnapshot.evaluate("31234", at).whitelisted)
+                context.openOrCreateDatabase(name, 0, null).use { db ->
+                    db.execSQL("CREATE TRIGGER reject_unchanged BEFORE UPDATE ON callers BEGIN SELECT RAISE(ABORT,'unchanged row must not be written'); END")
+                }
+                store.sessions.writeSession { writer -> writer.putCaller(writer.caller("31234")!!, false) }
+                assertThrows(IllegalStateException::class.java) {
+                    store.sessions.writeSession { it.putCaller(ProfileRecord("39999"), false) }
+                }
+            }
+        }
+
+    @Test
     fun deletionPublishesCallIdentityConflictScopes() =
         runBlocking<Unit> {
             SqliteCoreStorageResource(context, "caller-delete-scopes.db").use { store ->

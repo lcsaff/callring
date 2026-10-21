@@ -99,7 +99,7 @@ class BackendApiDeviceTest : InstrumentationTestCase() {
         success(api.settings.saveScoreSettings(score))
         success(api.settings.setOverlayEnabled(false))
         val revision = api.changes.snapshots().value.revision
-        val snapshot = fixture.graph.backend.decisionSnapshot()
+        val snapshot = fixture.graph.backend.refreshDecisionSnapshot()
         val raw = SQLiteDatabase.openDatabase(fixture.databaseFile.absolutePath, null, SQLiteDatabase.OPEN_READONLY).use { db ->
             db.rawQuery("SELECT key,value,position_id FROM settings ORDER BY key", null).use { rows ->
                 buildList { while (rows.moveToNext()) add((0 until rows.columnCount).map { if (rows.isNull(it)) null else rows.getString(it) }) }
@@ -478,6 +478,7 @@ class BackendApiDeviceTest : InstrumentationTestCase() {
 
     fun testGraphCloseDrainsQueuedCallCompletionBeforeClosingSqlite() = runBlocking {
         configureWorkingDay()
+        fixture.graph.backend.refreshDecisionSnapshot()
         val coordinator = fixture.graph.incomingCalls
         val blocker =
             SQLiteDatabase.openDatabase(

@@ -41,9 +41,9 @@ class SharedComponentsTest {
         assertTrue(returned)
     }
 
-    @Test fun compactTitleContentHeightIs48dpWithoutStatusBarInset() {
+    @Test fun compactTitleContentHeightIs40dpWithoutStatusBarInset() {
         compose.setContent { CallringTheme(DefaultAppearance.rememberAppearanceThemeSpec(androidx.compose.foundation.isSystemInDarkTheme())) { ScreenFrame("号码档案", compactTitle = true) {} } }
-        compose.onNodeWithTag("screen-frame-topbar").assertHeightIsEqualTo(48.dp)
+        compose.onNodeWithTag("screen-frame-topbar").assertHeightIsEqualTo(40.dp)
     }
 
     @Test fun defaultTitleKeepsTheMaterialExpandedHeight() {

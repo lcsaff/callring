@@ -126,8 +126,7 @@ internal class CallerCommandService(
                 }
             },
         ) { delta ->
-            if (delta.decisionInputsChanged)
-                patchWhitelist(delta.value.number, delta.value.whitelisted)
+            patchWhitelist(delta.value.number, delta.value.whitelisted)
         }
     }
 

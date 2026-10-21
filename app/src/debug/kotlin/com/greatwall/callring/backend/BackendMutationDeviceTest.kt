@@ -168,7 +168,7 @@ class BackendMutationDeviceTest : InstrumentationTestCase() {
         assertEquals("original department", enabledDraft.department)
         assertEquals(position.id, enabledDraft.positionId)
 
-        val staleSnapshot = fixture.graph.backend.decisionSnapshot()
+        val staleSnapshot = fixture.graph.backend.refreshDecisionSnapshot()
         assertTrue(staleSnapshot.evaluate("31234", fixture.clock.millis()).whitelisted)
         database { db ->
             db.execSQL("DROP TRIGGER qa_whitelist_only")
@@ -224,7 +224,7 @@ class BackendMutationDeviceTest : InstrumentationTestCase() {
         success(api.settings.setMyPosition(first.id))
         val positionsBefore = success(api.settings.getPositions())
         val rowsBefore = settingsRows()
-        val snapshotBefore = fixture.graph.backend.decisionSnapshot()
+        val snapshotBefore = fixture.graph.backend.refreshDecisionSnapshot()
         val revisionBefore = api.changes.snapshots().value.revision
         database { db ->
             // Current settings persistence uses INSERT OR REPLACE. Guard UPDATE as well so the
@@ -263,7 +263,7 @@ class BackendMutationDeviceTest : InstrumentationTestCase() {
             )
             val quietBefore = success(api.settings.getQuietHours())
             val rowsBefore = settingsRows()
-            val snapshotBefore = fixture.graph.backend.decisionSnapshot()
+            val snapshotBefore = fixture.graph.backend.refreshDecisionSnapshot()
             val revisionBefore = api.changes.snapshots().value.revision
             val at = fixture.clock.millis() // Monday 08:00 UTC, outside the configured work window.
             assertTrue(snapshotBefore.evaluate("31234", at).silence)

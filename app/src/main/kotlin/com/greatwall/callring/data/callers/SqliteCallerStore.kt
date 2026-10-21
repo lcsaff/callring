@@ -106,20 +106,33 @@ internal class SqliteCallerStore(private val sql: SqlAccess, private val lease: 
 
     override fun putCaller(value: ProfileRecord, insert: Boolean) {
         lease(true)
-        val v =
-            values(
-                "name" to value.name,
-                "department" to value.department,
-                "position_id" to value.positionId,
-                "whitelist" to value.whitelisted,
-            )
         if (insert) {
-            v.put("number", value.number)
+            val v =
+                values(
+                    "number" to value.number,
+                    "name" to value.name,
+                    "department" to value.department,
+                    "position_id" to value.positionId,
+                    "whitelist" to value.whitelisted,
+                )
             check(sql.insertReturningId("callers", v) != -1L) { "storage.caller.insert" }
-        } else
-            check(sql.update("callers", v, "number=?", arrayOf(value.number)) == 1) {
+        } else {
+            val existing = checkNotNull(caller(value.number)) { "storage.caller.update" }
+            val changed = values().apply {
+                if (existing.name != value.name) put("name", value.name)
+                if (existing.department != value.department) put("department", value.department)
+                if (existing.positionId != value.positionId) {
+                    if (value.positionId == null) putNull("position_id")
+                    else put("position_id", value.positionId)
+                }
+                if (existing.whitelisted != value.whitelisted)
+                    put("whitelist", if (value.whitelisted) 1 else 0)
+            }
+            if (changed.size() == 0) return
+            check(sql.update("callers", changed, "number=?", arrayOf(value.number)) == 1) {
                 "storage.caller.update"
             }
+        }
     }
 
     override fun removeCaller(number: String) {

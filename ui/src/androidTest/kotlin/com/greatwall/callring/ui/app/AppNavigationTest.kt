@@ -3,6 +3,8 @@ package com.greatwall.callring.ui.app
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.unit.dp
+import com.greatwall.callring.contracts.callers.CallerDraft
+import com.greatwall.callring.contracts.callers.SaveCallerProfile
 import com.greatwall.callring.ui.testing.UiFakeApi
 import com.greatwall.callring.ui.testing.captureArtifact
 import com.greatwall.callring.contracts.settings.*
@@ -18,6 +20,7 @@ class AppNavigationTest {
 
     @Test fun callerReportEditorNavigateAndSaveThroughViewModel() {
         val api = UiFakeApi()
+        val baseline = CallerDraft("100", "测试档案", "示例部门", null, false)
         compose.setContent { CallringApp(api, onCapability = {}, onPreviewCall = {}, onPinWidget = {}, onAppSettings = {}) }
         compose.captureArtifact("home")
         compose.onNodeWithTag("tab-callers").performClick()
@@ -31,17 +34,20 @@ class AppNavigationTest {
         compose.onNodeWithText("保存档案").performScrollTo().performClick()
         compose.waitUntil { api.savedProfile != null }
         compose.runOnIdle {
-            assertEquals("更新档案", api.savedProfile?.name)
-            assertNull(api.savedProfile?.whitelisted)
+            assertEquals(1, api.profileEdits)
+            assertEquals(SaveCallerProfile(baseline.number, "更新档案", baseline.department,
+                baseline.positionId, false, baseline = baseline), api.savedProfile)
+            assertEquals("更新档案", api.profile.name)
+            assertFalse(api.profile.whitelisted)
         }
     }
 
-    @Test fun compactBottomNavigationKeeps56dpContentAnd48dpTargets() {
+    @Test fun compactBottomNavigationKeeps44dpContentAndWorkingDestinations() {
         val api = UiFakeApi()
         compose.setContent { CallringApp(api, onCapability = {}, onPreviewCall = {}, onPinWidget = {}, onAppSettings = {}) }
-        compose.onNodeWithTag("bottom-bar").assertExists().assertHeightIsAtLeast(56.dp)
+        compose.onNodeWithTag("bottom-bar").assertExists().assertHeightIsEqualTo(44.dp)
         listOf("home", "callers", "conversation", "settings").forEach { route ->
-            compose.onNodeWithTag("tab-$route").assertHeightIsEqualTo(56.dp).assertHeightIsAtLeast(48.dp)
+            compose.onNodeWithTag("tab-$route").assertHeightIsEqualTo(44.dp).assertHasClickAction()
         }
         compose.onNodeWithTag("tab-conversation").performClick()
         compose.onNodeWithText("AI 沟通").assertExists()

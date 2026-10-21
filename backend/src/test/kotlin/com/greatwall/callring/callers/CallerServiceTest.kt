@@ -146,7 +146,7 @@ class CallerServiceTest {
         assertEquals("new", saved.name)
         assertEquals("concurrent", saved.department)
         assertTrue(saved.whitelisted)
-        assertTrue(patches.isEmpty())
+        assertEquals(listOf("31234" to true), patches)
         assertEquals(1L, c.marker())
         val direct =
             service.save(SaveCallerProfile("31234", "next", "", null, null, base, setOf("name")))
@@ -158,6 +158,7 @@ class CallerServiceTest {
                 as ApiResult.Failure
         assertEquals(ErrorCode.CONFLICT, draft.error.code)
         assertEquals("name", draft.error.fieldErrors.keys.single())
+        assertEquals(listOf("31234" to true), patches)
         assertEquals(1, p.puts)
     }
 

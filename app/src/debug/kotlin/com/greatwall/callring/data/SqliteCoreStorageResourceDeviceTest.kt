@@ -178,8 +178,8 @@ class SqliteCoreStorageResourceDeviceTest : InstrumentationTestCase() {
             } catch (expected: android.database.sqlite.SQLiteException) {}
         }
         try {
-            store.fixtureSql { state ->
-                state.seedCaller(ProfileRecord("31234", positionId = 99))
+            store.sessions.writeSession { writer ->
+                writer.putCaller(ProfileRecord("31234", positionId = 99), true)
             }
             fail("Dangling position accepted")
         } catch (expected: android.database.sqlite.SQLiteConstraintException) {}
@@ -397,7 +397,7 @@ class SqliteCoreStorageResourceDeviceTest : InstrumentationTestCase() {
             val original = WorkClassifier.classify(state.fixtureWork(), at)
             state.seedLeave(LeaveRecord(1, at - 1000, at + 1000, "retained leave"))
             state.seedSequence("leaves", 2)
-            state.execSQL("INSERT INTO settings(key,value) VALUES('leave_version','1')")
+            state.execSQL("INSERT INTO settings(key,value) VALUES('leave_revision','1')")
             val current = WorkClassifier.classify(state.fixtureWork(), at)
             state.seedCall(RawCallRecord(
                     1,

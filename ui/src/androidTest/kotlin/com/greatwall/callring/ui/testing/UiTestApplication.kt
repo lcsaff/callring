@@ -45,6 +45,9 @@ class UiDeviceFixture : UiFakeApi(true) {
     }
 
     override suspend fun getQuietHours() = ApiResult.Success(quiet)
+    override suspend fun setQuietEnabled(enabled: Boolean): ApiResult<QuietSettings> =
+        setQuietMode(if (enabled) quiet.mode.takeUnless { it == QuietMode.OFF } ?: QuietMode.NON_WORK else QuietMode.OFF)
+
     override suspend fun setQuietMode(mode: QuietMode): ApiResult<QuietSettings> {
         quietModeWrites += mode
         quiet = quiet.copy(mode = mode)

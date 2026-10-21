@@ -47,7 +47,7 @@ class CallerScreensTest {
         compose.runOnIdle { assertEquals(1, addCalls) }
     }
 
-    @Test fun titleActionsAreAccessible48dpIconButtonsWithoutLegacyBodyEntries() {
+    @Test fun compactTitleActionsKeep40dpLayoutAndCallbacksWithoutLegacyBodyEntries() {
         var positions = 0
         compose.setContent { CallringTheme(DefaultAppearance.rememberAppearanceThemeSpec(androidx.compose.foundation.isSystemInDarkTheme())) {
             CallerListScreen(page(), CallerSearch(), null,
@@ -56,8 +56,8 @@ class CallerScreensTest {
         } }
         compose.onNodeWithText("按号码查看报表").assertDoesNotExist()
         compose.onNodeWithText("通话录音").assertDoesNotExist()
-        compose.onNodeWithContentDescription("职位管理").assertHeightIsAtLeast(48.dp).performClick()
-        compose.onNodeWithContentDescription("新增档案").assertHeightIsAtLeast(48.dp).assertExists()
+        compose.onNodeWithContentDescription("职位管理").assertHeightIsEqualTo(40.dp).performClick()
+        compose.onNodeWithContentDescription("新增档案").assertHeightIsEqualTo(40.dp).assertHasClickAction()
         compose.runOnIdle { assertEquals(1, positions) }
     }
 
