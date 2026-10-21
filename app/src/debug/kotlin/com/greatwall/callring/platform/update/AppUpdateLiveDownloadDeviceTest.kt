@@ -19,10 +19,27 @@ import kotlinx.coroutines.NonCancellable
 class AppUpdateLiveDownloadDeviceTest : InstrumentationTestCase() {
     fun testRealPublishedApkDownloadAndVerification() = runBlocking {
         val context = instrumentation.targetContext
-        android.os.ParcelFileDescriptor.AutoCloseInputStream(instrumentation.uiAutomation.executeShellCommand(
-            "am start -W -n ${context.packageName}/com.greatwall.callring.ui.app.CallringActivity"
-        )).use { it.readBytes() }
-        instrumentation.waitForIdleSync()
+        val monitor = instrumentation.addMonitor("com.greatwall.callring.ui.app.CallringActivity", null, false)
+        var activity: android.app.Activity? = null
+        try {
+            android.os.ParcelFileDescriptor.AutoCloseInputStream(instrumentation.uiAutomation.executeShellCommand(
+                "am start -W -n ${context.packageName}/com.greatwall.callring.ui.app.CallringActivity"
+            )).use { it.readBytes() }
+            activity = checkNotNull(monitor.waitForActivityWithTimeout(10_000)) { "Download acceptance activity did not resume" }
+            instrumentation.runOnMainSync {
+                activity.window.addFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+            }
+            verifyDownload(context)
+        } finally {
+            instrumentation.removeMonitor(monitor)
+            instrumentation.runOnMainSync {
+                activity?.window?.clearFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+                activity?.finish()
+            }
+        }
+    }
+
+    private suspend fun verifyDownload(context: android.content.Context) {
         val info = defaultUpdateBuildInfo(context).copy(
             current = AppVersionInfo("0.0.0", 0), packageName = CALLRING_PACKAGE, updatable = true)
         val directory = File(context.getExternalFilesDir(null), "live-update-acceptance")
