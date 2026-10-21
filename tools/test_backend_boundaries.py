@@ -40,5 +40,16 @@ class NamedOperationMetadataTest(unittest.TestCase):
         self.assertTrue(has_presentation_literal(Path('OperationCatalog.kt'),row.replace('name="discover_tools"','name="发现工具"')))
         self.assertTrue(has_presentation_literal(Path('OperationCatalog.kt'),row.replace('description="发现工具"','description=run { val label="保存成功";label }')))
 
+
+class ThemePresetMetadataTest(unittest.TestCase):
+    def test_only_shared_preset_display_name_is_metadata(self):
+        row = 'package com.greatwall.callring.contracts.settings\nThemePreset("unicom_red", "联通红", 0xE60012)'
+        self.assertFalse(has_presentation_literal(Path('ThemePresets.kt'), row))
+        self.assertTrue(has_presentation_literal(Path('Another.kt'), row))
+        self.assertTrue(has_presentation_literal(Path('ThemePresets.kt'), row.replace('contracts.settings', 'application.settings')))
+        self.assertTrue(has_presentation_literal(Path('ThemePresets.kt'), row + '; val message="保存成功"'))
+        self.assertTrue(has_presentation_literal(Path('ThemePresets.kt'), row.replace('"unicom_red"', '"联通红"')))
+        self.assertTrue(has_presentation_literal(Path('ThemePresets.kt'), row.replace('"联通红"', 'run { val label="保存成功"; label }')))
+
 if __name__ == '__main__':
     unittest.main()

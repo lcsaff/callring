@@ -42,6 +42,8 @@ T10c removes only missing-capability method bodies: `UiEditsApi`'s seven edits, 
 
 ## Reviewed current contract inventory
 
+2026-10-21 theme preset correction adds `settings/ThemePresets.kt`: immutable id/name/RGB catalog shared by UI and AI. `ThemePreset.name` is catalog data; the localized-literal guard permits only that static constructor field in this contract, with positive and negative tests. D11 current/scoped/full projections add read-only `presets` while retaining all existing appearance fields. O36/O37 descriptions now expose all three names and ids and explain PRESET selection and color-mode preservation. Tool identities, schemas, confirmation, write behavior and omission defaults are unchanged; only those two description values are updated in the reviewed external golden, with its pinned digest updated explicitly. Historical extraction baselines remain unchanged.
+
 <!-- contract-inventory -->
 ```json
 {
@@ -318,6 +320,13 @@ T10c removes only missing-capability method bodies: `UiEditsApi`'s seven edits, 
       "SettingsSummary",
       "AudioSource",
       "RingtoneSettings"
+    ]
+  },
+  "settings/ThemePresets.kt": {
+    "sha256": "084c82dcdba8654083089ed6701dca84ccc523260605eb0982608f731a818d95",
+    "declarations": [
+      "ThemePreset",
+      "ThemePresets"
     ]
   },
   "widget/WidgetBindingsApi.kt": {

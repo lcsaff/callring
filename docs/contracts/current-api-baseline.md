@@ -54,7 +54,7 @@ These are stable external source domains, not the UI DataDomain event enum. Evid
 | D08 | Date overrides |
 | D09 | Leave entries and version |
 | D10 | Statistics/quiet/score/overlay settings and current position setting in scoped projection |
-| D11 | Appearance |
+| D11 | Appearance fields plus read-only `presets`: `id`, `name`, `seedRgb`; shared built-in catalog for UI and AI |
 | D12 | Ringtone settings/playback |
 | D13 | Recording safe settings/folder access |
 | D14 | AI safe settings, keyConfigured only |

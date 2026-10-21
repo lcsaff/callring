@@ -4,6 +4,7 @@ import com.greatwall.callring.application.conversation.operation.*
 import com.greatwall.callring.contracts.ai.*
 import com.greatwall.callring.contracts.report.*
 import com.greatwall.callring.contracts.runtime.*
+import com.greatwall.callring.contracts.settings.ThemePresets
 
 /** Single validated inventory; input order is immaterial to identity and execution. */
 class OperationCatalog(definitions:List<OperationDefinition> = defaultDefinitions()) {
@@ -46,6 +47,7 @@ class OperationCatalog(definitions:List<OperationDefinition> = defaultDefinition
 }
 
 private object OperationSchemas {
+    private val appearancePresets = ThemePresets.builtIn.joinToString("、") { "${it.name}=${it.id}" }
     private val string = aiObject("type" to aiString("string"))
     private val integer = aiObject("type" to aiString("integer"))
     private val boolean = aiObject("type" to aiString("boolean"))
@@ -389,7 +391,7 @@ private object OperationSchemas {
         OperationDefinition(
             id = OperationId.SETTINGS_GET_APPEARANCE, name = "settings_getAppearance", operationCode = "O36", legacyIndex = 36, displayOrder = 36,
             schema = commandShape(false),
-            description = "读取外观设置",
+            description = "读取外观设置及可用预设presets（id/name/seedRgb）：$appearancePresets",
             runtimeDefaults = "No optional business arguments; required fields must be supplied. Source adapter supplies projection/default pagination; see ScopedToolReader for per-operation composed reads. dependsOn omitted: []; write taskId omitted: auto-plan only when batch has exactly one write, otherwise explicit plan required.",
             write = false, sharedApi = "settings.getAppearance", receiptPolicy = ReceiptPolicy.SOURCE_READ,
             confirmation = ConfirmationPolicy.NO_SEPARATE_CONFIRM, execution = ExecutionStrategy.SOURCE,
@@ -398,7 +400,7 @@ private object OperationSchemas {
         OperationDefinition(
             id = OperationId.SETTINGS_SAVE_APPEARANCE, name = "settings_saveAppearance", operationCode = "O37", legacyIndex = 37, displayOrder = 37,
             schema = commandShape(true, "?selection" to choice("PRESET", "CUSTOM"), "?presetId" to string, "?customSeedRgb" to nullable(integer), "?colorMode" to choice("FOLLOW_SYSTEM", "LIGHT", "DARK")),
-            description = "修改深色模式/主题：colorMode枚举FOLLOW_SYSTEM/LIGHT/DARK；selection为PRESET/CUSTOM，presetId预设，customSeedRgb为24位RGB。深色必须colorMode=DARK，不存在darkMode字段",
+            description = "修改深色模式/主题色：colorMode枚举FOLLOW_SYSTEM/LIGHT/DARK；选择预设时设置selection=PRESET及presetId，可用预设：$appearancePresets；自定义设置selection=CUSTOM及customSeedRgb为24位RGB整数。仅改主题色时省略colorMode以保持当前深浅模式。深色必须colorMode=DARK，不存在darkMode字段",
             runtimeDefaults = "all omitted appearance fields preserve current settings; explicit customSeedRgb null clears; no-op emits no new mutation dependsOn omitted: []; write taskId omitted: auto-plan only when batch has exactly one write, otherwise explicit plan required.",
             write = true, sharedApi = "edits.appearance", receiptPolicy = ReceiptPolicy.PERSISTED_READBACK,
             confirmation = ConfirmationPolicy.NO_SEPARATE_CONFIRM, execution = ExecutionStrategy.DIRECT_WRITE,

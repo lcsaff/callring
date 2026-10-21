@@ -37,4 +37,14 @@ class AppearanceThemeMapperTest {
         assertThrows(IllegalArgumentException::class.java) { ThemeRegistry(listOf(added)) }
         assertThrows(IllegalArgumentException::class.java) { ThemeRegistry(ThemeRegistry.Default.presets + ThemeRegistry.Default.presets.first()) }
     }
+
+    @Test fun everySharedPresetSelectsTheDisplayedThemeForEveryColorMode() {
+        for (preset in ThemePresets.builtIn) for (mode in ColorMode.entries) {
+            val stored = AppearanceSettings(ThemeSelection.PRESET, preset.id, 0x123456, mode)
+            val theme = stored.toThemeSpec(false).definition
+            assertEquals(preset.name, theme.name)
+            assertEquals(preset.id, theme.id)
+            assertEquals(preset.seedRgb, theme.seedRgb)
+        }
+    }
 }

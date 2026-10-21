@@ -15,8 +15,15 @@ internal fun currentQueryRow(spec: QuerySpec, value: () -> AiJson): Sequence<Sou
 }
 
 class AppearanceQueryProjection(private val read: () -> AppearanceSettings) {
-    fun rows(spec: QuerySpec) = currentQueryRow(spec) { safeValue(read()) }
+    fun rows(spec: QuerySpec) = currentQueryRow(spec) { appearanceQueryValue(read()) }
 }
+
+fun appearanceQueryValue(settings: AppearanceSettings): AiJson.Obj =
+    AiJson.Obj((safeValue(settings) as AiJson.Obj).fields + ("presets" to AiJson.Arr(
+        ThemePresets.builtIn.map {
+            aiObject("id" to aiString(it.id), "name" to aiString(it.name), "seedRgb" to aiNumber(it.seedRgb))
+        },
+    )))
 
 class RingtoneQueryProjection(
     private val settings: suspend () -> ApiResult<RingtoneSettings>,

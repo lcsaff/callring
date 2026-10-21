@@ -71,6 +71,22 @@ def compatible_inventory(files, inventory):
 def has_presentation_literal(path, source):
     text = without_comments(source)
     allowed = []
+    # Preset names are shared catalog data, not UI messages. Only the literal
+    # name argument of a static id/name/RGB row in this contract is permitted.
+    if path.name == 'ThemePresets.kt' and re.search(r'^package com\.greatwall\.callring\.contracts\.settings\s*$', text, re.M):
+        for match in re.finditer(r'\bThemePreset\s*\(', text):
+            parts = arguments(text, match.end()-1)
+            if not parts or len(parts[0]) != 3:
+                continue
+            spans = parts[0]
+            values = [text[a:b] for a, b in spans]
+            if not re.fullmatch(r'\s*"[a-z][a-z0-9_]*"\s*', values[0]):
+                continue
+            if not re.fullmatch(r'\s*(?:0x[0-9a-fA-F]{1,6}|[0-9]+)\s*', values[2]):
+                continue
+            field = re.fullmatch(r'\s*("(?:\\.|[^"\\])*")\s*', values[1], re.S)
+            if field:
+                allowed.append((spans[1][0] + field.start(1), spans[1][0] + field.end(1)))
     if path.name == 'OperationCatalog.kt':
         for match in re.finditer(r'\bOperationDefinition\s*\(', text):
             parts = arguments(text, match.end()-1)
@@ -119,7 +135,7 @@ def check():
     for approved in ("RecordingApi.getSettings/saveSettings/testConnection", "RecordingApi.setSystemFolder", "AiConnectionView.copyToAnalysisProfile", "CallringUiApi abstract capabilities", "ConversationBudget.validate"):
         if approved not in document: errors.append("Missing approved internal signature change: " + approved)
     golden = ROOT / "docs/contracts/ai-operation-compatibility.json"
-    if not golden.exists() or hashlib.sha256(golden.read_text(encoding="utf-8").encode("utf-8")).hexdigest() != "7e9735f0718740ef8c19785d61866ef6beec1b26e869aa074f87472b913113a1":
+    if not golden.exists() or hashlib.sha256(golden.read_text(encoding="utf-8").encode("utf-8")).hexdigest() != "2e4924263530ec1d4cc06c7d371f1acc4ed2df873fd113073ee33955e1329e29":
         errors.append("AI operation compatibility golden changed; preserve the reviewed external schema")
     compatibility_test = ROOT / "backend/src/test/kotlin/com/greatwall/callring/ToolCompatibilityBaselineTest.kt"
     if not compatibility_test.exists() or 'ai-operation-compatibility.json' not in compatibility_test.read_text(encoding="utf-8"):

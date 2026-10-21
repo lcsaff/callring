@@ -34,11 +34,9 @@ class ThemeRegistry(definitions: List<ThemeDefinition>) {
 
     companion object {
         val Default: ThemeRegistry by lazy {
-            ThemeRegistry(listOf(
-                ThemeDefinition.fromSeed("unicom_red", "联通红", 0xE60012),
-                ThemeDefinition.fromSeed("sky_blue", "天空蓝", 0x1976D2),
-                ThemeDefinition.fromSeed("teal_green", "青绿色", 0x008577),
-            ))
+            ThemeRegistry(ThemePresets.builtIn.map {
+                ThemeDefinition.fromSeed(it.id, it.name, it.seedRgb)
+            })
         }
     }
 }

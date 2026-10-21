@@ -121,7 +121,7 @@ fun projectCoreSnapshot(
                     "overlayEnabled" to s.overlayEnabled,
                 ),
             ),
-        "D11" to safeValue(appearance),
+        "D11" to appearanceQueryValue(appearance),
         "D12" to safeValue(mapOf("settings" to ringtone, "playback" to status.playback)),
         "D21" to safeValue(audits),
     )
