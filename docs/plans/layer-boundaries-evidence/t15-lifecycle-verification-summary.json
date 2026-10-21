@@ -1,0 +1,337 @@
+{
+  "slice": "T15 lifecycle P2",
+  "status": "spec_quality_root_verified",
+  "source_freeze": {
+    "base": "c426dd1d47c6427fe371f4f66465d35431c9cb75",
+    "algorithm": "diff BASE union untracked Kotlin/Java; sorted POSIX path LF raw bytes LF; deleted raw DELETED",
+    "sha256": "766d13eb2053a48a7980c717583dcc0ae60159dc1d080f9c40dfbc376a8c521d",
+    "paths": [
+      {
+        "path": "app/src/main/kotlin/com/greatwall/callring/bootstrap/BackendGraph.kt",
+        "sha256": "c49e5c0c8ce11ba949d71ed08fc7cf1aa683595a69079bb50179cc79044f34c9",
+        "bytes": 6757
+      },
+      {
+        "path": "app/src/main/kotlin/com/greatwall/callring/bootstrap/CompleteSnapshotAssembly.kt",
+        "sha256": "4463c201810d80580a6b8551a600019d14780261bc5e569ad75702e18493caa1",
+        "bytes": 1934
+      },
+      {
+        "path": "app/src/main/kotlin/com/greatwall/callring/bootstrap/ConversationAssembly.kt",
+        "sha256": "0e195c4decf16698cddcebc949de9175de0aa076a9450c782c634826acfa103e",
+        "bytes": 2969
+      },
+      {
+        "path": "app/src/main/kotlin/com/greatwall/callring/bootstrap/RecordingAssembly.kt",
+        "sha256": "c2359d182e0fa21bb835327543c3afeec452a9a30e94b384efeee9faf115a31e",
+        "bytes": 5491
+      },
+      {
+        "path": "app/src/main/kotlin/com/greatwall/callring/data/recording/AndroidRecordingStore.kt",
+        "sha256": "0d5289624a02f205acce735ea4ce6b9c7bb96ed85048d798d1a2f898eb9120c9",
+        "bytes": 18960
+      },
+      {
+        "path": "app/src/test/kotlin/com/greatwall/callring/bootstrap/AssemblyLifetimeTest.kt",
+        "sha256": "83c732477bfa1fba12340be8494955e9241f1d0bf4b1dc294c1db9b2a45b1c19",
+        "bytes": 19981
+      },
+      {
+        "path": "app/src/test/kotlin/com/greatwall/callring/bootstrap/CompleteSnapshotAssemblyTest.kt",
+        "sha256": "8c1ff176fb501e86d9365ac334282901ba4e6c643939f090b56ac4eed57c6a3a",
+        "bytes": 7499
+      },
+      {
+        "path": "app/src/test/kotlin/com/greatwall/callring/platform/ai/AndroidRecordingStoreTest.kt",
+        "sha256": "afe3e24b243c833694d6c09ccb6cfba72dacac05edc3cb1353f1d4810cc22746",
+        "bytes": 7904
+      },
+      {
+        "path": "backend/src/main/kotlin/com/greatwall/callring/application/conversation/execution/ConversationService.kt",
+        "sha256": "8e358a4c4b5b5c89e6632ef144c64e74fe21aac10190e89cfc4568cf3f1ccc4b",
+        "bytes": 21766
+      },
+      {
+        "path": "backend/src/main/kotlin/com/greatwall/callring/application/conversation/query/QueryService.kt",
+        "sha256": "215bb251e233288402f3f1ee5dd133b4d848a8f04304dc0585432a7967100310",
+        "bytes": 23205
+      },
+      {
+        "path": "backend/src/test/kotlin/com/greatwall/callring/QueryLifetimeTest.kt",
+        "sha256": "43186b5c9147e9529b39fc5e2a7111c42ca688f4147bf0290ab21f5bdc934f2a",
+        "bytes": 5083
+      }
+    ]
+  },
+  "targeted_green": {
+    "command": "./gradlew.bat :backend:test --tests com.greatwall.callring.QueryLifetimeTest :app:testDebugUnitTest --tests com.greatwall.callring.bootstrap.AssemblyLifetimeTest --tests com.greatwall.callring.platform.ai.AndroidRecordingStoreTest --tests com.greatwall.callring.bootstrap.StorageResourcesTest --tests com.greatwall.callring.bootstrap.LazyStorageResourcesTest",
+    "exit_code": 0,
+    "backend_tests": 3,
+    "app_tests": 23,
+    "failures": 0,
+    "errors": 0,
+    "log": "build/qa/layer-boundaries/t15-lifecycle-green.log"
+  },
+  "red_logs": [
+    "build/qa/layer-boundaries/t15-lifecycle-red.log",
+    "build/qa/layer-boundaries/t15-lifecycle-red-app.log",
+    "build/qa/layer-boundaries/t15-lifecycle-red-additional.log",
+    "build/qa/layer-boundaries/t15-lifecycle-red-observations.log"
+  ],
+  "full_gate_runs": 1,
+  "unified_invocation": {
+    "command": "python tools/verify_backend.py",
+    "exit_code": 0,
+    "log": "build/qa/layer-boundaries/t15-lifecycle-full-gate.log",
+    "evidence": {
+      "status": "passed",
+      "root": "C:\\Users\\GreatWall\\.codex\\worktrees\\layer-boundaries\\callring",
+      "commit": "c426dd1d47c6427fe371f4f66465d35431c9cb75",
+      "requested_serial": null,
+      "device": "not_run",
+      "cleanup": {
+        "status": "not_needed",
+        "errors": []
+      },
+      "commands": [
+        {
+          "argv": [
+            "git",
+            "rev-parse",
+            "HEAD"
+          ],
+          "log": "C:\\Users\\GreatWall\\.codex\\worktrees\\layer-boundaries\\callring\\app\\build\\qa\\backend-refactor\\commit.log",
+          "exit_code": 0,
+          "timeout": false,
+          "timeout_seconds": 30,
+          "log_sha256": "a0b11eac312273a87c8d0813052f4017fbea23ebb25b99b7b533caf50b538904"
+        },
+        {
+          "argv": [
+            "D:\\Apps\\Pythons\\Python310\\python.exe",
+            "tools/check_architecture.py"
+          ],
+          "log": "C:\\Users\\GreatWall\\.codex\\worktrees\\layer-boundaries\\callring\\app\\build\\qa\\backend-refactor\\python-1.log",
+          "exit_code": 0,
+          "timeout": false,
+          "timeout_seconds": 3600,
+          "log_sha256": "5b91d91dc7a48609d6c7de1b40ca2989c3cd3f5149113a2c7392c0b7eb8dedd6"
+        },
+        {
+          "argv": [
+            "D:\\Apps\\Pythons\\Python310\\python.exe",
+            "tools/check_backend_boundaries.py"
+          ],
+          "log": "C:\\Users\\GreatWall\\.codex\\worktrees\\layer-boundaries\\callring\\app\\build\\qa\\backend-refactor\\python-2.log",
+          "exit_code": 0,
+          "timeout": false,
+          "timeout_seconds": 3600,
+          "log_sha256": "4fb0a65ba3efb3e0618847cbb4e528924c4ff5635dec53546e6e88975e5124c0"
+        },
+        {
+          "argv": [
+            "D:\\Apps\\Pythons\\Python310\\python.exe",
+            "-m",
+            "unittest",
+            "discover",
+            "-s",
+            "tools",
+            "-p",
+            "test_architecture.py"
+          ],
+          "log": "C:\\Users\\GreatWall\\.codex\\worktrees\\layer-boundaries\\callring\\app\\build\\qa\\backend-refactor\\python-3.log",
+          "exit_code": 0,
+          "timeout": false,
+          "timeout_seconds": 3600,
+          "log_sha256": "46a3b65830cf55424843516f8c1fbc74b69f6edfcaaa77ec3ac9c52973c47e47"
+        },
+        {
+          "argv": [
+            "D:\\Apps\\Pythons\\Python310\\python.exe",
+            "-m",
+            "unittest",
+            "discover",
+            "-s",
+            "tools",
+            "-p",
+            "test_backend_boundaries.py"
+          ],
+          "log": "C:\\Users\\GreatWall\\.codex\\worktrees\\layer-boundaries\\callring\\app\\build\\qa\\backend-refactor\\python-4.log",
+          "exit_code": 0,
+          "timeout": false,
+          "timeout_seconds": 3600,
+          "log_sha256": "d03ce458f2a6cd2b4f27522f3aacad03ce1872c028853507c3ad02ca621bdcad"
+        },
+        {
+          "argv": [
+            "D:\\Apps\\Pythons\\Python310\\python.exe",
+            "-m",
+            "unittest",
+            "discover",
+            "-s",
+            "tools",
+            "-p",
+            "test_verification.py"
+          ],
+          "log": "C:\\Users\\GreatWall\\.codex\\worktrees\\layer-boundaries\\callring\\app\\build\\qa\\backend-refactor\\python-5.log",
+          "exit_code": 0,
+          "timeout": false,
+          "timeout_seconds": 3600,
+          "log_sha256": "3d69fabadf8eedb9ca5acd1a80bf592029751ee20e8e2594861ace6c45df37b2"
+        },
+        {
+          "argv": [
+            "C:\\Users\\GreatWall\\.codex\\worktrees\\layer-boundaries\\callring\\gradlew.bat",
+            "--version"
+          ],
+          "log": "C:\\Users\\GreatWall\\.codex\\worktrees\\layer-boundaries\\callring\\app\\build\\qa\\backend-refactor\\gradle-version.log",
+          "exit_code": 0,
+          "timeout": false,
+          "timeout_seconds": 120,
+          "log_sha256": "060ce5282984110030660b8be0f27371f93173e90cadf307518b2621f37f13f9"
+        },
+        {
+          "argv": [
+            "C:\\Users\\GreatWall\\.codex\\worktrees\\layer-boundaries\\callring\\gradlew.bat",
+            ":contracts:test",
+            ":backend:test",
+            ":ui:testDebugUnitTest",
+            ":app:testDebugUnitTest",
+            ":ui:checkDebugCompileClasspath",
+            ":ui:assembleDebug",
+            ":app:assembleDebug",
+            ":app:assembleRelease",
+            ":app:assembleBackendQa",
+            ":ui:assembleDebugAndroidTest",
+            ":app:assembleDebugAndroidTest",
+            ":ui:lintDebug",
+            ":app:lintDebug",
+            "--console=plain"
+          ],
+          "log": "C:\\Users\\GreatWall\\.codex\\worktrees\\layer-boundaries\\callring\\app\\build\\qa\\backend-refactor\\build.log",
+          "exit_code": 0,
+          "timeout": false,
+          "timeout_seconds": 3600,
+          "log_sha256": "a7fed702af3a51beda3b0aad52d108d371d65779ef5cfcba1e831ee497ac8846"
+        }
+      ],
+      "gradle_tasks": {
+        ":contracts:test": "NO-SOURCE",
+        ":backend:test": "EXECUTED",
+        ":ui:testDebugUnitTest": "UP-TO-DATE",
+        ":app:testDebugUnitTest": "EXECUTED",
+        ":ui:checkDebugCompileClasspath": "EXECUTED",
+        ":ui:assembleDebug": "UP-TO-DATE",
+        ":app:assembleDebug": "EXECUTED",
+        ":app:assembleRelease": "EXECUTED",
+        ":app:assembleBackendQa": "EXECUTED",
+        ":ui:assembleDebugAndroidTest": "UP-TO-DATE",
+        ":app:assembleDebugAndroidTest": "UP-TO-DATE",
+        ":ui:lintDebug": "EXECUTED",
+        ":app:lintDebug": "EXECUTED"
+      },
+      "contracts": {
+        "state": "NO-SOURCE",
+        "tests": 0
+      },
+      "lint": {
+        "ui": {
+          "report": "C:\\Users\\GreatWall\\.codex\\worktrees\\layer-boundaries\\callring\\ui\\build\\reports\\lint-results-debug.xml",
+          "sha256": "40875550437ca1523a09fc0f267cfe9a960053fdba3aa051b2178bd32253752e"
+        },
+        "app": {
+          "report": "C:\\Users\\GreatWall\\.codex\\worktrees\\layer-boundaries\\callring\\app\\build\\reports\\lint-results-debug.xml",
+          "sha256": "fa5c1431fae77980347896be5edfffdad8c1c4b3c55cd8d32b482dbcf8ef8ab3"
+        }
+      },
+      "apk_builds": {
+        ":ui:assembleDebug": "UP-TO-DATE",
+        ":app:assembleDebug": "EXECUTED",
+        ":app:assembleRelease": "EXECUTED",
+        ":app:assembleBackendQa": "EXECUTED",
+        ":ui:assembleDebugAndroidTest": "UP-TO-DATE",
+        ":app:assembleDebugAndroidTest": "UP-TO-DATE"
+      },
+      "backend": {
+        "state": "EXECUTED",
+        "tests": 366,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0,
+        "xml_sha256": "bec718a630e66f23159c8c22e7b45aa36be7c20e1a3d53c45a676b73c3fd1edf",
+        "relative_posix_xml_sha256": "3d66c2a688f1d53c66539a04fe1dd8a673b4586299a5e71456de26ed44c08df8"
+      },
+      "ui": {
+        "state": "UP-TO-DATE",
+        "tests": 310,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0,
+        "xml_sha256": "b34530d53a99b827b0f6eecd10fcd3412ba10d766502241b50b875a5782f2bf8",
+        "relative_posix_xml_sha256": "f70fd5b7e634e758e83fb24a761a7fbe21959c56ac31fa8d86fe7b46bfa9110e"
+      },
+      "app": {
+        "state": "EXECUTED",
+        "tests": 360,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0,
+        "xml_sha256": "1da19de283426466dd8db2c25ffc428aa9c03d773d85dd1dafd2e9901afe9f1d",
+        "relative_posix_xml_sha256": "b34f0e421eebbf99a453a7254a59dc14fe6ee845bfaf61ba58baefcfd21b4123"
+      }
+    }
+  },
+  "environment": {
+    "JAVA_HOME": "D:/Apps/zulu17.54.21-ca-jdk17.0.13-win_x64",
+    "ANDROID_HOME": "D:/Apps/AndroidSDK"
+  },
+  "log_sha256": {
+    "build/qa/layer-boundaries/t15-lifecycle-red.log": "51da7adf272a9843f771ce5f09660a3fc0988c3b3b63c8f31cebe969686886c0",
+    "build/qa/layer-boundaries/t15-lifecycle-red-app.log": "e8c05b99ff5c658c0e51b3f4ac0945396481144c95f58b3b8a1db7f583996368",
+    "build/qa/layer-boundaries/t15-lifecycle-red-additional.log": "d310cdd3999af8952d5404566fd68b01e26f78fb526d254425354b68d05065e2",
+    "build/qa/layer-boundaries/t15-lifecycle-red-observations.log": "614e7d631ec1f2e4f20789b8f7b31c269ade7d049b6ad45b713fb61be13402ab",
+    "build/qa/layer-boundaries/t15-lifecycle-green.log": "78aef3a94b0fdc5f67909667bb563dc31797d6c86f9f6ebddb5e94093bf1b664",
+    "build/qa/layer-boundaries/t15-lifecycle-full-gate.log": "a690a9989e41247b65c37e9c6e49bc9806e66e5ffc76796d3f0d8c15e5699470"
+  },
+  "apks": [
+    {
+      "path": "app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk",
+      "bytes": 5740,
+      "sha256": "c73c10deb129c663e539f371a0ba88910d4af22076079523d37e18af9c6dd5c1"
+    },
+    {
+      "path": "app/build/outputs/apk/backendQa/app-backendQa.apk",
+      "bytes": 50427854,
+      "sha256": "4db71fa44438ff9dd570a8b42ad34d527e0b7b3afbff9946ca9555de8520b48b"
+    },
+    {
+      "path": "app/build/outputs/apk/debug/app-debug.apk",
+      "bytes": 50581162,
+      "sha256": "3f9e7dd6bfb78f4ed0c28cef2b67fc5f997977e2cb86019653b18f58497322e4"
+    },
+    {
+      "path": "app/build/outputs/apk/release/app-release.apk",
+      "bytes": 37686577,
+      "sha256": "0c89eb8b7308030cd56981966379f6a4141d2e38da25cc5cfc4fc0844ccd8ed2"
+    }
+  ],
+  "source_freeze_recheck": "matched_after_full_gate",
+  "diff_check": {
+    "command": "git diff --check",
+    "exit_code": 0
+  },
+  "raw_archive": {
+    "path": "build/qa/layer-boundaries/t15-lifecycle-full-gate-artifacts",
+    "summary_sha256": "4a5bb53d3f5087534dc87a7daa9841046564464a5eb0bfb301cd72913a6f8a81",
+    "contains": [
+      "full gate commands/logs/summary",
+      "backend/ui/app raw JUnit XML",
+      "ui/app raw lint XML"
+    ]
+  },
+  "review": {
+    "spec": "PASS /root/t15_lifecycle_spec (source and evidence delta)",
+    "quality": "PASS /root/t15_lifecycle_quality",
+    "root": "Independent exact source/manifest, command logs, raw JUnit counts and archived evidence verification; no source drift."
+  }
+}

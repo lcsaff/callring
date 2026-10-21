@@ -19,6 +19,7 @@ internal class ConversationAssembly(
     private val ui: UiBridgeAssembly,
     private val api: () -> CallringUiApi,
     private val ensureOpen: () -> Unit,
+    private val lifetime: Any,
 ) : AutoCloseable {
     private val coordinator get() = core.coordinator
     private val resources = ForegroundResourceRegistry(configuration.clock)
@@ -30,26 +31,26 @@ internal class ConversationAssembly(
             coordinator, resources, core.playbackState::snapshot, ui::installedWidgets,
             com.greatwall.callring.platform.scheduler.AndroidJobObservation(application)::observe, configuration.clock)
     }
-    val queries: QueryService get() = queriesDelegate.value
+    val queries: QueryService get() = synchronized(lifetime) { ensureOpen(); queriesDelegate.value }
     fun sourceQueries() = if (queriesDelegate.isInitialized()) queriesDelegate.value.sourceQueries.get() else 0L
     private val snapshotsDelegate = lazy {
         ensureOpen()
         completeSnapshotApi(core.backend, core.store, recordings(), core.diagnostics,
-            coordinator, resources, configuration.clock)
+            coordinator, resources, configuration.clock, ensureOpen)
     }
-    val snapshots: AiSnapshotApi get() = snapshotsDelegate.value
+    val snapshots: AiSnapshotApi get() = synchronized(lifetime) { ensureOpen(); snapshotsDelegate.value }
     private val serviceDelegate = lazy {
         ensureOpen()
         ConversationService(api, queries, { recordings().store.settings() }, coordinator,
             { CompatibleConversationClient() }, resources = resources,
             documentWriteVerified = { core.documents.verifyWrite(it) })
     }
-    val service: ConversationService get() = serviceDelegate.value
+    val service: ConversationService get() = synchronized(lifetime) { ensureOpen(); serviceDelegate.value }
     override fun close() {
-        if (serviceDelegate.isInitialized()) serviceDelegate.value.close()
-        else {
-            resources.reset()
-            if (queriesDelegate.isInitialized()) queriesDelegate.value.reset()
+        try { if (serviceDelegate.isInitialized()) serviceDelegate.value.close() }
+        finally {
+            try { if (queriesDelegate.isInitialized()) queriesDelegate.value.close() }
+            finally { resources.reset() }
         }
     }
 }

@@ -16,6 +16,19 @@ import org.robolectric.annotation.Config
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [33], manifest = Config.NONE)
 class AndroidRecordingStoreTest {
+    @Test fun retainedStoreCannotReopenDatabaseAfterClose() {
+        val store = AndroidRecordingStore(context, "terminal-store", cipher, recordingVersion = { 0L })
+        store.captureRecordingText()
+        val helper = store.javaClass.getDeclaredField("helper").apply { isAccessible = true }.get(store) as android.database.sqlite.SQLiteOpenHelper
+        val database = helper.writableDatabase
+        store.close()
+        assertFalse(database.isOpen)
+        assertThrows(IllegalStateException::class.java) { store.captureRecordingText() }
+        assertThrows(IllegalStateException::class.java) { store.scopedReads() }
+        assertFalse(database.isOpen)
+        store.close()
+    }
+
     @Test fun firstIndependentIdentityCanBeReimportedAfterDeletion() {
         val store = AndroidRecordingStore(context, "negative_reimport", cipher, recordingVersion = { 0L })
         val call = com.greatwall.callring.application.recording.RecordingRegistrationService(store, com.greatwall.callring.application.coordination.BusinessRevisionCoordinator()).registerIncoming("first", "31234", 1000, null, null)

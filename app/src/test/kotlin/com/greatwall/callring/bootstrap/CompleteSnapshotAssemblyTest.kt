@@ -71,7 +71,7 @@ class CompleteSnapshotAssemblyTest {
         val call = com.greatwall.callring.application.recording.RecordingRegistrationService(store, com.greatwall.callring.application.coordination.BusinessRevisionCoordinator()).registerIncoming("session", "999", 1, null, null)
         val old = store.get(call.id)!!
         store.compareAndSet(call.id, old.generation, old.copy(generation = old.generation + 1, transcript = "short transcript FULL-TAIL"))
-        val snapshots = completeSnapshotApi(graph.backend, graph.fullSnapshotReader, runtime, graph.diagnostics, graph.coordinator, ForegroundResourceRegistry(), configuration.clock)
+        val snapshots = completeSnapshotApi(graph.backend, graph.fullSnapshotReader, runtime, graph.diagnostics, graph.coordinator, ForegroundResourceRegistry(), configuration.clock, { graph.backend })
         val result = snapshots.captureComplete()
         assertTrue(result.toString(), result is ApiResult.Success)
         val snapshot = (result as ApiResult.Success).value

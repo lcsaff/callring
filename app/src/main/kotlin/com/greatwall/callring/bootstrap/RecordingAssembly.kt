@@ -33,8 +33,14 @@ class RecordingAssembly(
     clientFactory: (() -> AiClient)? = null,
     private val operationActive: () -> Boolean,
 ) : AutoCloseable {
+    private val lifetime = Any()
+    private var closed = false
+    private fun <T> owned(block: () -> T): T = synchronized(lifetime) {
+        check(!closed) { "recording.closed" }
+        block()
+    }
     private val storeDelegate = lazy { storeFactory?.invoke() ?: AndroidRecordingStore(context, namespace, recordingVersion = { coordinator.capture().values.getValue("recording") }) }
-    val store get() = storeDelegate.value
+    val store get() = owned { storeDelegate.value }
     val directory = File(context.filesDir, namespace + "_recordings")
     private val sources by lazy { SystemRecordingSource(context.contentResolver) }
     private val client by lazy {
@@ -48,26 +54,32 @@ class RecordingAssembly(
         { context.checkSelfPermission(android.Manifest.permission.RECORD_AUDIO) == android.content.pm.PackageManager.PERMISSION_GRANTED },
         { connection, transcription -> client.test(connection, transcription) },
         afterSave = { if (!it.recordingEnabled) context.stopService(android.content.Intent(context, com.greatwall.callring.CallCaptureService::class.java)) }, folderView = sources::describe, operationActive = operationActive) }
-    val aiSettings get() = aiSettingsDelegate.value
+    val aiSettings get() = owned { aiSettingsDelegate.value }
     suspend fun reobserveFolder() { if (aiSettingsDelegate.isInitialized()) aiSettingsDelegate.value.reobserveFolder() }
-    val archiveCommands by lazy { RecordingArchiveCommands(store, store, coordinator) }
-    val registrations by lazy { RecordingRegistrationService(store, coordinator) }
-    val workflow by lazy { RecordingWorkflow(store, archiveCommands, AndroidAudioTranscriber(client, File(context.cacheDir, namespace + "_ai_audio"))) }
+    private val archiveCommandsDelegate = lazy { RecordingArchiveCommands(store, store, coordinator) }
+    private val registrationsDelegate = lazy { RecordingRegistrationService(store, coordinator) }
+    private val workflowDelegate = lazy { RecordingWorkflow(store, archiveCommands, AndroidAudioTranscriber(client, File(context.cacheDir, namespace + "_ai_audio"))) }
     private val audio by lazy { AndroidRecordingAudio(context, directory, metadataReader) }
     private val playbackDelegate: Lazy<AndroidRecordingPlayback> = lazy { AndroidRecordingPlayback(directory) { service.playbackFinished() } }
     private val playback: AndroidRecordingPlayback get() = playbackDelegate.value
-    val service: RecordingService by lazy { RecordingService(store, store, store::settings, { workflow }, archiveCommands, registrations, aiSettings,
+    private val serviceDelegate: Lazy<RecordingService> = lazy { RecordingService(store, store, store::settings, { workflow }, archiveCommands, registrations, aiSettings,
         audio, playback, object : RecordingDirectory {
             override fun authorize(document: DocumentRef) = sources.authorize(document.uri)
             override fun list(folder: String) = sources.list(folder)
             override fun inspect(folder: String, document: DocumentRef) = sources.inspect(folder, document)
         }, findCall, activeCallId, schedule, coordinator, operationActive = operationActive) }
+    val archiveCommands get() = owned { archiveCommandsDelegate.value }
+    val registrations get() = owned { registrationsDelegate.value }
+    val workflow get() = owned { workflowDelegate.value }
+    val service get() = owned { serviceDelegate.value }
     fun folderAccess(): AccessState {
         val folder = store.settings().systemFolder ?: return AccessState.NOT_REQUIRED
         return if (context.contentResolver.persistedUriPermissions.any { it.uri.toString() == folder && it.isReadPermission }) AccessState.GRANTED else AccessState.DENIED
     }
-    override fun close() {
-        if (playbackDelegate.isInitialized()) playbackDelegate.value.close()
-        if (storeDelegate.isInitialized()) storeDelegate.value.close()
+    override fun close(): Unit = synchronized(lifetime) {
+        if (closed) return
+        closed = true
+        try { if (playbackDelegate.isInitialized()) playbackDelegate.value.close() }
+        finally { if (storeDelegate.isInitialized()) storeDelegate.value.close() }
     }
 }

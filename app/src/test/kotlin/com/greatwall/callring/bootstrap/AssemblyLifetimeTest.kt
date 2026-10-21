@@ -24,6 +24,91 @@ import org.robolectric.annotation.Config
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [33], manifest = Config.NONE)
 class AssemblyLifetimeTest {
+    @Test fun retainedSnapshotRejectsBeforeCredentialStoreInitialization() = runBlocking {
+        val graph = graph("terminal-snapshot")
+        val recording = graph.recordings
+        val snapshots = graph.api.snapshots
+        val delegate = recording.javaClass.getDeclaredField("storeDelegate").apply { isAccessible = true }.get(recording) as Lazy<*>
+        assertFalse(delegate.isInitialized())
+        val query = graph.queries
+        val sessionLock = requireNotNull(query.javaClass.getDeclaredField("sessionLock").apply { isAccessible = true }.get(query))
+        val entered = java.util.concurrent.CountDownLatch(1)
+        val release = java.util.concurrent.CountDownLatch(1)
+        val holder = Thread {
+            synchronized(sessionLock) {
+                entered.countDown()
+                check(release.await(5, java.util.concurrent.TimeUnit.SECONDS))
+            }
+        }.apply { start() }
+        assertTrue(entered.await(5, java.util.concurrent.TimeUnit.SECONDS))
+        val closer = Thread { graph.close() }.apply { start() }
+        try {
+            val deadline = System.nanoTime() + java.util.concurrent.TimeUnit.SECONDS.toNanos(5)
+            var closed = false
+            while (!closed && System.nanoTime() < deadline) {
+                closed = try { graph.api; false } catch (_: IllegalStateException) { true }
+                Thread.yield()
+            }
+            assertTrue(closed)
+            assertTrue(snapshots.captureComplete() is ApiResult.Failure)
+            assertFalse("closed snapshot initialized credentials store", delegate.isInitialized())
+        } finally { release.countDown(); holder.join(5000); closer.join(5000) }
+        assertFalse(closer.isAlive)
+    }
+
+    @Test fun retainedQueriesAndSnapshotsCannotInitializeRecordingAfterClose() = runBlocking {
+        val graph = graph("terminal-cold")
+        val queries = graph.queries
+        val recording = graph.recordings
+        val snapshots = graph.api.snapshots
+        val file = RuntimeEnvironment.getApplication().getDatabasePath("terminal-cold.db_recording.db")
+        assertFalse(file.exists())
+        graph.close()
+        for (domain in listOf(AiDomain.D15, AiDomain.D16)) {
+            assertTrue("retained $domain must fail", queries.query(QuerySpec(domain)) is ApiResult.Failure)
+        }
+        queries.reset()
+        assertTrue(queries.query(QuerySpec(AiDomain.D15)) is ApiResult.Failure)
+        assertTrue(snapshots.captureComplete() is ApiResult.Failure)
+        assertFalse("closed owner created recording database", file.exists())
+        assertThrows(IllegalStateException::class.java) { graph.recordings }
+        assertThrows(IllegalStateException::class.java) { graph.queries }
+        assertThrows(IllegalStateException::class.java) { recording.store }
+        assertThrows(IllegalStateException::class.java) { recording.service }
+        Unit
+    }
+
+    @Test fun recordingCloseWaitsForFirstStoreFactoryAndClosesItsDatabase() {
+        val context = RuntimeEnvironment.getApplication()
+        val entered = java.util.concurrent.CountDownLatch(1)
+        val release = java.util.concurrent.CountDownLatch(1)
+        val store = com.greatwall.callring.data.recording.AndroidRecordingStore(context, "terminal-race", recordingVersion = { 0L })
+        store.captureRecordingText()
+        val helper = store.javaClass.getDeclaredField("helper").apply { isAccessible = true }.get(store) as android.database.sqlite.SQLiteOpenHelper
+        val database = helper.writableDatabase
+        val assembly = RecordingAssembly(context, "terminal-race", { null }, { null }, {}, storeFactory = {
+            entered.countDown()
+            check(release.await(5, java.util.concurrent.TimeUnit.SECONDS))
+            store
+        }, operationActive = { true })
+        val failures = java.util.concurrent.ConcurrentLinkedQueue<Throwable>()
+        val reader = Thread { try { assembly.store } catch (e: Throwable) { failures.add(e) } }.apply { start() }
+        assertTrue(entered.await(5, java.util.concurrent.TimeUnit.SECONDS))
+        val closer = Thread { try { assembly.close() } catch (e: Throwable) { failures.add(e) } }.apply { start() }
+        try {
+            val deadline = System.nanoTime() + java.util.concurrent.TimeUnit.SECONDS.toNanos(5)
+            while (closer.isAlive && closer.state != Thread.State.BLOCKED && System.nanoTime() < deadline) Thread.yield()
+            assertEquals("close must wait for factory ownership", Thread.State.BLOCKED, closer.state)
+        } finally { release.countDown(); reader.join(5000); closer.join(5000) }
+        assertFalse(reader.isAlive)
+        assertFalse(closer.isAlive)
+        assertTrue(failures.toString(), failures.isEmpty())
+        assertFalse("created database leaked", database.isOpen)
+        assembly.close()
+        assertThrows(IllegalStateException::class.java) { assembly.store }
+        assertThrows(IllegalStateException::class.java) { assembly.service }
+    }
+
     @Test fun platformResumeDoesNotInitializeUnrelatedRecordingResources() = runBlocking {
         val graph = graph("t11-platform-resume")
         try {

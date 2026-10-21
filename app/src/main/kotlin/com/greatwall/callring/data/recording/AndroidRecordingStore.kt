@@ -82,11 +82,15 @@ class AndroidRecordingStore(context: Context, namespace: String,
             db.execSQL("CREATE TABLE recording_statistics_links (statistics_id INTEGER PRIMARY KEY, session_id TEXT NOT NULL)")
         }
     }
-    fun scopedReads():com.greatwall.callring.application.ports.query.ScopedReadPort = RecordingScopedReadAdapter(helper.writableDatabase,recordingVersion)
+    @Volatile private var closed = false
+    private fun ensureOpen() { check(!closed) { "recording.closed" } }
+    private val writableDatabase: SQLiteDatabase get() { ensureOpen(); return helper.writableDatabase }
+    private val readableDatabase: SQLiteDatabase get() { ensureOpen(); return helper.readableDatabase }
+    @Synchronized fun scopedReads():com.greatwall.callring.application.ports.query.ScopedReadPort = RecordingScopedReadAdapter(writableDatabase,recordingVersion)
     /** Event identities are owned here, including when the statistics database contains no call. */
     @Synchronized override fun insertIncoming(sessionId: String, number: String, at: Long, account: String?, initial: (RecordingCall) -> CallArchive): RecordingRegistration {
         require(sessionId.isNotBlank() && number.isNotBlank())
-        val db = helper.writableDatabase
+        val db = writableDatabase
         db.beginTransaction()
         try {
             val row = ContentValues().apply { put("session_id", sessionId); put("number", number); put("started", at); put("account", account) }
@@ -116,48 +120,49 @@ class AndroidRecordingStore(context: Context, namespace: String,
     }
     @Synchronized override fun findRecording(id: Long): RecordingCall? {
         if (id >= 0 || id == Long.MIN_VALUE) return null
-        return helper.readableDatabase.rawQuery("SELECT id,number,started FROM recording_events WHERE id=?", arrayOf((-id).toString())).use {
+        return readableDatabase.rawQuery("SELECT id,number,started FROM recording_events WHERE id=?", arrayOf((-id).toString())).use {
             if (it.moveToFirst()) RecordingCall(-it.getLong(0), it.getString(1), it.getLong(2), null) else null
         }
     }
     @Synchronized override fun insertStatisticsLink(statisticsId: Long, sessionId: String): Boolean {
         require(statisticsId > 0 && sessionId.isNotBlank())
         val row = ContentValues().apply { put("statistics_id", statisticsId); put("session_id", sessionId) }
-        return helper.writableDatabase.insertWithOnConflict("recording_statistics_links", null, row, SQLiteDatabase.CONFLICT_IGNORE) != -1L
+        return writableDatabase.insertWithOnConflict("recording_statistics_links", null, row, SQLiteDatabase.CONFLICT_IGNORE) != -1L
     }
-    @Synchronized override fun sessionRecording(sessionId: String): RecordingCall? = helper.readableDatabase.rawQuery(
+    @Synchronized override fun sessionRecording(sessionId: String): RecordingCall? = readableDatabase.rawQuery(
         "SELECT id,number,started FROM recording_events WHERE session_id=?", arrayOf(sessionId)).use {
             if (it.moveToFirst()) RecordingCall(-it.getLong(0), it.getString(1), it.getLong(2), null) else null
         }
-    @Synchronized override fun linkedRecording(statisticsId: Long): RecordingCall? = helper.readableDatabase.rawQuery(
+    @Synchronized override fun linkedRecording(statisticsId: Long): RecordingCall? = readableDatabase.rawQuery(
         "SELECT e.id,e.number,e.started FROM recording_events e JOIN recording_statistics_links l ON e.session_id=l.session_id WHERE l.statistics_id=?",
         arrayOf(statisticsId.toString())).use { if (it.moveToFirst()) RecordingCall(-it.getLong(0), it.getString(1), it.getLong(2), null) else null }
-    @Synchronized override fun isDeleted(callId: Long): Boolean = helper.readableDatabase.rawQuery(
+    @Synchronized override fun isDeleted(callId: Long): Boolean = readableDatabase.rawQuery(
         "SELECT 1 FROM deleted_archives WHERE call_id=?", arrayOf(callId.toString())).use { it.moveToFirst() }
-    override fun settings(): RecordingSettings = synchronized(preferences) { preferences.getString("config", null)?.let {
+    override fun settings(): RecordingSettings = synchronized(preferences) { ensureOpen(); preferences.getString("config", null)?.let {
         RecordingJson.settings(JSONObject(cipher.decrypt(it)))
     } ?: RecordingSettings() }
     override fun persistSettings(value: RecordingSettings) = synchronized(preferences) {
+        ensureOpen()
         updatePreferences(preferences, mapOf("config" to cipher.encrypt(RecordingJson.settings(value).toString())))
     }
-    @Synchronized override fun get(callId: Long): CallArchive? = helper.readableDatabase.query("archives", arrayOf("payload"),
+    @Synchronized override fun get(callId: Long): CallArchive? = readableDatabase.query("archives", arrayOf("payload"),
         "call_id=?", arrayOf(callId.toString()), null, null, null).use { if (it.moveToFirst()) RecordingJson.archive(JSONObject(it.getString(0))).also { readCounters.add("fullArchiveDecodes") } else null }
-    @Synchronized override fun listArchives(): List<CallArchive> = helper.readableDatabase.query("archives", arrayOf("payload"),
+    @Synchronized override fun listArchives(): List<CallArchive> = readableDatabase.query("archives", arrayOf("payload"),
         null, null, null, null, "call_id").use { cursor -> buildList { while (cursor.moveToNext()) add(RecordingJson.archive(JSONObject(cursor.getString(0))).also { readCounters.add("listArchiveDecodes") }) } }
     @Synchronized override fun metadata(callId: Long, cancelled: () -> Boolean) =
-        RecordingMetadataReads(helper.readableDatabase, readCounters, cancelled).metadata(callId)
-    @Synchronized override fun generation(callId: Long): Long? = helper.readableDatabase.rawQuery(
+        RecordingMetadataReads(readableDatabase, readCounters, cancelled).metadata(callId)
+    @Synchronized override fun generation(callId: Long): Long? = readableDatabase.rawQuery(
         "SELECT generation FROM archives WHERE call_id=?", arrayOf(callId.toString())).use { if (it.moveToFirst()) it.getLong(0) else null }
     @Synchronized override fun earliestPendingAt(cancelled: () -> Boolean) =
-        RecordingMetadataReads(helper.readableDatabase, readCounters, cancelled).earliestPendingAt()
+        RecordingMetadataReads(readableDatabase, readCounters, cancelled).earliestPendingAt()
     @Synchronized override fun dueCandidates(at: Long, afterId: Long?, limit: Int, cancelled: () -> Boolean) =
-        RecordingMetadataReads(helper.readableDatabase, readCounters, cancelled).dueCandidates(at, afterId, limit)
+        RecordingMetadataReads(readableDatabase, readCounters, cancelled).dueCandidates(at, afterId, limit)
     @Synchronized override fun recentMetadata(since: Long, cancelled: () -> Boolean) =
-        RecordingMetadataReads(helper.readableDatabase, readCounters, cancelled).recentMetadata(since)
+        RecordingMetadataReads(readableDatabase, readCounters, cancelled).recentMetadata(since)
     @Synchronized override fun numberMetadata(number: String, cancelled: () -> Boolean) =
-        RecordingMetadataReads(helper.readableDatabase, readCounters, cancelled).numberMetadata(number)
+        RecordingMetadataReads(readableDatabase, readCounters, cancelled).numberMetadata(number)
     @Synchronized fun captureRecordingText(): Map<String, AiJson> {
-        val db = helper.readableDatabase
+        val db = readableDatabase
         db.beginTransactionNonExclusive()
         try {
             com.greatwall.callring.data.database.checkSnapshotSize(db)
@@ -180,7 +185,7 @@ class AndroidRecordingStore(context: Context, namespace: String,
     @Synchronized override fun compareAndSet(callId: Long, expectedGeneration: Long?, value: CallArchive): Boolean {
         require(callId == value.callId)
         val row = ContentValues().apply { put("call_id", callId); put("generation", value.generation); put("payload", RecordingJson.archive(value).toString()) }
-        val db = helper.writableDatabase
+        val db = writableDatabase
         db.beginTransaction()
         try {
             val success = if (expectedGeneration == null) {
@@ -195,7 +200,7 @@ class AndroidRecordingStore(context: Context, namespace: String,
         } finally { db.endTransaction() }
     }
     @Synchronized override fun delete(callId: Long): CallArchive? {
-        val db = helper.writableDatabase
+        val db = writableDatabase
         db.beginTransaction()
         try {
             val value = get(callId)
@@ -206,7 +211,11 @@ class AndroidRecordingStore(context: Context, namespace: String,
             return value
         } finally { db.endTransaction() }
     }
-    @Synchronized override fun close() = helper.close()
+    @Synchronized override fun close() {
+        if (closed) return
+        closed = true
+        helper.close()
+    }
 }
 
 internal object RecordingJson {

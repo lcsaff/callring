@@ -21,12 +21,12 @@ class QueryService(
     private val clock: () -> Long = System::currentTimeMillis,
     private val revision: () -> Long = { 0L },
     private val redactor: () -> SecretRedactor = { SecretRedactor(emptyList()) },
-) : AiQueryApi {
+) : AiQueryApi, AutoCloseable {
     private val sources =
         sources
             .flatMap { s -> s.domains.map { it to s } }
             .also { require(it.map { it.first }.distinct().size == it.size) }
-            .toMap()
+            .toMap().toMutableMap()
 
     private data class Cursor(
         val identity: String,
@@ -46,6 +46,11 @@ class QueryService(
     )
 
     private val sessionLock = Any()
+    private var closed = false
+
+    private fun ensureOpen() {
+        if (closed) throw BackendFailure(ApiError(ErrorCode.SYSTEM_UNAVAILABLE, "backend.closed"))
+    }
     private val cursors = ConcurrentHashMap<String, Cursor>()
     private val refs = ConcurrentHashMap<String, Ref>()
 
@@ -72,15 +77,19 @@ class QueryService(
     /** Read-only composition boundary. Stateful provider walks must never be replayed. */
     suspend fun <T> coherent(domains: Set<AiDomain>, block: suspend () -> T): T {
         require(AiDomain.D17 !in domains)
-        val before = domains.associateWith { source(it).version(it) }
+        val before = synchronized(sessionLock) {
+            ensureOpen()
+            domains.associateWith { source(it).version(it) }
+        }
         val parent = currentCoroutineContext()[ReadAttempt]
         val attempt = ReadAttempt(parent)
         try {
             return withContext(attempt) {
                 val value = block()
-                if (before.any { (domain, version) -> source(domain).version(domain) != version })
-                    fail("query_changed", ErrorCode.CONFLICT)
                 synchronized(sessionLock) {
+                    ensureOpen()
+                    if (before.any { (domain, version) -> source(domain).version(domain) != version })
+                        fail("query_changed", ErrorCode.CONFLICT)
                     parent?.let { p ->
                         p.references += attempt.references
                         p.cursors += attempt.cursors
@@ -151,15 +160,19 @@ class QueryService(
     fun observedRevision(domain: AiDomain, key: String) =
         observations[domain to canonical(domain, key)]?.revision
 
-    fun clearObservations() {
+    fun clearObservations() = synchronized(sessionLock) {
         observations.clear()
     }
 
-    internal fun snapshotObservations() = observations.mapValues { it.value.revision }
+    internal fun snapshotObservations() = synchronized(sessionLock) {
+        observations.mapValues { it.value.revision }
+    }
 
-    internal fun restoreObservations(values: Map<Pair<AiDomain, String>, Long>) {
-        observations.clear()
-        observations.putAll(values.mapValues { Observation(it.value, null) })
+    internal fun restoreObservations(values: Map<Pair<AiDomain, String>, Long>) = synchronized(sessionLock) {
+        if (!closed) {
+            observations.clear()
+            observations.putAll(values.mapValues { Observation(it.value, null) })
+        }
     }
 
     private fun recordObservation(key: Pair<AiDomain, String>, at: Long) {
@@ -197,11 +210,25 @@ class QueryService(
 
     override fun reset() {
         synchronized(sessionLock) {
-            cursors.values.forEach { release(it) }
+            if (!closed) clearSession()
+        }
+    }
+
+    private fun clearSession() {
+        try { cursors.values.forEach { release(it) } }
+        finally {
             cursors.clear()
             refs.clear()
             observations.clear()
             sources.values.distinct().forEach { it.reset() }
+        }
+    }
+
+    override fun close() {
+        synchronized(sessionLock) {
+            if (closed) return
+            closed = true
+            try { clearSession() } finally { sources.clear() }
         }
     }
 
@@ -241,6 +268,7 @@ class QueryService(
             try {
                 runInterruptible {
                     synchronized(sessionLock) {
+                        ensureOpen()
                         val previous = ownerLocal.get()
                         ownerLocal.set(attempt)
                         try {

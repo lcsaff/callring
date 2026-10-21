@@ -94,3 +94,7 @@ T13代码和最终文件归属闭合，PROJECT/README已同步；实际验证与
 新文件/改名 helper 的具名 operation metadata 数字选择、局部别名与 Java switch，实际 SQLite 资源 import/typealias 强转，以及旧 Context/全状态协议/资源 legacy/default capability/双 publisher 和 loader 的具体模式纳入守卫；正常分页、非操作 enum、显式目录排序/校验/导出、JSON/sealed/Keystore/自有 token 与直接持有具体资源的白盒 SQL 保留。静态规则不证明任意跨函数混淆。
 
 旧 verify_backend/verify_ui 内各自维护的 Gradle 任务表、JVM/XML 汇总和 subprocess 路径已替换为唯一 verify_common；没有新旧入口分叉。原两个 CLI 继续可运行且执行全部新模块门，UI 专用设备/解锁/app-ops 恢复保留；backendQa 增单 APK/真实包/在线/安装/runner target/正数测试/限时/专包 finally 清理。两 CI 使用同一无设备入口，签名和版本约束保留。当前为冻结候选，完整门与双审以 t14-implementation.md / t14-verification-summary.json 及负责人记录为准；不关闭 T15。
+
+## T15 生命周期最终缺口闭包
+
+已删除 ConversationService.close 的 reset 代替最终关闭及重复资源清理；ConversationAssembly 以唯一 finally 关闭 QueryService/资源。终止查询、图/录音 lazy 初始化与实际存储关闭共用各自现有生命周期锁；不存在保留查询或 SQLiteOpenHelper 引用重新开库的旁路，reset 不复活已关闭会话。完整快照密钥读取有 owner 检查，来电排空先于物理关闭。真实竞态回归 RED→GREEN、完整门及双审 PASS，见 t15-lifecycle-review.md。本条关闭终审 A6 P2，不代替最终版本/远端 CI 与设备缺口报告。

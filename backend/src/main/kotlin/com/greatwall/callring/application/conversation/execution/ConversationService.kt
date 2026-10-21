@@ -233,7 +233,7 @@ class ConversationService(
         synchronized(lock){context.clear();queries.reset();resources.reset();continuation=null;fingerprint="";state.value=ConversationState(UUID.randomUUID().toString())}
         return ApiResult.Success(Unit)
     }
-    override fun close(){generation.incrementAndGet();client?.cancel();foreground.invalidate();resources.reset();queries.reset();scope.cancel()}
+    override fun close(){generation.incrementAndGet();client?.cancel();foreground.invalidate();scope.cancel()}
     private fun failed(code:ErrorCode,message:String)=ApiResult.Failure(ApiError(code,message))
     private fun connectionFingerprint(configuration:RecordingSettings):String {val c=configuration.analysis;return digest("${c.protocol}\n${c.url}\n${c.model}\n${c.apiKey}\n${c.thinkingMode}\n${configuration.conversationCompatibility}")}
 }

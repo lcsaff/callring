@@ -17,6 +17,7 @@ fun completeSnapshotApi(
     coordinator: BusinessRevisionCoordinator,
     resources: ForegroundResourceRegistry,
     clock: Clock,
+    ensureOpen: () -> Unit,
 ): AiSnapshotApi = AiSnapshotService(
     coordinator,
     listOf(
@@ -30,6 +31,6 @@ fun completeSnapshotApi(
         ObservedCompleteSnapshotSource({ backend.widgets.listBindings() }, { backend.runtime.getStatus() },
             { recordings.service.playbackStatus() }, diagnostics::captureStoredText)::capture,
     ),
-    { recordings.store.settings().let { listOf(it.analysis.apiKey, it.transcription.apiKey) } },
+    { ensureOpen(); recordings.store.settings().let { listOf(it.analysis.apiKey, it.transcription.apiKey) } },
     clock,
 )

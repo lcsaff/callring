@@ -42,7 +42,7 @@ class BackendGraph(
     private val core: CoreAssembly = CoreAssembly(application, configuration, coordinator, store, ui,
         ::ensureOpen, { !closed }, { !persistenceClosed }, { recordings }, { conversation }, { update })
     private val conversation: ConversationAssembly = ConversationAssembly(application, configuration, core,
-        { recordings }, ui, { api }, ::ensureOpen)
+        { recordings }, ui, { api }, ::ensureOpen, lifetime)
     internal val fullSnapshotReader: com.greatwall.callring.application.ports.store.FullSnapshotReader get() = store
     val playbackState get() = core.playbackState
     val playbackCommands get() = core.playbackCommands
@@ -59,7 +59,7 @@ class BackendGraph(
             activeCallId = { recordingSession.activeCandidate(configuration.clock.millis()) },
             schedule = { delay -> RecordingJobService.schedule(application, delay) }, coordinator = coordinator, operationActive = { !closed })
     }
-    val recordings get() = recordingDelegate.value
+    val recordings get() = synchronized(lifetime) { ensureOpen(); recordingDelegate.value }
     val queries: QueryService get() = conversation.queries
     fun businessReadCounters(): Map<String, Long> = mapOf(
         "coreOpens" to store.coreOpens.get(),
