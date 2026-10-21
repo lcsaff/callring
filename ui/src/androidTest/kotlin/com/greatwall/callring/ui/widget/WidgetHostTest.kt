@@ -4,6 +4,8 @@ import com.greatwall.callring.ui.app.bridge.toThemeSpec
 import android.Manifest
 import android.appwidget.*
 import android.content.ComponentName
+import android.graphics.Bitmap
+import android.graphics.Canvas
 import android.os.Bundle
 import android.view.*
 import android.widget.*
@@ -29,11 +31,11 @@ import com.greatwall.callring.contracts.command.*
 import com.greatwall.callring.contracts.*
 import com.greatwall.callring.ui.testing.*
 import com.greatwall.callring.ui.testing.UiTestApplication
-import com.greatwall.callring.ui.testing.captureArtifact
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.*
 import org.junit.Rule
 import org.junit.Test
+import java.io.File
 import java.time.LocalDate
 import java.time.ZoneId
 
@@ -91,7 +93,7 @@ class WidgetHostTest {
                     assertTrue(labels.any { "免打扰" in it })
                 }
             }
-            compose.captureArtifact("widget-host-global-two-sizes")
+            compose.runOnIdle { views.captureHosts("widget-host-global-two-sizes") }
 
             compose.runOnIdle { views[0].quietSwitch()!!.performClick() }
             try {
@@ -135,7 +137,7 @@ class WidgetHostTest {
                 views.all { it.text("来电管理")?.currentTextColor == expectedColor && it.text("今日已请假") != null }
             }
             assertEquals("Repeated actions must not create duplicate leave", 1, api.leaveWrites.size)
-            compose.captureArtifact("widget-host-global-custom-theme")
+            compose.runOnIdle { views.captureHosts("widget-host-global-custom-theme") }
 
             host.deleteAppWidgetId(ids.removeAt(0))
             runBlocking { UiWidgetRefresh.refresh(context, ids.toSet()) }
@@ -152,6 +154,18 @@ class WidgetHostTest {
             instrumentation.uiAutomation.dropShellPermissionIdentity()
             runBlocking { api.resetWidgetState() }
         }
+    }
+
+    /** AppWidgetHostView renders native RemoteViews; capture those hosts directly. */
+    private fun List<AppWidgetHostView>.captureHosts(name: String) {
+        check(isNotEmpty() && all { it.width > 0 && it.height > 0 })
+        val bitmap = Bitmap.createBitmap(maxOf { it.width }, sumOf { it.height }, Bitmap.Config.ARGB_8888)
+        try {
+            val canvas = Canvas(bitmap)
+            forEach { view -> view.draw(canvas); canvas.translate(0f, view.height.toFloat()) }
+            val folder = File(InstrumentationRegistry.getInstrumentation().targetContext.filesDir, "ui-screenshots").apply { mkdirs() }
+            File(folder, "$name.png").outputStream().use { check(bitmap.compress(Bitmap.CompressFormat.PNG, 100, it)) }
+        } finally { bitmap.recycle() }
     }
 
     private fun View.descendants(): Sequence<View> = sequence {

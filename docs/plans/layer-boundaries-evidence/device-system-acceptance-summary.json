@@ -1,0 +1,150 @@
+{
+  "status": "in_progress_waiting_for_post_reboot_debug_connection",
+  "version": "0.3.10/13",
+  "base": "0aeeaefad72d84f633f4cfa0d4efb9c8522da3c4",
+  "source_freeze": {
+    "base": "0aeeaefad72d84f633f4cfa0d4efb9c8522da3c4",
+    "source_sha256": "4d02a6b04df103694c49fa522e72d247ee4e6591fdaebbbd296a376d4b449ecb",
+    "files": [
+      {
+        "path": "app/src/debug/kotlin/com/greatwall/callring/platform/update/AppUpdateLiveDownloadDeviceTest.kt",
+        "bytes": 4720,
+        "sha256": "e4b1dce77e97eb1415b205659efa5865ac3e9e7b6fef882008e92bf22927d327"
+      },
+      {
+        "path": "ui/src/androidTest/kotlin/com/greatwall/callring/ui/widget/WidgetHostTest.kt",
+        "bytes": 9978,
+        "sha256": "76af100ffee2613318269d5abb8f1f8f0ff116c8a51bba543bcca26d2bea3c7f"
+      }
+    ],
+    "apks": [
+      {
+        "path": "app/build/outputs/apk/backendQa/app-backendQa.apk",
+        "bytes": 49512466,
+        "sha256": "e577bd093caa508191aa88976e2af58e29db87f34b357fbc0b7dee1c7725a700"
+      },
+      {
+        "path": "ui/build/outputs/apk/androidTest/debug/ui-debug-androidTest.apk",
+        "bytes": 49079997,
+        "sha256": "64a1a326011f33c6405bd74e493ff24e882b98e3993dbf513d62f00133003572"
+      }
+    ]
+  },
+  "local_gate": {
+    "status": "passed",
+    "junit": {
+      "backend": {
+        "state": "EXECUTED",
+        "tests": 366,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0,
+        "xml_sha256": "f3f8a85cbe396de3a15815424ddebb8c597f4797d8c0bdbedffc40115a8d89b7"
+      },
+      "ui": {
+        "state": "EXECUTED",
+        "tests": 310,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0,
+        "xml_sha256": "475243c7dc17415191aef71a67d9cd0cfbe9017417515430138526dc49fe1423"
+      },
+      "app": {
+        "state": "EXECUTED",
+        "tests": 361,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0,
+        "xml_sha256": "c2de3b2441ae4cb22c0c0281eafcc5bb44dd6f48c00b2ef89f203c5db53ef172"
+      }
+    },
+    "contracts": {
+      "state": "NO-SOURCE",
+      "tests": 0
+    },
+    "gradle_tasks": {
+      ":contracts:test": "NO-SOURCE",
+      ":backend:test": "EXECUTED",
+      ":ui:testDebugUnitTest": "EXECUTED",
+      ":app:testDebugUnitTest": "EXECUTED",
+      ":ui:checkDebugCompileClasspath": "EXECUTED",
+      ":ui:assembleDebug": "EXECUTED",
+      ":app:assembleDebug": "EXECUTED",
+      ":app:assembleRelease": "EXECUTED",
+      ":app:assembleBackendQa": "UP-TO-DATE",
+      ":ui:assembleDebugAndroidTest": "UP-TO-DATE",
+      ":app:assembleDebugAndroidTest": "EXECUTED",
+      ":ui:lintDebug": "EXECUTED",
+      ":app:lintDebug": "EXECUTED"
+    },
+    "archive": "build/qa/device-final-20261021/local-gate-artifacts/index.json"
+  },
+  "reviews": {
+    "test_scope": "PASS acceptance_test_review; final cleanup executor awaitTermination reviewed"
+  },
+  "device_results": {
+    "same_certificate_upgrade": {
+      "status": "passed",
+      "from": "0.3.8/11",
+      "to": "0.3.10/13",
+      "certificate_sha256": "5a901cad57f5590483f362e4752ca8f4a56197340b71d2632ded0195bf8a24b4",
+      "first_install_time_unchanged": true,
+      "home_labels_switch_state_unchanged": true,
+      "scope_note": "Verified same certificate, preserved installation identity and visible persisted home settings, not a complete database byte comparison"
+    },
+    "cold_widget": {
+      "status": "passed",
+      "tests": 1,
+      "actual_runner_seconds": 3.407,
+      "log_sha256": "fe6250e56f495463fa328290773e5d9350dd9fdfd9aedafba75e741264783bdf",
+      "appops_restored": true
+    },
+    "production_background_overlay": {
+      "status": "passed",
+      "scope": "Built-in read-only self-test visible after returning to launcher; not a real incoming-call overlay"
+    },
+    "production_launcher_widget": {
+      "status": "passed",
+      "widget_id": 500,
+      "host": "com.miui.home",
+      "provider_package": "com.greatwall.callring",
+      "checks": [
+        "Native desktop widget rendered",
+        "Background main process killed, pid absent",
+        "Widget enabled quiet mode, main process restarted",
+        "Home showed NON_WORK state",
+        "Home disabled mode, widget showed off"
+      ],
+      "final_quiet_mode": "OFF; same as baseline"
+    },
+    "reboot": {
+      "status": "initiated_waiting_for_reconnect",
+      "pre_boot_id": "c8546f44-7a20-4b17-9ec2-46efd3bd0e6a"
+    },
+    "standby_30min": {
+      "status": "not_started"
+    },
+    "live_download": {
+      "status": "not_passed_yet",
+      "attempts": [
+        "Background check failed network",
+        "Real latest release check succeeded, downloaded about5MiB, then240s test timeout"
+      ],
+      "next_attempt_budget_seconds": 1800
+    },
+    "real_sim": {
+      "status": "unavailable",
+      "reason": "User clarified no second phone; assistant has no outbound telephone line",
+      "rule_note": "Only five-digit3xxxx matches overlay/statistics rules; ordinary mobile number can only cover all-numbers quiet or fallback branches"
+    }
+  },
+  "cleanup_pending": [
+    "Reconnect after reboot",
+    "Restore main CALL_SCREENING role to no holder; retain com.android.contacts DIALER",
+    "Restore main READ_PHONE_STATE, READ_CALL_LOG, READ_CONTACTS, POST_NOTIFICATIONS to denied",
+    "Restore main SYSTEM_ALERT_WINDOW and10021 to ignore",
+    "Remove only new production launcher widget500",
+    "Confirm quiet OFF and no transient update files"
+  ],
+  "local_private_evidence": "build/qa/device-final-20261021; screenshots and device logs remain ignored/local only"
+}
