@@ -293,12 +293,12 @@ T10b1已于86fdfcf双审完成。T10b2按真实事务/媒体依赖再拆为b2a�
 
 **产物：** `docs/plans/layer-boundaries-evidence/acceptance.md` 和实际测试/构建日志索引，只在执行后创建。
 
-- [ ] 执行第 9 节最终统一验证，记录执行 commit、命令、退出码、JUnit 数量、失败/跳过；结果与本阶段源码一致。
-- [ ] 在 1千/1万数据夹具上执行访问范围与刷新矩阵；记录普通入口全状态装载/完整快照次数均为 0、无关查询增量为 0。
-- [ ] 验证最终全部操作兼容清单、数据样本/旧编码、回滚、并发、取消、密钥和回执，不以单一 happy path 代替验收。
-- [ ] 有隔离设备时运行现有 backendQa 设备验证并补新窄端口/组件测试；验证持久 Job、已有 widget、overlay、权限和后台恢复。不得清理用户数据或覆盖主安装做测试。
-- [ ] 真实 SIM/待机/重启、覆盖升级和真实下载如设备或条件不具备，明确列为未验证；不能声称原有未验收链路因整理完成而通过。
-- [ ] 按设计 A0–A9、下表 P1–P5 检查逐项结论；仅在所需证据存在时勾选阶段完成。
+- [x] 执行第 9 节最终统一验证，记录执行 commit、命令、退出码、JUnit 数量、失败/跳过；结果与本阶段源码一致。
+- [x] 在 1千/1万数据夹具上执行访问范围与刷新矩阵；记录普通入口全状态装载/完整快照次数均为 0、无关查询增量为 0。
+- [x] 验证最终全部操作兼容清单、数据样本/旧编码、回滚、并发、取消、密钥和回执，不以单一 happy path 代替验收。
+- [ ] 【A9未验证：当前ADB设备offline，未安装或运行】有隔离设备时运行现有 backendQa 设备验证并补新窄端口/组件测试；验证持久 Job、已有 widget、overlay、权限和后台恢复。不得清理用户数据或覆盖主安装做测试。
+- [x] 真实 SIM/待机/重启、覆盖升级和真实下载如设备或条件不具备，明确列为未验证；不能声称原有未验收链路因整理完成而通过。
+- [x] 按设计 A0–A9、下表 P1–P5 检查逐项结论；仅在所需证据存在时勾选阶段完成。
 
 ## 9. 验证命令与期望结果
 
@@ -317,16 +317,12 @@ python -m unittest discover -s tools -p test_backend_boundaries.py
 ### 9.2 迁移后的统一门
 
 ```powershell
-python tools/check_architecture.py
-python tools/check_backend_boundaries.py
-python -m unittest discover -s tools -p test_architecture.py
-python -m unittest discover -s tools -p test_backend_boundaries.py
-.\gradlew.bat :contracts:test :backend:test :ui:testDebugUnitTest :app:testDebugUnitTest :app:assembleDebug :ui:lintDebug :app:lintDebug --console=plain
-.\gradlew.bat :app:assembleRelease :app:assembleBackendQa :app:assembleDebugAndroidTest :ui:assembleDebugAndroidTest --console=plain
-.\gradlew.bat :ui:dependencies --configuration debugCompileClasspath --console=plain
+python tools/verify_backend.py
+python tools/release/check_workflows.py
+python tools/release/selftest.py
 ```
 
-期望：前述检查、测试、构建均退出 0；UI debugCompileClasspath 含 contracts，不含 backend；Release 仅本地构建校验，不发布；签名按既有配置读取，不输出密钥。中间阶段某个新任务/脚本尚未建立时，使用当前已建立的定向门，不跳过对应里程碑最终门。
+统一入口的唯一任务表在 tools/verify_common.py，覆盖两守卫、50/5/12正反例、contracts/backend/ui/app测试、实际UI编译类路径、Debug/Release/backendQa/AndroidTest构建及两lint。Windows使用gradlew.bat，CI使用已安装Gradle8.13。记录精确任务状态、JUnit计数、日志/XML/lint SHA；缓存和NO-SOURCE明确区分。发布工具自测使用已构建Release，仅本地验证不发布。最终实际结果见 acceptance.md。
 
 ### 9.3 定向测试
 

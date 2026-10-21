@@ -98,3 +98,7 @@ T13代码和最终文件归属闭合，PROJECT/README已同步；实际验证与
 ## T15 生命周期最终缺口闭包
 
 已删除 ConversationService.close 的 reset 代替最终关闭及重复资源清理；ConversationAssembly 以唯一 finally 关闭 QueryService/资源。终止查询、图/录音 lazy 初始化与实际存储关闭共用各自现有生命周期锁；不存在保留查询或 SQLiteOpenHelper 引用重新开库的旁路，reset 不复活已关闭会话。完整快照密钥读取有 owner 检查，来电排空先于物理关闭。真实竞态回归 RED→GREEN、完整门及双审 PASS，见 t15-lifecycle-review.md。本条关闭终审 A6 P2，不代替最终版本/远端 CI 与设备缺口报告。
+
+## 最终状态（T15）
+
+上文按阶段保留的“候选/后续消费者/待T13–T15”描述均为历史进度；当前迁移旧路径已全部关闭，没有兼容转发、别名、旧默认实现或第二生产业务链。唯一编码解释器和稳定协议元数据是现行真实职责。T13文件归属360项、T14防回流、T15生命周期缺口及A0–A8自动验收均完成；A9真机明确未验证，详见 acceptance.md。
