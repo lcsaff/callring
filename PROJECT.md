@@ -27,7 +27,20 @@
 - `ui`：依赖 contracts 的 Compose `feature` / `state`、纯参数 `designsystem`、悬浮窗与组件。
 - `app`：`bootstrap` 唯一装配、`bridge` UI 偏好与通知接线、`data` SQLite/偏好/文件、`platform` Android 能力适配、`entrypoint` 系统事件与生命周期编排。
 - 根包六系统组件保留 Manifest、Job、PendingIntent 的原身份，资源由壳提供；runtime/jobs/recording/calling controller 各有唯一工作流。ScreeningController/IncomingCallController 继续使用 platform/calling 的既有唯一实现。
-- [最终生产文件归属](docs/superpowers/specs/2026-10-20-layer-boundaries-file-map.md)覆盖全部 main 文件。T14 统一 CI、T15 设备与最终验收未关闭。
+- [分层整理文件归属清单](docs/superpowers/specs/2026-10-20-layer-boundaries-file-map.md)记录该次整理的 main 文件归属；后续新增/拆分文件按上述职责放置。分层自动验收见[最终报告](docs/plans/layer-boundaries-evidence/acceptance.md)，后续隔离设备补验与剩余缺口见[设备复验记录](docs/plans/layer-boundaries-evidence/device-fix-review.md)。
+
+## 后续开发约束
+
+开工前明确：功能归属、复用入口、数据与订阅影响、验收方法；按需求范围实施。
+
+1. **单向依赖**：项目模块依赖为 app 组合 ui/backend/contracts，ui 与 backend 仅依赖 contracts；domain 不依赖 application/contracts/Android/UI。公共契约放 contracts，业务放 backend，表现放 ui，装配、存储、平台适配与系统流程放 app；业务服务只接明确窄端口。
+2. **业务唯一实现**：页面、AI、后台任务共用正式业务命令和查询；校验、事务与失效发布在统一业务入口负责。Screen 和系统组件壳不复制业务规则，工具执行器不另写一套业务。
+3. **局部访问与精准刷新**：普通操作按需读写，不恢复全状态装载/差异保存；完整快照显式隔离，历史批更正明确必要范围。提交成功后通过唯一累计失效协议发布实际领域/实体；同时验证有关更新和无关查询增量为零。
+4. **生命周期与并发**：明确资源创建/关闭、任务取消和写入排空顺序；已终止的资源所有者不得再初始化/重开资源，取消或过期请求不得回写/发布，已接收写入按约定排空后释放资源。保持锁顺序，网络请求不跨数据库事务，重试不得重复已提交操作。
+5. **迁移删除与数据兼容**：最后消费者迁出即删除旧入口、转发、别名、缺能力默认和双实现。保留唯一必要的数据编码解释器；数据库变更有升级迁移，系统组件身份及外部协议变更显式评审，不以清库/重装替代兼容验证。
+6. **AI 扩展完整约束**：新工具使用具名 OperationId 和唯一目录，明确参数、读写、作用域、确认及回执策略；写入按策略确认和读回验证，覆盖取消、重试、重复提交。外部协议兼容基线仅随审查后的协议变更更新，不为通过测试直接重生成。
+7. **按风险验证与防回流**：规则测结果边界，存储测事务/旧数据/并发，刷新测真实 loader 次数，系统入口补隔离设备验证。新增依赖规则同步守卫正反例；真实来电/待机/重启/权限/升级单列实测，不用编译或单测冒充，明确未验证项。
+8. **同步文档与交付**：版本以 version.properties 为唯一来源，进度以最新验收证据为准，变更同步职责/协议/验证文档。代码收尾运行下述统一验证，纯文档核对内容与链接；按范围提交、合并 main、推送并确认该提交 CI。保留用户改动和验证证据，按需发包；纯文档不递增版本。
 
 ## 启动注意事项
 - 在本项目根目录运行 Gradle；不依赖 android-funs。

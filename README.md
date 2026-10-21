@@ -72,7 +72,7 @@
 
 归档保存转写、自述姓名/单位/职位、原文依据、模型推测、1–3 句话摘要及待办。身份推测不等于真实身份核验；确认后可将自述姓名和单位写入档案，职位和白名单不自动修改。AI 失败不影响原有来电筛选、铃声、统计与报表。
 
-本轮自动测试验证本地业务、协议与界面；未使用真实付费 API。目标小米设备 ADB 离线，系统录音目录适配、真实 SIM 双向采集、听筒/免提/蓝牙与锁屏后台采集尚未实测，不能据此宣称两条录音路径均已通过验收。
+自动测试验证本地业务、协议与界面；未使用真实付费 API。隔离设备补验结果与限制见[设备复验记录](docs/plans/layer-boundaries-evidence/device-fix-review.md)。系统录音目录适配、真实 SIM 双向采集、听筒/免提/蓝牙与锁屏后台采集仍需专项实测，不能据此宣称两条录音路径均已通过验收。
 
 ## 权限与后台边界
 
@@ -93,11 +93,11 @@
 
 模块依赖为 `contracts ← backend`、`contracts ← ui`，`app` 组合三者。`contracts` 保存公共数据与能力契约；纯 JVM `backend/application` 编排业务、`backend/domain` 保存独立算法；`ui/feature` 与 `ui/state` 负责 Compose/MVVM，`ui/designsystem` 只消费视觉参数。`app/bootstrap` 唯一装配，`bridge` 转换 UI 偏好，`data` 持有数据库/偏好/文件资源，`platform` 适配 Android 能力，`entrypoint/runtime|jobs|recording|calling` 拥有系统事件与生命周期工作流。
 
-根包 RuntimeReceiver、CalendarSyncJobService、SyncJobService、RecordingJobService、CallCaptureService、RingPlaybackService 保留系统注册身份和真正资源接线，工作流各自唯一进入 controller。既有 ScreeningController/IncomingCallController 保持 platform/calling 唯一实现。`CallringApplication` 创建单个业务图，UI 注入正式 `CallringUiApi`，Fake 只在测试源集。普通 Screen 接收状态与回调；阻塞工作由 API 实现调度。完整路径见[最终生产文件归属](docs/superpowers/specs/2026-10-20-layer-boundaries-file-map.md)与[项目说明](PROJECT.md)。T14 统一 CI 整合和 T15 设备/最终验收仍待执行。
+根包 RuntimeReceiver、CalendarSyncJobService、SyncJobService、RecordingJobService、CallCaptureService、RingPlaybackService 保留系统注册身份和真正资源接线，工作流各自唯一进入 controller。既有 ScreeningController/IncomingCallController 保持 platform/calling 唯一实现。`CallringApplication` 创建单个业务图，UI 注入正式 `CallringUiApi`，Fake 只在测试源集。普通 Screen 接收状态与回调；阻塞工作由 API 实现调度。完整路径见[分层整理文件归属清单](docs/superpowers/specs/2026-10-20-layer-boundaries-file-map.md)，后续开发遵守[项目开发约束](PROJECT.md#后续开发约束)。分层验收见[最终报告](docs/plans/layer-boundaries-evidence/acceptance.md)，设备补验与缺口见[设备复验记录](docs/plans/layer-boundaries-evidence/device-fix-review.md)。
 
 工具链：**JDK 17、Gradle 8.13、AGP 8.13.2、Kotlin/Compose compiler plugin 2.3.21、Compose BOM 2025.12.01**。Java/Kotlin JVM 目标为 1.8；minSdk 29、compileSdk 36、targetSdk 33、Build Tools 36.0.0。通过 `local.properties` 或 `ANDROID_HOME` / `ANDROID_SDK_ROOT` 配置 SDK；JDK 使用当前环境的 `JAVA_HOME`。
 
-版本只在根 `version.properties`（`versionCode`/`versionName`）维护：根 `build.gradle` 校验后注入 `app/build.gradle`，发布工具读同一文件，标签统一为 `v<versionName>`（当前 `0.3.8` / `versionCode 11`）。改版本请用 `python tools/release/version_tool.py set --code N --name X.Y.Z --published-max M`，脚本会拒绝 `0.3`、`v0.3.0`、非递增 versionCode 等输入。
+版本只在根 `version.properties`（`versionCode`/`versionName`）维护：根 `build.gradle` 校验后注入 `app/build.gradle`，发布工具读同一文件，标签统一为 `v<versionName>`，当前值直接读取该文件。改版本请用 `python tools/release/version_tool.py set --code N --name X.Y.Z --published-max M`，脚本会拒绝 `0.3`、`v0.3.0`、非递增 versionCode 等输入。
 
 统一验证入口（无设备参数时只执行构建与静态/JVM 检查）：
 
