@@ -1,5 +1,6 @@
 package com.greatwall.callring.ui.feature.callers
 
+import com.greatwall.callring.ui.feature.shared.CallerCard
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items

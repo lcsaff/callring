@@ -1,5 +1,7 @@
 package com.greatwall.callring.ui.app
 
+import com.greatwall.callring.ui.app.bridge.rememberAppearanceThemeSpec
+import com.greatwall.callring.ui.app.bridge.DefaultAppearance
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.material3.*
@@ -53,7 +55,7 @@ private val BottomBarContentHeight = 44.dp
     val navigationState: UiNavigationState = uiViewModel("application-navigation") { UiNavigationState(it) }
     val appearance by appearanceModel.draft.collectAsStateWithLifecycle()
     val appearanceState by appearanceModel.state.collectAsStateWithLifecycle()
-    CallringTheme(appearance ?: appearanceState.data ?: DefaultAppearance) {
+    CallringTheme((appearance ?: appearanceState.data ?: DefaultAppearance).rememberAppearanceThemeSpec(androidx.compose.foundation.isSystemInDarkTheme())) {
         ThemeWindowSupport()
         val navigation = rememberNavController()
         val entry by navigation.currentBackStackEntryAsState()

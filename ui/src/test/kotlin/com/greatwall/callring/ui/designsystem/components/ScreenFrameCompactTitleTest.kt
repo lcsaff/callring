@@ -1,5 +1,7 @@
 package com.greatwall.callring.ui.designsystem.components
 
+import com.greatwall.callring.ui.app.bridge.rememberAppearanceThemeSpec
+import com.greatwall.callring.ui.app.bridge.DefaultAppearance
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.unit.dp
@@ -16,19 +18,19 @@ class ScreenFrameCompactTitleTest {
     @get:Rule val compose = createComposeRule()
 
     @Test fun compactTitleContentHeightIs40dp() {
-        compose.setContent { CallringTheme { ScreenFrame("号码档案", compactTitle = true) {} } }
+        compose.setContent { CallringTheme(DefaultAppearance.rememberAppearanceThemeSpec(androidx.compose.foundation.isSystemInDarkTheme())) { ScreenFrame("号码档案", compactTitle = true) {} } }
         compose.onNodeWithTag("screen-frame-topbar").assertHeightIsEqualTo(40.dp)
     }
 
     @Test fun defaultTitleKeepsTheMaterialExpandedHeight() {
-        compose.setContent { CallringTheme { ScreenFrame("外观设置") {} } }
+        compose.setContent { CallringTheme(DefaultAppearance.rememberAppearanceThemeSpec(androidx.compose.foundation.isSystemInDarkTheme())) { ScreenFrame("外观设置") {} } }
         compose.onNodeWithTag("screen-frame-topbar").assertHeightIsEqualTo(64.dp)
     }
 
     @Test fun compactTitleKeepsLongTitlesAndBackActionDiscoverable() {
         var returned = false
         val longTitle = "这是一个非常长的标题，用于确认紧凑标题仍然只占一行并且不会被截断成多行"
-        compose.setContent { CallringTheme {
+        compose.setContent { CallringTheme(DefaultAppearance.rememberAppearanceThemeSpec(androidx.compose.foundation.isSystemInDarkTheme())) {
             ScreenFrame(longTitle, onBack = { returned = true }, compactTitle = true) {}
         } }
         compose.onNodeWithTag("screen-frame-topbar").assertHeightIsEqualTo(40.dp)

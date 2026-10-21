@@ -12,8 +12,7 @@ import com.greatwall.callring.contracts.recording.*
 import com.greatwall.callring.contracts.ai.*
 import com.greatwall.callring.contracts.command.*
 import com.greatwall.callring.contracts.*
-import com.greatwall.callring.ui.designsystem.DefaultAppearance
-import kotlinx.coroutines.flow.MutableStateFlow
+import com.greatwall.callring.ui.app.bridge.DefaultAppearance
 import java.time.LocalDate
 
 /** Deterministic screen fixtures. No business rules or production wiring live in this source set. */

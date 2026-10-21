@@ -1,5 +1,7 @@
 package com.greatwall.callring.ui.feature.home
 
+import com.greatwall.callring.ui.app.bridge.rememberAppearanceThemeSpec
+import com.greatwall.callring.ui.app.bridge.DefaultAppearance
 import androidx.compose.runtime.*
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createComposeRule
@@ -26,7 +28,7 @@ class HomeQuietScreenJvmTest {
         val home = runBlocking { (UiFakeApi().load() as ApiResult.Success).value }
         var toggled = false
         var opened = false
-        compose.setContent { CallringTheme {
+        compose.setContent { CallringTheme(DefaultAppearance.rememberAppearanceThemeSpec(androidx.compose.foundation.isSystemInDarkTheme())) {
             HomeScreen(LoadState(home, loaded = true), {}, {}, quietCard = {
                 HomeQuietCard(LoadState(QuietSettings(QuietMode.OFF, false, emptyMap()), loaded = true),
                     MutationState(), {}, { toggled = it }, { opened = true })
@@ -46,7 +48,7 @@ class HomeQuietScreenJvmTest {
     fun emptyCustomBlocksSaveAndSmallDialogScrollsToSundayWithActionsVisible() {
         var value by mutableStateOf(QuietSettings(QuietMode.CUSTOM, false, emptyMap()))
         var saves = 0
-        compose.setContent { CallringTheme {
+        compose.setContent { CallringTheme(DefaultAppearance.rememberAppearanceThemeSpec(androidx.compose.foundation.isSystemInDarkTheme())) {
             HomeQuietDialog(value, value, MutationState(), { value = it }, { saves++ }, {})
         } }
         compose.onNodeWithTag("quiet-dialog-save").assertIsDisplayed().assertIsNotEnabled()
@@ -62,7 +64,7 @@ class HomeQuietScreenJvmTest {
         var value by mutableStateOf(saved.copy(mode = QuietMode.CUSTOM))
         var closes = 0
         var saves = 0
-        compose.setContent { CallringTheme {
+        compose.setContent { CallringTheme(DefaultAppearance.rememberAppearanceThemeSpec(androidx.compose.foundation.isSystemInDarkTheme())) {
             HomeQuietDialog(saved, value, MutationState(), { value = it }, { saves++ }, { closes++ })
         } }
         compose.onNodeWithTag("quiet-dialog-cancel").performClick()
@@ -72,7 +74,7 @@ class HomeQuietScreenJvmTest {
 
     @Test fun personalInformationPrecedesCallHandlingAndQuietEntryIsRemoved() {
         val summary = runBlocking { (UiFakeApi().getSummary() as ApiResult.Success).value }
-        compose.setContent { CallringTheme {
+        compose.setContent { CallringTheme(DefaultAppearance.rememberAppearanceThemeSpec(androidx.compose.foundation.isSystemInDarkTheme())) {
             SettingsOverviewScreen(LoadState(summary, loaded = true), MutationState(), null, {}, {}, {}, {})
         } }
         compose.onNodeWithText("免打扰").assertDoesNotExist()
@@ -85,7 +87,7 @@ class HomeQuietScreenJvmTest {
         var value by mutableStateOf(QuietSettings(QuietMode.CUSTOM, true,
             mapOf(1 to listOf(TimeWindow(1320, 420), TimeWindow(480, 540)))))
         var mutation by mutableStateOf(MutationState())
-        compose.setContent { CallringTheme {
+        compose.setContent { CallringTheme(DefaultAppearance.rememberAppearanceThemeSpec(androidx.compose.foundation.isSystemInDarkTheme())) {
             HomeQuietDialog(saved, value, mutation, { value = it }, {
                 mutation = MutationState(error = ApiError(ErrorCode.STORAGE_FAILURE, "磁盘不可用"))
             }, {})

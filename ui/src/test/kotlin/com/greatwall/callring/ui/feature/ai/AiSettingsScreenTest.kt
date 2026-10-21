@@ -1,5 +1,7 @@
 package com.greatwall.callring.ui.feature.ai
 
+import com.greatwall.callring.ui.app.bridge.rememberAppearanceThemeSpec
+import com.greatwall.callring.ui.app.bridge.DefaultAppearance
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createComposeRule
 import com.greatwall.callring.contracts.recording.*
@@ -41,7 +43,7 @@ class AiSettingsScreenTest {
         onAutomaticAnalysis: (Boolean) -> Unit = {},
         onBudget: (ConversationBudget) -> Unit = {},
     ) {
-        compose.setContent { CallringTheme {
+        compose.setContent { CallringTheme(DefaultAppearance.rememberAppearanceThemeSpec(androidx.compose.foundation.isSystemInDarkTheme())) {
             AiSettingsScreen(LoadState(AiSettingsUi(ai, recording), loaded = true), MutationState(), {},
                 {}, {}, {}, {}, onThinkingMode, onBudget, onAutomaticAnalysis, {}, { _, _ -> }, {})
         } }

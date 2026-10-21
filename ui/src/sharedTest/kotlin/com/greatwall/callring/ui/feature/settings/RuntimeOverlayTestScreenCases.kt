@@ -1,5 +1,7 @@
 package com.greatwall.callring.ui.feature.settings
 
+import com.greatwall.callring.ui.app.bridge.rememberAppearanceThemeSpec
+import com.greatwall.callring.ui.app.bridge.DefaultAppearance
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.runtime.mutableStateOf
@@ -18,7 +20,7 @@ abstract class RuntimeOverlayTestScreenCases {
         val status = runBlocking { UiFakeApi().getStatus().value }
         var requests = 0
         val mutation = mutableStateOf(MutationState())
-        compose.setContent { CallringTheme {
+        compose.setContent { CallringTheme(DefaultAppearance.rememberAppearanceThemeSpec(androidx.compose.foundation.isSystemInDarkTheme())) {
             RuntimeScreen(LoadState(RuntimeUiData(status, emptyList(), null), loaded = true), mutation.value, {}, {}, {}, {}, {}, { requests++ })
         } }
         compose.onNodeWithText("测试悬浮窗").performScrollTo().assertIsDisplayed().assertIsEnabled().performClick()

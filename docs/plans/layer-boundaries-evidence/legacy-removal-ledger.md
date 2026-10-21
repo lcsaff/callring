@@ -75,3 +75,10 @@ T11 候选源码冻结：唯一 mandatory 累计 flow 覆盖生产、测试与 d
 T13a关闭最后onCreate和test/debug/backendQa消费者，删除BackendStore/BackendState/StorageSession及旧四Store、TableSnapshot/fullDiff旧投影、stateLoadCount/coreStateLoads等不能再执行的计数。defaultWorkSchedule迁domain/model唯一实现；SQLiteDatabase.scalar、显式ID/sequence/旧编码SQL seed仅在debug测试支持，同一真实资源连接，无production测试接口。原纯算法与事务/分类/关联/CSV/ID/范围断言经现行窄入口执行，完整事实比较明确调用FullSnapshotReader。
 
 当前候选仅完成T13a行为删除。T13b仍需目录/职责归位、bootstrap查询投影、UI bridge/designsystem与组件薄壳、最终全文件清单及PROJECT/README；T14统一CI和T15设备/最终验收仍未执行。不得将此候选记为T13全部完成。实际验证、源码指纹与后续审查状态见[t13a实施证据](t13a-implementation.md)及summary。
+
+
+## T13b2b UI职责删除候选
+
+ThemeRegistry/DefaultAppearance/偏好解析归唯一app/bridge；designsystem只保留ThemeDefinition/ThemeSpec及唯一CallringTheme(spec)，旧外观渲染overload、旧包入口与测试专用companion转发删除。Compose缓存保留palette身份，widget继续既有configuration模式。CallerCard与rememberFormBack迁feature/shared；UnsavedChangesDialog只有designsystem内一份纯参数实现。RecordingScreens、RecordingViewModels、SettingsViewModels三个mixedfiles删除，完整owner迁实际screen/VM，presentation内聚共享录音反馈。
+
+本片不关闭T13b2c系统组件controller/PROJECT/README、T14统一CI或T15设备门。实际门、缓存与冻结见[t13b2b实施证据](t13b2b-implementation.md)。backend fixture未变，沿用[t13b2a来源](t13b2a-implementation.md)，不复制历史SQL样本。

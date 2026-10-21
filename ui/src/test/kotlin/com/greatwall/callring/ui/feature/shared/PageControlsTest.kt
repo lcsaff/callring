@@ -1,5 +1,7 @@
 package com.greatwall.callring.ui.feature.shared
 
+import com.greatwall.callring.ui.app.bridge.rememberAppearanceThemeSpec
+import com.greatwall.callring.ui.app.bridge.DefaultAppearance
 import androidx.compose.foundation.layout.Column
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createComposeRule
@@ -16,7 +18,7 @@ class PageControlsTest {
     @get:Rule val compose = createComposeRule()
 
     private fun show(pageIndex: Int, pageSize: Int, totalItems: Long, loading: Boolean = false) {
-        compose.setContent { CallringTheme {
+        compose.setContent { CallringTheme(DefaultAppearance.rememberAppearanceThemeSpec(androidx.compose.foundation.isSystemInDarkTheme())) {
             Column { PageControls(pageIndex, pageSize, totalItems, loading) {} }
         } }
     }

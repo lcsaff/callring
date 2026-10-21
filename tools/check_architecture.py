@@ -46,6 +46,18 @@ def check(root=ROOT):
             references=re.sub(r'"(?:\\.|[^"\\])*"', '""', source)
             package_match = re.search(r'\bpackage\s+([\w.]+)', references)
             package = package_match.group(1) if package_match else ''
+            if module == 'ui':
+                old_entry = r'\bcom\.greatwall\.callring\.ui\.designsystem\.(?:DefaultAppearance|ThemeRegistry|usesDarkColors|components\.(?:CallerCard|rememberFormBack))\b'
+                if re.search(old_entry, references):
+                    errors.append(f'{path.relative_to(root)}: removed designsystem business entry')
+                if path.relative_to(directory/'src').parts[0] == 'main' and (package == 'com.greatwall.callring.ui.designsystem' or package.startswith('com.greatwall.callring.ui.designsystem.')):
+                    if re.search(r'\bcom\.greatwall\.callring\.(?:contracts\b|ui\.(?:state|feature|app)\b)', references):
+                        errors.append(f'{path.relative_to(root)}: designsystem business dependency')
+                    if re.search(r'\b(?:class|object|val|fun|typealias)\s+(?:(?:[\w.]+)\s*\.\s*)?(?:DefaultAppearance|ThemeRegistry|usesDarkColors|CallerCard|rememberFormBack)\b', references):
+                        errors.append(f'{path.relative_to(root)}: removed designsystem business declaration')
+                    for signature in re.findall(r'\bfun\s+CallringTheme\s*\((.*?)\)\s*', references, re.S):
+                        if not re.match(r'\s*spec\s*:\s*ThemeSpec\s*,', signature) or re.search(r'\b(?:appearance|systemDark|registry)\s*:', signature):
+                            errors.append(f'{path.relative_to(root)}: removed preference-aware theme rendering overload')
             if module == 'app' and 'main' in path.relative_to(directory/'src').parts[:1] and package == 'com.greatwall.callring.bootstrap' and re.search(
                     r'\b(?:SourceRow|SnapshotPart|safeValue|aiObject|sourceCount|snapshotSourceCount)\s*\(', references):
                 errors.append(f'{path.relative_to(root)}: bootstrap query projection; inject backend projectors')

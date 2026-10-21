@@ -7,7 +7,7 @@ import com.greatwall.callring.contracts.callers.CallerDraft
 import com.greatwall.callring.contracts.callers.CallerEditorData
 import com.greatwall.callring.contracts.command.NumberDeletionImpact
 import com.greatwall.callring.ui.designsystem.components.ScreenFrame
-import com.greatwall.callring.ui.designsystem.components.rememberFormBack
+import com.greatwall.callring.ui.feature.shared.rememberFormBack
 import com.greatwall.callring.ui.state.LoadState
 import com.greatwall.callring.ui.state.MutationState
 

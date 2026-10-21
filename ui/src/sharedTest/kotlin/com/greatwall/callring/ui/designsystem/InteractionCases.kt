@@ -1,5 +1,7 @@
 package com.greatwall.callring.ui.designsystem
 
+import com.greatwall.callring.ui.app.bridge.rememberAppearanceThemeSpec
+import com.greatwall.callring.ui.app.bridge.DefaultAppearance
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createComposeRule
@@ -25,10 +27,43 @@ import org.junit.Test
 abstract class InteractionCases {
     @get:Rule val compose = createComposeRule()
 
+    @Test fun formBackKeepsBusyAndFailedSaveInPlaceThenLeavesOnceOnCompletion() {
+        val state = mutableStateOf(MutationState())
+        val dirty = mutableStateOf(false)
+        var backs = 0
+        var saves = 0
+        compose.setContent {
+            CallringTheme(DefaultAppearance.rememberAppearanceThemeSpec(false)) {
+                val back = com.greatwall.callring.ui.feature.shared.rememberFormBack(
+                    { backs++ }, dirty.value, state.value, { saves++ })
+                androidx.compose.material3.TextButton(onClick = back) { androidx.compose.material3.Text("返回表单") }
+            }
+        }
+        compose.onNodeWithText("返回表单").performClick()
+        compose.runOnIdle { assertEquals(1, backs); dirty.value = true; state.value = MutationState(busy = true) }
+        compose.onNodeWithText("返回表单").performClick()
+        compose.onNodeWithText("放弃未保存的修改？").assertDoesNotExist()
+        compose.runOnIdle { state.value = MutationState() }
+        compose.onNodeWithText("返回表单").performClick()
+        compose.onNodeWithText("取消").performClick()
+        compose.onNodeWithText("返回表单").performClick()
+        compose.onNodeWithText("保存").performClick()
+        compose.runOnIdle { assertEquals(1, saves); state.value = MutationState(error = ApiError(ErrorCode.STORAGE_FAILURE, "失败")) }
+        compose.runOnIdle { assertEquals(1, backs); state.value = MutationState() }
+        compose.onNodeWithText("返回表单").performClick()
+        compose.onNodeWithText("保存").performClick()
+        compose.runOnIdle { state.value = MutationState(completed = 1) }
+        compose.runOnIdle { assertEquals(2, backs); assertEquals(2, saves); state.value = MutationState(completed = 2) }
+        compose.runOnIdle { assertEquals(2, backs) }
+        compose.onNodeWithText("返回表单").performClick()
+        compose.onNodeWithText("放弃修改").performClick()
+        compose.runOnIdle { assertEquals(3, backs) }
+    }
+
     @Test fun successfulMutationUsesTransientSnackbarAndDoesNotReplayAfterRestore() {
         val mutation = mutableStateOf(MutationState())
         val restoration = StateRestorationTester(compose)
-        restoration.setContent { CallringTheme { ScreenFrame("反馈") { MutationFeedback(mutation.value) } } }
+        restoration.setContent { CallringTheme(DefaultAppearance.rememberAppearanceThemeSpec(androidx.compose.foundation.isSystemInDarkTheme())) { ScreenFrame("反馈") { MutationFeedback(mutation.value) } } }
         compose.runOnIdle { mutation.value = MutationState(completed = 1, message = "已保存") }
         compose.onNodeWithTag("feedback-snackbar").assertIsDisplayed()
         restoration.emulateSavedInstanceStateRestore()
@@ -36,7 +71,7 @@ abstract class InteractionCases {
     }
 
     @Test fun returningToCompletedMutationDoesNotAnnounceHistoricalSuccess() {
-        compose.setContent { CallringTheme {
+        compose.setContent { CallringTheme(DefaultAppearance.rememberAppearanceThemeSpec(androidx.compose.foundation.isSystemInDarkTheme())) {
             ScreenFrame("反馈") { MutationFeedback(MutationState(completed = 3, message = "操作成功")) }
         } }
         compose.onNodeWithText("操作成功").assertDoesNotExist()
@@ -46,7 +81,7 @@ abstract class InteractionCases {
         val api = UiFakeApi()
         val summary = runBlocking { api.getSummary().value }
         var changes = 0
-        compose.setContent { CallringTheme {
+        compose.setContent { CallringTheme(DefaultAppearance.rememberAppearanceThemeSpec(androidx.compose.foundation.isSystemInDarkTheme())) {
             SettingsOverviewScreen(LoadState(summary, loaded = true), MutationState(), {}, {},
                 { changes++ }, {}, {})
         } }
@@ -57,7 +92,7 @@ abstract class InteractionCases {
     @Test fun resetNeedsConfirmationAndCancelDoesNotWrite() {
         val score = ScoreSettings(5, 2, 10, 30)
         var resets = 0
-        compose.setContent { CallringTheme {
+        compose.setContent { CallringTheme(DefaultAppearance.rememberAppearanceThemeSpec(androidx.compose.foundation.isSystemInDarkTheme())) {
             ScoreSettingsScreen(LoadState(score, loaded = true), score, MutationState(), {}, {}, {}, { resets++ })
         } }
         compose.onNodeWithText("恢复默认评分设置").performScrollTo().performClick()
@@ -73,7 +108,7 @@ abstract class InteractionCases {
         val original = CallerDraft("100", "原姓名", "部门", null, false)
         val draft = mutableStateOf(original)
         var backs = 0
-        compose.setContent { CallringTheme {
+        compose.setContent { CallringTheme(DefaultAppearance.rememberAppearanceThemeSpec(androidx.compose.foundation.isSystemInDarkTheme())) {
             CallerEditorScreen(LoadState(CallerEditorData(original, emptyList(), null), loaded = true),
                 draft.value, MutationState(), false, { backs++ }, {}, { draft.value = it }, {})
         } }
@@ -92,7 +127,7 @@ abstract class InteractionCases {
         val draft = mutableStateOf(original.copy(name = "待保存"))
         val mutation = mutableStateOf(MutationState())
         var backs = 0
-        compose.setContent { CallringTheme {
+        compose.setContent { CallringTheme(DefaultAppearance.rememberAppearanceThemeSpec(androidx.compose.foundation.isSystemInDarkTheme())) {
             CallerEditorScreen(LoadState(CallerEditorData(original, emptyList(), null), loaded = true),
                 draft.value, mutation.value, false, { backs++ }, {}, { draft.value = it },
                 { mutation.value = MutationState(busy = true) })

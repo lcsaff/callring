@@ -6,8 +6,8 @@ import androidx.compose.ui.unit.dp
 import com.greatwall.callring.ui.testing.UiFakeApi
 import com.greatwall.callring.ui.testing.captureArtifact
 import com.greatwall.callring.contracts.settings.*
-import com.greatwall.callring.ui.designsystem.DefaultAppearance
-import com.greatwall.callring.ui.designsystem.ThemeRegistry
+import com.greatwall.callring.ui.app.bridge.DefaultAppearance
+import com.greatwall.callring.ui.app.bridge.ThemeRegistry
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.*
 import org.junit.Rule
@@ -76,7 +76,7 @@ class AppNavigationTest {
     @Test fun presetAndCustomThemesRenderInBothModes() {
         val api = UiFakeApi()
         compose.setContent { CallringApp(api, onCapability = {}, onPreviewCall = {}, onPinWidget = {}, onAppSettings = {}) }
-        val appearances = ThemeRegistry.presets.map { DefaultAppearance.copy(presetId = it.id) } +
+        val appearances = ThemeRegistry.Default.presets.map { DefaultAppearance.copy(presetId = it.id) } +
             DefaultAppearance.copy(selection = ThemeSelection.CUSTOM, customSeedRgb = 0x663399)
         appearances.forEach { appearance ->
             listOf(ColorMode.LIGHT, ColorMode.DARK).forEach { mode ->

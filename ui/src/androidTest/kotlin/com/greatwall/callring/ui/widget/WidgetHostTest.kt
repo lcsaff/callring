@@ -1,5 +1,6 @@
 ﻿package com.greatwall.callring.ui.widget
 
+import com.greatwall.callring.ui.app.bridge.toThemeSpec
 import android.Manifest
 import android.appwidget.*
 import android.content.ComponentName
@@ -27,7 +28,6 @@ import com.greatwall.callring.contracts.ai.*
 import com.greatwall.callring.contracts.command.*
 import com.greatwall.callring.contracts.*
 import com.greatwall.callring.ui.testing.*
-import com.greatwall.callring.ui.designsystem.ThemeRegistry
 import com.greatwall.callring.ui.testing.UiTestApplication
 import com.greatwall.callring.ui.testing.captureArtifact
 import kotlinx.coroutines.runBlocking
@@ -124,7 +124,7 @@ class WidgetHostTest {
 
             val appearance = AppearanceSettings(ThemeSelection.CUSTOM, "sky_blue", 0x663399, ColorMode.LIGHT)
             runBlocking { api.saveAppearance(appearance); UiWidgetRefresh.refresh(context) }
-            val expectedColor = ThemeRegistry.resolve(appearance).light.onSurface.toArgb()
+            val expectedColor = appearance.toThemeSpec(false).definition.light.onSurface.toArgb()
             compose.waitUntil(10_000) {
                 views.all { it.text("来电管理")?.currentTextColor == expectedColor && it.text("今日已请假") != null }
             }

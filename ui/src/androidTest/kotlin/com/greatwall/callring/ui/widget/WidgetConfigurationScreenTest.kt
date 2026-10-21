@@ -1,12 +1,15 @@
 ﻿package com.greatwall.callring.ui.widget
 
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
+
+import com.greatwall.callring.ui.app.bridge.rememberAppearanceThemeSpec
+import com.greatwall.callring.ui.app.bridge.DefaultAppearance
 import com.greatwall.callring.contracts.command.*
 import com.greatwall.callring.contracts.ai.*
 import com.greatwall.callring.contracts.recording.*
 import com.greatwall.callring.contracts.runtime.*
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createComposeRule
 import com.greatwall.callring.contracts.common.ApiError
@@ -25,7 +28,7 @@ class WidgetConfigurationScreenTest {
         var saves = 0
         var cancelled = false
         compose.setContent {
-            CallringTheme {
+            CallringTheme(DefaultAppearance.rememberAppearanceThemeSpec(androidx.compose.foundation.isSystemInDarkTheme())) {
                 WidgetConfigurationScreen(state,
                     onQueryChange = { state = state.copy(query = it, selectedNumber = null) },
                     onUseDirectNumber = { state = state.copy(selectedNumber = state.query) },
@@ -45,7 +48,7 @@ class WidgetConfigurationScreenTest {
         var state by mutableStateOf(WidgetConfigurationState(bindingError = ApiError(ErrorCode.STORAGE_FAILURE, "读取失败")))
         var saves = 0
         compose.setContent {
-            CallringTheme {
+            CallringTheme(DefaultAppearance.rememberAppearanceThemeSpec(androidx.compose.foundation.isSystemInDarkTheme())) {
                 WidgetConfigurationScreen(state,
                     onQueryChange = { state = state.copy(query = it) },
                     onUseDirectNumber = { state = state.copy(selectedNumber = state.query) },
@@ -59,7 +62,7 @@ class WidgetConfigurationScreenTest {
         compose.runOnIdle { assertEquals(1, saves) }
     }
     @Test fun committedSaveCannotBeCancelledOrRepeatedWhileHostRefreshes() {
-        compose.setContent { CallringTheme {
+        compose.setContent { CallringTheme(DefaultAppearance.rememberAppearanceThemeSpec(androidx.compose.foundation.isSystemInDarkTheme())) {
             WidgetConfigurationScreen(WidgetConfigurationState(selectedNumber = "100", mutation = MutationState(completed = 1)),
                 {}, {}, {}, {}, {}, {})
         } }

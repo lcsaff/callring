@@ -1,0 +1,196 @@
+{
+  "baseline": "913794b5e4d6727a762ab8826cc2038a2a139277",
+  "sourceCandidate": {
+    "path": "build/qa/layer-boundaries/t13b2b-source-freeze.json",
+    "sha256": "ad75c7b7c0585b4c2e379871bc28124e76cf4c4b1f0eab8ad955525159a1db8e",
+    "bytes": 16300,
+    "paths": 65,
+    "sourceSha256": "c3c73d68795a7bdce0add75663d71a688cd290adbfaac87b655b05ce11687e2f",
+    "afterGateSourceSha256": "a9364d9a2e67e02186847f191feda555565ca9e2cce71413dcefbe58689313f2",
+    "finalSourceSha256": "c3c73d68795a7bdce0add75663d71a688cd290adbfaac87b655b05ce11687e2f",
+    "afterGateNote": "The full gate tested the original source hash; final source differs only by 12 EOF blank-line removals, with unchanged execution bodies."
+  },
+  "gate": {
+    "path": "build/qa/layer-boundaries/t13b2b-fullgate.log",
+    "sha256": "fede3dae953c9024482b4e83e853ec45b2d0207cdbbd96055603ed9eafe70c6f",
+    "bytes": 12473,
+    "exit": 0,
+    "command": ".\\gradlew.bat :contracts:test :backend:test :ui:testDebugUnitTest :app:testDebugUnitTest :app:assembleDebug :ui:lintDebug :app:lintDebug :app:compileBackendQaKotlin :ui:compileDebugAndroidTestKotlin :app:compileDebugAndroidTestKotlin :app:compileReleaseKotlin :app:compileReleaseJavaWithJavac --console=plain",
+    "summary": [
+      "BUILD SUCCESSFUL in 2m 15s",
+      "186 actionable tasks: 41 executed, 145 up-to-date"
+    ]
+  },
+  "tests": {
+    "contracts": {
+      "taskState": "NO-SOURCE",
+      "xmlFiles": 0,
+      "aggregateAlgorithm": "WindowsPath sorted relative posix + LF + raw XML + LF",
+      "aggregateXmlSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "timestampMin": null,
+      "timestampMax": null
+    },
+    "backend": {
+      "taskState": "UP-TO-DATE",
+      "xmlFiles": 70,
+      "aggregateAlgorithm": "WindowsPath sorted relative posix + LF + raw XML + LF",
+      "aggregateXmlSha256": "29dfead6098e820f42f754bcf5804ba03caf7899d9e33eb0150784119cb21a00",
+      "tests": 363,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "timestampMin": "2026-10-21T00:20:48.397Z",
+      "timestampMax": "2026-10-21T00:20:50.777Z"
+    },
+    "ui": {
+      "taskState": "EXECUTED",
+      "xmlFiles": 76,
+      "aggregateAlgorithm": "WindowsPath sorted relative posix + LF + raw XML + LF",
+      "aggregateXmlSha256": "dc8467bce86bd19b61489dff3e87274920303f327788fa703b163ff09480a7b6",
+      "tests": 310,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "timestampMin": "2026-10-21T00:32:54.545Z",
+      "timestampMax": "2026-10-21T00:33:35.867Z"
+    },
+    "app": {
+      "taskState": "EXECUTED",
+      "xmlFiles": 65,
+      "aggregateAlgorithm": "WindowsPath sorted relative posix + LF + raw XML + LF",
+      "aggregateXmlSha256": "f0d43baab07e23f09d02e6d21fa48fafca58fb96d39ac33132d8a391f1d62003",
+      "tests": 335,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "timestampMin": "2026-10-21T00:33:41.849Z",
+      "timestampMax": "2026-10-21T00:34:38.994Z"
+    }
+  },
+  "lint": {
+    "ui": {
+      "path": "ui/build/reports/lint-results-debug.xml",
+      "sha256": "b2497e7f94b6d8fb4dc58bb0e0015b3a8220952b7f1deca9f196406820592056",
+      "bytes": 38092,
+      "severities": {
+        "Warning": 30,
+        "Hint": 3
+      },
+      "taskState": "EXECUTED",
+      "analyzeTaskState": "EXECUTED",
+      "reportTaskState": "EXECUTED"
+    },
+    "app": {
+      "path": "app/build/reports/lint-results-debug.xml",
+      "sha256": "870f75067afdbd0613d441d5411e734123f76480f1f3cf8b5a91c11e1e5e993a",
+      "bytes": 7927,
+      "severities": {
+        "Warning": 6
+      },
+      "taskState": "EXECUTED",
+      "analyzeTaskState": "EXECUTED",
+      "reportTaskState": "EXECUTED"
+    }
+  },
+  "compile": {
+    ":app:assembleDebug": "EXECUTED",
+    ":app:compileBackendQaKotlin": "EXECUTED",
+    ":ui:compileDebugAndroidTestKotlin": "UP-TO-DATE",
+    ":app:compileDebugAndroidTestKotlin": "NO-SOURCE",
+    ":app:compileReleaseKotlin": "EXECUTED",
+    ":app:compileReleaseJavaWithJavac": "UP-TO-DATE"
+  },
+  "guards": {
+    "architecture": {
+      "path": "build/qa/layer-boundaries/t13b2b-architecture.log",
+      "sha256": "8bffd7dee18fe8da405646338848960a13831fdc7b3150017321f3e0b5b34260",
+      "bytes": 78
+    },
+    "backend-boundaries": {
+      "path": "build/qa/layer-boundaries/t13b2b-backend-boundaries.log",
+      "sha256": "36ffbae67d064fc99a6ce693a0232904ab79fd35a25fffa7e779a066c0065398",
+      "bytes": 130
+    },
+    "architecture-tests": {
+      "path": "build/qa/layer-boundaries/t13b2b-architecture-tests.log",
+      "sha256": "51f815abfeaa71c47458ae85815629a846cbe4c7b640481ff980cef8a96a283a",
+      "bytes": 140
+    },
+    "backend-boundaries-tests": {
+      "path": "build/qa/layer-boundaries/t13b2b-backend-boundaries-tests.log",
+      "sha256": "970596b861026dd1013bc3c489ecb55817d0a390bf94da264efd5f67ba376fe0",
+      "bytes": 108
+    }
+  },
+  "redGreen": {
+    "red": {
+      "path": "build/qa/layer-boundaries/t13b2b-red.log",
+      "sha256": "f93bba691d22bbbd13eb06c0fa4f400c57b5d2b5a262653dc92b7cbfb6aea745",
+      "bytes": 10823
+    },
+    "guard-red": {
+      "path": "build/qa/layer-boundaries/t13b2b-guard-red.log",
+      "sha256": "70b54f05be831dff35edb46f8d221b4fcc5dd3563c419cb4c98615423b5b6b2f",
+      "bytes": 13439
+    },
+    "guard-green": {
+      "path": "build/qa/layer-boundaries/t13b2b-guard-green.log",
+      "sha256": "47900976cb42f11fcacace1aedbe61cdb171f419c64ebda20cc1c0f0c7653ca5",
+      "bytes": 140
+    },
+    "targeted": {
+      "path": "build/qa/layer-boundaries/t13b2b-targeted.log",
+      "sha256": "4559e87103311b1263bc920eb3a51aa263de0f556e547ffb501d3bb8d48c3100",
+      "bytes": 3421
+    }
+  },
+  "limits": [
+    "No device/adb execution; AndroidTest compile only.",
+    "Backend fixture and SQL samples unchanged; cached backend results retain original execution timestamp.",
+    "T13b2c system-component controllers, PROJECT/README, T14 CI and T15 final/device acceptance remain open."
+  ],
+  "backendFixtureSource": "docs/plans/layer-boundaries-evidence/t13b2a-implementation.md",
+  "guardSources": [
+    {
+      "path": "tools/check_architecture.py",
+      "sha256": "f22f3a28c057a58d25c46ec5bcc57b5c913e56327ba3550fe7cc726f0372cf3a",
+      "bytes": 9594
+    },
+    {
+      "path": "tools/test_architecture.py",
+      "sha256": "7649d2ca48d97b5ccc4004cfcd1c5c056d72736a59efc34df2374de71328f549",
+      "bytes": 15299
+    },
+    {
+      "path": "tools/check_backend_boundaries.py",
+      "sha256": "5e91461ef849f68acaca49b0f77216aef6b6bc62ac24f6dbacc15fd149690d8a",
+      "bytes": 9607
+    },
+    {
+      "path": "tools/test_backend_boundaries.py",
+      "sha256": "ac68fa86846d017482f424307f4d67cb19a7b4b7b23892b51b78a292a664e53d",
+      "bytes": 3418
+    }
+  ],
+  "diffCheck": {
+    "path": "build/qa/layer-boundaries/t13b2b-diff-check.log",
+    "sha256": "3ab1e128566c7d32396930d93c07a182ec5cfce568772344d98cf9029d98cbf6",
+    "bytes": 278,
+    "exit": 0,
+    "method": "git diff BASE --check and explicit terminal blank-line byte validation across complete frozen candidate",
+    "priorLimitation": "Earlier untracked check missed blank lines at EOF; this validation supersedes that claim."
+  },
+  "reviewState": "Independent spec and fresh quality PASS, followed by specification and quality EOF-only delta PASS. Root independently verified final 65-file freeze, exact12 EOF-only differences, guards/XML/log/lint/filemap. Original testedSourceSha256 retained. T13b2c/T14/T15 pending.",
+  "testedSourceSha256": "a9364d9a2e67e02186847f191feda555565ca9e2cce71413dcefbe58689313f2",
+  "normalizationDelta": {
+    "path": "build/qa/layer-boundaries/t13b2b-eof-delta.json",
+    "sha256": "3637ac2330e075126425a79d1dce7b087e05c461c0ffad825b6417015e98bec2",
+    "bytes": 8838,
+    "files": 12,
+    "onlyTerminalBlankLines": true,
+    "bodyBytesUnchanged": true,
+    "workingCRLFPreserved": true,
+    "gradleRerun": false,
+    "reviewState": "delta pending"
+  }
+}

@@ -1,6 +1,5 @@
 package com.greatwall.callring.ui.designsystem.components
 
-import com.greatwall.callring.contracts.ai.*
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.runtime.Composable
@@ -24,13 +23,11 @@ import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.style.TextOverflow
-import com.greatwall.callring.contracts.callers.CallerProfile
 import com.greatwall.callring.ui.R
 import com.greatwall.callring.ui.designsystem.CallringSpacing
 import com.greatwall.callring.ui.designsystem.LocalCallringDarkMode
 import com.greatwall.callring.ui.designsystem.ScoreBand
 import com.greatwall.callring.ui.designsystem.ScorePalette
-import com.greatwall.callring.ui.format.UiFormat
 
 /** Content height of the compact title bar. The status-bar inset is applied separately by [TopAppBar]. */
 private val CompactTitleContentHeight = 40.dp
@@ -173,40 +170,6 @@ fun SwitchSettingRow(
     SettingRow(title, summary, modifier = modifier.semantics { contentDescription = title }.toggleable(
         value = checked, enabled = enabled, role = Role.Switch, onValueChange = onCheckedChange,
     ), trailing = { Switch(checked, onCheckedChange = null, enabled = enabled) })
-}
-
-@Composable
-fun CallerCard(profile: CallerProfile, onClick: (() -> Unit)? = null, modifier: Modifier = Modifier) {
-    val actionModifier = if (onClick == null) modifier else modifier.clickable(onClick = onClick)
-    Card(
-        modifier = actionModifier.fillMaxWidth(),
-        shape = MaterialTheme.shapes.medium,
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
-    ) {
-        Column(
-            Modifier.padding(CallringSpacing.screen),
-            verticalArrangement = Arrangement.spacedBy(CallringSpacing.compact),
-        ) {
-            Text(profile.name.ifBlank { profile.number }, style = MaterialTheme.typography.titleMedium)
-            if (profile.name.isNotBlank()) Text(profile.number, style = MaterialTheme.typography.bodyLarge)
-            if (profile.department.isNotBlank()) Text(profile.department, style = MaterialTheme.typography.bodyMedium)
-            profile.position?.let { position ->
-                val status = if (position.active) "" else stringResource(R.string.callring_inactive_position)
-                Text("${position.name}$status", style = MaterialTheme.typography.bodyMedium)
-            }
-            Text(
-                UiFormat.position(profile.relation),
-                modifier = Modifier.semantics { contentDescription = UiFormat.positionAccessibility(profile.relation) },
-                style = MaterialTheme.typography.labelLarge,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-            if (profile.whitelisted) Text(
-                stringResource(R.string.callring_whitelisted),
-                style = MaterialTheme.typography.labelLarge,
-                color = MaterialTheme.colorScheme.primary,
-            )
-        }
-    }
 }
 
 @Composable

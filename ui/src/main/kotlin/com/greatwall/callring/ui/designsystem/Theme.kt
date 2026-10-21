@@ -1,7 +1,6 @@
 package com.greatwall.callring.ui.designsystem
 
 import android.annotation.SuppressLint
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.MaterialTheme
@@ -11,7 +10,6 @@ import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.Immutable
-import androidx.compose.runtime.remember
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.luminance
@@ -19,17 +17,6 @@ import androidx.compose.ui.unit.dp
 import com.google.android.material.color.utilities.DynamicScheme
 import com.google.android.material.color.utilities.Hct
 import com.google.android.material.color.utilities.SchemeMonochrome
-import com.greatwall.callring.contracts.settings.AppearanceSettings
-import com.greatwall.callring.contracts.settings.ColorMode
-import com.greatwall.callring.contracts.settings.ThemeSelection
-import java.util.Collections
-
-val DefaultAppearance = AppearanceSettings(
-    selection = ThemeSelection.PRESET,
-    presetId = "unicom_red",
-    customSeedRgb = null,
-    colorMode = ColorMode.FOLLOW_SYSTEM,
-)
 
 @Immutable
 data class ThemeDefinition(
@@ -100,43 +87,8 @@ private fun readableAccent(seed: Hct, surfaces: List<Color>, dark: Boolean): Col
 internal fun colorContrast(a: Color, b: Color): Double =
     (maxOf(a.luminance(), b.luminance()) + 0.05) / (minOf(a.luminance(), b.luminance()) + 0.05)
 
-/** A registry is an immutable snapshot; extending it only requires additional definitions. */
 @Immutable
-class ThemeRegistry(definitions: List<ThemeDefinition>) {
-    val presets: List<ThemeDefinition> = Collections.unmodifiableList(ArrayList(definitions))
-    private val byId = presets.associateBy { it.id }
-
-    init {
-        require(byId.size == presets.size) { "主题标识不能重复" }
-        require("unicom_red" in byId) { "必须包含默认联通红主题" }
-    }
-
-    /** Display fallback never alters the appearance preferences supplied by the application API. */
-    fun resolve(settings: AppearanceSettings): ThemeDefinition = when (settings.selection) {
-        ThemeSelection.PRESET -> byId[settings.presetId] ?: byId.getValue("unicom_red")
-        ThemeSelection.CUSTOM -> settings.customSeedRgb?.takeIf { it in 0x000000..0xFFFFFF }?.let {
-            ThemeDefinition.fromSeed("custom", "自定义", it)
-        } ?: byId.getValue("unicom_red")
-    }
-
-    companion object {
-        val Default: ThemeRegistry by lazy {
-            ThemeRegistry(listOf(
-                ThemeDefinition.fromSeed("unicom_red", "联通红", 0xE60012),
-                ThemeDefinition.fromSeed("sky_blue", "天空蓝", 0x1976D2),
-                ThemeDefinition.fromSeed("teal_green", "青绿色", 0x008577),
-            ))
-        }
-        val presets: List<ThemeDefinition> get() = Default.presets
-        fun resolve(settings: AppearanceSettings): ThemeDefinition = Default.resolve(settings)
-    }
-}
-
-fun AppearanceSettings.usesDarkColors(systemDark: Boolean): Boolean = when (colorMode) {
-    ColorMode.FOLLOW_SYSTEM -> systemDark
-    ColorMode.LIGHT -> false
-    ColorMode.DARK -> true
-}
+data class ThemeSpec(val definition: ThemeDefinition, val dark: Boolean)
 
 val LocalCallringDarkMode = staticCompositionLocalOf { false }
 
@@ -157,16 +109,9 @@ private val CallringShapes = Shapes(
 )
 
 @Composable
-fun CallringTheme(
-    appearance: AppearanceSettings = DefaultAppearance,
-    systemDark: Boolean = isSystemInDarkTheme(),
-    registry: ThemeRegistry = ThemeRegistry.Default,
-    content: @Composable () -> Unit,
-) {
-    val definition = remember(registry, appearance.selection, appearance.presetId, appearance.customSeedRgb) {
-        registry.resolve(appearance)
-    }
-    val dark = appearance.usesDarkColors(systemDark)
+fun CallringTheme(spec: ThemeSpec, content: @Composable () -> Unit) {
+    val definition = spec.definition
+    val dark = spec.dark
     CompositionLocalProvider(LocalCallringDarkMode provides dark) {
         MaterialTheme(
             colorScheme = if (dark) definition.dark else definition.light,

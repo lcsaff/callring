@@ -1,5 +1,7 @@
 package com.greatwall.callring.ui.feature.callers
 
+import com.greatwall.callring.ui.app.bridge.rememberAppearanceThemeSpec
+import com.greatwall.callring.ui.app.bridge.DefaultAppearance
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.unit.dp
@@ -22,7 +24,7 @@ class CallerScreensTest {
     @Test fun failedSaveKeepsEditableInputAndDisplaysFieldError() {
         val draft = CallerDraft("100", "正在编辑", "研发", null, false)
         var saveCalls = 0
-        compose.setContent { CallringTheme {
+        compose.setContent { CallringTheme(DefaultAppearance.rememberAppearanceThemeSpec(androidx.compose.foundation.isSystemInDarkTheme())) {
             CallerEditorScreen(
                 state = LoadState(CallerEditorData(draft, emptyList(), null), loaded = true), draft = draft,
                 mutation = MutationState(error = ApiError(ErrorCode.VALIDATION, "输入有误", mapOf("name" to "名称过长"))),
@@ -36,7 +38,7 @@ class CallerScreensTest {
 
     @Test fun loadedEmptySearchIsExplicitAndAddActionWorks() {
         var addCalls = 0
-        compose.setContent { CallringTheme {
+        compose.setContent { CallringTheme(DefaultAppearance.rememberAppearanceThemeSpec(androidx.compose.foundation.isSystemInDarkTheme())) {
             CallerListScreen(page(), CallerSearch(), null,
                 onSearch = {}, onPage = {}, onRetry = {}, onAdd = { addCalls++ }, onCaller = {}, onReport = {})
         } }
@@ -47,7 +49,7 @@ class CallerScreensTest {
 
     @Test fun titleActionsAreAccessible48dpIconButtonsWithoutLegacyBodyEntries() {
         var positions = 0
-        compose.setContent { CallringTheme {
+        compose.setContent { CallringTheme(DefaultAppearance.rememberAppearanceThemeSpec(androidx.compose.foundation.isSystemInDarkTheme())) {
             CallerListScreen(page(), CallerSearch(), null,
                 onSearch = {}, onPage = {}, onRetry = {}, onAdd = {}, onCaller = {}, onReport = {},
                 onPositions = { positions++ })
@@ -61,7 +63,7 @@ class CallerScreensTest {
 
     @Test fun validUnsavedNumberOffersTheReportActionForItsNormalizedNumber() {
         var reported: String? = null
-        compose.setContent { CallringTheme {
+        compose.setContent { CallringTheme(DefaultAppearance.rememberAppearanceThemeSpec(androidx.compose.foundation.isSystemInDarkTheme())) {
             CallerListScreen(page(), CallerSearch("31234"), NumberCheck("31234", true, false),
                 onSearch = {}, onPage = {}, onRetry = {}, onAdd = {}, onCaller = {}, onReport = { reported = it })
         } }
@@ -71,7 +73,7 @@ class CallerScreensTest {
 
     @Test fun savedExactNumberSuppressesTheReportAction() {
         val saved = CallerProfile("31234", true, "档案", "", null, PositionRelation.UNKNOWN, false)
-        compose.setContent { CallringTheme {
+        compose.setContent { CallringTheme(DefaultAppearance.rememberAppearanceThemeSpec(androidx.compose.foundation.isSystemInDarkTheme())) {
             CallerListScreen(page(listOf(saved), 1), CallerSearch("31234"), NumberCheck("31234", true, false),
                 onSearch = {}, onPage = {}, onRetry = {}, onAdd = {}, onCaller = {}, onReport = {})
         } }
@@ -79,7 +81,7 @@ class CallerScreensTest {
     }
 
     @Test fun singleSearchPageHidesPagination() {
-        compose.setContent { CallringTheme {
+        compose.setContent { CallringTheme(DefaultAppearance.rememberAppearanceThemeSpec(androidx.compose.foundation.isSystemInDarkTheme())) {
             CallerListScreen(page(), CallerSearch(), null,
                 onSearch = {}, onPage = {}, onRetry = {}, onAdd = {}, onCaller = {}, onReport = {})
         } }
@@ -89,7 +91,7 @@ class CallerScreensTest {
 
     @Test fun whitelistSwitchHasAnAccessibleName() {
         val draft = CallerDraft("100", "测试", "", null, false)
-        compose.setContent { CallringTheme {
+        compose.setContent { CallringTheme(DefaultAppearance.rememberAppearanceThemeSpec(androidx.compose.foundation.isSystemInDarkTheme())) {
             CallerEditorScreen(LoadState(CallerEditorData(draft, emptyList(), null), loaded = true), draft,
                 MutationState(), false, {}, {}, {}, {})
         } }

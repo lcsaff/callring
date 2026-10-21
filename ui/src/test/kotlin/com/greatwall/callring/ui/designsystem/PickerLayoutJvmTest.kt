@@ -1,5 +1,7 @@
 package com.greatwall.callring.ui.designsystem
 
+import com.greatwall.callring.ui.app.bridge.rememberAppearanceThemeSpec
+import com.greatwall.callring.ui.app.bridge.DefaultAppearance
 import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.view.inspector.WindowInspector
@@ -26,7 +28,7 @@ class PickerLayoutJvmTest {
 
     @Test fun dateCalendarAndKeyboardKeepActionsVisible() {
         var selected = "2026-10-17"
-        compose.setContent { CallringTheme { DateSelectionField("结束日期（含当天）", selected, { selected = it }) } }
+        compose.setContent { CallringTheme(DefaultAppearance.rememberAppearanceThemeSpec(androidx.compose.foundation.isSystemInDarkTheme())) { DateSelectionField("结束日期（含当天）", selected, { selected = it }) } }
         compose.onNodeWithTag("date-结束日期（含当天）").performClick()
         compose.onNodeWithText("确定").assertIsDisplayed()
         capture("date-calendar")
@@ -40,7 +42,7 @@ class PickerLayoutJvmTest {
     @Test @Config(qualifiers = "w640dp-h360dp")
     fun timeClockAndKeyboardKeepActionsVisibleInShortWindow() {
         var selected = "23:45"
-        compose.setContent { CallringTheme { TimeSelectionField("开始时间", selected, { selected = it }) } }
+        compose.setContent { CallringTheme(DefaultAppearance.rememberAppearanceThemeSpec(androidx.compose.foundation.isSystemInDarkTheme())) { TimeSelectionField("开始时间", selected, { selected = it }) } }
         compose.onNodeWithTag("time-开始时间").performClick()
         compose.onNodeWithText("确定").assertIsDisplayed()
         capture("time-clock-short")
@@ -55,7 +57,7 @@ class PickerLayoutJvmTest {
         val start = LocalDate.of(2026, 10, 1)
         val end = LocalDate.of(2026, 10, 17)
         var selected: Pair<LocalDate, LocalDate>? = null
-        compose.setContent { CallringTheme {
+        compose.setContent { CallringTheme(DefaultAppearance.rememberAppearanceThemeSpec(androidx.compose.foundation.isSystemInDarkTheme())) {
             DateRangeSelectionDialog("统计日期范围", start, end, {}, { first, last -> selected = first to last })
         } }
         compose.onNodeWithText("2026-10-01").assertIsDisplayed()
@@ -69,7 +71,7 @@ class PickerLayoutJvmTest {
     @Test @Config(qualifiers = "w640dp-h360dp")
     fun dateInputRemainsReachableInShortWindow() {
         var selected = "2026-10-17"
-        compose.setContent { CallringTheme { DateSelectionField("日期", selected, { selected = it }) } }
+        compose.setContent { CallringTheme(DefaultAppearance.rememberAppearanceThemeSpec(androidx.compose.foundation.isSystemInDarkTheme())) { DateSelectionField("日期", selected, { selected = it }) } }
         compose.onNodeWithTag("date-日期").performClick()
         compose.onNodeWithText("确定").assertIsDisplayed()
         capture("date-calendar-short")

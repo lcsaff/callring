@@ -1,5 +1,7 @@
 package com.greatwall.callring.ui.overlay
 
+import com.greatwall.callring.ui.app.bridge.rememberAppearanceThemeSpec
+import com.greatwall.callring.ui.app.bridge.DefaultAppearance
 import androidx.compose.runtime.*
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -9,7 +11,6 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.greatwall.callring.ui.designsystem.CallringTheme
-import com.greatwall.callring.ui.designsystem.DefaultAppearance
 import com.greatwall.callring.ui.state.LoadState
 import com.greatwall.callring.ui.state.MutationState
 
@@ -20,7 +21,7 @@ import com.greatwall.callring.ui.state.MutationState
     val current = session ?: return
     val model = models?.takeIf { it.presentation.request.sessionId == current.request.sessionId }
     if (model == null) {
-        CallringTheme { Surface { Text("正在加载来电信息", Modifier.padding(16.dp)) } }
+        CallringTheme(DefaultAppearance.rememberAppearanceThemeSpec(androidx.compose.foundation.isSystemInDarkTheme())) { Surface { Text("正在加载来电信息", Modifier.padding(16.dp)) } }
         return
     }
     val overview by model.presentation.overview.collectAsState()
@@ -30,7 +31,7 @@ import com.greatwall.callring.ui.state.MutationState
     val editorState = if (editor != null) editor.state.collectAsState().value else LoadState()
     val draft = if (editor != null) editor.draft.collectAsState().value else null
     val editorMutation = if (editor != null) editor.mutation.collectAsState().value else MutationState()
-    CallringTheme(settings.data?.appearance ?: DefaultAppearance) {
+    CallringTheme((settings.data?.appearance ?: DefaultAppearance).rememberAppearanceThemeSpec(androidx.compose.foundation.isSystemInDarkTheme())) {
         OverlayScreen(OverlayContentState(current, overview, editorState, draft, mutation, editorMutation, savedRevision),
             onDrag, controller::dismiss, controller::collapse, controller::beginEditing, controller::cancelEditing,
             controller::save, controller::changeDraft, controller::whitelist, { onReport(current.request.number) },

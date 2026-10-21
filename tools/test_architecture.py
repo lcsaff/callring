@@ -39,6 +39,35 @@ class ArchitectureTests(unittest.TestCase):
             ('backend', 'application.recording', 'fun activitySnapshot() = json', 'RecordingWorkflow.kt')):
             self.check_bad(lambda root: self.query_source(root, module, package, body, name))
 
+    def test_designsystem_rejects_business_dependencies_and_old_entries(self):
+        bodies = ['import com.greatwall.callring.contracts.settings.AppearanceSettings',
+                  'import com.greatwall.callring.ui.state.MutationState',
+                  'import com.greatwall.callring.ui.feature.shared.CallerCard',
+                  'import com.greatwall.callring.ui.app.bridge.ThemeRegistry',
+                  'val DefaultAppearance = appearance', 'class ThemeRegistry',
+                  'fun AppearanceSettings.usesDarkColors(systemDark: Boolean) = true',
+                  'fun CallerCard() {}', 'fun rememberFormBack() {}',
+                  'fun CallringTheme(appearance: AppearanceSettings, content: () -> Unit) {}',
+                  'typealias CallerCard = Other']
+        for body in bodies:
+            with self.subTest(body=body):
+                self.check_bad(lambda root: self.query_source(root, 'ui', 'ui.designsystem.components', body))
+
+    def test_old_designsystem_entries_cannot_be_imported_or_qualified(self):
+        for symbol in ('DefaultAppearance', 'ThemeRegistry', 'usesDarkColors', 'components.CallerCard', 'components.rememberFormBack'):
+            with self.subTest(symbol=symbol):
+                self.check_bad(lambda root: self.query_source(root, 'ui', 'ui.feature.sample',
+                    'import com.greatwall.callring.ui.designsystem.' + symbol))
+
+    def test_visual_designsystem_and_feature_business_mapping_are_allowed(self):
+        root = self.tree()
+        self.query_source(root, 'ui', 'ui.designsystem',
+            'data class ThemeSpec(val definition: ThemeDefinition, val dark: Boolean)\n'
+            'fun CallringTheme(spec: ThemeSpec, content: () -> Unit) {}\n'
+            'fun MutationSuccessEffect(completed: Long, busy: Boolean) {}\n'
+            'val data: Map<String, Any?> = emptyMap()')
+        self.assertEqual([], check_architecture.check(root))
+
     def tree(self, mutation=None):
         temp = tempfile.TemporaryDirectory()
         self.addCleanup(temp.cleanup)

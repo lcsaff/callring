@@ -1,5 +1,7 @@
 package com.greatwall.callring.ui.feature.settings
 
+import com.greatwall.callring.ui.app.bridge.rememberAppearanceThemeSpec
+import com.greatwall.callring.ui.app.bridge.DefaultAppearance
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createComposeRule
@@ -21,7 +23,7 @@ abstract class SharedWorkScheduleScreenCases {
         listOf(TimeWindow(600, 1200)), 1, 0)
 
     @Test fun commonWorkdayEditorHasFourTimesAndNoWeekdayOrMakeupEditor() {
-        compose.setContent { CallringTheme {
+        compose.setContent { CallringTheme(DefaultAppearance.rememberAppearanceThemeSpec(androidx.compose.foundation.isSystemInDarkTheme())) {
             WorkScheduleScreen(LoadState(saved, loaded = true), saved, MutationState(), {}, {}, {}, {})
         } }
         listOf("work-start", "work-lunch-start", "work-lunch-end", "work-end").forEach {
@@ -33,7 +35,7 @@ abstract class SharedWorkScheduleScreenCases {
 
     @Test fun changingCommonTimeUpdatesEveryWorkdayAndMakeupTogether() {
         val draft = mutableStateOf(saved)
-        compose.setContent { CallringTheme {
+        compose.setContent { CallringTheme(DefaultAppearance.rememberAppearanceThemeSpec(androidx.compose.foundation.isSystemInDarkTheme())) {
             WorkScheduleScreen(LoadState(saved, loaded = true), draft.value, MutationState(), {}, {},
                 { draft.value = it }, {})
         } }
@@ -50,7 +52,7 @@ abstract class SharedWorkScheduleScreenCases {
         val draft = mutableStateOf(saved)
         val mutation = mutableStateOf(MutationState())
         val commits = mutableListOf<WorkScheduleSettings>()
-        compose.setContent { CallringTheme {
+        compose.setContent { CallringTheme(DefaultAppearance.rememberAppearanceThemeSpec(androidx.compose.foundation.isSystemInDarkTheme())) {
             WorkScheduleScreen(LoadState(saved, loaded = true), draft.value, mutation.value, {}, {},
                 { commits += it; draft.value = it }, {
                     draft.value = saved
@@ -73,7 +75,7 @@ abstract class SharedWorkScheduleScreenCases {
 
     @Test fun legacySingleWindowGetsEditableLunchDefaultsWithinItsHours() {
         val legacy = saved.copy(weekly = mapOf(3 to listOf(TimeWindow(540, 1080))))
-        compose.setContent { CallringTheme {
+        compose.setContent { CallringTheme(DefaultAppearance.rememberAppearanceThemeSpec(androidx.compose.foundation.isSystemInDarkTheme())) {
             WorkScheduleScreen(LoadState(legacy, loaded = true), legacy, MutationState(), {}, {}, {}, {})
         } }
         compose.onNodeWithTag("time-work-start").performScrollTo().assertTextContains("09:00")

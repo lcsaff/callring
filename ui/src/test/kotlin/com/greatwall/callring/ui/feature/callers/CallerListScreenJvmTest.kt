@@ -1,5 +1,7 @@
 package com.greatwall.callring.ui.feature.callers
 
+import com.greatwall.callring.ui.app.bridge.rememberAppearanceThemeSpec
+import com.greatwall.callring.ui.app.bridge.DefaultAppearance
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createComposeRule
 import com.greatwall.callring.contracts.common.*
@@ -31,7 +33,7 @@ class CallerListScreenJvmTest {
         state: LoadState<Page<CallerProfile>>, query: String, check: NumberCheck?,
         onAdd: () -> Unit = {}, onReport: (String) -> Unit = {}, onPositions: () -> Unit = {},
     ) {
-        compose.setContent { CallringTheme {
+        compose.setContent { CallringTheme(DefaultAppearance.rememberAppearanceThemeSpec(androidx.compose.foundation.isSystemInDarkTheme())) {
             CallerListScreen(state, CallerSearch(query), check, onSearch = {}, onPage = {}, onRetry = {},
                 onAdd = onAdd, onCaller = {}, onReport = onReport, onPositions = onPositions)
         } }

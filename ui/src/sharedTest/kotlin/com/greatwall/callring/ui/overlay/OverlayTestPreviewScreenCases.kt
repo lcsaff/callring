@@ -1,5 +1,7 @@
 package com.greatwall.callring.ui.overlay
 
+import com.greatwall.callring.ui.app.bridge.rememberAppearanceThemeSpec
+import com.greatwall.callring.ui.app.bridge.DefaultAppearance
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.unit.dp
@@ -21,7 +23,7 @@ abstract class OverlayTestPreviewScreenCases {
         val session = sessions.state.value!!
         var closed = false
         var collapsed = false
-        compose.setContent { CallringTheme {
+        compose.setContent { CallringTheme(DefaultAppearance.rememberAppearanceThemeSpec(androidx.compose.foundation.isSystemInDarkTheme())) {
             OverlayScreen(OverlayContentState(session, LoadState()), {}, { closed = true }, { collapsed = true },
                 {}, {}, {}, {}, {}, {}, {}, {}, 620.dp)
         } }

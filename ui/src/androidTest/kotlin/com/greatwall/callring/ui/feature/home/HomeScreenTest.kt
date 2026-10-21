@@ -1,5 +1,7 @@
 package com.greatwall.callring.ui.feature.home
 
+import com.greatwall.callring.ui.app.bridge.rememberAppearanceThemeSpec
+import com.greatwall.callring.ui.app.bridge.DefaultAppearance
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createComposeRule
 import com.greatwall.callring.contracts.common.*
@@ -21,7 +23,7 @@ class HomeScreenTest {
         val home = HomeData(RingtoneSettings(false, AudioSource.BUILT_IN, "内置铃声", 8), runtime,
             WorkStatus(0, fact, null), null, false, false, QuietMode.OFF, SnapshotMeta(0, 0))
         var leaves = 0
-        compose.setContent { CallringTheme {
+        compose.setContent { CallringTheme(DefaultAppearance.rememberAppearanceThemeSpec(androidx.compose.foundation.isSystemInDarkTheme())) {
             HomeScreen(LoadState(home, loaded = true), onRetry = {}, onLeaves = { leaves++ })
         } }
         compose.onNodeWithText("休息日").assertExists()

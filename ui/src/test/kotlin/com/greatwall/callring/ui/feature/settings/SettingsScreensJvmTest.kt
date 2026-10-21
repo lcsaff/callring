@@ -1,10 +1,11 @@
 package com.greatwall.callring.ui.feature.settings
 
+import com.greatwall.callring.ui.app.bridge.rememberAppearanceThemeSpec
+import com.greatwall.callring.ui.app.bridge.DefaultAppearance
 import androidx.compose.ui.test.*
 import com.greatwall.callring.contracts.common.*
 import com.greatwall.callring.contracts.settings.*
 import com.greatwall.callring.ui.designsystem.CallringTheme
-import com.greatwall.callring.ui.designsystem.DefaultAppearance
 import com.greatwall.callring.ui.state.LoadState
 import com.greatwall.callring.ui.state.MutationState
 import org.junit.Assert.*
@@ -25,7 +26,7 @@ class SettingsScreensJvmTest : SettingsScreenCases() {
         @Suppress("DEPRECATION")
         val expectedVersion = context.packageManager.getPackageInfo(context.packageName, 0).versionName
         var page: SettingsPage? = null
-        compose.setContent { CallringTheme {
+        compose.setContent { CallringTheme(DefaultAppearance.rememberAppearanceThemeSpec(androidx.compose.foundation.isSystemInDarkTheme())) {
             SettingsOverviewScreen(LoadState(summary, loaded = true), MutationState(), null, {}, {}, {}, { page = it })
         } }
         compose.onNodeWithText("检查更新").performScrollTo().assertExists()

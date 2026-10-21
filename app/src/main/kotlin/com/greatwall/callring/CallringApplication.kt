@@ -7,7 +7,7 @@ import android.content.res.Configuration
 import com.greatwall.callring.bootstrap.*
 import com.greatwall.callring.platform.runtime.UiNotificationEntryPoints
 import com.greatwall.callring.ui.app.bridge.UiNotifications
-import com.greatwall.callring.ui.designsystem.DefaultAppearance
+import com.greatwall.callring.ui.app.bridge.DefaultAppearance
 import com.greatwall.callring.ui.overlay.*
 import com.greatwall.callring.ui.widget.observeWidgetUpdates
 import com.greatwall.callring.ui.widget.UiWidgetRefresh

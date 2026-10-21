@@ -1,5 +1,7 @@
 package com.greatwall.callring.ui.designsystem
 
+import com.greatwall.callring.ui.app.bridge.rememberAppearanceThemeSpec
+import com.greatwall.callring.ui.app.bridge.DefaultAppearance
 import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.os.Build
@@ -33,7 +35,7 @@ abstract class BrandButtonCases {
     @Test fun primaryActionsRenderTheExactSelectedRgbInLightAndDarkModes() {
         val appearance = mutableStateOf(DefaultAppearance)
         compose.setContent {
-            CallringTheme(appearance.value) {
+            CallringTheme((appearance.value).rememberAppearanceThemeSpec(androidx.compose.foundation.isSystemInDarkTheme())) {
                 Box(Modifier.width(280.dp)) {
                     PrimaryAction("应用主题", {}, modifier = Modifier.testTag("brand-action"))
                 }

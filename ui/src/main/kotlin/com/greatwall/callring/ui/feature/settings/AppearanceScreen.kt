@@ -1,5 +1,8 @@
 package com.greatwall.callring.ui.feature.settings
 
+import com.greatwall.callring.ui.app.bridge.rememberAppearanceThemeSpec
+import com.greatwall.callring.ui.app.bridge.toThemeSpec
+import com.greatwall.callring.ui.app.bridge.DefaultAppearance
 import androidx.compose.foundation.background
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
@@ -20,8 +23,7 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import com.greatwall.callring.contracts.settings.*
 import com.greatwall.callring.ui.designsystem.CallringTheme
-import com.greatwall.callring.ui.designsystem.DefaultAppearance
-import com.greatwall.callring.ui.designsystem.ThemeRegistry
+import com.greatwall.callring.ui.app.bridge.ThemeRegistry
 import com.greatwall.callring.ui.designsystem.components.LoadingContent
 import com.greatwall.callring.ui.designsystem.components.ScreenFrame
 import com.greatwall.callring.ui.designsystem.components.formKeyboardActions
@@ -39,7 +41,7 @@ fun AppearanceScreen(
     onColorChange: (AppearanceSettings) -> Unit = onChange,
 ) {
     val value = draft ?: state.data
-    CallringTheme(appearance = value ?: DefaultAppearance, registry = registry) {
+    CallringTheme((value ?: DefaultAppearance).rememberAppearanceThemeSpec(androidx.compose.foundation.isSystemInDarkTheme(), registry)) {
         ScreenFrame("外观", onBack) {
             Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 if (!state.loaded && state.data == null && !state.loading && state.error == null) LoadingContent()
@@ -60,7 +62,7 @@ private fun AppearanceControls(
     value: AppearanceSettings, mutation: MutationState, onChange: (AppearanceSettings) -> Unit,
     onColorChange: (AppearanceSettings) -> Unit, registry: ThemeRegistry,
 ) {
-    val seed = remember(registry, value.selection, value.presetId, value.customSeedRgb) { registry.resolve(value).seedRgb }
+    val seed = remember(registry, value.selection, value.presetId, value.customSeedRgb) { value.toThemeSpec(false, registry).definition.seedRgb }
     var hex by rememberSaveable(seed) { mutableStateOf(rgbHex(seed)) }
     val rgb = parseRgb(hex)
     val customHexInvalid = rgb == null

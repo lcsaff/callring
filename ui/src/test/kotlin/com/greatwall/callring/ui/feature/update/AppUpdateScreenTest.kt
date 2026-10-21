@@ -1,5 +1,7 @@
 package com.greatwall.callring.ui.feature.update
 
+import com.greatwall.callring.ui.app.bridge.rememberAppearanceThemeSpec
+import com.greatwall.callring.ui.app.bridge.DefaultAppearance
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createComposeRule
@@ -42,7 +44,7 @@ class AppUpdateScreenTest {
             UpdatePhase.INSTALL_PENDING_VERIFY to "重新检查",
         )
         val page = mutableStateOf(status(UpdatePhase.IDLE))
-        compose.setContent { CallringTheme {
+        compose.setContent { CallringTheme(DefaultAppearance.rememberAppearanceThemeSpec(androidx.compose.foundation.isSystemInDarkTheme())) {
             AppUpdateScreen(LoadState(page.value, loaded = true), MutationState(), {}, {}, {}, {}, {}, {})
         } }
         UpdatePhase.entries.forEach { phase ->
@@ -60,7 +62,7 @@ class AppUpdateScreenTest {
 
     @Test fun installIsNeverOfferedBeforeVerificationSucceeds() {
         val page = mutableStateOf(status(UpdatePhase.IDLE))
-        compose.setContent { CallringTheme {
+        compose.setContent { CallringTheme(DefaultAppearance.rememberAppearanceThemeSpec(androidx.compose.foundation.isSystemInDarkTheme())) {
             AppUpdateScreen(LoadState(page.value, loaded = true), MutationState(), {}, {}, {}, {}, {}, {})
         } }
         listOf(UpdatePhase.CHECKING, UpdatePhase.DOWNLOADING, UpdatePhase.VERIFYING, UpdatePhase.VERIFY_FAILED,
@@ -77,7 +79,7 @@ class AppUpdateScreenTest {
     }
 
     @Test fun availableReleaseShowsVersionNotesAndSize() {
-        compose.setContent { CallringTheme {
+        compose.setContent { CallringTheme(DefaultAppearance.rememberAppearanceThemeSpec(androidx.compose.foundation.isSystemInDarkTheme())) {
             AppUpdateScreen(LoadState(status(UpdatePhase.UPDATE_AVAILABLE), loaded = true), MutationState(), {}, {}, {}, {}, {}, {})
         } }
         compose.onNodeWithText("当前版本：0.3.0（3）").assertExists()
@@ -88,7 +90,7 @@ class AppUpdateScreenTest {
     }
 
     @Test fun downloadingShowsByteProgressAndCancel() {
-        compose.setContent { CallringTheme {
+        compose.setContent { CallringTheme(DefaultAppearance.rememberAppearanceThemeSpec(androidx.compose.foundation.isSystemInDarkTheme())) {
             AppUpdateScreen(LoadState(status(UpdatePhase.DOWNLOADING), loaded = true), MutationState(), {}, {}, {}, {}, {}, {})
         } }
         compose.onNodeWithText("已下载 2.9 MB / 11.4 MB").assertExists()
@@ -97,7 +99,7 @@ class AppUpdateScreenTest {
 
     @Test fun checkAndVerificationFailuresKeepRetryActionsAndReasons() {
         val page = mutableStateOf(status(UpdatePhase.CHECK_FAILED, failure = "update.check_failed"))
-        compose.setContent { CallringTheme {
+        compose.setContent { CallringTheme(DefaultAppearance.rememberAppearanceThemeSpec(androidx.compose.foundation.isSystemInDarkTheme())) {
             AppUpdateScreen(LoadState(page.value, loaded = true), MutationState(), {}, {}, {}, {}, {}, {})
         } }
         compose.onNodeWithText("检查更新失败，请检查网络后重试。").assertExists()
@@ -109,7 +111,7 @@ class AppUpdateScreenTest {
     }
 
     @Test fun noInstallableOffersTheReleasePageEntry() {
-        compose.setContent { CallringTheme {
+        compose.setContent { CallringTheme(DefaultAppearance.rememberAppearanceThemeSpec(androidx.compose.foundation.isSystemInDarkTheme())) {
             AppUpdateScreen(LoadState(status(UpdatePhase.NO_INSTALLABLE), loaded = true), MutationState(), {}, {}, {}, {}, {}, {})
         } }
         compose.onNodeWithText("该版本尚未提供可安装更新。").assertExists()
@@ -119,7 +121,7 @@ class AppUpdateScreenTest {
 
     @Test fun upToDateCanCheckAgain() {
         var checks = 0
-        compose.setContent { CallringTheme {
+        compose.setContent { CallringTheme(DefaultAppearance.rememberAppearanceThemeSpec(androidx.compose.foundation.isSystemInDarkTheme())) {
             AppUpdateScreen(LoadState(status(UpdatePhase.UP_TO_DATE), loaded = true), MutationState(),
                 {}, {}, { checks++ }, {}, {}, {})
         } }
@@ -129,7 +131,7 @@ class AppUpdateScreenTest {
     }
 
     @Test fun statusReadFailureShowsRetryWithoutAPhase() {
-        compose.setContent { CallringTheme {
+        compose.setContent { CallringTheme(DefaultAppearance.rememberAppearanceThemeSpec(androidx.compose.foundation.isSystemInDarkTheme())) {
             AppUpdateScreen(LoadState(error = ApiError(ErrorCode.SYSTEM_UNAVAILABLE, "update.unavailable")), MutationState(),
                 {}, {}, {}, {}, {}, {})
         } }

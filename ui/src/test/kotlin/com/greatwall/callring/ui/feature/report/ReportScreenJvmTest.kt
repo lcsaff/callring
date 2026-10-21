@@ -1,5 +1,7 @@
 package com.greatwall.callring.ui.feature.report
 
+import com.greatwall.callring.ui.app.bridge.rememberAppearanceThemeSpec
+import com.greatwall.callring.ui.app.bridge.DefaultAppearance
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createComposeRule
 import com.greatwall.callring.contracts.common.*
@@ -32,7 +34,7 @@ class ReportScreenJvmTest {
         DataQuality(true, AccessState.GRANTED, false, false, false, false), SnapshotMeta(1, 0))
 
     private fun show(detailTotal: Long) {
-        compose.setContent { CallringTheme {
+        compose.setContent { CallringTheme(DefaultAppearance.rememberAppearanceThemeSpec(androidx.compose.foundation.isSystemInDarkTheme())) {
             ReportScreen(LoadState(report(detailTotal), loaded = true), query, MutationState(),
                 onBack = {}, onRetry = {}, onRange = {}, onFilter = {}, onPage = {}, onExport = {},
                 onEdit = {}, onCapability = {})

@@ -3,7 +3,7 @@ package com.greatwall.callring.ui.widget
 import com.greatwall.callring.contracts.common.*
 import com.greatwall.callring.contracts.settings.*
 import com.greatwall.callring.contracts.*
-import com.greatwall.callring.ui.designsystem.DefaultAppearance
+import com.greatwall.callring.ui.app.bridge.DefaultAppearance
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock

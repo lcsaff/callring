@@ -1,6 +1,5 @@
 package com.greatwall.callring.ui.testing
 
-import com.greatwall.callring.ui.testing.TestChangeFeed
 import android.app.Application
 import com.greatwall.callring.contracts.common.*
 import com.greatwall.callring.contracts.change.*
@@ -8,7 +7,7 @@ import com.greatwall.callring.contracts.callers.*
 import com.greatwall.callring.contracts.settings.*
 import com.greatwall.callring.contracts.runtime.*
 import com.greatwall.callring.contracts.widget.*
-import com.greatwall.callring.ui.designsystem.DefaultAppearance
+import com.greatwall.callring.ui.app.bridge.DefaultAppearance
 import com.greatwall.callring.ui.overlay.*
 import kotlinx.coroutines.flow.*
 import java.time.ZoneId

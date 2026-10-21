@@ -1,5 +1,7 @@
 package com.greatwall.callring.ui.widget
 
+import com.greatwall.callring.ui.app.bridge.rememberAppearanceThemeSpec
+import com.greatwall.callring.ui.app.bridge.DefaultAppearance
 import com.greatwall.callring.ui.designsystem.components.BrandButton
 
 import android.app.Activity
@@ -11,7 +13,6 @@ import android.net.Uri
 import android.os.Bundle
 import android.widget.Toast
 import androidx.activity.ComponentActivity
-import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.clickable
@@ -31,11 +32,10 @@ import com.greatwall.callring.contracts.callers.*
 import com.greatwall.callring.ui.state.LoadState
 import com.greatwall.callring.ui.state.MutationState
 import com.greatwall.callring.ui.designsystem.CallringTheme
-import com.greatwall.callring.ui.designsystem.DefaultAppearance
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.withTimeout
-import com.greatwall.callring.ui.designsystem.components.rememberFormBack
+import com.greatwall.callring.ui.feature.shared.rememberFormBack
 import com.greatwall.callring.ui.designsystem.components.formKeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.text.input.ImeAction
@@ -62,7 +62,7 @@ class WidgetConfigurationActivity : ComponentActivity() {
                 catch (_: Exception) { Toast.makeText(this@WidgetConfigurationActivity, "号码已保存，请在桌面重新刷新小组件", Toast.LENGTH_LONG).show() }
                 finish()
             }
-            CallringTheme(appearance.data ?: DefaultAppearance) {
+            CallringTheme((appearance.data ?: DefaultAppearance).rememberAppearanceThemeSpec(androidx.compose.foundation.isSystemInDarkTheme())) {
                 ThemeWindowSupport()
                 WidgetConfigurationRoute(model, onCancel = ::finish, onSave = {
                     if (ownsWidget(widgetId)) model.save()

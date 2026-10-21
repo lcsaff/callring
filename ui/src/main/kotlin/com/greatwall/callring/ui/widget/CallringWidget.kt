@@ -22,12 +22,9 @@ import com.greatwall.callring.contracts.common.*
 import com.greatwall.callring.contracts.change.*
 import com.greatwall.callring.contracts.settings.*
 import com.greatwall.callring.ui.app.bridge.UiApiOwner
-import com.greatwall.callring.ui.designsystem.ThemeRegistry
-import com.greatwall.callring.ui.designsystem.usesDarkColors
+import com.greatwall.callring.ui.app.bridge.toThemeSpec
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.TimeoutCancellationException
-import kotlinx.coroutines.currentCoroutineContext
-import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.withTimeout
 
@@ -63,8 +60,8 @@ class CallringWidget : GlanceAppWidget() {
 @Composable
 private fun WidgetContent(context: Context, snapshot: WidgetSnapshot, actionError: ApiError?) {
     val systemDark = context.resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK == Configuration.UI_MODE_NIGHT_YES
-    val theme = ThemeRegistry.resolve(snapshot.appearance)
-    val colors = if (snapshot.appearance.usesDarkColors(systemDark)) theme.dark else theme.light
+    val spec = snapshot.appearance.toThemeSpec(systemDark)
+    val colors = if (spec.dark) spec.definition.dark else spec.definition.light
     val foreground = ColorProvider(colors.onSurface)
     val muted = ColorProvider(colors.onSurfaceVariant)
     val large = LocalSize.current.width >= 280.dp && LocalSize.current.height >= 210.dp

@@ -1,5 +1,7 @@
 package com.greatwall.callring.ui.feature.settings
 
+import com.greatwall.callring.ui.app.bridge.rememberAppearanceThemeSpec
+import com.greatwall.callring.ui.app.bridge.DefaultAppearance
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.ui.test.*
@@ -14,7 +16,6 @@ import com.greatwall.callring.contracts.settings.*
 import com.greatwall.callring.contracts.report.*
 import com.greatwall.callring.contracts.runtime.*
 import com.greatwall.callring.ui.designsystem.CallringTheme
-import com.greatwall.callring.ui.designsystem.DefaultAppearance
 import com.greatwall.callring.ui.feature.settings.components.FieldError
 import com.greatwall.callring.ui.state.LoadState
 import com.greatwall.callring.ui.state.MutationState
@@ -36,7 +37,7 @@ abstract class SettingsScreenCases {
             PhoneActivity.IDLE, PlaybackStatus(PlaybackMode.NONE, PlaybackState.IDLE), true, 0)
         val home = HomeData(RingtoneSettings(false, AudioSource.BUILT_IN, "内置铃声", 8), runtime,
             WorkStatus(0, fact, null), null, false, false, QuietMode.OFF, SnapshotMeta(0, 0))
-        compose.setContent { CallringTheme {
+        compose.setContent { CallringTheme(DefaultAppearance.rememberAppearanceThemeSpec(androidx.compose.foundation.isSystemInDarkTheme())) {
             com.greatwall.callring.ui.feature.home.HomeScreen(LoadState(home, loaded = true), {}, {})
         } }
         listOf("设置", "来电统计", "来电悬浮窗", "规则铃声", "最近来电", "显示最近来电卡片", "添加桌面小组件", "权限与运行条件").forEach {
@@ -46,7 +47,7 @@ abstract class SettingsScreenCases {
     }
 
     @Test fun calendarHasNoManualDateEditingOrFileImport() {
-        compose.setContent { CallringTheme {
+        compose.setContent { CallringTheme(DefaultAppearance.rememberAppearanceThemeSpec(androidx.compose.foundation.isSystemInDarkTheme())) {
             CalendarScreen(LoadState(CalendarInfo(emptyList(), emptyList()), loaded = true), MutationState(), {}, {}, {})
         } }
         compose.onNodeWithText("添加日期覆盖").assertDoesNotExist()
@@ -61,7 +62,7 @@ abstract class SettingsScreenCases {
         val home = HomeData(RingtoneSettings(false, AudioSource.BUILT_IN, "内置铃声", 8), runtime,
             WorkStatus(0, fact, null), null, false, false, QuietMode.OFF, SnapshotMeta(0, 0))
         val state = mutableStateOf(LoadState(home, loaded = true))
-        compose.setContent { CallringTheme {
+        compose.setContent { CallringTheme(DefaultAppearance.rememberAppearanceThemeSpec(androidx.compose.foundation.isSystemInDarkTheme())) {
             com.greatwall.callring.ui.feature.home.HomeScreen(state.value, {}, {})
         } }
         val position = compose.onNodeWithTag("home-status").fetchSemanticsNode().positionInRoot
@@ -74,7 +75,7 @@ abstract class SettingsScreenCases {
 
     @Test fun appearanceSavingDoesNotMoveControls() {
         val mutation = mutableStateOf(MutationState())
-        compose.setContent { CallringTheme {
+        compose.setContent { CallringTheme(DefaultAppearance.rememberAppearanceThemeSpec(androidx.compose.foundation.isSystemInDarkTheme())) {
             AppearanceScreen(LoadState(DefaultAppearance, loaded = true), DefaultAppearance,
                 mutation.value, {}, {}, {}, {})
         } }
@@ -84,7 +85,7 @@ abstract class SettingsScreenCases {
     }
 
     @Test fun leaveTimezoneIsHiddenInPageAndDialog() {
-        compose.setContent { CallringTheme {
+        compose.setContent { CallringTheme(DefaultAppearance.rememberAppearanceThemeSpec(androidx.compose.foundation.isSystemInDarkTheme())) {
             LeavesScreen(LoadState<List<LeaveEntry>>(emptyList(), loaded = true), MutationState(), "Asia/Shanghai", {}, {}, {}, {})
         } }
         compose.onNodeWithText("请假时区：Asia/Shanghai").assertDoesNotExist()
@@ -95,7 +96,7 @@ abstract class SettingsScreenCases {
     @Test fun timeWindowPickerCancellationKeepsDraftAndOvernightIsExplicit() {
         val windows = mutableStateOf(listOf(TimeWindow(1320, 420)))
         compose.setContent {
-            CallringTheme {
+            CallringTheme(DefaultAppearance.rememberAppearanceThemeSpec(androidx.compose.foundation.isSystemInDarkTheme())) {
                 Column {
                     com.greatwall.callring.ui.feature.settings.components.WindowsField(
                         "测试时段", windows.value, true, { windows.value = it }, {}, MutationState())
@@ -116,7 +117,7 @@ abstract class SettingsScreenCases {
         val windows = mutableStateOf(initial)
         val valid = mutableStateOf(true)
         compose.setContent {
-            CallringTheme {
+            CallringTheme(DefaultAppearance.rememberAppearanceThemeSpec(androidx.compose.foundation.isSystemInDarkTheme())) {
                 Column {
                     com.greatwall.callring.ui.feature.settings.components.WindowsField(
                         "测试时段", windows.value, true, { windows.value = it }, { valid.value = it }, MutationState())
@@ -144,7 +145,7 @@ abstract class SettingsScreenCases {
             Instant.parse("2026-03-09T08:00:00Z").toEpochMilli(), "", LeaveState.UPCOMING)
         var command: SaveLeave? = null
         compose.setContent {
-            CallringTheme {
+            CallringTheme(DefaultAppearance.rememberAppearanceThemeSpec(androidx.compose.foundation.isSystemInDarkTheme())) {
                 LeavesScreen(LoadState(listOf(entry), loaded = true), MutationState(), "America/New_York", {}, {}, { command = it }, {})
             }
         }
@@ -166,7 +167,7 @@ abstract class SettingsScreenCases {
         val value = mutableStateOf("09:00")
         val restoration = StateRestorationTester(compose)
         restoration.setContent {
-            CallringTheme {
+            CallringTheme(DefaultAppearance.rememberAppearanceThemeSpec(androidx.compose.foundation.isSystemInDarkTheme())) {
                 com.greatwall.callring.ui.designsystem.components.TimeSelectionField("测试时间", value.value, { value.value = it })
             }
         }
@@ -185,7 +186,7 @@ abstract class SettingsScreenCases {
         val range = DateRange(LocalDate.of(2026, 10, 1), LocalDate.of(2026, 10, 15), "Pacific/Honolulu")
         val commands = mutableListOf<DateRange>()
         compose.setContent {
-            CallringTheme {
+            CallringTheme(DefaultAppearance.rememberAppearanceThemeSpec(androidx.compose.foundation.isSystemInDarkTheme())) {
                 com.greatwall.callring.ui.feature.report.ReportScreen(
                     LoadState<CallerReport>(), ReportQuery("100", range), MutationState(), {}, {}, { commands += it }, {}, {}, {}, {}, {})
             }
@@ -200,7 +201,7 @@ abstract class SettingsScreenCases {
 
     @Test fun changedLeaveNoteRequiresDiscardConfirmation() {
         compose.setContent {
-            CallringTheme {
+            CallringTheme(DefaultAppearance.rememberAppearanceThemeSpec(androidx.compose.foundation.isSystemInDarkTheme())) {
                 LeavesScreen(LoadState<List<LeaveEntry>>(emptyList(), loaded = true), MutationState(), "Asia/Shanghai", {}, {}, {}, {})
             }
         }
@@ -218,7 +219,7 @@ abstract class SettingsScreenCases {
         val mutation = mutableStateOf(MutationState())
         val commits = mutableListOf<ScoreSettings>()
         compose.setContent {
-            CallringTheme {
+            CallringTheme(DefaultAppearance.rememberAppearanceThemeSpec(androidx.compose.foundation.isSystemInDarkTheme())) {
                 ScoreSettingsScreen(LoadState(saved, loaded = true), draft.value, mutation.value, {}, {},
                     { commits += it }, {
                         draft.value = saved
@@ -238,7 +239,7 @@ abstract class SettingsScreenCases {
         val saved = ScoreSettings(5, 2, 10, 30)
         val mutation = mutableStateOf(MutationState())
         compose.setContent {
-            CallringTheme {
+            CallringTheme(DefaultAppearance.rememberAppearanceThemeSpec(androidx.compose.foundation.isSystemInDarkTheme())) {
                 ScoreSettingsScreen(LoadState(saved, loaded = true), saved, mutation.value, {}, {}, {}, {
                     mutation.value = MutationState(error = ApiError(ErrorCode.STORAGE_FAILURE, "reset failed"))
                 })
@@ -257,7 +258,7 @@ abstract class SettingsScreenCases {
         val draft = mutableStateOf(saved)
         val mutation = mutableStateOf(MutationState())
         compose.setContent {
-            CallringTheme {
+            CallringTheme(DefaultAppearance.rememberAppearanceThemeSpec(androidx.compose.foundation.isSystemInDarkTheme())) {
                 WorkScheduleScreen(LoadState(saved, loaded = true), draft.value, mutation.value, {}, {},
                     { draft.value = it }, {
                         draft.value = saved
@@ -285,7 +286,7 @@ abstract class SettingsScreenCases {
         val status = RuntimeStatus(Capability.entries.associateWith { AccessState.DENIED }, Audibility.UNKNOWN,
             PhoneActivity.UNKNOWN, PlaybackStatus(PlaybackMode.NONE, PlaybackState.IDLE), false, 0)
         compose.setContent {
-            CallringTheme {
+            CallringTheme(DefaultAppearance.rememberAppearanceThemeSpec(androidx.compose.foundation.isSystemInDarkTheme())) {
                 RuntimeScreen(LoadState(RuntimeUiData(status, emptyList(), null), loaded = true),
                     MutationState(), {}, {}, {}, {}, { settingsOpened++ })
             }
@@ -298,7 +299,7 @@ abstract class SettingsScreenCases {
         val initial = DefaultAppearance.copy(selection = ThemeSelection.CUSTOM, customSeedRgb = 0x123456)
         val draft = mutableStateOf(initial)
         compose.setContent {
-            CallringTheme {
+            CallringTheme(DefaultAppearance.rememberAppearanceThemeSpec(androidx.compose.foundation.isSystemInDarkTheme())) {
                 AppearanceScreen(LoadState(initial, loaded = true), draft.value, MutationState(), {}, {},
                     { draft.value = it }, {})
             }
@@ -313,7 +314,7 @@ abstract class SettingsScreenCases {
         val initial = DefaultAppearance.copy(selection = ThemeSelection.CUSTOM, customSeedRgb = 0x123456, colorMode = ColorMode.DARK)
         val draft = mutableStateOf(initial)
         compose.setContent {
-            CallringTheme {
+            CallringTheme(DefaultAppearance.rememberAppearanceThemeSpec(androidx.compose.foundation.isSystemInDarkTheme())) {
                 AppearanceScreen(LoadState(initial, loaded = true), draft.value, MutationState(), {}, {},
                     { draft.value = it }, {})
             }
@@ -337,7 +338,7 @@ abstract class SettingsScreenCases {
     @Test fun legacyPresetDisplaysItsEffectiveColorAndPresetShortcutClearsInvalidHex() {
         val initial = DefaultAppearance.copy(presetId = "sky_blue", customSeedRgb = 0x123456)
         val draft = mutableStateOf(initial)
-        compose.setContent { CallringTheme {
+        compose.setContent { CallringTheme(DefaultAppearance.rememberAppearanceThemeSpec(androidx.compose.foundation.isSystemInDarkTheme())) {
             AppearanceScreen(LoadState(initial, loaded = true), draft.value, MutationState(), {}, {}, { draft.value = it }, {})
         } }
         compose.onNodeWithTag("appearance-hex").performScrollTo().assertTextContains("#1976D2")
@@ -356,7 +357,7 @@ abstract class SettingsScreenCases {
         val draft = saved.copy(repeatMinutes = 12)
         val mutation = MutationState(error = ApiError(ErrorCode.VALIDATION, "保存失败", mapOf("repeatMinutes" to "重复窗口不合法")))
         compose.setContent {
-            CallringTheme {
+            CallringTheme(DefaultAppearance.rememberAppearanceThemeSpec(androidx.compose.foundation.isSystemInDarkTheme())) {
                 ScoreSettingsScreen(LoadState(saved, loaded = true), draft, mutation, {}, {}, {}, {})
             }
         }
@@ -373,7 +374,7 @@ abstract class SettingsScreenCases {
             "weekly.10.0.endMinute" to "不应匹配星期一",
         )))
         compose.setContent {
-            CallringTheme {
+            CallringTheme(DefaultAppearance.rememberAppearanceThemeSpec(androidx.compose.foundation.isSystemInDarkTheme())) {
                 Column {
                     FieldError(mutation, "weekly.1")
                     FieldError(mutation, "weeklyWindows.2")
@@ -392,7 +393,7 @@ abstract class SettingsScreenCases {
     @Test fun customQuietWithNoWindowShowsInlineErrorAndNeverCommits() {
         val value = QuietSettings(QuietMode.CUSTOM, false, (1..7).associateWith { emptyList<TimeWindow>() })
         var changes = 0
-        compose.setContent { CallringTheme { QuietScreen(LoadState(value, loaded = true), value, MutationState(), {}, {}, { changes++ }) } }
+        compose.setContent { CallringTheme(DefaultAppearance.rememberAppearanceThemeSpec(androidx.compose.foundation.isSystemInDarkTheme())) { QuietScreen(LoadState(value, loaded = true), value, MutationState(), {}, {}, { changes++ }) } }
         compose.onNodeWithTag("settings-save").assertDoesNotExist()
         compose.onNodeWithText("自定义免打扰至少需要一个时段").performScrollTo().assertIsDisplayed()
         compose.runOnIdle { assertEquals(0, changes) }
@@ -402,7 +403,7 @@ abstract class SettingsScreenCases {
         val initial = DefaultAppearance.copy(selection = ThemeSelection.CUSTOM, customSeedRgb = -1)
         val draft = mutableStateOf(initial)
         compose.setContent {
-            CallringTheme {
+            CallringTheme(DefaultAppearance.rememberAppearanceThemeSpec(androidx.compose.foundation.isSystemInDarkTheme())) {
                 AppearanceScreen(LoadState(initial, loaded = true), draft.value, MutationState(), {}, {}, { draft.value = it }, {})
             }
         }
@@ -422,7 +423,7 @@ abstract class SettingsScreenCases {
         val entry = LeaveEntry(17L, start, end, "原备注", LeaveState.UPCOMING)
         var command: SaveLeave? = null
         compose.setContent {
-            CallringTheme {
+            CallringTheme(DefaultAppearance.rememberAppearanceThemeSpec(androidx.compose.foundation.isSystemInDarkTheme())) {
                 LeavesScreen(LoadState(listOf(entry), loaded = true), MutationState(), "America/New_York", {}, {}, { command = it }, {})
             }
         }
@@ -438,7 +439,7 @@ abstract class SettingsScreenCases {
         val initial = DefaultAppearance.copy(selection = ThemeSelection.CUSTOM, customSeedRgb = 0x123456, colorMode = ColorMode.DARK)
         val draft = mutableStateOf(initial)
         compose.setContent {
-            CallringTheme {
+            CallringTheme(DefaultAppearance.rememberAppearanceThemeSpec(androidx.compose.foundation.isSystemInDarkTheme())) {
                 AppearanceScreen(LoadState(initial, loaded = true), draft.value, MutationState(), {}, {},
                     { draft.value = it }, {})
             }
@@ -454,7 +455,7 @@ abstract class SettingsScreenCases {
 
     @Test fun appearancePresetsScrollHorizontallyAndModePrecedesIntegratedCustomPreview() {
         compose.setContent {
-            CallringTheme {
+            CallringTheme(DefaultAppearance.rememberAppearanceThemeSpec(androidx.compose.foundation.isSystemInDarkTheme())) {
                 AppearanceScreen(LoadState(DefaultAppearance, loaded = true), DefaultAppearance,
                     MutationState(busy = true), {}, {}, {}, {})
             }
@@ -476,7 +477,7 @@ abstract class SettingsScreenCases {
         val draft = mutableStateOf(initial)
         var backedOut = 0
         compose.setContent {
-            CallringTheme {
+            CallringTheme(DefaultAppearance.rememberAppearanceThemeSpec(androidx.compose.foundation.isSystemInDarkTheme())) {
                 AppearanceScreen(LoadState(initial, loaded = true), draft.value, MutationState(),
                     { backedOut++ }, {}, { draft.value = it }, {})
             }
@@ -492,7 +493,7 @@ abstract class SettingsScreenCases {
     @Test fun appearanceFailureOffersRetryAndKeepsChoicesEnabled() {
         var retries = 0
         compose.setContent {
-            CallringTheme {
+            CallringTheme(DefaultAppearance.rememberAppearanceThemeSpec(androidx.compose.foundation.isSystemInDarkTheme())) {
                 AppearanceScreen(LoadState(DefaultAppearance, loaded = true), DefaultAppearance,
                     MutationState(error = ApiError(ErrorCode.STORAGE_FAILURE, "颜色保存失败")),
                     {}, {}, {}, { retries++ })
@@ -508,7 +509,7 @@ abstract class SettingsScreenCases {
     @Test fun rgbSlidersHaveAccessibleNamesAndAdjustableSemantics() {
         val initial = DefaultAppearance.copy(selection = ThemeSelection.CUSTOM, customSeedRgb = 0x123456)
         compose.setContent {
-            CallringTheme { AppearanceScreen(LoadState(initial, loaded = true), initial, MutationState(), {}, {}, {}, {}) }
+            CallringTheme(DefaultAppearance.rememberAppearanceThemeSpec(androidx.compose.foundation.isSystemInDarkTheme())) { AppearanceScreen(LoadState(initial, loaded = true), initial, MutationState(), {}, {}, {}, {}) }
         }
         listOf("红色 R", "绿色 G", "蓝色 B").forEach { label ->
             compose.onNode(hasContentDescription(label) and SemanticsMatcher.keyIsDefined(SemanticsActions.SetProgress))
@@ -520,7 +521,7 @@ abstract class SettingsScreenCases {
         val initial = QuietSettings(QuietMode.OFF, false, emptyMap())
         var changed: QuietSettings? = null
         compose.setContent {
-            CallringTheme { QuietScreen(LoadState(initial, loaded = true), initial, MutationState(), {}, {}, { changed = it }) }
+            CallringTheme(DefaultAppearance.rememberAppearanceThemeSpec(androidx.compose.foundation.isSystemInDarkTheme())) { QuietScreen(LoadState(initial, loaded = true), initial, MutationState(), {}, {}, { changed = it }) }
         }
         compose.onNode(hasContentDescription("应用于所有号码") and SemanticsMatcher.keyIsDefined(SemanticsProperties.ToggleableState))
             .performScrollTo().performClick()
@@ -532,7 +533,7 @@ abstract class SettingsScreenCases {
         val commands = mutableListOf<SavePosition>()
         val restoration = StateRestorationTester(compose)
         restoration.setContent {
-            CallringTheme {
+            CallringTheme(DefaultAppearance.rememberAppearanceThemeSpec(androidx.compose.foundation.isSystemInDarkTheme())) {
                 PositionsScreen(LoadState(PositionSettings(emptyList(), null), loaded = true), mutation.value, {}, {},
                     { commands += it; mutation.value = MutationState(completed = mutation.value.completed + 1) }, {}, {})
             }
@@ -554,7 +555,7 @@ abstract class SettingsScreenCases {
         val commands = mutableListOf<SaveLeave>()
         val restoration = StateRestorationTester(compose)
         restoration.setContent {
-            CallringTheme {
+            CallringTheme(DefaultAppearance.rememberAppearanceThemeSpec(androidx.compose.foundation.isSystemInDarkTheme())) {
                 LeavesScreen(LoadState<List<LeaveEntry>>(emptyList(), loaded = true), mutation.value, "Asia/Shanghai", {}, {},
                     { commands += it; mutation.value = MutationState(completed = mutation.value.completed + 1) }, {})
             }
@@ -589,7 +590,7 @@ abstract class SettingsScreenCases {
                     }
                 }
             }
-            CallringTheme {
+            CallringTheme(DefaultAppearance.rememberAppearanceThemeSpec(androidx.compose.foundation.isSystemInDarkTheme())) {
                 PositionsScreen(LoadState(PositionSettings(emptyList(), null), loaded = true), mutation.value, {}, {},
                     { commands += it; mutation.value = MutationState(busy = true) }, {}, {})
             }
@@ -613,7 +614,7 @@ abstract class SettingsScreenCases {
             listOf(TimeWindow(540, 720)), 1, 0)
         val page = mutableStateOf(0)
         compose.setContent {
-            CallringTheme {
+            CallringTheme(DefaultAppearance.rememberAppearanceThemeSpec(androidx.compose.foundation.isSystemInDarkTheme())) {
                 when (page.value) {
                     0 -> QuietScreen(LoadState(quiet, loaded = true), quiet, MutationState(), {}, {}, {})
                     1 -> ScoreSettingsScreen(LoadState(score, loaded = true), score, MutationState(), {}, {}, {}, {})
@@ -636,7 +637,7 @@ abstract class SettingsScreenCases {
             PhoneActivity.UNKNOWN, PlaybackStatus(PlaybackMode.NONE, PlaybackState.IDLE), false, 0)
         val page = mutableStateOf(0)
         compose.setContent {
-            CallringTheme {
+            CallringTheme(DefaultAppearance.rememberAppearanceThemeSpec(androidx.compose.foundation.isSystemInDarkTheme())) {
                 when (page.value) {
                     0 -> MyPositionScreen(LoadState(PositionSettings(emptyList(), null), loaded = true),
                         MutationState(), {}, {}, {})
@@ -661,7 +662,7 @@ abstract class SettingsScreenCases {
     @Test fun quietModeChangeCommitsImmediately() {
         val initial = QuietSettings(QuietMode.OFF, false, emptyMap())
         val changes = mutableListOf<QuietSettings>()
-        compose.setContent { CallringTheme {
+        compose.setContent { CallringTheme(DefaultAppearance.rememberAppearanceThemeSpec(androidx.compose.foundation.isSystemInDarkTheme())) {
             QuietScreen(LoadState(initial, loaded = true), initial, MutationState(), {}, {}, { changes += it })
         } }
         compose.onNodeWithTag("settings-save").assertDoesNotExist()
@@ -672,7 +673,7 @@ abstract class SettingsScreenCases {
     @Test fun scoreNumericFieldsOnlySubmitParseableText() {
         val saved = ScoreSettings(5, 2, 10, 30)
         val commits = mutableListOf<ScoreSettings>()
-        compose.setContent { CallringTheme {
+        compose.setContent { CallringTheme(DefaultAppearance.rememberAppearanceThemeSpec(androidx.compose.foundation.isSystemInDarkTheme())) {
             ScoreSettingsScreen(LoadState(saved, loaded = true), saved, MutationState(), {}, {}, { commits += it }, {})
         } }
         compose.onNodeWithTag("score-repeatMinutes").performScrollTo().performTextReplacement("15")
@@ -685,7 +686,7 @@ abstract class SettingsScreenCases {
     @Test fun settingsBackLeavesImmediatelyWithoutDiscardPrompt() {
         val saved = ScoreSettings(5, 2, 10, 30)
         var backs = 0
-        compose.setContent { CallringTheme {
+        compose.setContent { CallringTheme(DefaultAppearance.rememberAppearanceThemeSpec(androidx.compose.foundation.isSystemInDarkTheme())) {
             ScoreSettingsScreen(LoadState(saved, loaded = true), saved, MutationState(), { backs++ }, {}, {}, {})
         } }
         compose.onNodeWithTag("score-repeatMinutes").performScrollTo().performTextReplacement("15")

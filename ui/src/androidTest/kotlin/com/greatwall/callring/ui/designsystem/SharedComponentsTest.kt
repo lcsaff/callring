@@ -1,5 +1,8 @@
 package com.greatwall.callring.ui.designsystem
 
+import com.greatwall.callring.ui.app.bridge.rememberAppearanceThemeSpec
+import com.greatwall.callring.ui.app.bridge.toThemeSpec
+import com.greatwall.callring.ui.app.bridge.DefaultAppearance
 import androidx.compose.ui.test.assertHeightIsEqualTo
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
@@ -21,30 +24,30 @@ class SharedComponentsTest {
     @get:Rule val compose = createComposeRule()
 
     @Test fun scoreHasAccessibleNumericAndSemanticMeaning() {
-        compose.setContent { CallringTheme { ScoreBadge(0) } }
+        compose.setContent { CallringTheme(DefaultAppearance.rememberAppearanceThemeSpec(androidx.compose.foundation.isSystemInDarkTheme())) { ScoreBadge(0) } }
         compose.onNodeWithContentDescription("评分 0 分，不受欢迎程度高").assertIsDisplayed()
     }
 
     @Test fun unavailableScoreDoesNotLookLikeZero() {
-        compose.setContent { CallringTheme { ScoreBadge(null) } }
+        compose.setContent { CallringTheme(DefaultAppearance.rememberAppearanceThemeSpec(androidx.compose.foundation.isSystemInDarkTheme())) { ScoreBadge(null) } }
         compose.onNodeWithContentDescription("暂无评分").assertIsDisplayed()
     }
 
     @Test fun headerBackActionRemainsDiscoverableAndInvokesCallback() {
         var returned = false
-        compose.setContent { CallringTheme { ScreenFrame("外观设置", onBack = { returned = true }) {} } }
+        compose.setContent { CallringTheme(DefaultAppearance.rememberAppearanceThemeSpec(androidx.compose.foundation.isSystemInDarkTheme())) { ScreenFrame("外观设置", onBack = { returned = true }) {} } }
         compose.onNodeWithText("外观设置").assertIsDisplayed()
         compose.onNodeWithContentDescription("返回").performClick()
         assertTrue(returned)
     }
 
     @Test fun compactTitleContentHeightIs48dpWithoutStatusBarInset() {
-        compose.setContent { CallringTheme { ScreenFrame("号码档案", compactTitle = true) {} } }
+        compose.setContent { CallringTheme(DefaultAppearance.rememberAppearanceThemeSpec(androidx.compose.foundation.isSystemInDarkTheme())) { ScreenFrame("号码档案", compactTitle = true) {} } }
         compose.onNodeWithTag("screen-frame-topbar").assertHeightIsEqualTo(48.dp)
     }
 
     @Test fun defaultTitleKeepsTheMaterialExpandedHeight() {
-        compose.setContent { CallringTheme { ScreenFrame("录音设置") {} } }
+        compose.setContent { CallringTheme(DefaultAppearance.rememberAppearanceThemeSpec(androidx.compose.foundation.isSystemInDarkTheme())) { ScreenFrame("录音设置") {} } }
         compose.onNodeWithTag("screen-frame-topbar").assertHeightIsEqualTo(64.dp)
     }
 
@@ -53,7 +56,7 @@ class SharedComponentsTest {
         var semanticDark = false
         var displayedSurface = androidx.compose.ui.graphics.Color.Unspecified
         compose.setContent {
-            CallringTheme(appearance = appearance, systemDark = false) {
+            CallringTheme((appearance).rememberAppearanceThemeSpec(false)) {
                 semanticDark = LocalCallringDarkMode.current
                 displayedSurface = MaterialTheme.colorScheme.surface
                 ScoreBadge(100)
@@ -61,7 +64,7 @@ class SharedComponentsTest {
         }
         compose.runOnIdle {
             assertTrue(semanticDark)
-            assertEquals(ThemeRegistry.resolve(appearance).dark.surface, displayedSurface)
+            assertEquals(appearance.toThemeSpec(false).definition.dark.surface, displayedSurface)
         }
     }
 }

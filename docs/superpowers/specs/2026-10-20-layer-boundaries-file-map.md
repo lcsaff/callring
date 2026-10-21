@@ -109,11 +109,11 @@
 | [x] | `ui/src/main/kotlin/com/greatwall/callring/ui/app/UiNotifications.kt` | U/bridge/UiNotifications.kt | T13 | `ui/src/main/kotlin/com/greatwall/callring/ui/app/bridge/UiNotifications.kt` | 已完成（T01–T13a及T13b1实际归属） |
 | [x] | `ui/src/main/kotlin/com/greatwall/callring/ui/designsystem/components/BrandButton.kt` | U/designsystem/components/BrandButton.kt | T03/T11/T13 | `ui/src/main/kotlin/com/greatwall/callring/ui/designsystem/components/BrandButton.kt` | 已完成（T01–T13a及T13b1实际归属） |
 | [x] | `ui/src/main/kotlin/com/greatwall/callring/ui/designsystem/components/DateTimeInputs.kt` | U/designsystem/components/DateTimeInputs.kt | T03/T11/T13 | `ui/src/main/kotlin/com/greatwall/callring/ui/designsystem/components/DateTimeInputs.kt` | 已完成（T01–T13a及T13b1实际归属） |
-| [ ] | `ui/src/main/kotlin/com/greatwall/callring/ui/designsystem/components/FormInteractions.kt` | 通用交互留 U/designsystem/components/FormInteractions.kt；业务状态适配归 U/feature/shared/FormFeedback.kt | T13 | `ui/src/main/kotlin/com/greatwall/callring/ui/designsystem/components/FormInteractions.kt` | 待T13b2b：rememberFormBack interprets MutationState busy/completed/error and belongs feature/shared; retain confirmation/keyboard/form visual primitives; share UnsavedChangesDialog through a narrow visual signature without state/feature import back into designsystem. |
+| [x] | `ui/src/main/kotlin/com/greatwall/callring/ui/designsystem/components/FormInteractions.kt` | 通用交互留 U/designsystem/components/FormInteractions.kt；业务状态适配归 U/feature/shared/FormFeedback.kt | T13 | `ui/src/main/kotlin/com/greatwall/callring/ui/designsystem/components/FormInteractions.kt`、`ui/src/main/kotlin/com/greatwall/callring/ui/feature/shared/FormFeedback.kt` | T13b2b：rememberFormBack/MutationState编排迁feature/shared；唯一internal纯参数UnsavedChangesDialog保留designsystem。 |
 | [x] | `ui/src/main/kotlin/com/greatwall/callring/ui/designsystem/components/InteractionFeedback.kt` | U/designsystem/components/InteractionFeedback.kt | T03/T11/T13 | `ui/src/main/kotlin/com/greatwall/callring/ui/designsystem/components/InteractionFeedback.kt` | 已完成（T01–T13a及T13b1实际归属） |
-| [ ] | `ui/src/main/kotlin/com/greatwall/callring/ui/designsystem/components/SharedComponents.kt` | 纯视觉留 U/designsystem/components/SharedComponents.kt；业务实体组件归 U/feature/shared/CallerComponents.kt | T13 | `ui/src/main/kotlin/com/greatwall/callring/ui/designsystem/components/SharedComponents.kt` | 待T13b2b：Move CallerCard(CallerProfile), position formatting and business imports to feature/shared. Retain ScreenFrame/rows/Loading/Error/Empty/ScoreBadge visual primitives; remove unused contracts.ai wildcard, do not manufacture a replacement dependency. |
+| [x] | `ui/src/main/kotlin/com/greatwall/callring/ui/designsystem/components/SharedComponents.kt` | 纯视觉留 U/designsystem/components/SharedComponents.kt；业务实体组件归 U/feature/shared/CallerComponents.kt | T13 | `ui/src/main/kotlin/com/greatwall/callring/ui/designsystem/components/SharedComponents.kt`、`ui/src/main/kotlin/com/greatwall/callring/ui/feature/shared/CallerComponents.kt` | T13b2b：CallerCard/CallerProfile/UiFormat迁feature/shared；纯视觉组件保留，旧入口删除。 |
 | [x] | `ui/src/main/kotlin/com/greatwall/callring/ui/designsystem/ScorePalette.kt` | U/designsystem/ScorePalette.kt | T03/T11/T13 | `ui/src/main/kotlin/com/greatwall/callring/ui/designsystem/ScorePalette.kt` | 已完成（T01–T13a及T13b1实际归属） |
-| [ ] | `ui/src/main/kotlin/com/greatwall/callring/ui/designsystem/Theme.kt` | U/designsystem/Theme.kt 的视觉 ThemeSpec/颜色逻辑；AppearanceSettings 映射归 U/bridge/AppearanceThemeMapper.kt | T03/T11/T13 | `ui/src/main/kotlin/com/greatwall/callring/ui/designsystem/Theme.kt` | 待T13b2b：AppearanceSettings/DefaultAppearance/preset+seed/colorMode interpretation and usesDarkColors map once in app/bridge; designsystem ThemeSpec/ThemeDefinition/registry visual lookup/color+contrast/rendering accept only visual values. Preserve unknown-preset/missing-custom-seed defaults; update feature/widget/overlay callers, no appearance overload or old-package re-export. |
+| [x] | `ui/src/main/kotlin/com/greatwall/callring/ui/designsystem/Theme.kt` | U/designsystem/Theme.kt 的视觉 ThemeSpec/颜色逻辑；AppearanceSettings 映射归 U/bridge/AppearanceThemeMapper.kt | T03/T11/T13 | `ui/src/main/kotlin/com/greatwall/callring/ui/designsystem/Theme.kt`、`ui/src/main/kotlin/com/greatwall/callring/ui/app/bridge/AppearanceThemeMapper.kt` | T13b2b：唯一ThemeSpec渲染；registry/偏好解释与带缓存映射归app/bridge；旧overload与companion转发删除。 |
 | [x] | `ui/src/main/kotlin/com/greatwall/callring/ui/feature/ai/AiSettingsScreen.kt` | U/feature/ai/AiSettingsScreen.kt | T03/T11/T13 | `ui/src/main/kotlin/com/greatwall/callring/ui/feature/ai/AiSettingsScreen.kt` | 已完成（T01–T13a及T13b1实际归属） |
 | [x] | `ui/src/main/kotlin/com/greatwall/callring/ui/feature/ai/AiSettingsViewModel.kt` | U/feature/ai/AiSettingsViewModel.kt | T03/T11/T13 | `ui/src/main/kotlin/com/greatwall/callring/ui/feature/ai/AiSettingsViewModel.kt` | 已完成（T01–T13a及T13b1实际归属） |
 | [x] | `ui/src/main/kotlin/com/greatwall/callring/ui/feature/ai/CredentialDialog.kt` | U/feature/ai/CredentialDialog.kt（复制预览改读 copyToAnalysisProfile，删除厂商解析） | T03/T11/T13 | `ui/src/main/kotlin/com/greatwall/callring/ui/feature/ai/CredentialDialog.kt` | 已完成（T01–T13a及T13b1实际归属） |
@@ -131,8 +131,8 @@
 | [x] | `ui/src/main/kotlin/com/greatwall/callring/ui/feature/home/HomeQuietViewModel.kt` | U/feature/home/HomeQuietViewModel.kt | T03/T11/T13 | `ui/src/main/kotlin/com/greatwall/callring/ui/feature/home/HomeQuietViewModel.kt` | 已完成（T01–T13a及T13b1实际归属） |
 | [x] | `ui/src/main/kotlin/com/greatwall/callring/ui/feature/home/HomeScreen.kt` | U/feature/home/HomeScreen.kt | T03/T11/T13 | `ui/src/main/kotlin/com/greatwall/callring/ui/feature/home/HomeScreen.kt` | 已完成（T01–T13a及T13b1实际归属） |
 | [x] | `ui/src/main/kotlin/com/greatwall/callring/ui/feature/home/HomeViewModel.kt` | U/feature/home/HomeViewModel.kt | T03/T11/T13 | `ui/src/main/kotlin/com/greatwall/callring/ui/feature/home/HomeViewModel.kt` | 已完成（T01–T13a及T13b1实际归属） |
-| [ ] | `ui/src/main/kotlin/com/greatwall/callring/ui/feature/recording/RecordingScreens.kt` | 拆至 U/feature/recording/ 下各录音页面独立文件 | T13 | `ui/src/main/kotlin/com/greatwall/callring/ui/feature/recording/RecordingScreens.kt` | 待T13b2b：Separate actual screen declarations and shared recording feedback/status label; preserve layout and behavior. |
-| [ ] | `ui/src/main/kotlin/com/greatwall/callring/ui/feature/recording/RecordingViewModels.kt` | 拆至 U/feature/recording/ 下各录音 ViewModel 独立文件 | T10/T13 | `ui/src/main/kotlin/com/greatwall/callring/ui/feature/recording/RecordingViewModels.kt` | 待T13b2b：Separate actual ViewModels and recordingMessage helper; do not invent a RecordingSettingsViewModel absent here. |
+| [x] | `ui/src/main/kotlin/com/greatwall/callring/ui/feature/recording/RecordingScreens.kt` | 拆至 U/feature/recording/ 下各录音页面独立文件 | T13 | `ui/src/main/kotlin/com/greatwall/callring/ui/feature/recording/RecordingArchivesScreen.kt`、`ui/src/main/kotlin/com/greatwall/callring/ui/feature/recording/RecordingSettingsScreen.kt`、`ui/src/main/kotlin/com/greatwall/callring/ui/feature/recording/ArchiveScreen.kt`、`ui/src/main/kotlin/com/greatwall/callring/ui/feature/recording/RecordingPresentation.kt` | T13b2b：三个实际screen及共享presentation独立owner，旧mixedfile删除。 |
+| [x] | `ui/src/main/kotlin/com/greatwall/callring/ui/feature/recording/RecordingViewModels.kt` | 拆至 U/feature/recording/ 下各录音 ViewModel 独立文件 | T10/T13 | `ui/src/main/kotlin/com/greatwall/callring/ui/feature/recording/RecordingArchivesViewModel.kt`、`ui/src/main/kotlin/com/greatwall/callring/ui/feature/recording/ArchiveViewModel.kt`、`ui/src/main/kotlin/com/greatwall/callring/ui/feature/recording/RecordingPresentation.kt` | T13b2b：两VM完整owner含private Read搬移；recordingMessage归presentation；旧mixedfile删除。 |
 | [x] | `ui/src/main/kotlin/com/greatwall/callring/ui/feature/report/ReportScreen.kt` | U/feature/report/ReportScreen.kt | T03/T11/T13 | `ui/src/main/kotlin/com/greatwall/callring/ui/feature/report/ReportScreen.kt` | 已完成（T01–T13a及T13b1实际归属） |
 | [x] | `ui/src/main/kotlin/com/greatwall/callring/ui/feature/report/ReportViewModel.kt` | U/feature/report/ReportViewModel.kt | T03/T11/T13 | `ui/src/main/kotlin/com/greatwall/callring/ui/feature/report/ReportViewModel.kt` | 已完成（T01–T13a及T13b1实际归属） |
 | [x] | `ui/src/main/kotlin/com/greatwall/callring/ui/feature/settings/AppearanceScreen.kt` | U/feature/settings/AppearanceScreen.kt | T03/T11/T13 | `ui/src/main/kotlin/com/greatwall/callring/ui/feature/settings/AppearanceScreen.kt` | 已完成（T01–T13a及T13b1实际归属） |
@@ -150,7 +150,7 @@
 | [x] | `ui/src/main/kotlin/com/greatwall/callring/ui/feature/settings/ScoreSettingsScreen.kt` | U/feature/settings/ScoreSettingsScreen.kt | T03/T11/T13 | `ui/src/main/kotlin/com/greatwall/callring/ui/feature/settings/ScoreSettingsScreen.kt` | 已完成（T01–T13a及T13b1实际归属） |
 | [x] | `ui/src/main/kotlin/com/greatwall/callring/ui/feature/settings/SettingsDraftCodecs.kt` | U/feature/settings/SettingsDraftCodecs.kt | T03/T11/T13 | `ui/src/main/kotlin/com/greatwall/callring/ui/feature/settings/SettingsDraftCodecs.kt` | 已完成（T01–T13a及T13b1实际归属） |
 | [x] | `ui/src/main/kotlin/com/greatwall/callring/ui/feature/settings/SettingsOverviewScreen.kt` | U/feature/settings/SettingsOverviewScreen.kt | T03/T11/T13 | `ui/src/main/kotlin/com/greatwall/callring/ui/feature/settings/SettingsOverviewScreen.kt` | 已完成（T01–T13a及T13b1实际归属） |
-| [ ] | `ui/src/main/kotlin/com/greatwall/callring/ui/feature/settings/SettingsViewModels.kt` | 拆至 U/feature/settings/ 下各设置 ViewModel 独立文件 | T06/T13 | `ui/src/main/kotlin/com/greatwall/callring/ui/feature/settings/SettingsViewModels.kt` | 待T13b2b：One existing setting ViewModel per file; current shared tests must follow these actual names. |
+| [x] | `ui/src/main/kotlin/com/greatwall/callring/ui/feature/settings/SettingsViewModels.kt` | 拆至 U/feature/settings/ 下各设置 ViewModel 独立文件 | T06/T13 | `ui/src/main/kotlin/com/greatwall/callring/ui/feature/settings/SettingsSummaryViewModel.kt`、`ui/src/main/kotlin/com/greatwall/callring/ui/feature/settings/QuietViewModel.kt`、`ui/src/main/kotlin/com/greatwall/callring/ui/feature/settings/WorkScheduleViewModel.kt`、`ui/src/main/kotlin/com/greatwall/callring/ui/feature/settings/ScoreSettingsViewModel.kt`、`ui/src/main/kotlin/com/greatwall/callring/ui/feature/settings/PositionsViewModel.kt`、`ui/src/main/kotlin/com/greatwall/callring/ui/feature/settings/CalendarViewModel.kt`、`ui/src/main/kotlin/com/greatwall/callring/ui/feature/settings/LeavesViewModel.kt` | T13b2b：七个实际VM独立owner；构造/订阅/draft保留；旧mixedfile删除。 |
 | [x] | `ui/src/main/kotlin/com/greatwall/callring/ui/feature/settings/UnifiedWorkSchedule.kt` | U/feature/settings/UnifiedWorkSchedule.kt | T03/T11/T13 | `ui/src/main/kotlin/com/greatwall/callring/ui/feature/settings/UnifiedWorkSchedule.kt` | 已完成（T01–T13a及T13b1实际归属） |
 | [x] | `ui/src/main/kotlin/com/greatwall/callring/ui/feature/settings/WorkScheduleScreen.kt` | U/feature/settings/WorkScheduleScreen.kt | T03/T11/T13 | `ui/src/main/kotlin/com/greatwall/callring/ui/feature/settings/WorkScheduleScreen.kt` | 已完成（T01–T13a及T13b1实际归属） |
 | [x] | `ui/src/main/kotlin/com/greatwall/callring/ui/feature/shared/FeatureFeedback.kt` | U/feature/shared/FeatureFeedback.kt | T03/T11/T13 | `ui/src/main/kotlin/com/greatwall/callring/ui/feature/shared/FeatureFeedback.kt` | 已完成（T01–T13a及T13b1实际归属） |
@@ -272,20 +272,25 @@
 | .github/workflows/build.yml、release.yml | 接入 contracts/架构检查，保留签名发布语义 | T14 |
 | README.md、PROJECT.md、docs/contracts 当前说明 | 更新最终结构和命令，保留历史审查证据 | T13/T15 |
 
-## T13b2a 当前生产集合（执行中候选）
+## T13b2b 当前生产集合（执行中候选）
 
-本片基线 `a4fe96403f34f2e4beff635e94d2a38186bb2915`；当前实际341文件：app86、backend140、contracts23、ui92。每个实际路径仅列一次；旧227项允许责任汇合至同一唯一实现。T13b1的95项机械移动是已审历史检查点，本片单独提取查询投影与混合职责。
+基线 `913794b5e4d6727a762ab8826cc2038a2a139277`；当前实际354文件：app86、backend140、contracts23、ui105。每个实际路径仅列一次；原227项历史路径列保留并回填真实目标。
 
-修订理由：ArchiveStreamParser与ArchiveProjectionIndex直接操作SQLite，归data/recording；RingtoneService保持application/ringtone，其用例已与runtime状态探测分域；SqliteCoreUnitOfWork为内聚session实现，保持单文件，无无消费者Read/WriteSession壳。
-
-T13b2a候选已完成查询/完整快照投影、typed observations及四个混合文件拆分。T13b2b待Theme桥/CallerCard/form与混合UI screen/ViewModel分文件；T13b2c待六系统组件controller、最终PROJECT/README/清单复核。原FQCN、组件/调度/Intent身份保持，T14统一CI与T15最终验收尚未关闭。
+T13b2b已落地Theme bridge/designsystem、CallerCard/form与混合UI screen/ViewModel职责。T13b2c仍待六系统组件controller、PROJECT/README与最终清单复核；T14统一CI及T15设备验收未关闭。
 
 | 当前实际文件 | 实际归属 | 阶段/剩余责任 |
 |---|---|---|
+| `app/src/main/java/com/greatwall/callring/RingPlaybackService.java` | `com.greatwall.callring` | 待T13b2c：Keep registered FQCN and actual Android lifecycle/Intent/JobParameters adapter; extract orchestration into controller with narrow dependencies: selected audio/media resources, playback tracker, call-state observations, handler/clock, foreground/stop callbacks; no complete Service or BackendGraph. Static schedule/phoneState/prepare/commit methods may remain actual platform adapters; no second implementation or old-package business facade. |
 | `app/src/main/java/com/greatwall/callring/platform/audio/PreparationGate.java` | `com.greatwall.callring.platform.audio` | T13b1机械归位 |
 | `app/src/main/java/com/greatwall/callring/platform/calling/CallStateSnapshot.java` | `com.greatwall.callring.platform.calling` | T13b1机械归位 |
 | `app/src/main/java/com/greatwall/callring/platform/calling/SessionGate.java` | `com.greatwall.callring.platform.calling` | T13b1机械归位 |
-| `app/src/main/java/com/greatwall/callring/RingPlaybackService.java` | `com.greatwall.callring` | 待T13b2c：Keep registered FQCN and actual Android lifecycle/Intent/JobParameters adapter; extract orchestration into controller with narrow dependencies: selected audio/media resources, playback tracker, call-state observations, handler/clock, foreground/stop callbacks; no complete Service or BackendGraph. Static schedule/phoneState/prepare/commit methods may remain actual platform adapters; no second implementation or old-package business facade. |
+| `app/src/main/kotlin/com/greatwall/callring/CalendarSyncJobService.kt` | `com.greatwall.callring` | 待T13b2c：Keep registered FQCN and actual Android lifecycle/Intent/JobParameters adapter; extract orchestration into controller with narrow dependencies: Clock, calendar get/synchronize functions, namespaced throttle store, stopped token, executor/dispatcher, completion callback. Static schedule/phoneState/prepare/commit methods may remain actual platform adapters; no second implementation or old-package business facade. |
+| `app/src/main/kotlin/com/greatwall/callring/CallCaptureService.kt` | `com.greatwall.callring` | 待T13b2c：Keep registered FQCN and actual Android lifecycle/Intent/JobParameters adapter; extract orchestration into controller with narrow dependencies: candidate/audio-capture registration, microphone/foreground permission predicates, media resources, executor, foreground/stop callbacks. Static schedule/phoneState/prepare/commit methods may remain actual platform adapters; no second implementation or old-package business facade. |
+| `app/src/main/kotlin/com/greatwall/callring/CallringApplication.kt` | `com.greatwall.callring` | 现有内聚唯一实现 |
+| `app/src/main/kotlin/com/greatwall/callring/RecordingJobService.kt` | `com.greatwall.callring` | 待T13b2c：Keep registered FQCN and actual Android lifecycle/Intent/JobParameters adapter; extract orchestration into controller with narrow dependencies: runScheduled/cancelProcessing, clock, schedule function, executor/main dispatcher, per-run stop token and jobFinished callback. Static schedule/phoneState/prepare/commit methods may remain actual platform adapters; no second implementation or old-package business facade. |
+| `app/src/main/kotlin/com/greatwall/callring/RuleScreeningService.kt` | `com.greatwall.callring` | 现有内聚唯一实现 |
+| `app/src/main/kotlin/com/greatwall/callring/RuntimeReceiver.kt` | `com.greatwall.callring` | 待T13b2c：Keep registered FQCN and actual Android lifecycle/Intent/JobParameters adapter; extract orchestration into controller with narrow dependencies: decision refresh, IncomingRecordingSession methods, capture state commands, sync/recording schedule, executor and pending.finish callback. Static schedule/phoneState/prepare/commit methods may remain actual platform adapters; no second implementation or old-package business facade. |
+| `app/src/main/kotlin/com/greatwall/callring/SyncJobService.kt` | `com.greatwall.callring` | 待T13b2c：Keep registered FQCN and actual Android lifecycle/Intent/JobParameters adapter; extract orchestration into controller with narrow dependencies: statisticsStart/import/hasRecentPending, clock, call-log source, permission predicate, cancel/rearm/request scheduler, diagnostic sink, worker/main dispatch and completion. Static schedule/phoneState/prepare/commit methods may remain actual platform adapters; no second implementation or old-package business facade. |
 | `app/src/main/kotlin/com/greatwall/callring/bootstrap/BackendConfiguration.kt` | `com.greatwall.callring.bootstrap` | 现有内聚唯一实现 |
 | `app/src/main/kotlin/com/greatwall/callring/bootstrap/BackendGraph.kt` | `com.greatwall.callring.bootstrap` | T13b2a：四Assembly及typed observations接线完成；系统组件控制器另列待b2c。 |
 | `app/src/main/kotlin/com/greatwall/callring/bootstrap/BackendProvider.kt` | `com.greatwall.callring.bootstrap` | 现有内聚唯一实现 |
@@ -296,9 +301,6 @@ T13b2a候选已完成查询/完整快照投影、typed observations及四个混�
 | `app/src/main/kotlin/com/greatwall/callring/bootstrap/ScopedQueryAssembly.kt` | `com.greatwall.callring.bootstrap` | T13b2a：仅接线六行projector及scoped registry；完整hook代理保留外coordinator版本，不注入全facade到projector。 |
 | `app/src/main/kotlin/com/greatwall/callring/bootstrap/StorageResources.kt` | `com.greatwall.callring.bootstrap` | 现有内聚唯一实现 |
 | `app/src/main/kotlin/com/greatwall/callring/bootstrap/UiBridgeAssembly.kt` | `com.greatwall.callring.bootstrap` | 现有内聚唯一实现 |
-| `app/src/main/kotlin/com/greatwall/callring/CalendarSyncJobService.kt` | `com.greatwall.callring` | 待T13b2c：Keep registered FQCN and actual Android lifecycle/Intent/JobParameters adapter; extract orchestration into controller with narrow dependencies: Clock, calendar get/synchronize functions, namespaced throttle store, stopped token, executor/dispatcher, completion callback. Static schedule/phoneState/prepare/commit methods may remain actual platform adapters; no second implementation or old-package business facade. |
-| `app/src/main/kotlin/com/greatwall/callring/CallCaptureService.kt` | `com.greatwall.callring` | 待T13b2c：Keep registered FQCN and actual Android lifecycle/Intent/JobParameters adapter; extract orchestration into controller with narrow dependencies: candidate/audio-capture registration, microphone/foreground permission predicates, media resources, executor, foreground/stop callbacks. Static schedule/phoneState/prepare/commit methods may remain actual platform adapters; no second implementation or old-package business facade. |
-| `app/src/main/kotlin/com/greatwall/callring/CallringApplication.kt` | `com.greatwall.callring` | 现有内聚唯一实现 |
 | `app/src/main/kotlin/com/greatwall/callring/data/callers/CallerRowCodec.kt` | `com.greatwall.callring.data.callers` | 现有内聚唯一实现 |
 | `app/src/main/kotlin/com/greatwall/callring/data/callers/SqliteCallerStore.kt` | `com.greatwall.callring.data.callers` | 现有内聚唯一实现 |
 | `app/src/main/kotlin/com/greatwall/callring/data/calling/CallingRowCodec.kt` | `com.greatwall.callring.data.calling` | T13b1机械归位 |
@@ -310,10 +312,10 @@ T13b2a候选已完成查询/完整快照投影、typed observations及四个混�
 | `app/src/main/kotlin/com/greatwall/callring/data/database/CallringDatabase.kt` | `com.greatwall.callring.data.database` | T13b1机械归位 |
 | `app/src/main/kotlin/com/greatwall/callring/data/database/SnapshotPreflight.kt` | `com.greatwall.callring.data.database` | T13b1机械归位 |
 | `app/src/main/kotlin/com/greatwall/callring/data/database/SqlAccess.kt` | `com.greatwall.callring.data.database` | T13b1机械归位 |
+| `app/src/main/kotlin/com/greatwall/callring/data/database/SqlSupport.kt` | `com.greatwall.callring.data.database` | T13b1机械归位 |
 | `app/src/main/kotlin/com/greatwall/callring/data/database/SqliteCoreStorageResource.kt` | `com.greatwall.callring.data.database` | T13b1机械归位 |
 | `app/src/main/kotlin/com/greatwall/callring/data/database/SqliteCoreUnitOfWork.kt` | `com.greatwall.callring.data.database` | T13b1机械归位 |
 | `app/src/main/kotlin/com/greatwall/callring/data/database/SqliteFullSnapshotReader.kt` | `com.greatwall.callring.data.database` | T13b1机械归位 |
-| `app/src/main/kotlin/com/greatwall/callring/data/database/SqlSupport.kt` | `com.greatwall.callring.data.database` | T13b1机械归位 |
 | `app/src/main/kotlin/com/greatwall/callring/data/database/StorageMigration.kt` | `com.greatwall.callring.data.database` | T13b1机械归位 |
 | `app/src/main/kotlin/com/greatwall/callring/data/preferences/AndroidPreferences.kt` | `com.greatwall.callring.data.preferences` | T13b1机械归位 |
 | `app/src/main/kotlin/com/greatwall/callring/data/query/LazyScopedReadPort.kt` | `com.greatwall.callring.data.query` | T13b2a新增：实际内聚职责；见t13b2a-implementation.md |
@@ -364,22 +366,18 @@ T13b2a候选已完成查询/完整快照投影、typed observations及四个混�
 | `app/src/main/kotlin/com/greatwall/callring/platform/update/GitHubReleaseClient.kt` | `com.greatwall.callring.platform.update` | 现有内聚唯一实现 |
 | `app/src/main/kotlin/com/greatwall/callring/platform/update/UpdateContract.kt` | `com.greatwall.callring.platform.update` | 现有内聚唯一实现 |
 | `app/src/main/kotlin/com/greatwall/callring/platform/update/UpdateStateStore.kt` | `com.greatwall.callring.platform.update` | 现有内聚唯一实现 |
-| `app/src/main/kotlin/com/greatwall/callring/RecordingJobService.kt` | `com.greatwall.callring` | 待T13b2c：Keep registered FQCN and actual Android lifecycle/Intent/JobParameters adapter; extract orchestration into controller with narrow dependencies: runScheduled/cancelProcessing, clock, schedule function, executor/main dispatcher, per-run stop token and jobFinished callback. Static schedule/phoneState/prepare/commit methods may remain actual platform adapters; no second implementation or old-package business facade. |
-| `app/src/main/kotlin/com/greatwall/callring/RuleScreeningService.kt` | `com.greatwall.callring` | 现有内聚唯一实现 |
-| `app/src/main/kotlin/com/greatwall/callring/RuntimeReceiver.kt` | `com.greatwall.callring` | 待T13b2c：Keep registered FQCN and actual Android lifecycle/Intent/JobParameters adapter; extract orchestration into controller with narrow dependencies: decision refresh, IncomingRecordingSession methods, capture state commands, sync/recording schedule, executor and pending.finish callback. Static schedule/phoneState/prepare/commit methods may remain actual platform adapters; no second implementation or old-package business facade. |
-| `app/src/main/kotlin/com/greatwall/callring/SyncJobService.kt` | `com.greatwall.callring` | 待T13b2c：Keep registered FQCN and actual Android lifecycle/Intent/JobParameters adapter; extract orchestration into controller with narrow dependencies: statisticsStart/import/hasRecentPending, clock, call-log source, permission predicate, cancel/rearm/request scheduler, diagnostic sink, worker/main dispatch and completion. Static schedule/phoneState/prepare/commit methods may remain actual platform adapters; no second implementation or old-package business facade. |
+| `backend/src/main/kotlin/com/greatwall/callring/application/CallringBackend.kt` | `com.greatwall.callring.application` | 现有内聚唯一实现 |
 | `backend/src/main/kotlin/com/greatwall/callring/application/callers/CallerCommandService.kt` | `com.greatwall.callring.application.callers` | 现有内聚唯一实现 |
 | `backend/src/main/kotlin/com/greatwall/callring/application/callers/CallerProjection.kt` | `com.greatwall.callring.application.callers` | 现有内聚唯一实现 |
 | `backend/src/main/kotlin/com/greatwall/callring/application/callers/CallerQueryService.kt` | `com.greatwall.callring.application.callers` | 现有内聚唯一实现 |
-| `backend/src/main/kotlin/com/greatwall/callring/application/callers/CallersApiAssembly.kt` | `com.greatwall.callring.application.callers` | 现有内聚唯一实现 |
 | `backend/src/main/kotlin/com/greatwall/callring/application/callers/CallerValidation.kt` | `com.greatwall.callring.application.callers` | 现有内聚唯一实现 |
+| `backend/src/main/kotlin/com/greatwall/callring/application/callers/CallersApiAssembly.kt` | `com.greatwall.callring.application.callers` | 现有内聚唯一实现 |
 | `backend/src/main/kotlin/com/greatwall/callring/application/callers/NumberDeletionService.kt` | `com.greatwall.callring.application.callers` | 现有内聚唯一实现 |
-| `backend/src/main/kotlin/com/greatwall/callring/application/calling/CallingChanges.kt` | `com.greatwall.callring.application.calling` | 现有内聚唯一实现 |
 | `backend/src/main/kotlin/com/greatwall/callring/application/calling/CallLogImportService.kt` | `com.greatwall.callring.application.calling` | 现有内聚唯一实现 |
+| `backend/src/main/kotlin/com/greatwall/callring/application/calling/CallingChanges.kt` | `com.greatwall.callring.application.calling` | 现有内聚唯一实现 |
 | `backend/src/main/kotlin/com/greatwall/callring/application/calling/DecisionMirror.kt` | `com.greatwall.callring.application.calling` | 现有内聚唯一实现 |
 | `backend/src/main/kotlin/com/greatwall/callring/application/calling/DecisionQueryService.kt` | `com.greatwall.callring.application.calling` | 现有内聚唯一实现 |
 | `backend/src/main/kotlin/com/greatwall/callring/application/calling/IncomingCallService.kt` | `com.greatwall.callring.application.calling` | 现有内聚唯一实现 |
-| `backend/src/main/kotlin/com/greatwall/callring/application/CallringBackend.kt` | `com.greatwall.callring.application` | 现有内聚唯一实现 |
 | `backend/src/main/kotlin/com/greatwall/callring/application/conversation/context/ContextAssembler.kt` | `com.greatwall.callring.application.conversation.context` | T13b1机械归位 |
 | `backend/src/main/kotlin/com/greatwall/callring/application/conversation/context/ContextBudget.kt` | `com.greatwall.callring.application.conversation.context` | T13b1机械归位 |
 | `backend/src/main/kotlin/com/greatwall/callring/application/conversation/context/SecretRedactor.kt` | `com.greatwall.callring.application.conversation.context` | T13b1机械归位 |
@@ -461,9 +459,6 @@ T13b2a候选已完成查询/完整快照投影、typed observations及四个混�
 | `backend/src/main/kotlin/com/greatwall/callring/application/recording/AiSettingsService.kt` | `com.greatwall.callring.application.recording` | 现有内聚唯一实现 |
 | `backend/src/main/kotlin/com/greatwall/callring/application/recording/IdentityAdoptionService.kt` | `com.greatwall.callring.application.recording` | 现有内聚唯一实现 |
 | `backend/src/main/kotlin/com/greatwall/callring/application/recording/IncomingRecordingSession.kt` | `com.greatwall.callring.application.recording` | T13b2a新增：实际内聚职责；见t13b2a-implementation.md |
-| `backend/src/main/kotlin/com/greatwall/callring/application/recording/model/RecordingActivityObservation.kt` | `com.greatwall.callring.application.recording.model` | T13b2a新增：实际内聚职责；见t13b2a-implementation.md |
-| `backend/src/main/kotlin/com/greatwall/callring/application/recording/model/RecordingConfiguration.kt` | `com.greatwall.callring.application.recording.model` | 现有内聚唯一实现 |
-| `backend/src/main/kotlin/com/greatwall/callring/application/recording/policy/ProviderPolicy.kt` | `com.greatwall.callring.application.recording.policy` | 现有内聚唯一实现 |
 | `backend/src/main/kotlin/com/greatwall/callring/application/recording/RecordingArchiveCommands.kt` | `com.greatwall.callring.application.recording` | 现有内聚唯一实现 |
 | `backend/src/main/kotlin/com/greatwall/callring/application/recording/RecordingCallLookup.kt` | `com.greatwall.callring.application.recording` | T13b2a新增：实际内聚职责；见t13b2a-implementation.md |
 | `backend/src/main/kotlin/com/greatwall/callring/application/recording/RecordingFolderObservation.kt` | `com.greatwall.callring.application.recording` | 现有内聚唯一实现 |
@@ -471,6 +466,9 @@ T13b2a候选已完成查询/完整快照投影、typed observations及四个混�
 | `backend/src/main/kotlin/com/greatwall/callring/application/recording/RecordingService.kt` | `com.greatwall.callring.application.recording` | 现有内聚唯一实现 |
 | `backend/src/main/kotlin/com/greatwall/callring/application/recording/RecordingSettingsChanges.kt` | `com.greatwall.callring.application.recording` | 现有内聚唯一实现 |
 | `backend/src/main/kotlin/com/greatwall/callring/application/recording/RecordingWorkflow.kt` | `com.greatwall.callring.application.recording` | T13b1机械归位 |
+| `backend/src/main/kotlin/com/greatwall/callring/application/recording/model/RecordingActivityObservation.kt` | `com.greatwall.callring.application.recording.model` | T13b2a新增：实际内聚职责；见t13b2a-implementation.md |
+| `backend/src/main/kotlin/com/greatwall/callring/application/recording/model/RecordingConfiguration.kt` | `com.greatwall.callring.application.recording.model` | 现有内聚唯一实现 |
+| `backend/src/main/kotlin/com/greatwall/callring/application/recording/policy/ProviderPolicy.kt` | `com.greatwall.callring.application.recording.policy` | 现有内聚唯一实现 |
 | `backend/src/main/kotlin/com/greatwall/callring/application/report/CsvCell.kt` | `com.greatwall.callring.application.report` | 现有内聚唯一实现 |
 | `backend/src/main/kotlin/com/greatwall/callring/application/report/ReportCsv.kt` | `com.greatwall.callring.application.report` | 现有内聚唯一实现 |
 | `backend/src/main/kotlin/com/greatwall/callring/application/report/ReportService.kt` | `com.greatwall.callring.application.report` | 现有内聚唯一实现 |
@@ -508,6 +506,7 @@ T13b2a候选已完成查询/完整快照投影、typed observations及四个混�
 | `backend/src/main/kotlin/com/greatwall/callring/domain/model/SettingsRules.kt` | `com.greatwall.callring.domain.model` | 现有内聚唯一实现 |
 | `backend/src/main/kotlin/com/greatwall/callring/domain/model/SystemCallRecord.kt` | `com.greatwall.callring.domain.model` | T13b1机械归位 |
 | `backend/src/main/kotlin/com/greatwall/callring/domain/report/StreamingReportAccumulator.kt` | `com.greatwall.callring.domain.report` | 现有内聚唯一实现 |
+| `contracts/src/main/kotlin/com/greatwall/callring/contracts/CallringApi.kt` | `com.greatwall.callring.contracts` | 现有内聚唯一实现 |
 | `contracts/src/main/kotlin/com/greatwall/callring/contracts/ai/AiJson.kt` | `com.greatwall.callring.contracts.ai` | 现有内聚唯一实现 |
 | `contracts/src/main/kotlin/com/greatwall/callring/contracts/ai/AiProtocol.kt` | `com.greatwall.callring.contracts.ai` | 现有内聚唯一实现 |
 | `contracts/src/main/kotlin/com/greatwall/callring/contracts/ai/AiQueryApi.kt` | `com.greatwall.callring.contracts.ai` | 现有内聚唯一实现 |
@@ -517,7 +516,6 @@ T13b2a候选已完成查询/完整快照投影、typed observations及四个混�
 | `contracts/src/main/kotlin/com/greatwall/callring/contracts/ai/ConversationCompatibility.kt` | `com.greatwall.callring.contracts.ai` | 现有内聚唯一实现 |
 | `contracts/src/main/kotlin/com/greatwall/callring/contracts/ai/ThinkingPolicy.kt` | `com.greatwall.callring.contracts.ai` | 现有内聚唯一实现 |
 | `contracts/src/main/kotlin/com/greatwall/callring/contracts/callers/CallersApi.kt` | `com.greatwall.callring.contracts.callers` | T13b1机械归位 |
-| `contracts/src/main/kotlin/com/greatwall/callring/contracts/CallringApi.kt` | `com.greatwall.callring.contracts` | 现有内聚唯一实现 |
 | `contracts/src/main/kotlin/com/greatwall/callring/contracts/change/ChangeFeed.kt` | `com.greatwall.callring.contracts.change` | T13b1机械归位 |
 | `contracts/src/main/kotlin/com/greatwall/callring/contracts/change/InvalidationSnapshot.kt` | `com.greatwall.callring.contracts.change` | 现有内聚唯一实现 |
 | `contracts/src/main/kotlin/com/greatwall/callring/contracts/command/CommandContext.kt` | `com.greatwall.callring.contracts.command` | 现有内聚唯一实现 |
@@ -532,8 +530,6 @@ T13b2a候选已完成查询/完整快照投影、typed observations及四个混�
 | `contracts/src/main/kotlin/com/greatwall/callring/contracts/settings/SettingsApi.kt` | `com.greatwall.callring.contracts.settings` | T13b1机械归位 |
 | `contracts/src/main/kotlin/com/greatwall/callring/contracts/widget/WidgetBindingsApi.kt` | `com.greatwall.callring.contracts.widget` | T13b1机械归位 |
 | `ui/src/main/kotlin/com/greatwall/callring/ui/app/AiRoutes.kt` | `com.greatwall.callring.ui.app` | 现有内聚唯一实现 |
-| `ui/src/main/kotlin/com/greatwall/callring/ui/app/bridge/UiApiOwner.kt` | `com.greatwall.callring.ui.app.bridge` | T13b1机械归位 |
-| `ui/src/main/kotlin/com/greatwall/callring/ui/app/bridge/UiNotifications.kt` | `com.greatwall.callring.ui.app.bridge` | T13b1机械归位 |
 | `ui/src/main/kotlin/com/greatwall/callring/ui/app/CallringActivity.kt` | `com.greatwall.callring.ui.app` | 现有内聚唯一实现 |
 | `ui/src/main/kotlin/com/greatwall/callring/ui/app/CallringApp.kt` | `com.greatwall.callring.ui.app` | 现有内聚唯一实现 |
 | `ui/src/main/kotlin/com/greatwall/callring/ui/app/DocumentPickers.kt` | `com.greatwall.callring.ui.app` | 现有内聚唯一实现 |
@@ -544,13 +540,16 @@ T13b2a候选已完成查询/完整快照投影、typed observations及四个混�
 | `ui/src/main/kotlin/com/greatwall/callring/ui/app/ThemeWindowSupport.kt` | `com.greatwall.callring.ui.app` | 现有内聚唯一实现 |
 | `ui/src/main/kotlin/com/greatwall/callring/ui/app/UiDestination.kt` | `com.greatwall.callring.ui.app` | 现有内聚唯一实现 |
 | `ui/src/main/kotlin/com/greatwall/callring/ui/app/UiNavigationState.kt` | `com.greatwall.callring.ui.app` | 现有内聚唯一实现 |
+| `ui/src/main/kotlin/com/greatwall/callring/ui/app/bridge/AppearanceThemeMapper.kt` | `com.greatwall.callring.ui.app.bridge` | T13b2b：唯一ThemeSpec渲染；registry/偏好解释与带缓存映射归app/bridge；旧overload与companion转发删除。 |
+| `ui/src/main/kotlin/com/greatwall/callring/ui/app/bridge/UiApiOwner.kt` | `com.greatwall.callring.ui.app.bridge` | T13b1机械归位 |
+| `ui/src/main/kotlin/com/greatwall/callring/ui/app/bridge/UiNotifications.kt` | `com.greatwall.callring.ui.app.bridge` | T13b1机械归位 |
+| `ui/src/main/kotlin/com/greatwall/callring/ui/designsystem/ScorePalette.kt` | `com.greatwall.callring.ui.designsystem` | 现有内聚唯一实现 |
+| `ui/src/main/kotlin/com/greatwall/callring/ui/designsystem/Theme.kt` | `com.greatwall.callring.ui.designsystem` | T13b2b：唯一ThemeSpec渲染；registry/偏好解释与带缓存映射归app/bridge；旧overload与companion转发删除。 |
 | `ui/src/main/kotlin/com/greatwall/callring/ui/designsystem/components/BrandButton.kt` | `com.greatwall.callring.ui.designsystem.components` | 现有内聚唯一实现 |
 | `ui/src/main/kotlin/com/greatwall/callring/ui/designsystem/components/DateTimeInputs.kt` | `com.greatwall.callring.ui.designsystem.components` | 现有内聚唯一实现 |
-| `ui/src/main/kotlin/com/greatwall/callring/ui/designsystem/components/FormInteractions.kt` | `com.greatwall.callring.ui.designsystem.components` | 待T13b2b：rememberFormBack interprets MutationState busy/completed/error and belongs feature/shared; retain confirmation/keyboard/form visual primitives; share UnsavedChangesDialog through a narrow visual signature without state/feature import back into designsystem. |
+| `ui/src/main/kotlin/com/greatwall/callring/ui/designsystem/components/FormInteractions.kt` | `com.greatwall.callring.ui.designsystem.components` | T13b2b：rememberFormBack/MutationState编排迁feature/shared；唯一internal纯参数UnsavedChangesDialog保留designsystem。 |
 | `ui/src/main/kotlin/com/greatwall/callring/ui/designsystem/components/InteractionFeedback.kt` | `com.greatwall.callring.ui.designsystem.components` | 现有内聚唯一实现 |
-| `ui/src/main/kotlin/com/greatwall/callring/ui/designsystem/components/SharedComponents.kt` | `com.greatwall.callring.ui.designsystem.components` | 待T13b2b：Move CallerCard(CallerProfile), position formatting and business imports to feature/shared. Retain ScreenFrame/rows/Loading/Error/Empty/ScoreBadge visual primitives; remove unused contracts.ai wildcard, do not manufacture a replacement dependency. |
-| `ui/src/main/kotlin/com/greatwall/callring/ui/designsystem/ScorePalette.kt` | `com.greatwall.callring.ui.designsystem` | 现有内聚唯一实现 |
-| `ui/src/main/kotlin/com/greatwall/callring/ui/designsystem/Theme.kt` | `com.greatwall.callring.ui.designsystem` | 待T13b2b：AppearanceSettings/DefaultAppearance/preset+seed/colorMode interpretation and usesDarkColors map once in app/bridge; designsystem ThemeSpec/ThemeDefinition/registry visual lookup/color+contrast/rendering accept only visual values. Preserve unknown-preset/missing-custom-seed defaults; update feature/widget/overlay callers, no appearance overload or old-package re-export. |
+| `ui/src/main/kotlin/com/greatwall/callring/ui/designsystem/components/SharedComponents.kt` | `com.greatwall.callring.ui.designsystem.components` | T13b2b：CallerCard/CallerProfile/UiFormat迁feature/shared；纯视觉组件保留，旧入口删除。 |
 | `ui/src/main/kotlin/com/greatwall/callring/ui/feature/ai/AiSettingsScreen.kt` | `com.greatwall.callring.ui.feature.ai` | 现有内聚唯一实现 |
 | `ui/src/main/kotlin/com/greatwall/callring/ui/feature/ai/AiSettingsViewModel.kt` | `com.greatwall.callring.ui.feature.ai` | 现有内聚唯一实现 |
 | `ui/src/main/kotlin/com/greatwall/callring/ui/feature/ai/CredentialDialog.kt` | `com.greatwall.callring.ui.feature.ai` | 现有内聚唯一实现 |
@@ -568,29 +567,41 @@ T13b2a候选已完成查询/完整快照投影、typed observations及四个混�
 | `ui/src/main/kotlin/com/greatwall/callring/ui/feature/home/HomeQuietViewModel.kt` | `com.greatwall.callring.ui.feature.home` | 现有内聚唯一实现 |
 | `ui/src/main/kotlin/com/greatwall/callring/ui/feature/home/HomeScreen.kt` | `com.greatwall.callring.ui.feature.home` | 现有内聚唯一实现 |
 | `ui/src/main/kotlin/com/greatwall/callring/ui/feature/home/HomeViewModel.kt` | `com.greatwall.callring.ui.feature.home` | 现有内聚唯一实现 |
-| `ui/src/main/kotlin/com/greatwall/callring/ui/feature/recording/RecordingScreens.kt` | `com.greatwall.callring.ui.feature.recording` | 待T13b2b：Separate actual screen declarations and shared recording feedback/status label; preserve layout and behavior. |
-| `ui/src/main/kotlin/com/greatwall/callring/ui/feature/recording/RecordingViewModels.kt` | `com.greatwall.callring.ui.feature.recording` | 待T13b2b：Separate actual ViewModels and recordingMessage helper; do not invent a RecordingSettingsViewModel absent here. |
+| `ui/src/main/kotlin/com/greatwall/callring/ui/feature/recording/ArchiveScreen.kt` | `com.greatwall.callring.ui.feature.recording` | T13b2b：三个实际screen及共享presentation独立owner，旧mixedfile删除。 |
+| `ui/src/main/kotlin/com/greatwall/callring/ui/feature/recording/ArchiveViewModel.kt` | `com.greatwall.callring.ui.feature.recording` | T13b2b：两VM完整owner含private Read搬移；recordingMessage归presentation；旧mixedfile删除。 |
+| `ui/src/main/kotlin/com/greatwall/callring/ui/feature/recording/RecordingArchivesScreen.kt` | `com.greatwall.callring.ui.feature.recording` | T13b2b：三个实际screen及共享presentation独立owner，旧mixedfile删除。 |
+| `ui/src/main/kotlin/com/greatwall/callring/ui/feature/recording/RecordingArchivesViewModel.kt` | `com.greatwall.callring.ui.feature.recording` | T13b2b：两VM完整owner含private Read搬移；recordingMessage归presentation；旧mixedfile删除。 |
+| `ui/src/main/kotlin/com/greatwall/callring/ui/feature/recording/RecordingPresentation.kt` | `com.greatwall.callring.ui.feature.recording` | T13b2b：两VM完整owner含private Read搬移；recordingMessage归presentation；旧mixedfile删除。 |
+| `ui/src/main/kotlin/com/greatwall/callring/ui/feature/recording/RecordingSettingsScreen.kt` | `com.greatwall.callring.ui.feature.recording` | T13b2b：三个实际screen及共享presentation独立owner，旧mixedfile删除。 |
 | `ui/src/main/kotlin/com/greatwall/callring/ui/feature/report/ReportScreen.kt` | `com.greatwall.callring.ui.feature.report` | 现有内聚唯一实现 |
 | `ui/src/main/kotlin/com/greatwall/callring/ui/feature/report/ReportViewModel.kt` | `com.greatwall.callring.ui.feature.report` | 现有内聚唯一实现 |
 | `ui/src/main/kotlin/com/greatwall/callring/ui/feature/settings/AppearanceScreen.kt` | `com.greatwall.callring.ui.feature.settings` | 现有内聚唯一实现 |
 | `ui/src/main/kotlin/com/greatwall/callring/ui/feature/settings/AppearanceViewModel.kt` | `com.greatwall.callring.ui.feature.settings` | 现有内聚唯一实现 |
 | `ui/src/main/kotlin/com/greatwall/callring/ui/feature/settings/CalendarScreen.kt` | `com.greatwall.callring.ui.feature.settings` | 现有内聚唯一实现 |
-| `ui/src/main/kotlin/com/greatwall/callring/ui/feature/settings/components/SettingsComponents.kt` | `com.greatwall.callring.ui.feature.settings.components` | 现有内聚唯一实现 |
+| `ui/src/main/kotlin/com/greatwall/callring/ui/feature/settings/CalendarViewModel.kt` | `com.greatwall.callring.ui.feature.settings` | T13b2b：七个实际VM独立owner；构造/订阅/draft保留；旧mixedfile删除。 |
 | `ui/src/main/kotlin/com/greatwall/callring/ui/feature/settings/LeavesScreen.kt` | `com.greatwall.callring.ui.feature.settings` | 现有内聚唯一实现 |
+| `ui/src/main/kotlin/com/greatwall/callring/ui/feature/settings/LeavesViewModel.kt` | `com.greatwall.callring.ui.feature.settings` | T13b2b：七个实际VM独立owner；构造/订阅/draft保留；旧mixedfile删除。 |
 | `ui/src/main/kotlin/com/greatwall/callring/ui/feature/settings/MyPositionScreen.kt` | `com.greatwall.callring.ui.feature.settings` | 现有内聚唯一实现 |
 | `ui/src/main/kotlin/com/greatwall/callring/ui/feature/settings/PositionsScreen.kt` | `com.greatwall.callring.ui.feature.settings` | 现有内聚唯一实现 |
+| `ui/src/main/kotlin/com/greatwall/callring/ui/feature/settings/PositionsViewModel.kt` | `com.greatwall.callring.ui.feature.settings` | T13b2b：七个实际VM独立owner；构造/订阅/draft保留；旧mixedfile删除。 |
 | `ui/src/main/kotlin/com/greatwall/callring/ui/feature/settings/QuietScreen.kt` | `com.greatwall.callring.ui.feature.settings` | 现有内聚唯一实现 |
+| `ui/src/main/kotlin/com/greatwall/callring/ui/feature/settings/QuietViewModel.kt` | `com.greatwall.callring.ui.feature.settings` | T13b2b：七个实际VM独立owner；构造/订阅/draft保留；旧mixedfile删除。 |
 | `ui/src/main/kotlin/com/greatwall/callring/ui/feature/settings/RingtoneScreen.kt` | `com.greatwall.callring.ui.feature.settings` | 现有内聚唯一实现 |
 | `ui/src/main/kotlin/com/greatwall/callring/ui/feature/settings/RingtoneViewModel.kt` | `com.greatwall.callring.ui.feature.settings` | 现有内聚唯一实现 |
 | `ui/src/main/kotlin/com/greatwall/callring/ui/feature/settings/RuntimeScreen.kt` | `com.greatwall.callring.ui.feature.settings` | 现有内聚唯一实现 |
 | `ui/src/main/kotlin/com/greatwall/callring/ui/feature/settings/RuntimeViewModel.kt` | `com.greatwall.callring.ui.feature.settings` | 现有内聚唯一实现 |
 | `ui/src/main/kotlin/com/greatwall/callring/ui/feature/settings/ScoreSettingsScreen.kt` | `com.greatwall.callring.ui.feature.settings` | 现有内聚唯一实现 |
+| `ui/src/main/kotlin/com/greatwall/callring/ui/feature/settings/ScoreSettingsViewModel.kt` | `com.greatwall.callring.ui.feature.settings` | T13b2b：七个实际VM独立owner；构造/订阅/draft保留；旧mixedfile删除。 |
 | `ui/src/main/kotlin/com/greatwall/callring/ui/feature/settings/SettingsDraftCodecs.kt` | `com.greatwall.callring.ui.feature.settings` | 现有内聚唯一实现 |
 | `ui/src/main/kotlin/com/greatwall/callring/ui/feature/settings/SettingsOverviewScreen.kt` | `com.greatwall.callring.ui.feature.settings` | 现有内聚唯一实现 |
-| `ui/src/main/kotlin/com/greatwall/callring/ui/feature/settings/SettingsViewModels.kt` | `com.greatwall.callring.ui.feature.settings` | 待T13b2b：One existing setting ViewModel per file; current shared tests must follow these actual names. |
+| `ui/src/main/kotlin/com/greatwall/callring/ui/feature/settings/SettingsSummaryViewModel.kt` | `com.greatwall.callring.ui.feature.settings` | T13b2b：七个实际VM独立owner；构造/订阅/draft保留；旧mixedfile删除。 |
 | `ui/src/main/kotlin/com/greatwall/callring/ui/feature/settings/UnifiedWorkSchedule.kt` | `com.greatwall.callring.ui.feature.settings` | 现有内聚唯一实现 |
 | `ui/src/main/kotlin/com/greatwall/callring/ui/feature/settings/WorkScheduleScreen.kt` | `com.greatwall.callring.ui.feature.settings` | 现有内聚唯一实现 |
+| `ui/src/main/kotlin/com/greatwall/callring/ui/feature/settings/WorkScheduleViewModel.kt` | `com.greatwall.callring.ui.feature.settings` | T13b2b：七个实际VM独立owner；构造/订阅/draft保留；旧mixedfile删除。 |
+| `ui/src/main/kotlin/com/greatwall/callring/ui/feature/settings/components/SettingsComponents.kt` | `com.greatwall.callring.ui.feature.settings.components` | 现有内聚唯一实现 |
+| `ui/src/main/kotlin/com/greatwall/callring/ui/feature/shared/CallerComponents.kt` | `com.greatwall.callring.ui.feature.shared` | T13b2b：CallerCard/CallerProfile/UiFormat迁feature/shared；纯视觉组件保留，旧入口删除。 |
 | `ui/src/main/kotlin/com/greatwall/callring/ui/feature/shared/FeatureFeedback.kt` | `com.greatwall.callring.ui.feature.shared` | 现有内聚唯一实现 |
+| `ui/src/main/kotlin/com/greatwall/callring/ui/feature/shared/FormFeedback.kt` | `com.greatwall.callring.ui.feature.shared` | T13b2b：rememberFormBack/MutationState编排迁feature/shared；唯一internal纯参数UnsavedChangesDialog保留designsystem。 |
 | `ui/src/main/kotlin/com/greatwall/callring/ui/feature/update/AppUpdateScreen.kt` | `com.greatwall.callring.ui.feature.update` | 现有内聚唯一实现 |
 | `ui/src/main/kotlin/com/greatwall/callring/ui/feature/update/AppUpdateViewModel.kt` | `com.greatwall.callring.ui.feature.update` | 现有内聚唯一实现 |
 | `ui/src/main/kotlin/com/greatwall/callring/ui/format/UiFormat.kt` | `com.greatwall.callring.ui.format` | 现有内聚唯一实现 |

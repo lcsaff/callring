@@ -1,5 +1,7 @@
 package com.greatwall.callring.ui.feature.report
 
+import com.greatwall.callring.ui.app.bridge.rememberAppearanceThemeSpec
+import com.greatwall.callring.ui.app.bridge.DefaultAppearance
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createComposeRule
 import com.greatwall.callring.contracts.common.*
@@ -24,7 +26,7 @@ class ReportScreenTest {
             ReportTotals(999, 999, 0, 0, 1, 0, 0, 0), ScoreSummary(80, 999, 0, 0, 5, 2, 10, time),
             Page(listOf(call(1, null), call(2, 0)), 0, 50, 2, SnapshotMeta(0, 0)),
             DataQuality(true, AccessState.GRANTED, true, false, false, false), SnapshotMeta(0, 0))
-        compose.setContent { CallringTheme {
+        compose.setContent { CallringTheme(DefaultAppearance.rememberAppearanceThemeSpec(androidx.compose.foundation.isSystemInDarkTheme())) {
             ReportScreen(LoadState(report, loaded = true), ReportQuery("100", DateRange(LocalDate.of(2026, 1, 1), LocalDate.of(2026, 1, 2))), MutationState(),
                 onBack = {}, onRetry = {}, onRange = {}, onFilter = {}, onPage = {}, onExport = {}, onEdit = {}, onCapability = {})
         } }
@@ -43,7 +45,7 @@ class ReportScreenTest {
             ReportTotals(0, 0, 0, 0, 0, 0, 0, 0), ScoreSummary(null, 0, 0, 0, 5, 2, 10, time),
             Page(emptyList(), 0, 50, 51, SnapshotMeta(0, 0)),
             DataQuality(true, AccessState.GRANTED, false, false, false, false), SnapshotMeta(0, 0))
-        compose.setContent { CallringTheme {
+        compose.setContent { CallringTheme(DefaultAppearance.rememberAppearanceThemeSpec(androidx.compose.foundation.isSystemInDarkTheme())) {
             ReportScreen(LoadState(report, loaded = true), ReportQuery("100", DateRange(LocalDate.of(2026, 1, 1), LocalDate.of(2026, 1, 2))), MutationState(),
                 onBack = {}, onRetry = {}, onRange = {}, onFilter = {}, onPage = {}, onExport = {}, onEdit = {}, onCapability = {})
         } }

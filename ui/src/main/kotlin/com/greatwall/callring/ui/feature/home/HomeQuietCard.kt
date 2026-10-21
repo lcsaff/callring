@@ -13,7 +13,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import com.greatwall.callring.contracts.settings.*
 import com.greatwall.callring.ui.designsystem.components.SwitchSettingRow
-import com.greatwall.callring.ui.designsystem.components.rememberFormBack
+import com.greatwall.callring.ui.feature.shared.rememberFormBack
 import com.greatwall.callring.ui.feature.settings.components.*
 import com.greatwall.callring.ui.feature.shared.LoadFeedback
 import com.greatwall.callring.ui.feature.shared.MutationFeedback

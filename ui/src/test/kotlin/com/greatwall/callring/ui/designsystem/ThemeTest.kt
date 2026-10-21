@@ -3,42 +3,14 @@ package com.greatwall.callring.ui.designsystem
 import androidx.compose.material3.ColorScheme
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.luminance
-import com.greatwall.callring.contracts.settings.AppearanceSettings
-import com.greatwall.callring.contracts.settings.ColorMode
-import com.greatwall.callring.contracts.settings.ThemeSelection
 import org.junit.Assert.*
 import org.junit.Test
 
 class ThemeTest {
-    @Test fun defaultAppearanceUsesStableRedPresetAndFollowsSystem() {
-        assertEquals(AppearanceSettings(ThemeSelection.PRESET, "unicom_red", null, ColorMode.FOLLOW_SYSTEM), DefaultAppearance)
-        assertEquals(listOf("unicom_red", "sky_blue", "teal_green"), ThemeRegistry.presets.map { it.id })
-    }
-
-    @Test fun unknownStoredPresetFallsBackForDisplayWithoutChangingPreferences() {
-        val stored = AppearanceSettings(ThemeSelection.PRESET, "future_theme", 0x123456, ColorMode.DARK)
-        assertEquals("unicom_red", ThemeRegistry.resolve(stored).id)
-        assertEquals("future_theme", stored.presetId)
-        assertEquals(0x123456, stored.customSeedRgb)
-        assertEquals(ColorMode.DARK, stored.colorMode)
-    }
-
-    @Test fun registryCanExtendPresetsWithoutChangingResolutionCode() {
-        val added = ThemeRegistry.presets.first().copy(id = "new_preset", name = "新主题")
-        val definitions = (ThemeRegistry.presets + added).toMutableList()
-        val registry = ThemeRegistry(definitions)
-        definitions.clear()
-        assertEquals(added, registry.resolve(DefaultAppearance.copy(presetId = "new_preset")))
-        assertEquals(4, registry.presets.size)
-        assertThrows(UnsupportedOperationException::class.java) {
-            (registry.presets as MutableList<ThemeDefinition>).clear()
-        }
-    }
-
+    private val visualThemes = listOf(0xE60012, 0x1976D2, 0x008577).map { ThemeDefinition.fromSeed("seed-$it", "Seed", it) }
     @Test fun customExtremeSeedsProduceReadableCompleteLightAndDarkSchemes() {
         for (rgb in listOf(0x000000, 0xFFFFFF, 0xFF0000, 0x00FF00, 0x0000FF)) {
-            val settings = AppearanceSettings(ThemeSelection.CUSTOM, "future_theme", rgb, ColorMode.DARK)
-            val theme = ThemeRegistry.resolve(settings)
+            val theme = ThemeDefinition.fromSeed("custom", "自定义", rgb)
             assertEquals(rgb, theme.seedRgb)
             assertReadable(theme.light)
             assertReadable(theme.dark)
@@ -46,26 +18,8 @@ class ThemeTest {
         }
     }
 
-    @Test fun invalidStoredCustomSeedsFallBackForDisplayAndPreserveStoredPreferences() {
-        for (rgb in listOf(null, -1, 0x1000000)) {
-            val stored = AppearanceSettings(ThemeSelection.CUSTOM, "future_theme", rgb, ColorMode.DARK)
-            assertEquals("unicom_red", ThemeRegistry.resolve(stored).id)
-            assertEquals(rgb, stored.customSeedRgb)
-            assertEquals(ThemeSelection.CUSTOM, stored.selection)
-            assertEquals("future_theme", stored.presetId)
-            assertEquals(ColorMode.DARK, stored.colorMode)
-        }
-    }
-
-    @Test fun explicitDarkModeIsPreservedIndependentlyFromSystemAndTheme() {
-        assertTrue(DefaultAppearance.copy(colorMode = ColorMode.DARK).usesDarkColors(false))
-        assertFalse(DefaultAppearance.copy(colorMode = ColorMode.LIGHT).usesDarkColors(true))
-        assertTrue(DefaultAppearance.usesDarkColors(true))
-        assertFalse(DefaultAppearance.usesDarkColors(false))
-    }
-
     @Test fun brandFillKeepsTheSelectedRgbInBothModesIncludingCustomExtremes() {
-        val themes = ThemeRegistry.presets + listOf(0x000000, 0xFFFFFF, 0x777777, 0x00FF00, 0x0000FF).map {
+        val themes = visualThemes + listOf(0x000000, 0xFFFFFF, 0x777777, 0x00FF00, 0x0000FF).map {
             ThemeDefinition.fromSeed("custom", "自定义", it)
         }
         for (theme in themes) for (scheme in listOf(theme.light, theme.dark)) {
@@ -75,7 +29,7 @@ class ThemeTest {
     }
 
     @Test fun allBackgroundsAndSurfacesStayNeutralRegardlessOfTheme() {
-        val themes = ThemeRegistry.presets + ThemeDefinition.fromSeed("custom", "自定义", 0xFF00FF)
+        val themes = visualThemes + ThemeDefinition.fromSeed("custom", "自定义", 0xFF00FF)
         for (theme in themes) for (scheme in listOf(theme.light, theme.dark)) {
             for (surface in surfaces(scheme) + listOf(scheme.background, scheme.surfaceVariant, scheme.primaryContainer)) {
                 assertEquals("${theme.id} surface is tinted", surface.red, surface.green, 0.0001f)
@@ -85,7 +39,7 @@ class ThemeTest {
     }
 
     @Test fun accentTextStaysReadableOnAllNeutralSurfaceLevels() {
-        val themes = ThemeRegistry.presets + listOf(0x000000, 0xFFFFFF, 0xFFFF00, 0x00FF00, 0x777777).map {
+        val themes = visualThemes + listOf(0x000000, 0xFFFFFF, 0xFFFF00, 0x00FF00, 0x777777).map {
             ThemeDefinition.fromSeed("custom", "自定义", it)
         }
         for (theme in themes) for (scheme in listOf(theme.light, theme.dark)) {

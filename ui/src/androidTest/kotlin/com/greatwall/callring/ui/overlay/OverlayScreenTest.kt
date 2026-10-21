@@ -1,6 +1,7 @@
 package com.greatwall.callring.ui.overlay
 
-import androidx.compose.ui.geometry.Offset
+import com.greatwall.callring.ui.app.bridge.DefaultAppearance
+import com.greatwall.callring.ui.app.bridge.rememberAppearanceThemeSpec
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.unit.dp
@@ -22,7 +23,7 @@ class OverlayScreenTest {
         val overview = (runBlocking { api.getOverview(OverviewQuery("100", 123)) } as ApiResult.Success).value
         var target: Boolean? = null
         val state = OverlayContentState(OverlaySessionState(IncomingCallUiRequest("one", "100", 123, CallDecision.QUIET_SILENCED)), LoadState(overview, loaded = true))
-        compose.setContent { CallringTheme(systemDark = false) {
+        compose.setContent { CallringTheme(DefaultAppearance.rememberAppearanceThemeSpec(false)) {
             OverlayScreen(state, {}, {}, {}, {}, {}, {}, {}, { target = it }, {}, {}, {}, 620.dp)
         } }
         compose.onNodeWithText("免打扰静音").assertExists()
@@ -36,7 +37,7 @@ class OverlayScreenTest {
         val state = OverlayContentState(OverlaySessionState(IncomingCallUiRequest("one", "100", 123, CallDecision.NORMAL_RINGING),
             editing = true, callEnded = true), LoadState(), LoadState(CallerEditorData(draft, emptyList(), null), loaded = true), draft)
         var cancelled = false
-        compose.setContent { CallringTheme(systemDark = false) {
+        compose.setContent { CallringTheme(DefaultAppearance.rememberAppearanceThemeSpec(false)) {
             OverlayScreen(state, {}, {}, {}, {}, { cancelled = true }, {}, {}, {}, {}, {}, {}, 620.dp)
         } }
         compose.onNodeWithText("草稿姓名").assertExists()

@@ -1,5 +1,7 @@
 package com.greatwall.callring.ui.feature.recording
 
+import com.greatwall.callring.ui.app.bridge.rememberAppearanceThemeSpec
+import com.greatwall.callring.ui.app.bridge.DefaultAppearance
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createComposeRule
@@ -42,7 +44,7 @@ class RecordingScreensTest {
             analysis = CallAnalysis(summary = "商量下次会议"))
         var selected: CallArchive? = null
         var refreshes = 0
-        compose.setContent { CallringTheme {
+        compose.setContent { CallringTheme(DefaultAppearance.rememberAppearanceThemeSpec(androidx.compose.foundation.isSystemInDarkTheme())) {
             RecordingArchivesScreen(LoadState(listOf(archive), loaded = true), {}, { refreshes++ }, { selected = it })
         } }
         compose.onNodeWithText("10086").assertIsDisplayed()
@@ -78,7 +80,7 @@ class RecordingScreensTest {
 
     @Test fun independentArchiveListShowsEmptyAndErrorFeedback() {
         val state = mutableStateOf(LoadState<List<CallArchive>>(emptyList(), loaded = true))
-        compose.setContent { CallringTheme { RecordingArchivesScreen(state.value, {}, {}, {}) } }
+        compose.setContent { CallringTheme(DefaultAppearance.rememberAppearanceThemeSpec(androidx.compose.foundation.isSystemInDarkTheme())) { RecordingArchivesScreen(state.value, {}, {}, {}) } }
         compose.onNodeWithText("暂无通话录音").assertIsDisplayed()
         compose.runOnIdle { state.value = LoadState(error = ApiError(ErrorCode.STORAGE_FAILURE, "recording.storage_or_network")) }
         compose.onNodeWithText(recordingMessage("recording.storage_or_network")).assertIsDisplayed()
@@ -88,7 +90,7 @@ class RecordingScreensTest {
         val view = RecordingSettingsView(recordingEnabled = false, automaticAnalysis = true,
             captureMode = CaptureMode.SYSTEM_ONLY, folderConfigured = false, revision = 1)
         var enabled: Boolean? = null
-        compose.setContent { CallringTheme {
+        compose.setContent { CallringTheme(DefaultAppearance.rememberAppearanceThemeSpec(androidx.compose.foundation.isSystemInDarkTheme())) {
             RecordingSettingsScreen(LoadState(view, loaded = true), MutationState(), {}, {}, { enabled = it }, {}, {}, {})
         } }
         compose.onNodeWithTag("settings-save").assertDoesNotExist()
@@ -102,7 +104,7 @@ class RecordingScreensTest {
 
     @Test fun deletingArchiveRequiresExplicitConfirmation() {
         var deletes = 0
-        compose.setContent { CallringTheme {
+        compose.setContent { CallringTheme(DefaultAppearance.rememberAppearanceThemeSpec(androidx.compose.foundation.isSystemInDarkTheme())) {
             ArchiveScreen(LoadState(CallArchive(1, "10086", 0), loaded = true), LoadState(), MutationState(),
                 {}, {}, {}, {}, {}, {}, { deletes++ }, {}, {}, {}, {})
         } }
