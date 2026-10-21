@@ -1,15 +1,15 @@
 {
-  "status": "in_progress_waiting_for_post_reboot_debug_connection",
+  "status": "device_checks_closed_with_recorded_limits_and_user_cancelled_download",
   "version": "0.3.10/13",
   "base": "0aeeaefad72d84f633f4cfa0d4efb9c8522da3c4",
   "source_freeze": {
     "base": "0aeeaefad72d84f633f4cfa0d4efb9c8522da3c4",
-    "source_sha256": "4d02a6b04df103694c49fa522e72d247ee4e6591fdaebbbd296a376d4b449ecb",
+    "source_sha256": "f3dd7b8436d3a4b41b5c3c492d35e1a3a973b91204db1d7b01f601a40d3fa164",
     "files": [
       {
         "path": "app/src/debug/kotlin/com/greatwall/callring/platform/update/AppUpdateLiveDownloadDeviceTest.kt",
-        "bytes": 4720,
-        "sha256": "e4b1dce77e97eb1415b205659efa5865ac3e9e7b6fef882008e92bf22927d327"
+        "bytes": 5572,
+        "sha256": "92b15fc97f70684b3643cda056f403b7dad21ecaa80a2f9b5767866abc9d0390"
       },
       {
         "path": "ui/src/androidTest/kotlin/com/greatwall/callring/ui/widget/WidgetHostTest.kt",
@@ -20,21 +20,22 @@
     "apks": [
       {
         "path": "app/build/outputs/apk/backendQa/app-backendQa.apk",
-        "bytes": 49512466,
-        "sha256": "e577bd093caa508191aa88976e2af58e29db87f34b357fbc0b7dee1c7725a700"
+        "bytes": 49515806,
+        "sha256": "699af87ebaa4eb4e383f9369bee04afabd5eccbefbde344fc13b982a56fd4e42"
       },
       {
         "path": "ui/build/outputs/apk/androidTest/debug/ui-debug-androidTest.apk",
         "bytes": 49079997,
         "sha256": "64a1a326011f33c6405bd74e493ff24e882b98e3993dbf513d62f00133003572"
       }
-    ]
+    ],
+    "head": "4d575b94010c1c8a9aee31ba3a6eda8991616f5b"
   },
   "local_gate": {
     "status": "passed",
     "junit": {
       "backend": {
-        "state": "EXECUTED",
+        "state": "UP-TO-DATE",
         "tests": 366,
         "failures": 0,
         "errors": 0,
@@ -42,7 +43,7 @@
         "xml_sha256": "f3f8a85cbe396de3a15815424ddebb8c597f4797d8c0bdbedffc40115a8d89b7"
       },
       "ui": {
-        "state": "EXECUTED",
+        "state": "UP-TO-DATE",
         "tests": 310,
         "failures": 0,
         "errors": 0,
@@ -55,7 +56,7 @@
         "failures": 0,
         "errors": 0,
         "skipped": 0,
-        "xml_sha256": "c2de3b2441ae4cb22c0c0281eafcc5bb44dd6f48c00b2ef89f203c5db53ef172"
+        "xml_sha256": "558e63c465ba8c626d4c687fab20f7ca7167b25fafd6501c98745330a6cbe555"
       }
     },
     "contracts": {
@@ -64,20 +65,21 @@
     },
     "gradle_tasks": {
       ":contracts:test": "NO-SOURCE",
-      ":backend:test": "EXECUTED",
-      ":ui:testDebugUnitTest": "EXECUTED",
+      ":backend:test": "UP-TO-DATE",
+      ":ui:testDebugUnitTest": "UP-TO-DATE",
       ":app:testDebugUnitTest": "EXECUTED",
       ":ui:checkDebugCompileClasspath": "EXECUTED",
-      ":ui:assembleDebug": "EXECUTED",
+      ":ui:assembleDebug": "UP-TO-DATE",
       ":app:assembleDebug": "EXECUTED",
-      ":app:assembleRelease": "EXECUTED",
-      ":app:assembleBackendQa": "UP-TO-DATE",
+      ":app:assembleRelease": "UP-TO-DATE",
+      ":app:assembleBackendQa": "EXECUTED",
       ":ui:assembleDebugAndroidTest": "UP-TO-DATE",
-      ":app:assembleDebugAndroidTest": "EXECUTED",
+      ":app:assembleDebugAndroidTest": "UP-TO-DATE",
       ":ui:lintDebug": "EXECUTED",
       ":app:lintDebug": "EXECUTED"
     },
-    "archive": "build/qa/device-final-20261021/local-gate-artifacts/index.json"
+    "archive": "build/qa/device-final-20261021/window-gate-artifacts/index.json",
+    "previous_actual1037_archive": "build/qa/device-final-20261021/local-gate-artifacts/index.json"
   },
   "reviews": {
     "test_scope": "PASS acceptance_test_review; final cleanup executor awaitTermination reviewed"
@@ -97,7 +99,8 @@
       "tests": 1,
       "actual_runner_seconds": 3.407,
       "log_sha256": "fe6250e56f495463fa328290773e5d9350dd9fdfd9aedafba75e741264783bdf",
-      "appops_restored": true
+      "appops_restored": true,
+      "native_pngs_visually_reviewed": true
     },
     "production_background_overlay": {
       "status": "passed",
@@ -113,24 +116,52 @@
         "Background main process killed, pid absent",
         "Widget enabled quiet mode, main process restarted",
         "Home showed NON_WORK state",
-        "Home disabled mode, widget showed off"
+        "Home disabled mode, widget showed off",
+        "After real reboot and1825-second background interval, rendered and toggled on/off successfully"
       ],
       "final_quiet_mode": "OFF; same as baseline"
     },
     "reboot": {
-      "status": "initiated_waiting_for_reconnect",
-      "pre_boot_id": "c8546f44-7a20-4b17-9ec2-46efd3bd0e6a"
+      "status": "passed_with_permission_scope",
+      "pre_boot_id": "c8546f44-7a20-4b17-9ec2-46efd3bd0e6a",
+      "post_boot_id": "630d7bc0-bd96-453a-b521-3acb67cf31b0",
+      "boot_completed": true,
+      "user_state": "RUNNING_UNLOCKED",
+      "widget500_binding_preserved": true,
+      "automatic_widget_remoteviews_update_in_system_log": true,
+      "calendar_and_recording_jobs_executed_in_system_log": true,
+      "permission_scope": "ADB temporary READ_PHONE_STATE/READ_CALL_LOG/READ_CONTACTS grants were denied after reboot. Content observer75 absent, consistent with denied permission; do not claim restored under granted permission. CALL_SCREENING role persisted."
     },
     "standby_30min": {
-      "status": "not_started"
+      "status": "background_duration_and_resume_verified_with_user_accepted_interruption",
+      "start_local": "2026-10-21T15:06:01.712545+08:00",
+      "start_monotonic": 678087.031,
+      "required_seconds": 1800,
+      "expected_end_local": "2026-10-21T15:36:01.712545+08:00",
+      "device": "192.168.10.149:33667",
+      "conditions": "screen asleep and unplugged at both observations; natural IDLE at end; no agent device commands during timer; user reported brief phone use",
+      "elapsed_before_end_device_access_seconds": 1825.703000000096,
+      "end_local": "2026-10-21T15:36:30.158553+08:00",
+      "screen_sleep_at_end": true,
+      "unplugged_at_end": true,
+      "last_wake_time_unchanged": false,
+      "start_last_wake": "673234 (58448 ms ago)",
+      "end_last_wake": "1492155 (305629 ms ago)",
+      "idle_state": "IDLE mLightState=OVERRIDE",
+      "light_idle_state": "OVERRIDE",
+      "user_report": "Brief phone interaction under30 seconds",
+      "continuous_uninterrupted_standby_pass": false,
+      "repeat_cancelled_by_user": true,
+      "post_unlock_widget_on_off_verified": true
     },
     "live_download": {
-      "status": "not_passed_yet",
-      "attempts": [
-        "Background check failed network",
-        "Real latest release check succeeded, downloaded about5MiB, then240s test timeout"
-      ],
-      "next_attempt_budget_seconds": 1800
+      "status": "cancelled_by_user",
+      "metadata_check": "real GitHub latest 0.3.8/11 succeeded",
+      "complete_download_verified": false,
+      "installed": false,
+      "process_stopped": true,
+      "temporary_directory_absent": true,
+      "evidence": "build/qa/device-final-20261021/download-user-cancelled-cleanup.json"
     },
     "real_sim": {
       "status": "unavailable",
@@ -139,12 +170,21 @@
     }
   },
   "cleanup_pending": [
-    "Reconnect after reboot",
-    "Restore main CALL_SCREENING role to no holder; retain com.android.contacts DIALER",
-    "Restore main READ_PHONE_STATE, READ_CALL_LOG, READ_CONTACTS, POST_NOTIFICATIONS to denied",
-    "Restore main SYSTEM_ALERT_WINDOW and10021 to ignore",
-    "Remove only new production launcher widget500",
-    "Confirm quiet OFF and no transient update files"
+    "New formal launcher widget500 remains; phone locked; no further device acceptance requested"
   ],
-  "local_private_evidence": "build/qa/device-final-20261021; screenshots and device logs remain ignored/local only"
+  "local_private_evidence": "build/qa/device-final-20261021; screenshots and device logs remain ignored/local only",
+  "cleanup_completed": {
+    "CALL_SCREENING": "no holder; baseline restored",
+    "DIALER": "com.android.contacts; unchanged",
+    "runtime_permissions": "POST_NOTIFICATIONS, READ_CALL_LOG, READ_PHONE_STATE, RECORD_AUDIO, READ_CONTACTS all denied; baseline matches",
+    "main_appops": "SYSTEM_ALERT_WINDOW and10021 restored to ignore",
+    "download": "QA process stopped; owned temporary directory removed and absence verified"
+  },
+  "release": {
+    "version": "0.4.0/14",
+    "published_latest": "0.3.8/11",
+    "already_distributed_device_version": "0.3.10/13",
+    "repeat_ci_or_full_test_gate": false,
+    "reason": "User explicitly requested packaging and publishing without repeating CI"
+  }
 }
