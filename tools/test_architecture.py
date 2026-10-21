@@ -68,6 +68,32 @@ class ArchitectureTests(unittest.TestCase):
             'val data: Map<String, Any?> = emptyMap()')
         self.assertEqual([], check_architecture.check(root))
 
+    def test_entrypoint_cannot_receive_complete_graph_context_or_api(self):
+        for dependency in ('BackendGraph', 'BackendProvider', 'CallringBackend', 'CallringUiApi',
+                           'Context', 'Service', 'JobService', 'RecordingApi', 'SettingsApi'):
+            with self.subTest(dependency=dependency):
+                self.check_bad(lambda root: self.query_source(root, 'app', 'entrypoint.calling',
+                    'class Controller(private val resource: ' + dependency + ')'))
+
+    def test_registered_shell_cannot_reintroduce_workflow(self):
+        for name, body in (('RuntimeReceiver.kt', 'worker.execute { session.idle(now()) }'),
+                           ('CalendarSyncJobService.kt', 'for (year in CalendarRefreshPolicy.years(today)) {}'),
+                           ('SyncJobService.kt', 'var retry = false'),
+                           ('RecordingJobService.kt', 'val token = AtomicBoolean(false)'),
+                           ('CallCaptureService.kt', 'synchronized(this) { destroyed = true }'),
+                           ('RingPlaybackService.java', 'private PreparationGate preparation;')):
+            self.check_bad(lambda root: self.query_source(root, 'app', '', body, name))
+
+    def test_typed_resources_and_android_shell_wiring_are_allowed(self):
+        root = self.tree()
+        self.query_source(root, 'app', 'entrypoint.recording',
+            'class Controller(val newMedia: () -> Media, val plan: () -> CapturePlan) { interface Media { fun prepare() } }')
+        self.query_source(root, 'app', '',
+            'import android.app.Service\nclass CallCaptureService : Service() { '
+            'val controller = CaptureServiceController({ graph.recordings.service.capturePlan(true, true, false) })\n'
+            'fun media() { val recorder = MediaRecorder(); recorder.prepare() } }', 'CallCaptureService.kt')
+        self.assertEqual([], check_architecture.check(root))
+
     def tree(self, mutation=None):
         temp = tempfile.TemporaryDirectory()
         self.addCleanup(temp.cleanup)

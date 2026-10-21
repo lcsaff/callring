@@ -91,7 +91,9 @@
 
 ## 架构与构建
 
-`app` 负责 Application 组装、平台业务适配与来电入口；`ui` 负责 Compose 页面、MVVM 状态、统一主题、悬浮窗和 Glance；`backend` 提供业务 API 与业务计算。`CallringApplication` 创建单个业务图，生产 UI 注入正式 `CallringUiApi`，Fake 仅位于测试源集。普通 Screen 接收状态与回调；阻塞工作由可从主线程调用的 API 实现调度。旧生产 UI 与旧业务副本已移除。
+模块依赖为 `contracts ← backend`、`contracts ← ui`，`app` 组合三者。`contracts` 保存公共数据与能力契约；纯 JVM `backend/application` 编排业务、`backend/domain` 保存独立算法；`ui/feature` 与 `ui/state` 负责 Compose/MVVM，`ui/designsystem` 只消费视觉参数。`app/bootstrap` 唯一装配，`bridge` 转换 UI 偏好，`data` 持有数据库/偏好/文件资源，`platform` 适配 Android 能力，`entrypoint/runtime|jobs|recording|calling` 拥有系统事件与生命周期工作流。
+
+根包 RuntimeReceiver、CalendarSyncJobService、SyncJobService、RecordingJobService、CallCaptureService、RingPlaybackService 保留系统注册身份和真正资源接线，工作流各自唯一进入 controller。既有 ScreeningController/IncomingCallController 保持 platform/calling 唯一实现。`CallringApplication` 创建单个业务图，UI 注入正式 `CallringUiApi`，Fake 只在测试源集。普通 Screen 接收状态与回调；阻塞工作由 API 实现调度。完整路径见[最终生产文件归属](docs/superpowers/specs/2026-10-20-layer-boundaries-file-map.md)与[项目说明](PROJECT.md)。T14 统一 CI 整合和 T15 设备/最终验收仍待执行。
 
 工具链：**JDK 17、Gradle 8.13、AGP 8.13.2、Kotlin/Compose compiler plugin 2.3.21、Compose BOM 2025.12.01**。Java/Kotlin JVM 目标为 1.8；minSdk 29、compileSdk 36、targetSdk 33、Build Tools 36.0.0。通过 `local.properties` 或 `ANDROID_HOME` / `ANDROID_SDK_ROOT` 配置 SDK；JDK 使用当前环境的 `JAVA_HOME`。
 
@@ -102,7 +104,7 @@
 ```powershell
 python tools/verify_backend.py
 python tools/verify_ui.py
-.\gradlew.bat :backend:test :ui:testDebugUnitTest :app:testDebugUnitTest :app:assembleDebug :ui:lintDebug :app:lintDebug
+.\gradlew.bat :contracts:test :backend:test :ui:testDebugUnitTest :app:testDebugUnitTest :app:assembleDebug :ui:lintDebug :app:lintDebug
 ```
 
 Debug 构建生成 `app/build/outputs/apk/debug/app-debug.apk`；Release 构建生成 `app/build/outputs/apk/release/app-release.apk`。UI 验证另运行 `:ui:assembleDebugAndroidTest`，日志和带计数的结果写入忽略目录 `ui/build/qa/`。

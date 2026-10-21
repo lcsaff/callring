@@ -8,73 +8,30 @@ import android.content.pm.PackageManager
 import android.os.Handler
 import android.os.Looper
 import com.greatwall.callring.bootstrap.BackendProvider
-import com.greatwall.callring.platform.scheduler.AndroidSyncScheduler
 import com.greatwall.callring.platform.diagnostics.DiagnosticEvent
-import com.greatwall.callring.platform.scheduler.JobRuns
+import com.greatwall.callring.entrypoint.jobs.CallLogSyncJobController
 import java.util.concurrent.Executors
 
 class SyncJobService : JobService() {
-    private val runs = JobRuns<JobParameters>()
     private val handler = Handler(Looper.getMainLooper())
-
-    override fun onStartJob(params: JobParameters): Boolean {
-        val run = runs.start(params.jobId, params)
-        val stopped = run.stopped
-        worker.execute {
-            var retry = false
-            try {
-                if (stopped.get()) return@execute
-                val graph = BackendProvider.from(this).backendGraph
-                val since = graph.backend.statisticsStart()
-                if (!permitted(this)) graph.syncScheduler.cancelObserver()
-                else if (since > 0 && !stopped.get()) {
-                    val now = graph.configuration.clock.millis()
-                    val records =
-                        graph.callLogSource.read(since, maxOf(now + 1, since + 1)) { stopped.get() }
-                    if (!stopped.get()) {
-                        graph.backend.importSystemCalls(records)
-                        retry = graph.backend.hasRecentPending(now)
-                    }
-                }
-            } catch (_: SecurityException) {
-                diagnostic(DiagnosticEvent.CALL_SYNC_FAILED)
-            } catch (_: java.io.InterruptedIOException) {
-                retry = !stopped.get()
-            } catch (_: Exception) {
-                diagnostic(DiagnosticEvent.CALL_SYNC_FAILED)
-                retry = true
-            }
-            val again = retry
-            handler.post {
-                if (!runs.complete(run)) return@post
-                if (params.jobId == AndroidSyncScheduler.CONTENT_JOB_ID && permitted(this)) {
-                    try {
-                        BackendProvider.from(this).backendGraph.syncScheduler.rearmObserver()
-                        if (again) schedule(this)
-                    } catch (_: Exception) {
-                        jobFinished(params, true)
-                    }
-                } else jobFinished(params, again && permitted(this))
-            }
-        }
-        return true
+    private val controller by lazy {
+        CallLogSyncJobController<JobParameters>(
+            { BackendProvider.from(this).backendGraph.backend.statisticsStart() },
+            { since, until, stopped -> BackendProvider.from(this).backendGraph.callLogSource.read(since, until, stopped) },
+            { BackendProvider.from(this).backendGraph.backend.importSystemCalls(it) },
+            { BackendProvider.from(this).backendGraph.backend.hasRecentPending(it) },
+            { permitted(this) },
+            { BackendProvider.from(this).backendGraph.syncScheduler.cancelObserver() },
+            { BackendProvider.from(this).backendGraph.syncScheduler.rearmObserver() },
+            { val graph = BackendProvider.from(this).backendGraph; graph.syncScheduler.requestSync(graph.configuration.clock.millis()) },
+            { BackendProvider.from(this).backendGraph.configuration.clock.millis() },
+            { BackendProvider.from(this).backendGraph.diagnostics.add(DiagnosticEvent.CALL_SYNC_FAILED) },
+            worker, { handler.post(it) }, { params, retry -> jobFinished(params, retry) },
+        )
     }
-
-    override fun onStopJob(params: JobParameters): Boolean {
-        runs.stop(params.jobId)
-        return permitted(this)
-    }
-
-    override fun onDestroy() {
-        runs.close()
-        super.onDestroy()
-    }
-
-    private fun diagnostic(event: DiagnosticEvent) {
-        try {
-            BackendProvider.from(this).backendGraph.diagnostics.add(event)
-        } catch (_: Exception) {}
-    }
+    override fun onStartJob(params: JobParameters): Boolean { controller.start(params.jobId, params); return true }
+    override fun onStopJob(params: JobParameters): Boolean = controller.stop(params.jobId)
+    override fun onDestroy() { controller.close(); super.onDestroy() }
 
     companion object {
         private val worker = Executors.newSingleThreadExecutor()
@@ -87,9 +44,11 @@ class SyncJobService : JobService() {
         fun schedule(context: Context) {
             try {
                 val graph = BackendProvider.from(context).backendGraph
-                if (permitted(context))
-                    graph.syncScheduler.requestSync(graph.configuration.clock.millis())
-                else graph.syncScheduler.cancelObserver()
+                CallLogSyncJobController.schedule(
+                    { permitted(context) },
+                    { graph.syncScheduler.requestSync(graph.configuration.clock.millis()) },
+                    { graph.syncScheduler.cancelObserver() },
+                )
             } catch (_: Exception) {
                 /* The next runtime event or explicit API retry can reschedule. */
             }

@@ -26,6 +26,26 @@ def numeric_operation_dispatch(path, source):
             return True
     return False
 
+SHELL_WORKFLOW = {
+    'RuntimeReceiver.kt': r'\bworker\s*\.\s*execute\s*[{(]',
+    'CalendarSyncJobService.kt': r'\bCalendarRefreshPolicy\b|\bfor\s*\(\s*year\b',
+    'SyncJobService.kt': r'\bvar\s+retry\b|\bInterruptedIOException\b|\bruns\s*\.\s*(?:start|complete|stop)\s*\(',
+    'RecordingJobService.kt': r'\bAtomicBoolean\b|\bworker\s*\.\s*execute\s*[{(]',
+    'CallCaptureService.kt': r'\bsynchronized\s*\(|\bworker\s*\.\s*execute\s*[{(]|\bprivate\s+var\s+(?:call|recorder|destroyed)\b',
+    'RingPlaybackService.java': r'\b(?:PreparationGate|SessionGate)\b|\b(?:reportReady|finish|releasePreparationLease)\s*\(',
+}
+
+def component_boundary_errors(path, package, references):
+    errors = []
+    if package.startswith('com.greatwall.callring.entrypoint.'):
+        # Exact complete-facade/framework types; typed media/results and payloads are allowed.
+        if re.search(r'\b(?:BackendGraph|BackendProvider|CallringBackend|CallringUiApi|RecordingAssembly|CoreAssembly|Context|Service|JobService|Application|RuntimeReceiver|RingPlaybackService|CallCaptureService|SyncJobService|RecordingJobService|CalendarSyncJobService)\b|\b[A-Z]\w*Api\b', references):
+            errors.append('entrypoint controller depends on complete graph/API or Android component')
+    rule = SHELL_WORKFLOW.get(path.name)
+    if rule and re.search(rule, references):
+        errors.append('registered component contains extracted workflow; keep Android resource wiring only')
+    return errors
+
 def check(root=ROOT):
     errors=[]
     allowed={'contracts':set(), 'backend':{'contracts'}, 'ui':{'contracts'}, 'app':{'contracts','backend','ui'}}
@@ -46,6 +66,8 @@ def check(root=ROOT):
             references=re.sub(r'"(?:\\.|[^"\\])*"', '""', source)
             package_match = re.search(r'\bpackage\s+([\w.]+)', references)
             package = package_match.group(1) if package_match else ''
+            if module == 'app' and path.relative_to(directory/'src').parts[0] == 'main':
+                errors.extend(f'{path.relative_to(root)}: {error}' for error in component_boundary_errors(path, package, references))
             if module == 'ui':
                 old_entry = r'\bcom\.greatwall\.callring\.ui\.designsystem\.(?:DefaultAppearance|ThemeRegistry|usesDarkColors|components\.(?:CallerCard|rememberFormBack))\b'
                 if re.search(old_entry, references):

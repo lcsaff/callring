@@ -8,10 +8,8 @@ import android.content.ComponentName
 import android.content.Context
 import com.greatwall.callring.contracts.common.ApiResult
 import com.greatwall.callring.bootstrap.BackendProvider
-import com.greatwall.callring.platform.calendar.CalendarRefreshPolicy
+import com.greatwall.callring.entrypoint.jobs.CalendarSyncJobController
 import com.greatwall.callring.platform.scheduler.JobRuns
-import java.time.LocalDate
-import java.time.ZoneId
 import kotlinx.coroutines.*
 
 /** Network work is scheduled independently of incoming-call processing and survives reboot. */
@@ -25,23 +23,19 @@ class CalendarSyncJobService : JobService() {
             try {
                 withContext(Dispatchers.IO) {
                     val graph = BackendProvider.from(this@CalendarSyncJobService).backendGraph
-                    val clock = graph.configuration.clock
-                    // Isolate QA/custom graphs from the production throttle as well as its database.
                     val cache = getSharedPreferences("${graph.configuration.databaseName}.calendar_sync", Context.MODE_PRIVATE)
-                    val today = LocalDate.now(clock.withZone(ZoneId.of("Asia/Shanghai")))
-                    for (year in CalendarRefreshPolicy.years(today)) {
-                        if (run.stopped.get()) break
-                        val now = clock.millis()
-                        val info = graph.api.settings.getCalendar()
-                        val cached = (info as? ApiResult.Success)?.value?.years?.any { it.year == year } == true
-                        val last = cache.getLong("attempt.$year", 0)
-                        val succeeded = cached && cache.getBoolean("success.$year", false)
-                        if (!CalendarRefreshPolicy.due(now, last, succeeded)) continue
-                        // Persist the attempt before IO, preventing restart loops when offline.
-                        if (!cache.edit().putLong("attempt.$year", now).putBoolean("success.$year", false).commit()) continue
-                        val result = graph.api.settings.synchronizeCalendar(year)
-                        cache.edit().putBoolean("success.$year", result is ApiResult.Success).commit()
-                    }
+                    CalendarSyncJobController(
+                        { graph.configuration.clock },
+                        { year -> (graph.api.settings.getCalendar() as? ApiResult.Success)?.value?.years?.any { it.year == year } == true },
+                        object : CalendarSyncJobController.Attempts {
+                            override fun read(year: Int) = CalendarSyncJobController.Attempt(
+                                cache.getLong("attempt.$year", 0), cache.getBoolean("success.$year", false))
+                            override fun begin(year: Int, now: Long) = cache.edit().putLong("attempt.$year", now)
+                                .putBoolean("success.$year", false).commit()
+                            override fun finish(year: Int, success: Boolean) { cache.edit().putBoolean("success.$year", success).commit() }
+                        },
+                        { graph.api.settings.synchronizeCalendar(it) is ApiResult.Success },
+                    ).run { run.stopped.get() }
                 }
             } catch (cancelled: CancellationException) { throw cancelled }
             catch (_: Exception) { /* Cached data remains usable; the periodic job retries later. */ }

@@ -1,0 +1,175 @@
+{
+  "base": "1e4acba9f115df1240486b249ddc7919112df9f3",
+  "sourceFreeze": {
+    "base": "1e4acba9f115df1240486b249ddc7919112df9f3",
+    "paths": [
+      "app/src/main/java/com/greatwall/callring/RingPlaybackService.java",
+      "app/src/main/java/com/greatwall/callring/entrypoint/calling/PlaybackServiceController.java",
+      "app/src/main/kotlin/com/greatwall/callring/CalendarSyncJobService.kt",
+      "app/src/main/kotlin/com/greatwall/callring/CallCaptureService.kt",
+      "app/src/main/kotlin/com/greatwall/callring/RecordingJobService.kt",
+      "app/src/main/kotlin/com/greatwall/callring/RuntimeReceiver.kt",
+      "app/src/main/kotlin/com/greatwall/callring/SyncJobService.kt",
+      "app/src/main/kotlin/com/greatwall/callring/entrypoint/jobs/CalendarSyncJobController.kt",
+      "app/src/main/kotlin/com/greatwall/callring/entrypoint/jobs/CallLogSyncJobController.kt",
+      "app/src/main/kotlin/com/greatwall/callring/entrypoint/jobs/RecordingJobController.kt",
+      "app/src/main/kotlin/com/greatwall/callring/entrypoint/recording/CaptureServiceController.kt",
+      "app/src/main/kotlin/com/greatwall/callring/entrypoint/runtime/RuntimeEventController.kt",
+      "app/src/test/java/com/greatwall/callring/entrypoint/PlaybackServiceControllerTest.java",
+      "app/src/test/kotlin/com/greatwall/callring/entrypoint/CalendarAndCallLogControllersTest.kt",
+      "app/src/test/kotlin/com/greatwall/callring/entrypoint/CaptureServiceControllerTest.kt",
+      "app/src/test/kotlin/com/greatwall/callring/entrypoint/EntryJobControllersTest.kt"
+    ],
+    "sha256": "8d13d936ad7d7e604e66e183c3665f4cd801989478ba3295171096ea89d86bb2",
+    "count": 16,
+    "aggregateFormat": "relative POSIX path strings sorted lexicographically, path + LF + raw source bytes (or DELETED) + LF",
+    "manifestPath": "build/qa/layer-boundaries/t13b2c-source-freeze.json",
+    "manifestSha256": "06b9521fedc25b0985f0b880f3fdf713c66078e4feddd43d9244c50dd8a52ee4"
+  },
+  "fullGate": {
+    "log": "build/qa/layer-boundaries/t13b2c-fullgate.log",
+    "sha256": "b2f7012bf858b14225d50fdb73a86efd3ce1ac5d7ba348e9c7ff4ea7c917c350",
+    "exitCode": 0,
+    "duration": "2m18s",
+    "tasks": "186 actionable: 34 executed, 152 up-to-date",
+    "command": ".\\gradlew.bat :contracts:test :backend:test :ui:testDebugUnitTest :app:testDebugUnitTest :app:assembleDebug :ui:lintDebug :app:lintDebug :app:compileBackendQaKotlin :ui:compileDebugAndroidTestKotlin :app:compileDebugAndroidTestKotlin :app:compileReleaseKotlin :app:compileReleaseJavaWithJavac --console=plain"
+  },
+  "tasks": {
+    ":contracts:test": "NO-SOURCE",
+    ":backend:test": "UP-TO-DATE",
+    ":ui:testDebugUnitTest": "EXECUTED",
+    ":app:testDebugUnitTest": "EXECUTED",
+    ":app:assembleDebug": "EXECUTED",
+    ":ui:lintDebug": "EXECUTED",
+    ":app:lintDebug": "EXECUTED",
+    ":app:compileBackendQaKotlin": "EXECUTED",
+    ":ui:compileDebugAndroidTestKotlin": "UP-TO-DATE",
+    ":app:compileDebugAndroidTestKotlin": "NO-SOURCE",
+    ":app:compileReleaseKotlin": "EXECUTED",
+    ":app:compileReleaseJavaWithJavac": "EXECUTED"
+  },
+  "junit": {
+    "backend": {
+      "task": "UP-TO-DATE",
+      "files": 70,
+      "totals": {
+        "tests": 363,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      "aggregateSha256": "29dfead6098e820f42f754bcf5804ba03caf7899d9e33eb0150784119cb21a00",
+      "aggregateFormat": "WindowsPath sorted, relative POSIX path + LF + raw XML bytes + LF"
+    },
+    "ui": {
+      "task": "EXECUTED",
+      "files": 76,
+      "totals": {
+        "tests": 310,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      "aggregateSha256": "f70fd5b7e634e758e83fb24a761a7fbe21959c56ac31fa8d86fe7b46bfa9110e",
+      "aggregateFormat": "WindowsPath sorted, relative POSIX path + LF + raw XML bytes + LF"
+    },
+    "app": {
+      "task": "EXECUTED",
+      "files": 69,
+      "totals": {
+        "tests": 356,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      "aggregateSha256": "fc456a0e10990d7e2b52bbd2ff9b67f4df319c7a08bcedc64654fb56ae750f12",
+      "aggregateFormat": "WindowsPath sorted, relative POSIX path + LF + raw XML bytes + LF"
+    }
+  },
+  "lint": {
+    "ui": {
+      "path": "ui/build/reports/lint-results-debug.xml",
+      "sha256": "b2497e7f94b6d8fb4dc58bb0e0015b3a8220952b7f1deca9f196406820592056",
+      "issues": {
+        "Warning": 30,
+        "Hint": 3
+      }
+    },
+    "app": {
+      "path": "app/build/reports/lint-results-debug.xml",
+      "sha256": "fa5c1431fae77980347896be5edfffdad8c1c4b3c55cd8d32b482dbcf8ef8ab3",
+      "issues": {
+        "Warning": 6
+      }
+    }
+  },
+  "guards": {
+    "architecture": {
+      "log": "build/qa/layer-boundaries/t13b2c-architecture.log",
+      "sha256": "8bffd7dee18fe8da405646338848960a13831fdc7b3150017321f3e0b5b34260",
+      "result": "PASS"
+    },
+    "backend-boundaries": {
+      "log": "build/qa/layer-boundaries/t13b2c-backend-boundaries.log",
+      "sha256": "36ffbae67d064fc99a6ce693a0232904ab79fd35a25fffa7e779a066c0065398",
+      "result": "PASS"
+    },
+    "test-architecture": {
+      "log": "build/qa/layer-boundaries/t13b2c-test-architecture.log",
+      "sha256": "ed6009295d000a1acf8a122b6e3c9cbca3d485546db775bb6c452cebe296d475",
+      "result": "PASS"
+    },
+    "test-backend-boundaries": {
+      "log": "build/qa/layer-boundaries/t13b2c-test-backend-boundaries.log",
+      "sha256": "f7dc1c65d9bf1c31f1cb9a0be1fc0c0840290cbe7f978a8864c6557dbd2fbb5e",
+      "result": "PASS"
+    },
+    "testCounts": {
+      "architecture": 39,
+      "backendBoundaries": 5
+    },
+    "sources": {
+      "tools/check_architecture.py": "e8f95e16f2a65248bff231cabe0403aa4c92a3931dddbff4ea296b8a8b6fa026",
+      "tools/check_backend_boundaries.py": "5e91461ef849f68acaca49b0f77216aef6b6bc62ac24f6dbacc15fd149690d8a",
+      "tools/test_architecture.py": "c6df50e912bcc2d83a80fd2b20a8d10bc3a80428f4a4f28a8af35f6c353df636",
+      "tools/test_backend_boundaries.py": "ac68fa86846d017482f424307f4d67cb19a7b4b7b23892b51b78a292a664e53d"
+    }
+  },
+  "device": {
+    "executed": false,
+    "gaps": [
+      "Telecom/foreground lifecycle and stable PendingIntent behavior",
+      "MediaPlayer focus/wakelock and actual SIM ringing",
+      "microphone capture / lockscreen / vendor background restrictions"
+    ]
+  },
+  "sqlFixtures": {
+    "source": "沿用T13b2a归档43安全样本（含2历史SQL基线）；t13b2a-implementation.md / t13b2a-verification-summary.json",
+    "extraArchival": false,
+    "note": "本片无额外归档或复制43样本；当前完整门执行原数据集测试，可能重写raw app/build JSON。"
+  },
+  "changes": {
+    "rootComponents": 6,
+    "newControllers": 6,
+    "focusedControllerTests": 21,
+    "mainFiles": 360,
+    "moduleFiles": {
+      "app": 92,
+      "backend": 140,
+      "contracts": 23,
+      "ui": 105
+    }
+  },
+  "filemap": {
+    "count": 360,
+    "noDuplicates": true,
+    "exactSetMatches": true,
+    "sha256": "803f94c0ea7cf5ce306813e83da049aa7c12a0e502df5df39189f39f72022906",
+    "sortedPathsSha256": "d81080a6e642b6d9f9f8e3e6b5c603228066feefd294b9a006c85c1ca1614fcf"
+  },
+  "diffCheck": {
+    "gitDiffCheckExit": 0,
+    "changedAndUntrackedEof": "all modified/new text files end with exactly one newline; raw byte checked"
+  },
+  "reviewState": "Independent specification /root/t13b2c_spec_review PASS, then fresh quality /root/t13b2c_quality_review PASS. Root independently verified source/manifest, guards, XML/log/lint, exact227/360 filemap and EOF. T13 code closed; T14/T15 pending."
+}

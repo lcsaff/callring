@@ -10,35 +10,23 @@ import android.os.Handler
 import android.os.Looper
 import com.greatwall.callring.bootstrap.BackendProvider
 import java.util.concurrent.Executors
-import java.util.concurrent.atomic.AtomicBoolean
 
 /** A single durable job owns AI work. No call-screening thread waits for networking. */
 class RecordingJobService : JobService() {
-    private var stopped = AtomicBoolean(false)
+    private val controller by lazy {
+        com.greatwall.callring.entrypoint.jobs.RecordingJobController(
+            { stopped -> BackendProvider.from(this).backendGraph.recordings.service.runScheduled(stopped) },
+            { BackendProvider.from(this).backendGraph.recordings.workflow.cancelProcessing() },
+            System::currentTimeMillis, { schedule(this, it) }, worker,
+            { Handler(Looper.getMainLooper()).post(it) },
+        )
+    }
     override fun onStartJob(params: JobParameters): Boolean {
-        val token = AtomicBoolean(false); stopped = token
-        worker.execute {
-            var retry = false
-            var next: Long? = null
-            try {
-                val runtime = BackendProvider.from(this).backendGraph.recordings
-                next = runtime.service.runScheduled { token.get() }
-            } catch (_: Exception) { retry = true }
-            Handler(Looper.getMainLooper()).post {
-                if (!token.get()) {
-                    jobFinished(params, retry)
-                    next?.let { schedule(this, (it - System.currentTimeMillis()).coerceAtLeast(1000)) }
-                }
-            }
-        }
+        controller.start { jobFinished(params, it) }
         return true
     }
-    private fun cancelWork() {
-        stopped.set(true)
-        try { BackendProvider.from(this).backendGraph.recordings.workflow.cancelProcessing() } catch (_: Exception) {}
-    }
-    override fun onStopJob(params: JobParameters): Boolean { cancelWork(); return true }
-    override fun onDestroy() { cancelWork(); super.onDestroy() }
+    override fun onStopJob(params: JobParameters): Boolean { controller.cancel(); return true }
+    override fun onDestroy() { controller.cancel(); super.onDestroy() }
     companion object {
         private const val JOB_ID = 73140
         private val worker = Executors.newSingleThreadExecutor()

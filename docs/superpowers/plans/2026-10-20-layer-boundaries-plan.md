@@ -269,12 +269,12 @@ T10b1已于86fdfcf双审完成。T10b2按真实事务/媒体依赖再拆为b2a�
 
 **修改：** 生产迁移清单列出的所有剩余项及其测试引用；根 Android 组件仅提取逻辑，保留 FQCN。
 
-- [ ] 逐项完成文件清单：机械移动，拆混合职责，收紧 internal，删除只为迁移存在的转发/别名/旧入口；清单记录实际目标和任务。
-- [ ] 删除 BackendStore.read/transaction 全量协议、StorageSession.load/save、coreScopeValues；完整快照走 FullSnapshotReader 专用模型，普通服务禁止引用。
-- [ ] UI designsystem 中业务卡片移 feature/shared；state 与 designsystem 反向引用归到 app/feature 组合层；不改视觉样式。
-- [ ] AppearanceSettings→ThemeSpec 的适配归 UI app/bridge，designsystem 只处理视觉参数；主题配置和小组件/overlay 的最终视觉保持一致。
-- [ ] 根 Service/Receiver 壳只做系统调用适配/委托，实际控制器进 entrypoint；更新调度、资源和测试引用但不修改组件身份。
-- [ ] 更新 PROJECT.md、README.md 当前架构与验证命令；保留历史文档为历史，不批量改写旧审查证据。
+- [x] 逐项完成文件清单：机械移动，拆混合职责，收紧 internal，删除只为迁移存在的转发/别名/旧入口；清单记录实际目标和任务。
+- [x] 删除 BackendStore.read/transaction 全量协议、StorageSession.load/save、coreScopeValues；完整快照走 FullSnapshotReader 专用模型，普通服务禁止引用。
+- [x] UI designsystem 中业务卡片移 feature/shared；state 与 designsystem 反向引用归到 app/feature 组合层；不改视觉样式。
+- [x] AppearanceSettings→ThemeSpec 的适配归 UI app/bridge，designsystem 只处理视觉参数；主题配置和小组件/overlay 的最终视觉保持一致。
+- [x] 根 Service/Receiver 壳只做系统调用适配/委托，实际控制器进 entrypoint；更新调度、资源和测试引用但不修改组件身份。
+- [x] 更新 PROJECT.md、README.md 当前架构与验证命令；保留历史文档为历史，不批量改写旧审查证据。
 
 **门：** 所有生产文件有归属，P1/P4 旧入口无残留；不存在两套生产业务实现。
 

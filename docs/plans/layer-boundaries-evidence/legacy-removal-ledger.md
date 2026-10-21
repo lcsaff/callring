@@ -82,3 +82,9 @@ T13a关闭最后onCreate和test/debug/backendQa消费者，删除BackendStore/Ba
 ThemeRegistry/DefaultAppearance/偏好解析归唯一app/bridge；designsystem只保留ThemeDefinition/ThemeSpec及唯一CallringTheme(spec)，旧外观渲染overload、旧包入口与测试专用companion转发删除。Compose缓存保留palette身份，widget继续既有configuration模式。CallerCard与rememberFormBack迁feature/shared；UnsavedChangesDialog只有designsystem内一份纯参数实现。RecordingScreens、RecordingViewModels、SettingsViewModels三个mixedfiles删除，完整owner迁实际screen/VM，presentation内聚共享录音反馈。
 
 本片不关闭T13b2c系统组件controller/PROJECT/README、T14统一CI或T15设备门。实际门、缓存与冻结见[t13b2b实施证据](t13b2b-implementation.md)。backend fixture未变，沿用[t13b2a来源](t13b2a-implementation.md)，不复制历史SQL样本。
+
+## T13b2c 系统组件工作流删除闭包
+
+六根组件原工作流主体已删除，唯一实现分别为 RuntimeEventController、CalendarSyncJobController、CallLogSyncJobController、RecordingJobController、CaptureServiceController、PlaybackServiceController。原类只保留实际Android生命周期、Intent/Job/通知/媒体/权限/调度资源接线和稳定注册身份，没有旧入口业务forwarder、typealias或第二工作流。controller不收Graph、Context、Service或完整业务API；既有gates、JobRuns与CalendarRefreshPolicy继续唯一复用。
+
+T13代码和最终文件归属闭合，PROJECT/README已同步；实际验证与源码冻结见[t13b2c实施证据](t13b2c-implementation.md)。这不关闭T14统一CI或T15设备/最终验收。沿用[T13b2a归档43安全样本](t13b2a-implementation.md)（含2历史SQL基线），本片无额外归档；当前完整门执行原数据集测试。
