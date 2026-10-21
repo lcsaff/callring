@@ -35,6 +35,7 @@ class ConversationProgressReviewTest {
         compose.runOnIdle{state.value=state.value.copy(messages=state.value.messages+ConversationMessage("assistant","NEWEST-WHILE-READING"),phase=ConversationPhase.STOPPED)}
         compose.onNodeWithText("NEWEST-WHILE-READING").assertIsNotDisplayed()
         compose.onNodeWithContentDescription("回到最新").performClick()
+        compose.waitUntil(5000){runCatching{compose.onNodeWithText("NEWEST-WHILE-READING").assertIsDisplayed();true}.getOrDefault(false)}
         compose.onNodeWithText("NEWEST-WHILE-READING").assertIsDisplayed()
     }
     @Test fun conversationShowsNoServiceLabelAndNeverLeaksFullTarget(){

@@ -50,6 +50,25 @@ import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.*
 import com.mikepenz.markdown.m3.Markdown
 
+private data class VisibleConversationMessage(
+    val sourceIndex: Int,
+    val role: String,
+    val body: String,
+    val receipts: List<ToolReceipt>,
+)
+
+private fun ConversationMessage.visibleRow(index: Int): VisibleConversationMessage? {
+    val displayText = when (presentationKey) {
+        "conversation.continue" -> "继续未完成任务"
+        "conversation.partial" -> "任务尚未完成。请查看已核验、待核验及失败步骤；不会重复执行已提交操作。"
+        else -> text
+    }
+    val body = displayText.takeIf { it.isNotBlank() && toolCalls.isEmpty() && role in setOf("user", "assistant") }.orEmpty()
+    val visibleReceipts = receipts.distinctBy { it.operationId }.filter { it.status != ToolStatus.READ || it.error != null }
+    if (body.isEmpty() && visibleReceipts.isEmpty()) return null
+    return VisibleConversationMessage(index, role, body, visibleReceipts)
+}
+
 @Composable fun ConversationScreen(state:ConversationState,input:String,target:String,localError:ApiError?,onInput:(String)->Unit,onSend:()->Unit,onStop:()->Unit,onNew:()->Unit,onContinue:(String)->Unit={},onOpenSettings:()->Unit={},connected:Boolean=true) {
     var confirmNew by remember{mutableStateOf(false)}
     val listState=rememberLazyListState()
@@ -57,8 +76,9 @@ import com.mikepenz.markdown.m3.Markdown
     val paired=state.messages.flatMap{it.receipts}.map{it.operationId}.toSet()
     val additional=state.receipts.distinctBy{it.operationId}.filter{it.operationId !in paired&&(it.status!=ToolStatus.READ||it.error!=null)}
     val pendingAssistant = state.busy
-    val latestIndex=state.messages.size+(if(additional.isNotEmpty())1 else 0)+(if(pendingAssistant)1 else 0)
-    val finalIndex=state.messages.lastIndex.takeIf{it>=0&&state.messages[it].role=="assistant"&&state.messages[it].toolCalls.isEmpty()}
+    val visibleMessages = remember(state.messages) { state.messages.mapIndexedNotNull { index, message -> message.visibleRow(index) } }
+    val latestIndex=visibleMessages.size+(if(additional.isNotEmpty())1 else 0)+(if(pendingAssistant)1 else 0)
+    val finalIndex=visibleMessages.lastOrNull()?.takeIf{it.sourceIndex==state.messages.lastIndex&&it.role=="assistant"&&it.body.isNotEmpty()}?.sourceIndex
     val historyScroll=remember(state.sessionId) {object:NestedScrollConnection {
         override fun onPreScroll(available:Offset,source:NestedScrollSource):Offset {if(source==NestedScrollSource.UserInput&&available.y>0)readingHistory=true;return Offset.Zero}
     }}
@@ -68,7 +88,7 @@ import com.mikepenz.markdown.m3.Markdown
         snapshotFlow{val info=listState.layoutInfo;(if(readingHistory)-1 else info.totalItemsCount) to (listState.isScrollInProgress to info.visibleItemsInfo.map{it.index to (it.offset to it.size)})}
             .collect{(count,_)->if(count>0&&!readingHistory&&!listState.isScrollInProgress&&listState.canScrollForward)listState.scrollToItem(count-1)}
     }
-    LaunchedEffect(state.sessionId,state.messages,state.receipts,state.phase,readingHistory){if(!readingHistory){withFrameNanos{};listState.scrollToItem(latestIndex)}}
+    LaunchedEffect(state.sessionId,visibleMessages,additional,pendingAssistant,readingHistory){if(!readingHistory){withFrameNanos{};listState.scrollToItem(latestIndex)}}
     fun send(){readingHistory=false;onSend()}
     val ready = connected
     ScreenFrame("AI 沟通", compactTitle = true, actions = {
@@ -85,16 +105,17 @@ import com.mikepenz.markdown.m3.Markdown
         Column(Modifier.fillMaxSize(),verticalArrangement=Arrangement.spacedBy(8.dp)) {
             (state.error?:localError)?.let{Text(aiErrorText(it),color=MaterialTheme.colorScheme.error)}
             LazyColumn(Modifier.weight(1f).fillMaxWidth().testTag("conversation-messages").nestedScroll(historyScroll),state=listState,verticalArrangement=Arrangement.spacedBy(12.dp)) {
-                state.messages.forEachIndexed{index,message->
+                visibleMessages.forEach{message->
+                    val index=message.sourceIndex
                     if(index==finalIndex&&additional.isNotEmpty())item(key="current-results"){ReceiptGroup(additional){readingHistory=true}}
                     item(key="message-$index") {
-                    val body=when(message.presentationKey){"conversation.continue"->"继续未完成任务";"conversation.partial"->"任务尚未完成。请查看已核验、待核验及失败步骤；不会重复执行已提交操作。";else->message.text}
-                    if(body.isNotEmpty()&&message.toolCalls.isEmpty()&&message.role in setOf("user","assistant")) {
+                    val body=message.body
+                    if(body.isNotEmpty()) {
                         if(message.role=="user")Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.End) {
                             Surface(Modifier.widthIn(max=560.dp).testTag("message-user-$index").copyableMessage(body,copy),shape=RoundedCornerShape(18.dp),color=MaterialTheme.colorScheme.primaryContainer,contentColor=MaterialTheme.colorScheme.onPrimaryContainer){Text(body,Modifier.padding(horizontal=14.dp,vertical=10.dp))}
                         }else Column(Modifier.fillMaxWidth().testTag("message-assistant-$index").copyableMessage(body,copy)){Markdown(body)}
                     }
-                    ReceiptGroup(message.receipts.distinctBy{it.operationId}.filter{it.status!=ToolStatus.READ||it.error!=null}){readingHistory=true}
+                    ReceiptGroup(message.receipts){readingHistory=true}
                     }
                 }
                 if(finalIndex==null&&additional.isNotEmpty())item(key="current-results"){ReceiptGroup(additional){readingHistory=true}}
