@@ -12,8 +12,8 @@ import com.greatwall.callring.contracts.settings.*
 import com.greatwall.callring.contracts.report.*
 import com.greatwall.callring.contracts.widget.*
 import com.greatwall.callring.contracts.*
-import com.greatwall.callring.domain.SystemCallRecord
-import com.greatwall.callring.platform.DiagnosticEvent
+import com.greatwall.callring.domain.model.SystemCallRecord
+import com.greatwall.callring.platform.diagnostics.DiagnosticEvent
 import java.io.File
 import java.time.Instant
 import java.time.LocalDate

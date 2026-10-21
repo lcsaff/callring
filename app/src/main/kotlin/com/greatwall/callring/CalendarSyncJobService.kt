@@ -8,8 +8,8 @@ import android.content.ComponentName
 import android.content.Context
 import com.greatwall.callring.contracts.common.ApiResult
 import com.greatwall.callring.bootstrap.BackendProvider
-import com.greatwall.callring.platform.CalendarRefreshPolicy
-import com.greatwall.callring.platform.JobRuns
+import com.greatwall.callring.platform.calendar.CalendarRefreshPolicy
+import com.greatwall.callring.platform.scheduler.JobRuns
 import java.time.LocalDate
 import java.time.ZoneId
 import kotlinx.coroutines.*

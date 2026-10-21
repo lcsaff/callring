@@ -1,6 +1,6 @@
 package com.greatwall.callring.application.ports.store
 
-import com.greatwall.callring.domain.RawCallRecord
+import com.greatwall.callring.domain.model.RawCallRecord
 import com.greatwall.callring.domain.model.DecisionInputs
 
 interface CallingReader {

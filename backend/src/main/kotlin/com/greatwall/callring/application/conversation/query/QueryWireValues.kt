@@ -1,0 +1,10 @@
+package com.greatwall.callring.application.conversation.query
+
+import com.greatwall.callring.application.conversation.execution.json
+
+import com.greatwall.callring.contracts.ai.*
+
+fun QueryFilter.json()=AiJson.Obj(mapOf("number" to (number?.let(::aiString)?:AiJson.Null),"id" to aiNumber(id),"text" to (text?.let(::aiString)?:AiJson.Null),"start" to aiNumber(start),"end" to aiNumber(end),"year" to aiNumber(year?.toLong()),"status" to (status?.let(::aiString)?:AiJson.Null),"kind" to (kind?.let(::aiString)?:AiJson.Null),"date" to (date?.let(::aiString)?:AiJson.Null),"zone" to (zone?.let(::aiString)?:AiJson.Null)).filterValues{it!=AiJson.Null})
+fun SourceStamp.json()=aiObject("domain" to aiString(domain.name),"sourceVersion" to aiNumber(sourceVersion),"observedAt" to aiNumber(observedAt),"sourceScope" to aiString(sourceScope),"consistency" to aiString(consistency),"scopeRevision" to aiNumber(scopeRevision),"projection" to aiString(projection),"filter" to filter.json())
+fun ScopedPage.json()=aiObject("schemaVersion" to aiNumber(2),"items" to AiJson.Arr(items),"stamp" to stamp.json(),"matchedTotal" to (matchedTotal?.let(::aiNumber)?:AiJson.Null),"returnedCount" to aiNumber(items.size.toLong()),"nextCursor" to (nextCursor?.let(::aiString)?:AiJson.Null),"complete" to aiBool(complete),"status" to aiString(status.name),"missingReason" to (missingReason?.let(::aiString)?:AiJson.Null))
+fun TextChunk.json()=aiObject("reference" to aiString(reference),"stamp" to stamp.json(),"codePointStart" to aiNumber(codePointStart),"codePointEnd" to aiNumber(codePointEnd),"totalCodePoints" to aiNumber(totalCodePoints),"nextCursor" to (nextCursor?.let(::aiString)?:AiJson.Null),"complete" to aiBool(complete),"text" to aiString(text))

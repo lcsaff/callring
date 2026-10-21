@@ -1,9 +1,9 @@
 package com.greatwall.callring
 
 import com.greatwall.callring.contracts.command.*
-import com.greatwall.callring.application.BusinessRevisionCoordinator
+import com.greatwall.callring.application.coordination.BusinessRevisionCoordinator
 import com.greatwall.callring.contracts.ai.*
-import com.greatwall.callring.application.conversation.ForegroundActionService
+import com.greatwall.callring.application.conversation.foreground.ForegroundActionService
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.*
 import org.junit.Test

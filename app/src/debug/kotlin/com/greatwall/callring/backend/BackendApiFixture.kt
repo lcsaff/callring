@@ -15,7 +15,7 @@ import com.greatwall.callring.contracts.common.*
 import com.greatwall.callring.contracts.callers.*
 import com.greatwall.callring.contracts.settings.*
 import com.greatwall.callring.bootstrap.*
-import com.greatwall.callring.platform.UiNotificationEntryPoints
+import com.greatwall.callring.platform.runtime.UiNotificationEntryPoints
 import java.io.Closeable
 import java.io.File
 import java.io.FileNotFoundException

@@ -1,5 +1,7 @@
 package com.greatwall.callring;
 
+import com.greatwall.callring.platform.audio.PreparationGate;
+
 import org.junit.Test;
 import static org.junit.Assert.*;
 

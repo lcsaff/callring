@@ -3,7 +3,7 @@ package com.greatwall.callring.application.settings
 import com.greatwall.callring.application.coordination.*
 import com.greatwall.callring.application.ports.store.*
 import com.greatwall.callring.contracts.change.DataDomain
-import com.greatwall.callring.domain.WorkClassifier
+import com.greatwall.callring.domain.calling.WorkClassifier
 
 /** Existing corrections repair every stored current fact, including hidden/uncounted/stale rows.
  * Batches bound materialization; the caller owns one atomic database transaction for all batches. */

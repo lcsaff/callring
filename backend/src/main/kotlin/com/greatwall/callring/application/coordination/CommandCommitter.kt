@@ -1,6 +1,6 @@
 package com.greatwall.callring.application.coordination
 
-import com.greatwall.callring.application.BusinessRevisionCoordinator
+import com.greatwall.callring.application.coordination.BusinessRevisionCoordinator
 import com.greatwall.callring.contracts.command.CommandContext
 
 /** Public owners stop at close; persistence owners remain active only through incoming drain. */

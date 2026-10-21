@@ -1,5 +1,7 @@
 package com.greatwall.callring
 
+import com.greatwall.callring.application.conversation.operation.ToolRegistry
+
 import com.greatwall.callring.contracts.ai.*
 import com.greatwall.callring.application.recording.policy.*
 import com.greatwall.callring.application.conversation.*

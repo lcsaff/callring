@@ -1,5 +1,9 @@
 package com.greatwall.callring.platform.ai
 
+import com.greatwall.callring.data.recording.AndroidRecordingStore
+import com.greatwall.callring.data.recording.RecordingCipher
+import com.greatwall.callring.platform.diagnostics.AndroidDiagnosticsStore
+
 import com.greatwall.callring.platform.*
 import java.time.Clock
 import org.junit.Assert.*
@@ -15,7 +19,7 @@ class RecordingSnapshotSourceTest {
     @Test fun independentEventsAndFullArchiveTailSurviveStatisticsAbsence() {
         val cipher = object : RecordingCipher { override fun encrypt(value: String) = value; override fun decrypt(value: String) = value }
         val store = AndroidRecordingStore(RuntimeEnvironment.getApplication(), "full_recording", cipher, recordingVersion = { 0L })
-        val call = com.greatwall.callring.application.recording.RecordingRegistrationService(store, com.greatwall.callring.application.BusinessRevisionCoordinator()).registerIncoming("session", "999", 1, "account", null)
+        val call = com.greatwall.callring.application.recording.RecordingRegistrationService(store, com.greatwall.callring.application.coordination.BusinessRevisionCoordinator()).registerIncoming("session", "999", 1, "account", null)
         store.insertStatisticsLink(9, "session")
         val old = store.get(call.id)!!
         store.compareAndSet(call.id, old.generation, old.copy(generation = old.generation + 1, audioPath = "/private/audio", transcript = "x".repeat(210) + "FULL-TAIL"))

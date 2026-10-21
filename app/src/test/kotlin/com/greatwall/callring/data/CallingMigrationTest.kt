@@ -1,5 +1,12 @@
 package com.greatwall.callring.data
 
+import com.greatwall.callring.data.database.SqliteCoreStorageResource
+import com.greatwall.callring.data.database.values
+import com.greatwall.callring.domain.calling.WorkClassifier
+import com.greatwall.callring.domain.model.PositionRecord
+import com.greatwall.callring.domain.model.ProfileRecord
+import com.greatwall.callring.domain.model.RawCallRecord
+
 import android.database.sqlite.SQLiteDatabase
 import com.greatwall.callring.application.mapping.*
 import com.greatwall.callring.contracts.callers.*

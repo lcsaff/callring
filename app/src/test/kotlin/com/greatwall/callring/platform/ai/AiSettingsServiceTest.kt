@@ -1,7 +1,11 @@
 package com.greatwall.callring.platform.ai
 
+import com.greatwall.callring.data.recording.AndroidRecordingStore
+import com.greatwall.callring.data.recording.RecordingCipher
+import com.greatwall.callring.data.recording.RecordingJson
+
 import com.greatwall.callring.application.recording.AiSettingsService
-import com.greatwall.callring.application.BusinessRevisionCoordinator
+import com.greatwall.callring.application.coordination.BusinessRevisionCoordinator
 import com.greatwall.callring.contracts.common.*
 import com.greatwall.callring.contracts.recording.*
 import com.greatwall.callring.contracts.ai.*

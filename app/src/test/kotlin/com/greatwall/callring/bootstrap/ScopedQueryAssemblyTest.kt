@@ -1,9 +1,11 @@
 package com.greatwall.callring.bootstrap
 
+import com.greatwall.callring.data.query.ValueScopedReadSource
+
 import com.greatwall.callring.contracts.ai.*
-import com.greatwall.callring.application.conversation.QueryService
-import com.greatwall.callring.application.ports.SourceRow
-import com.greatwall.callring.application.requiredValue
+import com.greatwall.callring.application.conversation.query.QueryService
+import com.greatwall.callring.application.ports.query.SourceRow
+import com.greatwall.callring.application.mapping.requiredValue
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.*
 import org.junit.Test

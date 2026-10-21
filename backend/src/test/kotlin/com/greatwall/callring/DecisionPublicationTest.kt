@@ -1,6 +1,8 @@
 package com.greatwall.callring
 
-import com.greatwall.callring.application.BusinessRevisionCoordinator
+import com.greatwall.callring.domain.calling.DecisionSnapshot
+
+import com.greatwall.callring.application.coordination.BusinessRevisionCoordinator
 import com.greatwall.callring.application.calling.DecisionQueryService
 import com.greatwall.callring.application.ports.store.*
 import com.greatwall.callring.domain.*

@@ -12,9 +12,9 @@ import com.greatwall.callring.domain.model.WorkDayKind
 import com.greatwall.callring.domain.model.DateOverrideKind
 import com.greatwall.callring.contracts.callers.*
 import com.greatwall.callring.contracts.settings.*
-import com.greatwall.callring.domain.LeaveRecord
-import com.greatwall.callring.domain.RawCallRecord
-import com.greatwall.callring.domain.WorkClassifier
+import com.greatwall.callring.domain.model.LeaveRecord
+import com.greatwall.callring.domain.model.RawCallRecord
+import com.greatwall.callring.domain.calling.WorkClassifier
 import com.greatwall.callring.domain.model.defaultWorkSchedule
 import java.time.Instant
 import java.time.LocalDate

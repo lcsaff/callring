@@ -1,8 +1,12 @@
 package com.greatwall.callring.data
 
+import com.greatwall.callring.data.codec.LegacyValueCodec
+import com.greatwall.callring.data.codec.WorkConfigCodec
+import com.greatwall.callring.data.database.values
+
 import com.greatwall.callring.contracts.callers.*
-import com.greatwall.callring.domain.CallCorrelation
-import com.greatwall.callring.domain.RawCallRecord
+import com.greatwall.callring.domain.calling.CallCorrelation
+import com.greatwall.callring.domain.model.RawCallRecord
 import com.greatwall.callring.domain.model.CallDecision
 import com.greatwall.callring.domain.model.CallResult
 import com.greatwall.callring.domain.model.CallSource

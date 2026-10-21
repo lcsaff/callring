@@ -1,5 +1,13 @@
 package com.greatwall.callring
 
+import com.greatwall.callring.application.conversation.execution.ToolBatchEngine
+import com.greatwall.callring.application.conversation.execution.ToolExecutor
+import com.greatwall.callring.application.conversation.execution.json
+import com.greatwall.callring.application.conversation.operation.CapabilityCatalog
+import com.greatwall.callring.application.conversation.operation.ToolRegistry
+import com.greatwall.callring.application.conversation.query.ScopedToolReader
+import com.greatwall.callring.application.conversation.query.json
+
 import com.greatwall.callring.contracts.ai.*
 import com.greatwall.callring.application.conversation.*
 import java.io.File

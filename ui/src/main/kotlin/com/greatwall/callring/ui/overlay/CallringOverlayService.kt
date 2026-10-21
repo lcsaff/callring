@@ -1,5 +1,7 @@
 package com.greatwall.callring.ui.overlay
 
+import com.greatwall.callring.ui.app.bridge.UiNotifications
+
 import android.app.*
 import android.content.*
 import android.os.*

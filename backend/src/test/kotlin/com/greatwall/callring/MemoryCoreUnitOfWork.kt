@@ -1,5 +1,13 @@
 package com.greatwall.callring
 
+import com.greatwall.callring.domain.model.AuditRecord
+import com.greatwall.callring.domain.model.CalendarImport
+import com.greatwall.callring.domain.model.LeaveRecord
+import com.greatwall.callring.domain.model.PositionRecord
+import com.greatwall.callring.domain.model.ProfileRecord
+import com.greatwall.callring.domain.model.RawCallRecord
+import com.greatwall.callring.domain.model.StatisticsInterval
+
 import com.greatwall.callring.domain.model.defaultWorkSchedule
 import com.greatwall.callring.application.ports.store.*
 import com.greatwall.callring.domain.*
@@ -123,7 +131,7 @@ internal class MemoryCoreUnitOfWork : CoreUnitOfWork {
             }
 
             override fun putCaller(
-                value: com.greatwall.callring.domain.ProfileRecord,
+                value: com.greatwall.callring.domain.model.ProfileRecord,
                 insert: Boolean,
             ) {
                 people[value.number] = value
@@ -164,7 +172,7 @@ internal class MemoryCoreUnitOfWork : CoreUnitOfWork {
                 calls.values
                     .filter { !it.hidden }
                     .maxWithOrNull(
-                        compareBy<com.greatwall.callring.domain.RawCallRecord> { it.time }
+                        compareBy<com.greatwall.callring.domain.model.RawCallRecord> { it.time }
                             .thenBy { it.id },
                     )
 
@@ -175,7 +183,7 @@ internal class MemoryCoreUnitOfWork : CoreUnitOfWork {
                 calls.values
                     .filter { !it.hidden && it.number == number }
                     .sortedWith(
-                        compareBy<com.greatwall.callring.domain.RawCallRecord> { it.time }
+                        compareBy<com.greatwall.callring.domain.model.RawCallRecord> { it.time }
                             .thenBy { it.id },
                     )
                     .forEach {
@@ -201,14 +209,14 @@ internal class MemoryCoreUnitOfWork : CoreUnitOfWork {
 
             override fun calendarYear(year: Int) =
                 decision.calendarYears[year]?.let {
-                    com.greatwall.callring.domain.CalendarImport(
+                    com.greatwall.callring.domain.model.CalendarImport(
                         it,
                         decision.holidays.filterKeys { it.year == year },
                         decision.makeupDates.filterTo(linkedSetOf()) { it.year == year },
                     )
                 }
 
-            override fun replaceCalendar(value: com.greatwall.callring.domain.CalendarImport) {
+            override fun replaceCalendar(value: com.greatwall.callring.domain.model.CalendarImport) {
                 val year = value.metadata.year
                 decision.calendarYears[year] = value.metadata
                 decision.holidays.keys.removeAll { it.year == year }
@@ -229,7 +237,7 @@ internal class MemoryCoreUnitOfWork : CoreUnitOfWork {
 
             override fun leaves() =
                 decision.leaves.values.sortedWith(
-                    compareByDescending<com.greatwall.callring.domain.LeaveRecord> {
+                    compareByDescending<com.greatwall.callring.domain.model.LeaveRecord> {
                             it.startMillis
                         }
                         .thenByDescending { it.id },
@@ -238,9 +246,9 @@ internal class MemoryCoreUnitOfWork : CoreUnitOfWork {
             override fun leave(id: Long) = decision.leaves[id]
 
             override fun putLeave(
-                value: com.greatwall.callring.domain.LeaveRecord,
+                value: com.greatwall.callring.domain.model.LeaveRecord,
                 insert: Boolean,
-            ): com.greatwall.callring.domain.LeaveRecord {
+            ): com.greatwall.callring.domain.model.LeaveRecord {
                 val row = if (insert) value.copy(id = nextLeave++) else value
                 decision.leaves[row.id] = row
                 return row
@@ -254,7 +262,7 @@ internal class MemoryCoreUnitOfWork : CoreUnitOfWork {
                 decision.leaveVersion++
             }
 
-            override fun appendAudit(value: com.greatwall.callring.domain.AuditRecord) {
+            override fun appendAudit(value: com.greatwall.callring.domain.model.AuditRecord) {
                 audits += value
             }
 
@@ -331,7 +339,7 @@ internal class MemoryCoreUnitOfWork : CoreUnitOfWork {
 
             override fun openStatistics(at: Long) {
                 decision.intervals +=
-                    com.greatwall.callring.domain.StatisticsInterval(at, null)
+                    com.greatwall.callring.domain.model.StatisticsInterval(at, null)
             }
 
             override fun closeStatistics(id: Long, at: Long) {
@@ -357,9 +365,9 @@ internal class MemoryCoreUnitOfWork : CoreUnitOfWork {
                     .mapTo(linkedSetOf()) { it.number }
 
             override fun putPosition(
-                value: com.greatwall.callring.domain.PositionRecord,
+                value: com.greatwall.callring.domain.model.PositionRecord,
                 insert: Boolean,
-            ): com.greatwall.callring.domain.PositionRecord {
+            ): com.greatwall.callring.domain.model.PositionRecord {
                 val saved = if (insert) value.copy(id = nextRole++) else value
                 roles[saved.id] = saved
                 return saved

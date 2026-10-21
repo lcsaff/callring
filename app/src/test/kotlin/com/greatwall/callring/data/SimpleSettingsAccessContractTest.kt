@@ -1,5 +1,9 @@
 package com.greatwall.callring.data
 
+import com.greatwall.callring.data.database.SqlAccessProbe
+import com.greatwall.callring.data.database.SqliteCoreStorageResource
+import com.greatwall.callring.data.database.values
+
 import android.app.Notification
 import android.app.PendingIntent
 import android.content.Intent
@@ -7,10 +11,10 @@ import com.greatwall.callring.contracts.common.*
 import com.greatwall.callring.contracts.callers.*
 import com.greatwall.callring.contracts.settings.*
 import com.greatwall.callring.contracts.report.*
-import com.greatwall.callring.application.requiredValue
+import com.greatwall.callring.application.mapping.requiredValue
 import com.greatwall.callring.bootstrap.BackendConfiguration
 import com.greatwall.callring.bootstrap.BackendGraph
-import com.greatwall.callring.platform.UiNotificationEntryPoints
+import com.greatwall.callring.platform.runtime.UiNotificationEntryPoints
 import java.io.File
 import java.time.Clock
 import java.time.Instant
@@ -154,8 +158,8 @@ class SimpleSettingsAccessContractTest {
             measure("widgetMissingRemoveNoop") { graph.api.widgets.removeBinding(18).requiredValue() }
             measure("widgetRead") { assertEquals("30001", graph.api.widgets.getBinding(17).requiredValue()!!.number) }
             measure("widgetDelete") { graph.api.widgets.removeBinding(17).requiredValue() }
-            val recordingStore = com.greatwall.callring.platform.ai.AndroidRecordingStore(context, "narrow-config-$unrelatedCalls",
-                object : com.greatwall.callring.platform.ai.RecordingCipher {
+            val recordingStore = com.greatwall.callring.data.recording.AndroidRecordingStore(context, "narrow-config-$unrelatedCalls",
+                object : com.greatwall.callring.data.recording.RecordingCipher {
                     override fun encrypt(value: String) = value
                     override fun decrypt(value: String) = value
                 }, recordingVersion = { graph.coordinator.capture().values.getValue("recording") })

@@ -1,5 +1,9 @@
 package com.greatwall.callring.data
 
+import com.greatwall.callring.data.database.SqlAccessProbe
+import com.greatwall.callring.data.database.SqliteCoreStorageResource
+import com.greatwall.callring.data.database.values
+
 import android.app.Notification
 import android.app.PendingIntent
 import android.content.Intent
@@ -7,10 +11,10 @@ import com.greatwall.callring.contracts.common.*
 import com.greatwall.callring.contracts.callers.*
 import com.greatwall.callring.contracts.settings.*
 import com.greatwall.callring.contracts.report.*
-import com.greatwall.callring.application.requiredValue
+import com.greatwall.callring.application.mapping.requiredValue
 import com.greatwall.callring.bootstrap.BackendConfiguration
 import com.greatwall.callring.bootstrap.BackendGraph
-import com.greatwall.callring.platform.UiNotificationEntryPoints
+import com.greatwall.callring.platform.runtime.UiNotificationEntryPoints
 import java.io.File
 import java.time.Clock
 import java.time.Instant
@@ -157,7 +161,7 @@ class HistorySettingsAccessContractTest {
                 SqliteCoreStorageResource(context,databaseName).use { store -> store.fullSnapshot.capture().let { state ->
                     state.calls.forEach { (id, call) ->
                         assertEquals("$name original/unrelated fields $id", untouched.getValue(id), call.copy(classification = untouched.getValue(id).classification))
-                        assertEquals("$name current $id", com.greatwall.callring.domain.WorkClassifier.classify(state.work,call.time), call.classification)
+                        assertEquals("$name current $id", com.greatwall.callring.domain.calling.WorkClassifier.classify(state.work,call.time), call.classification)
                     }
                 } }
             }

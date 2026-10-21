@@ -1,14 +1,18 @@
 package com.greatwall.callring.bootstrap
 
+import com.greatwall.callring.platform.diagnostics.DiagnosticEvent
+import com.greatwall.callring.platform.runtime.AndroidRuntimeProbe
+import com.greatwall.callring.platform.runtime.UiNotificationEntryPoints
+
 import android.content.Context
 import com.greatwall.callring.application.CallringBackend
 import com.greatwall.callring.application.IncomingRecordingSession
 import com.greatwall.callring.application.findRecordingCall
-import com.greatwall.callring.application.conversation.QueryService
+import com.greatwall.callring.application.conversation.query.QueryService
 import com.greatwall.callring.contracts.CallringUiApi
 import com.greatwall.callring.contracts.callers.IncomingCallUiSink
 import com.greatwall.callring.contracts.runtime.*
-import com.greatwall.callring.data.SqliteCoreStorageResource
+import com.greatwall.callring.data.database.SqliteCoreStorageResource
 import com.greatwall.callring.platform.*
 import com.greatwall.callring.platform.calling.AndroidCallWorkLease
 import com.greatwall.callring.platform.calling.BackendIncomingCallEngine
@@ -23,7 +27,7 @@ class BackendGraph(
     notifications: UiNotificationEntryPoints,
     incomingCallUi: IncomingCallUiSink,
 ) : Closeable {
-    val coordinator = com.greatwall.callring.application.BusinessRevisionCoordinator()
+    val coordinator = com.greatwall.callring.application.coordination.BusinessRevisionCoordinator()
     private val application = context.applicationContext
     private val lifetime = Any()
     private val recoveryLifetime = Any()
@@ -60,7 +64,7 @@ class BackendGraph(
     fun businessReadCounters(): Map<String, Long> = mapOf(
         "coreOpens" to store.coreOpens.get(),
         "completeCaptures" to store.completeCaptures.get(), "sourceQueries" to conversation.sourceQueries(),
-        "classifications" to com.greatwall.callring.domain.WorkClassifier.evaluations.get(),
+        "classifications" to com.greatwall.callring.domain.calling.WorkClassifier.evaluations.get(),
         "runtimeProbes" to AndroidRuntimeProbe.observations.get(), "quietReads" to 0L, "quietWrites" to 0L,
     ) + store.narrowAccessCounts()
     private val updateDelegate = lazy { ensureOpen(); com.greatwall.callring.platform.update.AndroidAppUpdate(application) }

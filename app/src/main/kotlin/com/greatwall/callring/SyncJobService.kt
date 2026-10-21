@@ -8,9 +8,9 @@ import android.content.pm.PackageManager
 import android.os.Handler
 import android.os.Looper
 import com.greatwall.callring.bootstrap.BackendProvider
-import com.greatwall.callring.platform.AndroidSyncScheduler
-import com.greatwall.callring.platform.DiagnosticEvent
-import com.greatwall.callring.platform.JobRuns
+import com.greatwall.callring.platform.scheduler.AndroidSyncScheduler
+import com.greatwall.callring.platform.diagnostics.DiagnosticEvent
+import com.greatwall.callring.platform.scheduler.JobRuns
 import java.util.concurrent.Executors
 
 class SyncJobService : JobService() {

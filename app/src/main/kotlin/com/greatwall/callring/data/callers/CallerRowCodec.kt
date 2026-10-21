@@ -1,9 +1,16 @@
 package com.greatwall.callring.data.callers
 
+import com.greatwall.callring.data.codec.LegacyValueCodec
+import com.greatwall.callring.data.database.flag
+import com.greatwall.callring.data.database.long
+import com.greatwall.callring.data.database.optionalLong
+import com.greatwall.callring.data.database.optionalText
+import com.greatwall.callring.data.database.text
+
 import android.database.Cursor
 import android.database.CursorWrapper
 import com.greatwall.callring.data.*
-import com.greatwall.callring.domain.RawCallRecord
+import com.greatwall.callring.domain.model.RawCallRecord
 
 internal object CallerRowCodec {
     private fun fact(c: Cursor, p: String): com.greatwall.callring.domain.model.ClassificationFact {

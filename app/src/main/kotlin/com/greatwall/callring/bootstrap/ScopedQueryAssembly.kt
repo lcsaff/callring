@@ -1,19 +1,26 @@
 package com.greatwall.callring.bootstrap
 
+import com.greatwall.callring.application.conversation.context.SecretRedactor
+import com.greatwall.callring.application.conversation.foreground.ForegroundResourceRegistry
+import com.greatwall.callring.application.conversation.query.QueryService
+import com.greatwall.callring.application.ports.query.ScopedReadPort
+import com.greatwall.callring.application.ports.query.SourceRow
+import com.greatwall.callring.data.query.ValueScopedReadSource
+
 import com.greatwall.callring.application.conversation.query.*
 
-import com.greatwall.callring.application.BusinessRevisionCoordinator
+import com.greatwall.callring.application.coordination.BusinessRevisionCoordinator
 import com.greatwall.callring.contracts.runtime.*
 import com.greatwall.callring.contracts.widget.*
 import com.greatwall.callring.contracts.ai.*
 import com.greatwall.callring.contracts.*
 import com.greatwall.callring.application.conversation.*
 import com.greatwall.callring.application.ports.*
-import com.greatwall.callring.application.requiredValue
-import com.greatwall.callring.application.safeValue
-import com.greatwall.callring.platform.AndroidPreferences
-import com.greatwall.callring.platform.AndroidDiagnosticsStore
-import com.greatwall.callring.platform.ai.SystemRecordingSource
+import com.greatwall.callring.application.mapping.requiredValue
+import com.greatwall.callring.application.conversation.query.safeValue
+import com.greatwall.callring.data.preferences.AndroidPreferences
+import com.greatwall.callring.platform.diagnostics.AndroidDiagnosticsStore
+import com.greatwall.callring.platform.recording.SystemRecordingSource
 import java.time.Clock
 import kotlinx.coroutines.runBlocking
 

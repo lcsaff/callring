@@ -1,6 +1,15 @@
 package com.greatwall.callring.bootstrap
 
-import com.greatwall.callring.application.BusinessRevisionCoordinator
+import com.greatwall.callring.application.ports.query.ScopedReadPort
+import com.greatwall.callring.application.ports.query.SourcePage
+import com.greatwall.callring.domain.model.AuditRecord
+import com.greatwall.callring.domain.model.CalendarImport
+import com.greatwall.callring.domain.model.LeaveRecord
+import com.greatwall.callring.domain.model.PositionRecord
+import com.greatwall.callring.domain.model.ProfileRecord
+import com.greatwall.callring.domain.model.RawCallRecord
+
+import com.greatwall.callring.application.coordination.BusinessRevisionCoordinator
 import com.greatwall.callring.application.ports.*
 import com.greatwall.callring.application.ports.store.*
 import com.greatwall.callring.contracts.ai.*
@@ -139,10 +148,10 @@ class StorageResourcesTest {
 
                         override fun calendarYear(
                             year: Int,
-                        ): com.greatwall.callring.domain.CalendarImport? = null
+                        ): com.greatwall.callring.domain.model.CalendarImport? = null
 
                         override fun replaceCalendar(
-                            value: com.greatwall.callring.domain.CalendarImport,
+                            value: com.greatwall.callring.domain.model.CalendarImport,
                         ) = Unit
 
                         override fun dateOverride(
@@ -156,13 +165,13 @@ class StorageResourcesTest {
                         override fun removeDateOverride(date: java.time.LocalDate) = Unit
 
                         override fun leaves() =
-                            emptyList<com.greatwall.callring.domain.LeaveRecord>()
+                            emptyList<com.greatwall.callring.domain.model.LeaveRecord>()
 
-                        override fun leave(id: Long): com.greatwall.callring.domain.LeaveRecord? =
+                        override fun leave(id: Long): com.greatwall.callring.domain.model.LeaveRecord? =
                             null
 
                         override fun putLeave(
-                            value: com.greatwall.callring.domain.LeaveRecord,
+                            value: com.greatwall.callring.domain.model.LeaveRecord,
                             insert: Boolean,
                         ) = value
 
@@ -170,7 +179,7 @@ class StorageResourcesTest {
 
                         override fun incrementLeaveVersion() = Unit
 
-                        override fun appendAudit(value: com.greatwall.callring.domain.AuditRecord) =
+                        override fun appendAudit(value: com.greatwall.callring.domain.model.AuditRecord) =
                             Unit
 
                         override fun workHistory() =

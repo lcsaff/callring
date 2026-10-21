@@ -1,7 +1,7 @@
 package com.greatwall.callring.application.ports.store
 
-import com.greatwall.callring.domain.PositionRecord
-import com.greatwall.callring.domain.StatisticsInterval
+import com.greatwall.callring.domain.model.PositionRecord
+import com.greatwall.callring.domain.model.StatisticsInterval
 import com.greatwall.callring.domain.model.ScoreSettings
 
 interface ScoreReader { fun score(): ScoreSettings }

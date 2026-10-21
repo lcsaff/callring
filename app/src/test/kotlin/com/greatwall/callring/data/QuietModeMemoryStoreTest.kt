@@ -1,5 +1,7 @@
 package com.greatwall.callring.data
 
+import com.greatwall.callring.data.database.SqliteCoreStorageResource
+
 import com.greatwall.callring.domain.model.QuietMode
 import com.greatwall.callring.domain.model.QuietSettings
 import com.greatwall.callring.domain.model.TimeWindow

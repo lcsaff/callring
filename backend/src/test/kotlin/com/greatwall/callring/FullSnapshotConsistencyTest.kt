@@ -1,9 +1,13 @@
 package com.greatwall.callring
 
-import com.greatwall.callring.application.BusinessRevisionCoordinator
+import com.greatwall.callring.application.conversation.foreground.ForegroundResourceRegistry
+import com.greatwall.callring.application.conversation.query.AiSnapshotService
+import com.greatwall.callring.application.conversation.query.SnapshotPart
+
+import com.greatwall.callring.application.coordination.BusinessRevisionCoordinator
 import com.greatwall.callring.application.conversation.*
 import com.greatwall.callring.application.coordination.ChangeImpact
-import com.greatwall.callring.application.requiredValue
+import com.greatwall.callring.application.mapping.requiredValue
 import com.greatwall.callring.contracts.ai.*
 import com.greatwall.callring.contracts.change.DataDomain
 import com.greatwall.callring.contracts.common.*

@@ -1,5 +1,10 @@
 package com.greatwall.callring.data
 
+import com.greatwall.callring.data.database.QueryTag
+import com.greatwall.callring.data.database.SqlAccessProbe
+import com.greatwall.callring.data.database.SqlTable
+import com.greatwall.callring.data.database.SqliteCoreStorageResource
+
 import android.app.Notification
 import android.app.PendingIntent
 import android.content.Intent
@@ -7,11 +12,11 @@ import android.database.sqlite.SQLiteDatabase
 import java.io.File
 import org.json.JSONObject
 import com.greatwall.callring.contracts.common.ApiResult
-import com.greatwall.callring.application.requiredValue
+import com.greatwall.callring.application.mapping.requiredValue
 import com.greatwall.callring.bootstrap.*
 import com.greatwall.callring.contracts.callers.*
 import com.greatwall.callring.contracts.settings.*
-import com.greatwall.callring.platform.UiNotificationEntryPoints
+import com.greatwall.callring.platform.runtime.UiNotificationEntryPoints
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.*
 import org.junit.Test

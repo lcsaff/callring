@@ -1,13 +1,16 @@
 package com.greatwall.callring.data
 
+import com.greatwall.callring.data.database.SqlAccessProbe
+import com.greatwall.callring.data.database.SqliteCoreStorageResource
+
 import android.app.Notification
 import android.app.PendingIntent
 import android.content.Intent
-import com.greatwall.callring.application.requiredValue
+import com.greatwall.callring.application.mapping.requiredValue
 import com.greatwall.callring.bootstrap.*
 import com.greatwall.callring.contracts.callers.*
 import com.greatwall.callring.contracts.settings.*
-import com.greatwall.callring.platform.UiNotificationEntryPoints
+import com.greatwall.callring.platform.runtime.UiNotificationEntryPoints
 import java.time.*
 import kotlinx.coroutines.*
 import org.junit.Assert.*
@@ -212,7 +215,7 @@ class CallAccessContractTest {
             measure("import") {
                 engine.importSystemCalls(
                     listOf(
-                        com.greatwall.callring.domain.SystemCallRecord(
+                        com.greatwall.callring.domain.model.SystemCallRecord(
                             "measured",
                             LocalAccessFixture.TARGET,
                             LocalAccessFixture.at + 2001,
@@ -233,7 +236,7 @@ class CallAccessContractTest {
             measure("importNoop") {
                 engine.importSystemCalls(
                     listOf(
-                        com.greatwall.callring.domain.SystemCallRecord(
+                        com.greatwall.callring.domain.model.SystemCallRecord(
                             "measured",
                             LocalAccessFixture.TARGET,
                             LocalAccessFixture.at + 2001,

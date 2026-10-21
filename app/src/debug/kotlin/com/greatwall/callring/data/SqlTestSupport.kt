@@ -1,5 +1,22 @@
 package com.greatwall.callring.data
 
+import com.greatwall.callring.data.calling.CallingRowCodec
+import com.greatwall.callring.data.codec.WorkConfigCodec
+import com.greatwall.callring.data.database.SqlAccess
+import com.greatwall.callring.data.database.SqliteCoreStorageResource
+import com.greatwall.callring.data.database.SqliteCoreUnitOfWork
+import com.greatwall.callring.data.database.args
+import com.greatwall.callring.data.database.long
+import com.greatwall.callring.data.database.text
+import com.greatwall.callring.data.database.values
+import com.greatwall.callring.data.query.SqliteScopedReadAdapter
+import com.greatwall.callring.domain.model.AuditRecord
+import com.greatwall.callring.domain.model.LeaveRecord
+import com.greatwall.callring.domain.model.PositionRecord
+import com.greatwall.callring.domain.model.ProfileRecord
+import com.greatwall.callring.domain.model.RawCallRecord
+import com.greatwall.callring.domain.model.StatisticsInterval
+
 import android.database.sqlite.SQLiteDatabase
 import com.greatwall.callring.domain.*
 import com.greatwall.callring.domain.model.*
@@ -66,7 +83,7 @@ internal fun SQLiteDatabase.seedSequence(table: String, next: Long) {
 internal fun SQLiteDatabase.fixtureWork(): WorkHistory =
     SqliteCoreUnitOfWork(this, SqlAccess(this)).readSession { it.workHistory() }
 
-internal fun SqliteCoreStorageResource.fixtureScopedReads(coordinator: com.greatwall.callring.application.BusinessRevisionCoordinator): com.greatwall.callring.application.ports.ScopedReadPort {
+internal fun SqliteCoreStorageResource.fixtureScopedReads(coordinator: com.greatwall.callring.application.coordination.BusinessRevisionCoordinator): com.greatwall.callring.application.ports.query.ScopedReadPort {
     val db = SqliteCoreStorageResource::class.java.getDeclaredField("db").let { it.isAccessible = true; it.get(this) as SQLiteDatabase }
     return com.greatwall.callring.application.conversation.query.CoreScopedReadSource(SqliteScopedReadAdapter(db, { domain ->
         coordinator.sourceVersion(domain)

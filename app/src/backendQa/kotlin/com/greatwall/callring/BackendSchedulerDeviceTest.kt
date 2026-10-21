@@ -7,7 +7,7 @@ import android.content.ComponentName
 import android.provider.CallLog
 import android.test.InstrumentationTestCase
 import com.greatwall.callring.contracts.runtime.SyncRequestState
-import com.greatwall.callring.platform.AndroidSyncScheduler
+import com.greatwall.callring.platform.scheduler.AndroidSyncScheduler
 
 /** Tests only this separate QA package's jobs. Never observes or changes system call records. */
 class BackendSchedulerDeviceTest : InstrumentationTestCase() {

@@ -1,12 +1,14 @@
 package com.greatwall.callring.platform
 
+import com.greatwall.callring.data.preferences.AndroidPreferences
+
 import android.content.SharedPreferences
 import com.greatwall.callring.contracts.settings.*
 import com.greatwall.callring.contracts.widget.*
 import com.greatwall.callring.application.ports.BackendFailure
 import org.junit.Assert.*
 import org.junit.Test
-import com.greatwall.callring.application.BusinessRevisionCoordinator
+import com.greatwall.callring.application.coordination.BusinessRevisionCoordinator
 import com.greatwall.callring.contracts.change.DataDomain
 
 class AndroidPreferencesTest {

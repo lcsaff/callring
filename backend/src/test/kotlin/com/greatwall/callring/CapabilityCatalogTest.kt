@@ -1,5 +1,8 @@
 package com.greatwall.callring
 
+import com.greatwall.callring.application.conversation.operation.CapabilityCatalog
+import com.greatwall.callring.application.conversation.operation.ToolRegistry
+
 import com.greatwall.callring.application.conversation.*
 import org.junit.Assert.*
 import org.junit.Test

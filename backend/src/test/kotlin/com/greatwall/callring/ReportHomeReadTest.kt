@@ -1,5 +1,8 @@
 package com.greatwall.callring
 
+import com.greatwall.callring.application.coordination.BusinessRevisionCoordinator
+import com.greatwall.callring.application.runtime.completeRuntimeStatus
+
 import com.greatwall.callring.application.*
 import com.greatwall.callring.application.home.HomeService
 import com.greatwall.callring.application.ports.store.*
@@ -9,9 +12,9 @@ import com.greatwall.callring.contracts.common.*
 import com.greatwall.callring.contracts.report.*
 import com.greatwall.callring.contracts.runtime.*
 import com.greatwall.callring.contracts.settings.*
-import com.greatwall.callring.domain.PositionRecord
-import com.greatwall.callring.domain.ProfileRecord
-import com.greatwall.callring.domain.RawCallRecord
+import com.greatwall.callring.domain.model.PositionRecord
+import com.greatwall.callring.domain.model.ProfileRecord
+import com.greatwall.callring.domain.model.RawCallRecord
 import com.greatwall.callring.domain.model.defaultWorkSchedule
 import com.greatwall.callring.domain.model.CallDecision as DomainDecision
 import com.greatwall.callring.domain.model.CallResult as DomainResult

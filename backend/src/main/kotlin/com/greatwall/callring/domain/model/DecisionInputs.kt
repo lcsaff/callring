@@ -1,7 +1,7 @@
 package com.greatwall.callring.domain.model
 
-import com.greatwall.callring.domain.LeaveRecord
-import com.greatwall.callring.domain.StatisticsInterval
+import com.greatwall.callring.domain.model.LeaveRecord
+import com.greatwall.callring.domain.model.StatisticsInterval
 import java.time.LocalDate
 
 /** Complete work history and corrected facts required by event-time classification. */

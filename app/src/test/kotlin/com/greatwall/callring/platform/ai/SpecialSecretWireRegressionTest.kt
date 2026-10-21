@@ -1,8 +1,10 @@
 package com.greatwall.callring.platform.ai
+
+import com.greatwall.callring.application.conversation.context.SecretRedactor
 import com.greatwall.callring.contracts.ai.*
 import com.greatwall.callring.application.recording.model.*
 import com.greatwall.callring.application.conversation.*
-import com.greatwall.callring.application.ports.ConversationRequest
+import com.greatwall.callring.application.ports.platform.ConversationRequest
 import org.json.JSONObject
 import org.junit.Assert.*
 import org.junit.Test

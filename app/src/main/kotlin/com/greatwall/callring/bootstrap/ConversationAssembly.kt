@@ -1,5 +1,9 @@
 package com.greatwall.callring.bootstrap
 
+import com.greatwall.callring.application.conversation.execution.ConversationService
+import com.greatwall.callring.application.conversation.foreground.ForegroundResourceRegistry
+import com.greatwall.callring.application.conversation.query.QueryService
+
 import android.content.Context
 import com.greatwall.callring.application.conversation.*
 import com.greatwall.callring.contracts.CallringUiApi
@@ -22,7 +26,7 @@ internal class ConversationAssembly(
         ensureOpen()
         scopedQueryApi(core.store.scopedReads(coordinator), recordings, api,
             { core.preferenceStore }, { core.diagnostics },
-            com.greatwall.callring.platform.ai.SystemRecordingSource(application.contentResolver),
+            com.greatwall.callring.platform.recording.SystemRecordingSource(application.contentResolver),
             coordinator, resources, core.playbackState::snapshot, ui::installedWidgets,
             ::jobStatus, configuration.clock)
     }

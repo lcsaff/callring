@@ -1,5 +1,16 @@
 package com.greatwall.callring.bootstrap
 
+import com.greatwall.callring.data.preferences.AndroidPreferences
+import com.greatwall.callring.platform.audio.AndroidAudioController
+import com.greatwall.callring.platform.audio.AndroidPlaybackCommands
+import com.greatwall.callring.platform.audio.PlaybackStateTracker
+import com.greatwall.callring.platform.calendar.HolidayCalendarSource
+import com.greatwall.callring.platform.calling.AndroidCallLogSource
+import com.greatwall.callring.platform.diagnostics.AndroidDiagnosticsStore
+import com.greatwall.callring.platform.document.AndroidDocumentStore
+import com.greatwall.callring.platform.runtime.AndroidRuntimeProbe
+import com.greatwall.callring.platform.scheduler.AndroidSyncScheduler
+
 import android.content.Context
 import com.greatwall.callring.application.CallringBackend
 import com.greatwall.callring.contracts.runtime.*
@@ -10,7 +21,7 @@ import com.greatwall.callring.platform.*
 internal class CoreAssembly(
     private val application: Context,
     private val configuration: BackendConfiguration,
-    val coordinator: com.greatwall.callring.application.BusinessRevisionCoordinator,
+    val coordinator: com.greatwall.callring.application.coordination.BusinessRevisionCoordinator,
     val store: StorageResources,
     private val ui: UiBridgeAssembly,
     private val ensureOpen: () -> Unit,
@@ -64,7 +75,7 @@ internal class CoreAssembly(
 
     val documents by lazy {
         ensureOpen()
-        com.greatwall.callring.application.ReadbackDocumentStore(AndroidDocumentStore(application.contentResolver))
+        com.greatwall.callring.application.runtime.ReadbackDocumentStore(AndroidDocumentStore(application.contentResolver))
     }
     val syncScheduler by lazy {
         ensureOpen()

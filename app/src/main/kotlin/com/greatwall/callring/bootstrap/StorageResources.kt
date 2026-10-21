@@ -1,6 +1,8 @@
 package com.greatwall.callring.bootstrap
 
-import com.greatwall.callring.application.BusinessRevisionCoordinator
+import com.greatwall.callring.application.ports.query.ScopedReadPort
+
+import com.greatwall.callring.application.coordination.BusinessRevisionCoordinator
 import com.greatwall.callring.application.conversation.*
 import com.greatwall.callring.application.conversation.query.*
 import com.greatwall.callring.application.ports.*

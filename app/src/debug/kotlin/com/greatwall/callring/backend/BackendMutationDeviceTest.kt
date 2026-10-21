@@ -9,7 +9,7 @@ import com.greatwall.callring.contracts.common.*
 import com.greatwall.callring.contracts.callers.*
 import com.greatwall.callring.contracts.settings.*
 import com.greatwall.callring.contracts.report.*
-import com.greatwall.callring.domain.SystemCallRecord
+import com.greatwall.callring.domain.model.SystemCallRecord
 import java.time.Instant
 import java.time.LocalDate
 import kotlinx.coroutines.Dispatchers

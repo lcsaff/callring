@@ -1,5 +1,17 @@
 package com.greatwall.callring.platform.ai
 
+import com.greatwall.callring.application.conversation.execution.json
+import com.greatwall.callring.application.conversation.operation.ToolRegistry
+import com.greatwall.callring.application.conversation.query.AiSnapshotService
+import com.greatwall.callring.application.conversation.query.SnapshotPart
+import com.greatwall.callring.application.conversation.query.json
+import com.greatwall.callring.application.conversation.query.safeValue
+import com.greatwall.callring.application.coordination.BusinessRevisionCoordinator
+import com.greatwall.callring.application.ports.platform.ConversationRequest
+import com.greatwall.callring.data.recording.AndroidRecordingStore
+import com.greatwall.callring.data.recording.RecordingCipher
+import com.greatwall.callring.platform.recording.SystemRecordingSource
+
 import com.greatwall.callring.application.recording.AiSettingsService
 import android.content.*
 import android.database.*

@@ -2,15 +2,15 @@ package com.greatwall.callring.application.settings
 
 import com.greatwall.callring.application.coordination.requireOperationActive
 
-import com.greatwall.callring.application.BusinessRevisionCoordinator
-import com.greatwall.callring.application.frozenList
+import com.greatwall.callring.application.coordination.BusinessRevisionCoordinator
+import com.greatwall.callring.application.mapping.frozenList
 import com.greatwall.callring.application.coordination.*
 import com.greatwall.callring.application.ports.store.*
 import com.greatwall.callring.contracts.change.DataDomain
 import com.greatwall.callring.contracts.command.CommandContext
 import com.greatwall.callring.contracts.common.*
 import com.greatwall.callring.contracts.settings.*
-import com.greatwall.callring.domain.PositionRecord
+import com.greatwall.callring.domain.model.PositionRecord
 import kotlinx.coroutines.*
 
 internal class PositionService(private val transactions: PositionTransactions,

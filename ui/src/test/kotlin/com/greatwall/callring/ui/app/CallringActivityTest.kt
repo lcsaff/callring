@@ -1,5 +1,7 @@
 package com.greatwall.callring.ui.app
 
+import com.greatwall.callring.ui.app.bridge.UiApiOwner
+
 import com.greatwall.callring.contracts.runtime.*
 import android.Manifest
 import android.app.Application

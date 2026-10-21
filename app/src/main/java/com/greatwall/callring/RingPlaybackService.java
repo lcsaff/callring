@@ -1,5 +1,9 @@
 package com.greatwall.callring;
 
+import com.greatwall.callring.platform.audio.PreparationGate;
+import com.greatwall.callring.platform.calling.CallStateSnapshot;
+import com.greatwall.callring.platform.calling.SessionGate;
+
 import android.app.Notification;
 
 
@@ -25,7 +29,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import com.greatwall.callring.bootstrap.BackendProvider;
 import com.greatwall.callring.bootstrap.BackendGraph;
-import com.greatwall.callring.platform.DiagnosticEvent;
+import com.greatwall.callring.platform.diagnostics.DiagnosticEvent;
 import com.greatwall.callring.platform.calling.AndroidCallEnvironment;
 import com.greatwall.callring.contracts.runtime.PlaybackMode;
 import com.greatwall.callring.contracts.runtime.PlaybackState;

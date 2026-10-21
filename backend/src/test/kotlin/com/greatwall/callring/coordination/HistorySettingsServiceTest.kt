@@ -1,5 +1,10 @@
 package com.greatwall.callring.coordination
 
+import com.greatwall.callring.application.coordination.BusinessRevisionCoordinator
+import com.greatwall.callring.domain.model.AuditRecord
+import com.greatwall.callring.domain.model.CalendarImport
+import com.greatwall.callring.domain.model.LeaveRecord
+
 import com.greatwall.callring.domain.model.defaultWorkSchedule
 import com.greatwall.callring.application.*
 import com.greatwall.callring.application.coordination.*

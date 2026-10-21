@@ -1,6 +1,6 @@
 package com.greatwall.callring
 
-import com.greatwall.callring.application.ReadbackDocumentStore
+import com.greatwall.callring.application.runtime.ReadbackDocumentStore
 import com.greatwall.callring.contracts.common.DocumentRef
 import com.greatwall.callring.application.ports.DocumentStore
 import java.io.*

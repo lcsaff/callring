@@ -2,14 +2,14 @@ package com.greatwall.callring.application.settings
 
 import com.greatwall.callring.application.coordination.requireOperationActive
 
-import com.greatwall.callring.application.BusinessRevisionCoordinator
+import com.greatwall.callring.application.coordination.BusinessRevisionCoordinator
 import com.greatwall.callring.application.coordination.*
 import com.greatwall.callring.application.ports.SyncScheduler
 import com.greatwall.callring.application.ports.store.StatisticsTransactions
 import com.greatwall.callring.contracts.change.DataDomain
 import com.greatwall.callring.contracts.command.CommandContext
 import com.greatwall.callring.contracts.common.*
-import com.greatwall.callring.domain.StatisticsInterval
+import com.greatwall.callring.domain.model.StatisticsInterval
 import java.time.Clock
 import kotlinx.coroutines.CoroutineDispatcher
 

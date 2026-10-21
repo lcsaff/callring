@@ -6,7 +6,7 @@ import com.greatwall.callring.contracts.settings.*
 import com.greatwall.callring.contracts.runtime.*
 import com.greatwall.callring.contracts.widget.*
 import com.greatwall.callring.application.recording.policy.*
-import com.greatwall.callring.domain.CalendarImport
+import com.greatwall.callring.domain.model.CalendarImport
 import java.io.InputStream
 import java.io.OutputStream
 
@@ -16,7 +16,7 @@ fun interface CalendarSource {
 }
 
 interface PreferenceStore : com.greatwall.callring.application.ports.store.AppearanceStore,
-    com.greatwall.callring.application.widget.WidgetBindingStore
+    com.greatwall.callring.application.ports.store.WidgetBindingStore
 
 fun interface CalendarDocumentReader { fun readCalendar(source: DocumentRef): CalendarImport }
 

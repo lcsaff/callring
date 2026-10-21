@@ -1,5 +1,14 @@
 package com.greatwall.callring.bootstrap
 
+import com.greatwall.callring.application.conversation.context.ContextBudget
+import com.greatwall.callring.application.conversation.execution.ConversationService
+import com.greatwall.callring.application.conversation.execution.json
+import com.greatwall.callring.application.conversation.foreground.ForegroundResourceRegistry
+import com.greatwall.callring.application.conversation.query.json
+import com.greatwall.callring.data.recording.AndroidRecordingStore
+import com.greatwall.callring.data.recording.RecordingCipher
+import com.greatwall.callring.platform.runtime.UiNotificationEntryPoints
+
 import android.app.*
 import android.content.Intent
 import com.greatwall.callring.contracts.common.*
@@ -59,7 +68,7 @@ class CompleteSnapshotAssemblyTest {
         store.persistSettings(RecordingSettings(analysis = connection))
         val runtime = RecordingAssembly(context, "small_recording", { null }, { null }, {}, { store }, coordinator = graph.coordinator, operationActive = { true })
         graph.backend.callers.saveProfile(SaveCallerProfile("999", "person", "unit", null, false))
-        val call = com.greatwall.callring.application.recording.RecordingRegistrationService(store, com.greatwall.callring.application.BusinessRevisionCoordinator()).registerIncoming("session", "999", 1, null, null)
+        val call = com.greatwall.callring.application.recording.RecordingRegistrationService(store, com.greatwall.callring.application.coordination.BusinessRevisionCoordinator()).registerIncoming("session", "999", 1, null, null)
         val old = store.get(call.id)!!
         store.compareAndSet(call.id, old.generation, old.copy(generation = old.generation + 1, transcript = "short transcript FULL-TAIL"))
         val snapshots = completeSnapshotApi(graph.backend, graph.fullSnapshotReader, runtime, graph.diagnostics, graph.coordinator, ForegroundResourceRegistry(), configuration.clock)

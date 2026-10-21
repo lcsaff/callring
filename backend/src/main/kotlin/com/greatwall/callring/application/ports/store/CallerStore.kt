@@ -1,7 +1,7 @@
 package com.greatwall.callring.application.ports.store
 
-import com.greatwall.callring.domain.ProfileRecord
-import com.greatwall.callring.domain.RawCallRecord
+import com.greatwall.callring.domain.model.ProfileRecord
+import com.greatwall.callring.domain.model.RawCallRecord
 
 /** Search visits necessary stored-profile fields in number order; no call-derived callers. */
 data class CallerSearchRow(val number: String, val name: String, val department: String)
@@ -33,13 +33,13 @@ interface CallerWriter : CallerReader {
 }
 
 interface CallerPositionReader {
-    fun positions(): List<com.greatwall.callring.domain.PositionRecord>
+    fun positions(): List<com.greatwall.callring.domain.model.PositionRecord>
 
-    fun position(id: Long): com.greatwall.callring.domain.PositionRecord?
+    fun position(id: Long): com.greatwall.callring.domain.model.PositionRecord?
 
     fun myPositionId(): Long?
 
-    fun callerPositions(ids: Set<Long>): List<com.greatwall.callring.domain.PositionRecord>
+    fun callerPositions(ids: Set<Long>): List<com.greatwall.callring.domain.model.PositionRecord>
 }
 
 interface CallerProfileReader : CallerReader, CallerPositionReader

@@ -15,8 +15,8 @@ import android.view.WindowInsets
 import android.view.accessibility.AccessibilityNodeInfo
 import com.greatwall.callring.contracts.settings.*
 import com.greatwall.callring.contracts.ai.*
-import com.greatwall.callring.application.conversation.ForegroundActionService
-import com.greatwall.callring.application.requiredValue
+import com.greatwall.callring.application.conversation.foreground.ForegroundActionService
+import com.greatwall.callring.application.mapping.requiredValue
 import com.greatwall.callring.bootstrap.BackendGraph
 import com.greatwall.callring.data.codec.parseAiJson
 import com.greatwall.callring.ui.app.CallringActivity

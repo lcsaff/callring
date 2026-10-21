@@ -1,5 +1,9 @@
 package com.greatwall.callring.platform
 
+import com.greatwall.callring.platform.diagnostics.legacyDiagnostic
+import com.greatwall.callring.platform.runtime.audibilitySnapshot
+import com.greatwall.callring.platform.runtime.phoneActivitySnapshot
+
 import android.app.NotificationManager
 import android.media.AudioManager
 import android.telephony.TelephonyManager

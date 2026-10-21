@@ -1,5 +1,8 @@
 package com.greatwall.callring.bootstrap
 
+import com.greatwall.callring.application.ports.query.ScopedReadPort
+import com.greatwall.callring.application.ports.query.SourcePage
+
 import com.greatwall.callring.application.ports.*
 import org.junit.Assert.*
 import org.junit.Test
@@ -26,13 +29,13 @@ class LazyStorageResourcesTest {
             }
         }
         assertEquals(0, opened)
-        store.scopedReads(com.greatwall.callring.application.BusinessRevisionCoordinator()).query(com.greatwall.callring.contracts.ai.QuerySpec(com.greatwall.callring.contracts.ai.AiDomain.D10), null)
-        store.scopedReads(com.greatwall.callring.application.BusinessRevisionCoordinator()).query(com.greatwall.callring.contracts.ai.QuerySpec(com.greatwall.callring.contracts.ai.AiDomain.D10), null)
+        store.scopedReads(com.greatwall.callring.application.coordination.BusinessRevisionCoordinator()).query(com.greatwall.callring.contracts.ai.QuerySpec(com.greatwall.callring.contracts.ai.AiDomain.D10), null)
+        store.scopedReads(com.greatwall.callring.application.coordination.BusinessRevisionCoordinator()).query(com.greatwall.callring.contracts.ai.QuerySpec(com.greatwall.callring.contracts.ai.AiDomain.D10), null)
         assertEquals(1, opened)
         store.close()
         store.close()
         assertEquals(1, closed)
-        assertThrows(BackendFailure::class.java) { store.scopedReads(com.greatwall.callring.application.BusinessRevisionCoordinator()).query(com.greatwall.callring.contracts.ai.QuerySpec(com.greatwall.callring.contracts.ai.AiDomain.D10), null) }
+        assertThrows(BackendFailure::class.java) { store.scopedReads(com.greatwall.callring.application.coordination.BusinessRevisionCoordinator()).query(com.greatwall.callring.contracts.ai.QuerySpec(com.greatwall.callring.contracts.ai.AiDomain.D10), null) }
         assertEquals(1, opened)
     }
 

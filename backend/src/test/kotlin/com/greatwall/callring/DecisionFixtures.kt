@@ -1,5 +1,8 @@
 package com.greatwall.callring
 
+import com.greatwall.callring.domain.model.LeaveRecord
+import com.greatwall.callring.domain.model.StatisticsInterval
+
 import com.greatwall.callring.domain.*
 import com.greatwall.callring.domain.model.*
 import java.time.LocalDate

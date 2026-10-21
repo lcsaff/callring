@@ -1,5 +1,12 @@
 package com.greatwall.callring.platform.ai
 
+import com.greatwall.callring.application.conversation.context.ContextBudget
+import com.greatwall.callring.application.conversation.execution.json
+import com.greatwall.callring.application.conversation.operation.ToolRegistry
+import com.greatwall.callring.application.conversation.query.json
+import com.greatwall.callring.application.ports.platform.ConversationReply
+import com.greatwall.callring.application.ports.platform.ConversationRequest
+
 import com.greatwall.callring.contracts.common.*
 import com.greatwall.callring.contracts.ai.*
 import com.greatwall.callring.application.recording.model.*

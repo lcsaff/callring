@@ -23,7 +23,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.greatwall.callring.ui.app.UiApiOwner
+import com.greatwall.callring.ui.app.bridge.UiApiOwner
 import com.greatwall.callring.ui.app.uiViewModel
 import com.greatwall.callring.ui.app.ThemeWindowSupport
 import com.greatwall.callring.contracts.common.*

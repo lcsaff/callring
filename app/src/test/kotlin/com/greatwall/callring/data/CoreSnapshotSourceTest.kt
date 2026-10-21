@@ -1,5 +1,9 @@
 package com.greatwall.callring.data
 
+import com.greatwall.callring.data.database.SqliteCoreStorageResource
+import com.greatwall.callring.domain.model.AuditRecord
+import com.greatwall.callring.domain.model.ProfileRecord
+
 import com.greatwall.callring.domain.*
 import org.junit.Assert.*
 import org.junit.Test

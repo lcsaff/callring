@@ -1,12 +1,19 @@
 package com.greatwall.callring.platform.ai
 
+import com.greatwall.callring.application.conversation.execution.json
+import com.greatwall.callring.application.conversation.foreground.ForegroundResourceRegistry
+import com.greatwall.callring.application.conversation.query.QueryService
+import com.greatwall.callring.application.conversation.query.json
+import com.greatwall.callring.platform.recording.DirectoryScopedReadSource
+import com.greatwall.callring.platform.recording.SystemRecordingSource
+
 import android.content.*
 import android.database.Cursor
 import android.database.MatrixCursor
 import android.net.Uri
 import android.provider.DocumentsContract
 import com.greatwall.callring.application.conversation.*
-import com.greatwall.callring.application.requiredValue
+import com.greatwall.callring.application.mapping.requiredValue
 import com.greatwall.callring.contracts.ai.*
 import com.greatwall.callring.contracts.common.*
 import kotlinx.coroutines.runBlocking
@@ -58,9 +65,9 @@ class ScopedDirectoryTest {
                 { _, _ -> provider },
                 { _, _ -> null },
             )
-        var captured: com.greatwall.callring.application.ports.SourcePage? = null
+        var captured: com.greatwall.callring.application.ports.query.SourcePage? = null
         val source =
-            object : com.greatwall.callring.application.ports.ScopedReadPort by physical {
+            object : com.greatwall.callring.application.ports.query.ScopedReadPort by physical {
                 override fun query(spec: QuerySpec, after: String?) =
                     physical.query(spec, after).also { captured = it }
             }
@@ -115,9 +122,9 @@ class ScopedDirectoryTest {
                 { _, _ -> provider },
                 { _, _ -> null },
             )
-        var captured: com.greatwall.callring.application.ports.SourcePage? = null
+        var captured: com.greatwall.callring.application.ports.query.SourcePage? = null
         val source =
-            object : com.greatwall.callring.application.ports.ScopedReadPort by physical {
+            object : com.greatwall.callring.application.ports.query.ScopedReadPort by physical {
                 override fun query(spec: QuerySpec, after: String?) =
                     physical.query(spec, after).also { captured = it }
             }
@@ -170,9 +177,9 @@ class ScopedDirectoryTest {
                     { _, _ -> provider },
                     { _, _ -> null },
                 )
-            var captured: com.greatwall.callring.application.ports.SourcePage? = null
+            var captured: com.greatwall.callring.application.ports.query.SourcePage? = null
             val source =
-                object : com.greatwall.callring.application.ports.ScopedReadPort by physical {
+                object : com.greatwall.callring.application.ports.query.ScopedReadPort by physical {
                     override fun query(spec: QuerySpec, after: String?) =
                         physical.query(spec, after).also { captured = it }
                 }

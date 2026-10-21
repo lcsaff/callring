@@ -48,7 +48,7 @@ def check(root=ROOT):
                 errors.append(f'{path.relative_to(root)}: removed full-state storage protocol')
             if numeric_operation_dispatch(path, source):
                 errors.append(f'{path.relative_to(root)}: numeric operation dispatch; use OperationId or explicit catalog policy')
-            if re.search(r'\bas\s*\??\s*(?:com\.greatwall\.callring\.data\.)?SqliteCoreStorageResource\b|\basSqliteCoreStorageResource\s*\(|\(\s*(?:com\.greatwall\.callring\.data\.)?SqliteCoreStorageResource\s*\)', references):
+            if re.search(r'\bas\s*\??\s*(?:com\.greatwall\.callring\.data\.database\.)?SqliteCoreStorageResource\b|\basSqliteCoreStorageResource\s*\(|\(\s*(?:com\.greatwall\.callring\.data\.database\.)?SqliteCoreStorageResource\s*\)', references):
                 errors.append(f'{path.relative_to(root)}: concrete backend store cast; inject explicit resource capabilities')
             if re.search(r'\b(?:data\s+)?class\s+OperationContract\b|\bfun\s+(?:ToolRegistry\s*\.\s*)?operationContracts\s*\(', references):
                 errors.append(f'{path.relative_to(root)}: removed operation contract projection; consume OperationDefinition directly')

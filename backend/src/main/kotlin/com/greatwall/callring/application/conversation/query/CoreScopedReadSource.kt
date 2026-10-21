@@ -1,13 +1,17 @@
 package com.greatwall.callring.application.conversation.query
 
+import com.greatwall.callring.application.ports.query.ScopedReadPort
+import com.greatwall.callring.application.ports.query.SourcePage
+import com.greatwall.callring.application.ports.query.SourceRow
+
 import com.greatwall.callring.application.mapping.*
 import com.greatwall.callring.application.ports.*
 import com.greatwall.callring.application.ports.query.*
 import com.greatwall.callring.application.ports.store.WorkHistory
-import com.greatwall.callring.application.safeValue
+import com.greatwall.callring.application.conversation.query.safeValue
 import com.greatwall.callring.contracts.ai.*
 import com.greatwall.callring.contracts.common.*
-import com.greatwall.callring.domain.WorkClassifier
+import com.greatwall.callring.domain.calling.WorkClassifier
 import com.greatwall.callring.domain.model.*
 import com.greatwall.callring.domain.model.TimeRange
 import com.greatwall.callring.domain.report.*

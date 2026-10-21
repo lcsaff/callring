@@ -1,7 +1,7 @@
 package com.greatwall.callring
 
 import com.greatwall.callring.application.mapping.*
-import com.greatwall.callring.application.safeValue
+import com.greatwall.callring.application.conversation.query.safeValue
 import com.greatwall.callring.contracts.ai.AiJson
 import org.junit.Assert.*
 import org.junit.Test

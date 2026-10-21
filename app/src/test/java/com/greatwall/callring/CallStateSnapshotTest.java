@@ -1,5 +1,7 @@
 package com.greatwall.callring;
 
+import com.greatwall.callring.platform.calling.CallStateSnapshot;
+
 import android.media.AudioManager;
 import android.telephony.TelephonyManager;
 import org.junit.Test;

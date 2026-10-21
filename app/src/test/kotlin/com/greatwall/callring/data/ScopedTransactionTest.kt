@@ -1,5 +1,7 @@
 package com.greatwall.callring.data
 
+import com.greatwall.callring.data.database.SqliteCoreStorageResource
+
 import com.greatwall.callring.application.ports.store.*
 import com.greatwall.callring.domain.model.QuietMode
 import org.junit.Assert.*
@@ -80,7 +82,7 @@ class ScopedTransactionTest {
                     writer.saveOverlay(true)
                     val role =
                         writer.putPosition(
-                            com.greatwall.callring.domain.PositionRecord(0, "Transient", 1, true),
+                            com.greatwall.callring.domain.model.PositionRecord(0, "Transient", 1, true),
                             true,
                         )
                     writer.saveMyPosition(role.id)
@@ -90,7 +92,7 @@ class ScopedTransactionTest {
             }
             assertEquals(original, store.sessions.readSession { it.score() to it.overlay() })
             assertEquals(
-                emptyList<com.greatwall.callring.domain.PositionRecord>(),
+                emptyList<com.greatwall.callring.domain.model.PositionRecord>(),
                 store.sessions.readSession { it.positions() },
             )
             assertNull(store.sessions.readSession { it.myPositionId() })
@@ -98,7 +100,7 @@ class ScopedTransactionTest {
             val first =
                 store.sessions.writePositions {
                     it.putPosition(
-                        com.greatwall.callring.domain.PositionRecord(0, "First", 1, true),
+                        com.greatwall.callring.domain.model.PositionRecord(0, "First", 1, true),
                         true,
                     )
                 }
@@ -106,7 +108,7 @@ class ScopedTransactionTest {
             val second =
                 store.sessions.writePositions {
                     it.putPosition(
-                        com.greatwall.callring.domain.PositionRecord(0, "Second", 1, true),
+                        com.greatwall.callring.domain.model.PositionRecord(0, "Second", 1, true),
                         true,
                     )
                 }

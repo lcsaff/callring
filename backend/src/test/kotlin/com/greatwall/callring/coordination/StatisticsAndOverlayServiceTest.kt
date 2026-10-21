@@ -1,5 +1,7 @@
 package com.greatwall.callring.coordination
 
+import com.greatwall.callring.application.coordination.BusinessRevisionCoordinator
+
 import com.greatwall.callring.application.*
 import com.greatwall.callring.application.ports.*
 import com.greatwall.callring.application.ports.store.*
@@ -7,7 +9,7 @@ import com.greatwall.callring.application.settings.*
 import com.greatwall.callring.contracts.command.*
 import com.greatwall.callring.contracts.common.*
 import com.greatwall.callring.contracts.runtime.*
-import com.greatwall.callring.domain.StatisticsInterval
+import com.greatwall.callring.domain.model.StatisticsInterval
 import java.time.*
 import kotlinx.coroutines.*
 import org.junit.Assert.*

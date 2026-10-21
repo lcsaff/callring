@@ -1,5 +1,7 @@
 package com.greatwall.callring.platform
 
+import com.greatwall.callring.platform.calendar.CalendarRefreshPolicy
+
 import java.time.LocalDate
 import org.junit.Assert.*
 import org.junit.Test

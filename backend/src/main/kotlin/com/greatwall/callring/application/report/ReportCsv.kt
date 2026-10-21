@@ -3,7 +3,7 @@ package com.greatwall.callring.application.report
 import com.greatwall.callring.contracts.callers.CallDetail
 import com.greatwall.callring.contracts.common.DocumentRef
 import com.greatwall.callring.contracts.report.CallerReport
-import com.greatwall.callring.domain.PositionRecord
+import com.greatwall.callring.domain.model.PositionRecord
 import java.io.OutputStream
 
 internal fun writeReportCsv(

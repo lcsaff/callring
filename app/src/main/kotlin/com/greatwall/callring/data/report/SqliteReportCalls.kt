@@ -1,5 +1,9 @@
 package com.greatwall.callring.data.report
 
+import com.greatwall.callring.data.database.QueryTag
+import com.greatwall.callring.data.database.SqlAccess
+import com.greatwall.callring.data.database.SqlTable
+
 import com.greatwall.callring.application.ports.store.ReportCallFact
 import com.greatwall.callring.data.*
 import com.greatwall.callring.data.callers.CallerRowCodec

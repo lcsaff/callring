@@ -1,8 +1,13 @@
 package com.greatwall.callring
 
+import com.greatwall.callring.application.conversation.query.QueryService
+import com.greatwall.callring.application.ports.query.ScopedReadPort
+import com.greatwall.callring.application.ports.query.SourcePage
+import com.greatwall.callring.application.ports.query.SourceRow
+
 import com.greatwall.callring.application.conversation.*
 import com.greatwall.callring.application.ports.*
-import com.greatwall.callring.application.requiredValue
+import com.greatwall.callring.application.mapping.requiredValue
 import com.greatwall.callring.contracts.ai.*
 import com.greatwall.callring.contracts.common.*
 import kotlinx.coroutines.runBlocking

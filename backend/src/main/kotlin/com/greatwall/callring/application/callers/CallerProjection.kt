@@ -1,5 +1,9 @@
 package com.greatwall.callring.application.callers
 
+import com.greatwall.callring.domain.model.PositionRecord
+import com.greatwall.callring.domain.model.ProfileRecord
+import com.greatwall.callring.domain.model.RawCallRecord
+
 import com.greatwall.callring.application.mapping.*
 import com.greatwall.callring.application.settings.positionOption
 import com.greatwall.callring.contracts.callers.*

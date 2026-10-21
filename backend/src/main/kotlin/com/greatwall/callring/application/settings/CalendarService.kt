@@ -2,8 +2,8 @@ package com.greatwall.callring.application.settings
 
 import com.greatwall.callring.application.coordination.requireOperationActive
 
-import com.greatwall.callring.application.BusinessRevisionCoordinator
-import com.greatwall.callring.application.frozenList
+import com.greatwall.callring.application.coordination.BusinessRevisionCoordinator
+import com.greatwall.callring.application.mapping.frozenList
 import com.greatwall.callring.application.coordination.*
 import com.greatwall.callring.application.mapping.*
 import com.greatwall.callring.application.ports.*
@@ -11,8 +11,8 @@ import com.greatwall.callring.application.ports.store.*
 import com.greatwall.callring.contracts.command.CommandContext
 import com.greatwall.callring.contracts.common.*
 import com.greatwall.callring.contracts.settings.*
-import com.greatwall.callring.domain.AuditRecord
-import com.greatwall.callring.domain.CalendarImport
+import com.greatwall.callring.domain.model.AuditRecord
+import com.greatwall.callring.domain.model.CalendarImport
 import com.greatwall.callring.domain.model.SettingsRules
 import java.time.*
 import kotlinx.coroutines.*

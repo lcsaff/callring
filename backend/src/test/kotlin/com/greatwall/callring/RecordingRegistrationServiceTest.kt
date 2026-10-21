@@ -1,6 +1,9 @@
 package com.greatwall.callring
 
-import com.greatwall.callring.application.BusinessRevisionCoordinator
+import com.greatwall.callring.application.ports.recording.RecordingRegistration
+import com.greatwall.callring.application.ports.recording.RecordingRegistrationStore
+
+import com.greatwall.callring.application.coordination.BusinessRevisionCoordinator
 import com.greatwall.callring.application.RecordingCall
 import com.greatwall.callring.application.recording.*
 import com.greatwall.callring.contracts.command.CommandContext

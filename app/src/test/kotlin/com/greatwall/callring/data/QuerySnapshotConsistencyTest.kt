@@ -1,12 +1,19 @@
 package com.greatwall.callring.data
 
+import com.greatwall.callring.application.ports.query.ScopedReadPort
+import com.greatwall.callring.application.ports.query.SourcePage
+import com.greatwall.callring.data.database.CallringDatabase
+import com.greatwall.callring.data.database.SqliteCoreStorageResource
+import com.greatwall.callring.data.database.values
+import com.greatwall.callring.data.query.SqliteScopedReadAdapter
+
 import com.greatwall.callring.domain.model.defaultWorkSchedule
-import com.greatwall.callring.application.BusinessRevisionCoordinator
-import com.greatwall.callring.application.conversation.QueryService
+import com.greatwall.callring.application.coordination.BusinessRevisionCoordinator
+import com.greatwall.callring.application.conversation.query.QueryService
 import com.greatwall.callring.application.coordination.ChangeImpact
 import com.greatwall.callring.application.ports.*
 import com.greatwall.callring.application.ports.store.CoreStorageResource
-import com.greatwall.callring.application.requiredValue
+import com.greatwall.callring.application.mapping.requiredValue
 import com.greatwall.callring.bootstrap.StorageResources
 import com.greatwall.callring.contracts.ai.*
 import com.greatwall.callring.contracts.change.DataDomain
@@ -59,7 +66,7 @@ class QuerySnapshotConsistencyTest {
                                     )
                                 else -> {
                                     writer.putLeave(
-                                        com.greatwall.callring.domain.LeaveRecord(
+                                        com.greatwall.callring.domain.model.LeaveRecord(
                                             0,
                                             0,
                                             Long.MAX_VALUE,

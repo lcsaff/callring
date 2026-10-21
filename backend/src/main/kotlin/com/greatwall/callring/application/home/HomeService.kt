@@ -1,6 +1,6 @@
 package com.greatwall.callring.application.home
 
-import com.greatwall.callring.application.BusinessRevisionCoordinator
+import com.greatwall.callring.application.coordination.BusinessRevisionCoordinator
 import com.greatwall.callring.application.callers.callDetail
 import com.greatwall.callring.application.coordination.UseCaseRunner
 import com.greatwall.callring.application.mapping.*
@@ -10,7 +10,7 @@ import com.greatwall.callring.contracts.callers.*
 import com.greatwall.callring.contracts.common.*
 import com.greatwall.callring.contracts.runtime.RuntimeStatus
 import com.greatwall.callring.contracts.settings.RingtoneSettings
-import com.greatwall.callring.domain.WorkClassifier
+import com.greatwall.callring.domain.calling.WorkClassifier
 import java.time.Clock
 import kotlinx.coroutines.CoroutineDispatcher
 

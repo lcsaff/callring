@@ -1,8 +1,8 @@
 package com.greatwall.callring.application.calling
 
-import com.greatwall.callring.application.BusinessRevisionCoordinator
+import com.greatwall.callring.application.coordination.BusinessRevisionCoordinator
 import com.greatwall.callring.application.ports.store.*
-import com.greatwall.callring.domain.DecisionSnapshot
+import com.greatwall.callring.domain.calling.DecisionSnapshot
 import com.greatwall.callring.domain.model.*
 import java.util.concurrent.atomic.AtomicReference
 

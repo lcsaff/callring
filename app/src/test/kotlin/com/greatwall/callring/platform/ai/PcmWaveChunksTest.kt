@@ -1,5 +1,7 @@
 package com.greatwall.callring.platform.ai
 
+import com.greatwall.callring.platform.recording.PcmWaveChunks
+
 import org.junit.Assert.*
 import org.junit.Test
 import java.nio.ByteBuffer

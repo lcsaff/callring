@@ -1,5 +1,11 @@
 package com.greatwall.callring
 
+import com.greatwall.callring.application.conversation.execution.ReceiptVerifier
+import com.greatwall.callring.application.conversation.query.QueryService
+import com.greatwall.callring.application.ports.query.ScopedReadPort
+import com.greatwall.callring.application.ports.query.SourcePage
+import com.greatwall.callring.application.ports.query.SourceRow
+
 import com.greatwall.callring.application.conversation.operation.*
 import com.greatwall.callring.contracts.command.*
 import com.greatwall.callring.contracts.ai.*

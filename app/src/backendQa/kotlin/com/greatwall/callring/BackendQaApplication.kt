@@ -4,7 +4,7 @@ import android.app.*
 import com.greatwall.callring.contracts.callers.*
 import com.greatwall.callring.contracts.settings.*
 import com.greatwall.callring.bootstrap.*
-import com.greatwall.callring.platform.UiNotificationEntryPoints
+import com.greatwall.callring.platform.runtime.UiNotificationEntryPoints
 
 /** Separate package/process/data directory. Never changes the production application's graph. */
 class BackendQaApplication : CallringApplication() {

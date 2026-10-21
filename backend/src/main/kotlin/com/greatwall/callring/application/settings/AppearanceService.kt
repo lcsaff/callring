@@ -1,5 +1,9 @@
 package com.greatwall.callring.application.settings
 
+import com.greatwall.callring.application.coordination.BusinessRevisionCoordinator
+import com.greatwall.callring.application.coordination.appearanceScopeValues
+import com.greatwall.callring.application.coordination.changedScopeKeys
+
 import com.greatwall.callring.application.coordination.requireOperationActive
 
 import com.greatwall.callring.application.*

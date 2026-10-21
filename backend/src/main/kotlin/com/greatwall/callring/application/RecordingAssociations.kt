@@ -8,7 +8,7 @@ data class RecordingCallLink(val id: Long, val number: String, val startedAt: Lo
 fun findRecordingCall(reads: com.greatwall.callring.application.ports.store.CallingTransactions, id: Long): RecordingCall? =
     reads.readCalling { reader ->
         val requested = reader.callingCall(id) ?: return@readCalling null
-        fun com.greatwall.callring.domain.RawCallRecord.link() = RecordingCallLink(this.id, number, time, duration, hidden, linkedScreenId)
+        fun com.greatwall.callring.domain.model.RawCallRecord.link() = RecordingCallLink(this.id, number, time, duration, hidden, linkedScreenId)
         resolveRecordingCall(requested.link(), if (requested.hidden) reader.visibleRecordingLinks(id).map { it.link() } else emptyList())
     }
 

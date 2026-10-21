@@ -148,7 +148,7 @@ T10c removes only missing-capability method bodies: `UiEditsApi`'s seven edits, 
       "ThinkingSupport"
     ]
   },
-  "callers/CallringUiApi.kt": {
+  "callers/CallersApi.kt": {
     "sha256": "87155410e1b49edf19774ebecdf0c8ab62e50461abef5fcad1230f3ce8e4ca6c",
     "declarations": [
       "HomeApi",
@@ -174,7 +174,7 @@ T10c removes only missing-capability method bodies: `UiEditsApi`'s seven edits, 
       "IncomingCallUiRequest"
     ]
   },
-  "change/CallringUiApi.kt": {
+  "change/ChangeFeed.kt": {
     "sha256": "4eff1514512947eda5465d10baf05e213f6af6eca8661a737c8c79553f5a8c4e",
     "declarations": [
       "ChangeFeed",
@@ -212,7 +212,7 @@ T10c removes only missing-capability method bodies: `UiEditsApi`'s seven edits, 
       "UiEditsApi"
     ]
   },
-  "common/CallringUiApi.kt": {
+  "common/ApiTypes.kt": {
     "sha256": "11da8f9e87272fc72088a22e4bbc050aec1630fa147a2bd191a203c19f460c50",
     "declarations": [
       "ApiResult",
@@ -247,7 +247,7 @@ T10c removes only missing-capability method bodies: `UiEditsApi`'s seven edits, 
       "RecordingSettingsPatch"
     ]
   },
-  "report/CallringUiApi.kt": {
+  "report/ReportsApi.kt": {
     "sha256": "e6c85b6df2158d2f6c82d1ca5a38cd6dc0c9fae103f7fb9e0fa37edf8184ecd1",
     "declarations": [
       "ReportsApi",
@@ -272,7 +272,7 @@ T10c removes only missing-capability method bodies: `UiEditsApi`'s seven edits, 
       "CALLRING_RELEASES_URL"
     ]
   },
-  "runtime/CallringUiApi.kt": {
+  "runtime/RuntimeApi.kt": {
     "sha256": "ae0d7f6936f1de198ef5aed37367ad6a5af69b8e2ff45d244cdaea5dfa929803",
     "declarations": [
       "RuntimeApi",
@@ -289,7 +289,7 @@ T10c removes only missing-capability method bodies: `UiEditsApi`'s seven edits, 
       "SyncRequestReceipt"
     ]
   },
-  "settings/CallringUiApi.kt": {
+  "settings/SettingsApi.kt": {
     "sha256": "ccd044c69dd63a0cc063feb2057199aa72c02df460a7cd71351d87f91aa5f219",
     "declarations": [
       "SettingsApi",
@@ -320,7 +320,7 @@ T10c removes only missing-capability method bodies: `UiEditsApi`'s seven edits, 
       "RingtoneSettings"
     ]
   },
-  "widget/CallringUiApi.kt": {
+  "widget/WidgetBindingsApi.kt": {
     "sha256": "11a687bc2e90ad62c99d3f02d50d2132a84108428c0fc9f90452d1c5f1d1a663",
     "declarations": [
       "WidgetBindingsApi",

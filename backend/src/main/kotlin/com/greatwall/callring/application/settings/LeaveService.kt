@@ -1,9 +1,12 @@
 package com.greatwall.callring.application.settings
 
+import com.greatwall.callring.domain.model.AuditRecord
+import com.greatwall.callring.domain.model.LeaveRecord
+
 import com.greatwall.callring.application.coordination.requireOperationActive
 
-import com.greatwall.callring.application.BusinessRevisionCoordinator
-import com.greatwall.callring.application.frozenList
+import com.greatwall.callring.application.coordination.BusinessRevisionCoordinator
+import com.greatwall.callring.application.mapping.frozenList
 import com.greatwall.callring.application.coordination.*
 import com.greatwall.callring.application.ports.store.*
 import com.greatwall.callring.contracts.command.CommandContext

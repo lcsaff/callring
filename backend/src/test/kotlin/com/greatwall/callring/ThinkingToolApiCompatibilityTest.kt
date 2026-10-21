@@ -10,7 +10,7 @@ import com.greatwall.callring.contracts.ai.ThinkingMode
 import com.greatwall.callring.contracts.ai.aiBool
 import com.greatwall.callring.contracts.ai.aiObject
 import com.greatwall.callring.contracts.ai.aiString
-import com.greatwall.callring.application.conversation.ToolRegistry
+import com.greatwall.callring.application.conversation.operation.ToolRegistry
 import com.greatwall.callring.application.ports.BackendFailure
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue

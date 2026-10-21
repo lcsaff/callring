@@ -1,6 +1,6 @@
 package com.greatwall.callring
 
-import com.greatwall.callring.application.conversation.SecretRedactor
+import com.greatwall.callring.application.conversation.context.SecretRedactor
 import org.junit.Assert.*
 import org.junit.Test
 

@@ -1,5 +1,19 @@
 package com.greatwall.callring
 
+import com.greatwall.callring.application.conversation.execution.ToolBatchEngine
+import com.greatwall.callring.application.conversation.execution.ToolExecutor
+import com.greatwall.callring.application.conversation.execution.b
+import com.greatwall.callring.application.conversation.execution.s
+import com.greatwall.callring.application.conversation.foreground.ForegroundActionService
+import com.greatwall.callring.application.conversation.foreground.ForegroundResourceRegistry
+import com.greatwall.callring.application.conversation.operation.ToolRegistry
+import com.greatwall.callring.application.conversation.query.QueryService
+import com.greatwall.callring.application.conversation.query.safeValue
+import com.greatwall.callring.application.mapping.requiredValue
+import com.greatwall.callring.application.ports.query.ScopedReadPort
+import com.greatwall.callring.application.ports.query.SourcePage
+import com.greatwall.callring.application.ports.query.SourceRow
+
 import com.greatwall.callring.application.conversation.operation.*
 import com.greatwall.callring.contracts.ai.*
 import com.greatwall.callring.contracts.callers.*

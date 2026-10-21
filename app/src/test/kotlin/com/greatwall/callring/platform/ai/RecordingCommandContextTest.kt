@@ -1,5 +1,8 @@
 package com.greatwall.callring.platform.ai
 
+import com.greatwall.callring.data.recording.AndroidRecordingStore
+import com.greatwall.callring.data.recording.RecordingCipher
+
 import com.greatwall.callring.bootstrap.RecordingAssembly
 import com.greatwall.callring.contracts.command.*
 import android.content.*
@@ -8,7 +11,7 @@ import android.net.Uri
 import android.os.ParcelFileDescriptor
 import com.greatwall.callring.contracts.common.*
 import com.greatwall.callring.application.recording.model.*
-import com.greatwall.callring.application.BusinessRevisionCoordinator
+import com.greatwall.callring.application.coordination.BusinessRevisionCoordinator
 import kotlinx.coroutines.*
 import org.junit.Assert.*
 import org.junit.Test

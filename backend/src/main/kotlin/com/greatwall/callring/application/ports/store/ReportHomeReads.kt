@@ -1,8 +1,8 @@
 package com.greatwall.callring.application.ports.store
 
-import com.greatwall.callring.domain.PositionRecord
-import com.greatwall.callring.domain.ProfileRecord
-import com.greatwall.callring.domain.RawCallRecord
+import com.greatwall.callring.domain.model.PositionRecord
+import com.greatwall.callring.domain.model.ProfileRecord
+import com.greatwall.callring.domain.model.RawCallRecord
 import com.greatwall.callring.domain.model.WorkScheduleSettings
 
 /** A visible current row and its direct screening origin, captured in one SQL projection. */

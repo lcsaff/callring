@@ -2,7 +2,7 @@ package com.greatwall.callring.platform.calling
 
 import com.greatwall.callring.application.mapping.*
 import com.greatwall.callring.contracts.callers.*
-import com.greatwall.callring.domain.IncomingDecision
+import com.greatwall.callring.domain.calling.IncomingDecision
 import java.util.PriorityQueue
 import java.util.concurrent.CompletableFuture
 import org.junit.Assert.*

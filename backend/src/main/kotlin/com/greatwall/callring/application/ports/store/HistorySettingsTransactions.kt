@@ -1,5 +1,9 @@
 package com.greatwall.callring.application.ports.store
 
+import com.greatwall.callring.domain.model.AuditRecord
+import com.greatwall.callring.domain.model.CalendarImport
+import com.greatwall.callring.domain.model.LeaveRecord
+
 import com.greatwall.callring.domain.*
 import com.greatwall.callring.domain.model.*
 import java.time.LocalDate

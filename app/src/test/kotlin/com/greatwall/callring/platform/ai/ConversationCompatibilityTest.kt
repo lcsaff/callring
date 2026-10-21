@@ -1,5 +1,7 @@
 package com.greatwall.callring.platform.ai
 
+import com.greatwall.callring.application.ports.platform.ConversationReply
+
 import com.greatwall.callring.contracts.ai.*
 import com.greatwall.callring.application.ports.*
 import org.json.JSONArray

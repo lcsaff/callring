@@ -4,7 +4,7 @@ import android.os.*
 import android.telecom.Call
 import android.telecom.CallScreeningService
 import com.greatwall.callring.bootstrap.BackendProvider
-import com.greatwall.callring.platform.DiagnosticEvent
+import com.greatwall.callring.platform.diagnostics.DiagnosticEvent
 import com.greatwall.callring.platform.calling.*
 import java.util.UUID
 

@@ -1,5 +1,10 @@
 package com.greatwall.callring.application.conversation.query
 
+import com.greatwall.callring.application.mapping.frozenList
+import com.greatwall.callring.domain.calling.WorkClassifier
+import com.greatwall.callring.domain.model.PositionRecord
+import com.greatwall.callring.domain.model.RawCallRecord
+
 import com.greatwall.callring.domain.model.defaultWorkSchedule
 import com.greatwall.callring.application.*
 import com.greatwall.callring.application.mapping.*

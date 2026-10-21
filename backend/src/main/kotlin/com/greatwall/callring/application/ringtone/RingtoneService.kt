@@ -2,8 +2,8 @@ package com.greatwall.callring.application.ringtone
 
 import com.greatwall.callring.application.coordination.requireOperationActive
 
-import com.greatwall.callring.application.BusinessRevisionCoordinator
-import com.greatwall.callring.application.completeRuntimeStatus
+import com.greatwall.callring.application.coordination.BusinessRevisionCoordinator
+import com.greatwall.callring.application.runtime.completeRuntimeStatus
 import com.greatwall.callring.application.coordination.ChangeImpact
 import com.greatwall.callring.application.coordination.UseCaseRunner
 import com.greatwall.callring.application.ports.*

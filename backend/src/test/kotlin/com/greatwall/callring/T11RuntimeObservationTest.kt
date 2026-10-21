@@ -1,6 +1,6 @@
 package com.greatwall.callring
 
-import com.greatwall.callring.application.BusinessRevisionCoordinator
+import com.greatwall.callring.application.coordination.BusinessRevisionCoordinator
 import com.greatwall.callring.contracts.change.*
 import com.greatwall.callring.contracts.runtime.*
 import org.junit.Assert.*

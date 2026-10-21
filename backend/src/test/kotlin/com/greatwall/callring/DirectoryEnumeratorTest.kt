@@ -1,5 +1,8 @@
 package com.greatwall.callring
 
+import com.greatwall.callring.application.conversation.query.DirectoryEnumerator
+import com.greatwall.callring.application.conversation.query.DirectoryNode
+
 import com.greatwall.callring.application.conversation.*
 import org.junit.Assert.*
 import org.junit.Test

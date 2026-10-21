@@ -10,9 +10,9 @@ import com.greatwall.callring.contracts.report.*
 import com.greatwall.callring.contracts.runtime.*
 import com.greatwall.callring.contracts.widget.*
 import com.greatwall.callring.application.ports.*
-import com.greatwall.callring.domain.AuditRecord
-import com.greatwall.callring.domain.CalendarImport
-import com.greatwall.callring.domain.RawCallRecord
+import com.greatwall.callring.domain.model.AuditRecord
+import com.greatwall.callring.domain.model.CalendarImport
+import com.greatwall.callring.domain.model.RawCallRecord
 import com.greatwall.callring.domain.model.defaultWorkSchedule
 import java.io.*
 import java.lang.management.ManagementFactory
@@ -287,7 +287,7 @@ class CallringBackendTest {
 
     @Test
     fun reportFilterDoesNotChangeTotalsAndExportIncludesUnresolved() = runBlocking {
-        val fact = com.greatwall.callring.domain.WorkClassifier.classify(store.decision, now)
+        val fact = com.greatwall.callring.domain.calling.WorkClassifier.classify(store.decision, now)
         store.calls[1] =
             RawCallRecord(
                 1,
@@ -374,7 +374,7 @@ class CallringBackendTest {
 
     @Test
     fun calendarChangesReclassifyHistoryButRegularScheduleDoesNot() = runBlocking {
-        val fact = com.greatwall.callring.domain.WorkClassifier.classify(store.decision, now)
+        val fact = com.greatwall.callring.domain.calling.WorkClassifier.classify(store.decision, now)
         store.calls[1] =
             RawCallRecord(
                 1,
@@ -434,7 +434,7 @@ class CallringBackendTest {
     fun callLogReimportIsIdempotentAndUnknownAccountRetainsKnownAccount() = runBlocking {
         api.settings.setStatisticsEnabled(true).value()
         val record =
-            com.greatwall.callring.domain.SystemCallRecord(
+            com.greatwall.callring.domain.model.SystemCallRecord(
                 "id",
                 "30001",
                 now,
@@ -453,12 +453,12 @@ class CallringBackendTest {
         runBlocking {
             api.settings.setStatisticsEnabled(true).value()
             val original =
-                com.greatwall.callring.domain.WorkClassifier.classify(store.decision, now)
+                com.greatwall.callring.domain.calling.WorkClassifier.classify(store.decision, now)
                     .copy(reason = WorkReason.UNKNOWN.toDomain())
             api.recordIncoming("30001", now, CallDecision.QUIET_SILENCED, "account", original.toContract())
             api.importSystemCalls(
                 listOf(
-                    com.greatwall.callring.domain.SystemCallRecord(
+                    com.greatwall.callring.domain.model.SystemCallRecord(
                         "log",
                         "30001",
                         now + 1000,
@@ -543,7 +543,7 @@ class CallringBackendTest {
 
     @Test
     fun scoreCountsOnlyVisibleCountedRowsAndRepeatBoundaryIsInclusive() = runBlocking {
-        val fact = com.greatwall.callring.domain.WorkClassifier.classify(store.decision, now)
+        val fact = com.greatwall.callring.domain.calling.WorkClassifier.classify(store.decision, now)
         for ((id, offset) in listOf(1L to 0L, 2L to 600000L, 3L to 1200001L)) {
             store.calls[id] =
                 RawCallRecord(
@@ -641,7 +641,7 @@ class CallringBackendTest {
         api.callers
             .saveProfile(SaveCallerProfile("30001", "=2+3", "@department", caller.id))
             .value()
-        val fact = com.greatwall.callring.domain.WorkClassifier.classify(store.decision, now)
+        val fact = com.greatwall.callring.domain.calling.WorkClassifier.classify(store.decision, now)
         store.calls[1] =
             RawCallRecord(
                 1,
@@ -871,7 +871,7 @@ class CallringBackendTest {
         val oldScreen = api.recordIncoming("30001", now, CallDecision.CUSTOM_RINGTONE, "A")
         val newScreen = api.recordIncoming("30002", now + 30000, CallDecision.QUIET_SILENCED, "B")
         val originalRecord =
-            com.greatwall.callring.domain.SystemCallRecord(
+            com.greatwall.callring.domain.model.SystemCallRecord(
                 "same-id",
                 "30001",
                 now + 1000,
@@ -1111,9 +1111,9 @@ class CallringBackendTest {
 
     @Test
     fun numberDeletionImpactAndCoreDeleteRemoveProfileAndAllCallsAtomically() = runBlocking {
-        val fact = com.greatwall.callring.domain.WorkClassifier.classify(store.decision, now)
-        store.people["30001"] = com.greatwall.callring.domain.ProfileRecord("30001", "张三", "研发", null, false)
-        store.people["40004"] = com.greatwall.callring.domain.ProfileRecord("40004", "李四", "市场", null, false)
+        val fact = com.greatwall.callring.domain.calling.WorkClassifier.classify(store.decision, now)
+        store.people["30001"] = com.greatwall.callring.domain.model.ProfileRecord("30001", "张三", "研发", null, false)
+        store.people["40004"] = com.greatwall.callring.domain.model.ProfileRecord("40004", "李四", "市场", null, false)
         listOf(1L, 2L).forEachIndexed { index, id ->
             store.calls[id] = RawCallRecord(id, "30001", now + index, 0, CallResult.ANSWERED.toDomain(), CallDecision.NORMAL_RINGING.toDomain(), CallSource.SCREENING.toDomain(), null, null, true, fact, fact)
         }

@@ -1,11 +1,11 @@
 package com.greatwall.callring.coordination
 
-import com.greatwall.callring.application.BusinessRevisionCoordinator
+import com.greatwall.callring.application.coordination.BusinessRevisionCoordinator
 import com.greatwall.callring.application.ports.store.*
 import com.greatwall.callring.application.settings.PositionService
 import com.greatwall.callring.contracts.common.*
 import com.greatwall.callring.contracts.settings.*
-import com.greatwall.callring.domain.PositionRecord
+import com.greatwall.callring.domain.model.PositionRecord
 import kotlinx.coroutines.*
 import org.junit.Assert.*
 import org.junit.Test

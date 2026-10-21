@@ -2,14 +2,14 @@ package com.greatwall.callring.application.callers
 
 import com.greatwall.callring.application.coordination.requireOperationActive
 
-import com.greatwall.callring.application.BusinessRevisionCoordinator
+import com.greatwall.callring.application.coordination.BusinessRevisionCoordinator
 import com.greatwall.callring.application.coordination.*
 import com.greatwall.callring.application.ports.store.*
 import com.greatwall.callring.contracts.callers.*
 import com.greatwall.callring.contracts.change.DataDomain
 import com.greatwall.callring.contracts.command.*
 import com.greatwall.callring.contracts.common.*
-import com.greatwall.callring.domain.ProfileRecord
+import com.greatwall.callring.domain.model.ProfileRecord
 import kotlinx.coroutines.*
 
 internal class CallerCommandService(

@@ -1,5 +1,10 @@
 package com.greatwall.callring
 
+import com.greatwall.callring.application.coordination.BusinessRevisionCoordinator
+import com.greatwall.callring.application.ports.query.ScopedReadPort
+import com.greatwall.callring.application.ports.query.SourcePage
+import com.greatwall.callring.domain.model.CalendarImport
+
 import com.greatwall.callring.domain.model.defaultWorkSchedule
 import com.greatwall.callring.application.mapping.*
 import com.greatwall.callring.application.*
@@ -62,8 +67,8 @@ class ConversationFixtures {
 }
 
 /** Write-only tests must supply the source capability explicitly and reject accidental reads. */
-fun unusedToolQueries() = com.greatwall.callring.application.conversation.QueryService(listOf(object : com.greatwall.callring.application.ports.ScopedReadPort {
+fun unusedToolQueries() = com.greatwall.callring.application.conversation.query.QueryService(listOf(object : com.greatwall.callring.application.ports.query.ScopedReadPort {
     override val domains = com.greatwall.callring.contracts.ai.AiDomain.entries.toSet()
     override fun version(domain: com.greatwall.callring.contracts.ai.AiDomain) = 0L
-    override fun query(spec: com.greatwall.callring.contracts.ai.QuerySpec, after:String?):com.greatwall.callring.application.ports.SourcePage = error("Unexpected source query in write-only test")
+    override fun query(spec: com.greatwall.callring.contracts.ai.QuerySpec, after:String?):com.greatwall.callring.application.ports.query.SourcePage = error("Unexpected source query in write-only test")
 }))

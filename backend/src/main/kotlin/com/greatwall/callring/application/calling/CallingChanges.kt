@@ -2,7 +2,7 @@ package com.greatwall.callring.application.calling
 
 import com.greatwall.callring.application.coordination.*
 import com.greatwall.callring.contracts.change.DataDomain
-import com.greatwall.callring.domain.RawCallRecord
+import com.greatwall.callring.domain.model.RawCallRecord
 
 internal fun <T> callingChanges(
     value: T,

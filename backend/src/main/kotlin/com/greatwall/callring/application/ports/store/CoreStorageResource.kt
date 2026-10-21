@@ -1,6 +1,6 @@
 package com.greatwall.callring.application.ports.store
 
-import com.greatwall.callring.application.ports.ScopedReadPort
+import com.greatwall.callring.application.ports.query.ScopedReadPort
 
 /** Adapter capabilities, assembled once; application services receive only narrow projections. */
 interface CoreStorageResource : AutoCloseable {

@@ -1,5 +1,14 @@
 package com.greatwall.callring.bootstrap
 
+import com.greatwall.callring.application.coordination.BusinessRevisionCoordinator
+import com.greatwall.callring.application.ports.recording.RecordingDirectory
+import com.greatwall.callring.application.recording.RecordingWorkflow
+import com.greatwall.callring.data.recording.AndroidRecordingStore
+import com.greatwall.callring.platform.recording.AndroidAudioTranscriber
+import com.greatwall.callring.platform.recording.AndroidRecordingAudio
+import com.greatwall.callring.platform.recording.AndroidRecordingPlayback
+import com.greatwall.callring.platform.recording.SystemRecordingSource
+
 import android.content.Context
 import com.greatwall.callring.application.*
 import com.greatwall.callring.application.recording.*

@@ -1,5 +1,13 @@
 package com.greatwall.callring.data
 
+import com.greatwall.callring.data.database.QueryTag
+import com.greatwall.callring.data.database.SqlAccess
+import com.greatwall.callring.data.database.SqlAccessProbe
+import com.greatwall.callring.data.database.SqlTable
+import com.greatwall.callring.data.database.SqliteCoreStorageResource
+import com.greatwall.callring.data.database.checkSnapshotSize
+import com.greatwall.callring.data.database.values
+
 import android.database.Cursor
 import android.database.sqlite.SQLiteDatabase
 import org.junit.Assert.*
@@ -110,11 +118,11 @@ class SqlAccessProbeTest {
         val probe = SqlAccessProbe()
         SqliteCoreStorageResource(context, "sql-probe-scoped.db", probe).use { store ->
             store.fixtureSql { state ->
-                state.seedCaller(com.greatwall.callring.domain.ProfileRecord("synthetic-private"))
+                state.seedCaller(com.greatwall.callring.domain.model.ProfileRecord("synthetic-private"))
             }
             val before = probe.snapshot().sumOf { it.calls }
             val port =
-                store.fixtureScopedReads(com.greatwall.callring.application.BusinessRevisionCoordinator())
+                store.fixtureScopedReads(com.greatwall.callring.application.coordination.BusinessRevisionCoordinator())
             val page =
                 port.query(
                     com.greatwall.callring.contracts.ai.QuerySpec(

@@ -1,5 +1,7 @@
 package com.greatwall.callring
 
+import com.greatwall.callring.application.conversation.operation.ToolRegistry
+
 import com.greatwall.callring.application.conversation.*
 import com.greatwall.callring.application.conversation.operation.*
 import org.junit.Assert.*

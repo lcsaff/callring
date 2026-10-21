@@ -1,17 +1,22 @@
 package com.greatwall.callring.data
 
+import com.greatwall.callring.data.codec.WorkConfigCodec
+import com.greatwall.callring.data.database.SqliteCoreStorageResource
+import com.greatwall.callring.data.database.args
+import com.greatwall.callring.data.database.values
+
 import com.greatwall.callring.application.mapping.*
 import android.database.sqlite.SQLiteDatabase
 import android.test.InstrumentationTestCase
 import com.greatwall.callring.contracts.callers.*
 import com.greatwall.callring.contracts.settings.*
 import com.greatwall.callring.contracts.ai.*
-import com.greatwall.callring.domain.AuditRecord
-import com.greatwall.callring.domain.LeaveRecord
-import com.greatwall.callring.domain.PositionRecord
-import com.greatwall.callring.domain.ProfileRecord
-import com.greatwall.callring.domain.RawCallRecord
-import com.greatwall.callring.domain.WorkClassifier
+import com.greatwall.callring.domain.model.AuditRecord
+import com.greatwall.callring.domain.model.LeaveRecord
+import com.greatwall.callring.domain.model.PositionRecord
+import com.greatwall.callring.domain.model.ProfileRecord
+import com.greatwall.callring.domain.model.RawCallRecord
+import com.greatwall.callring.domain.calling.WorkClassifier
 import java.time.LocalDate
 import java.time.ZoneId
 import java.util.UUID

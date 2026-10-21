@@ -1,7 +1,7 @@
 package com.greatwall.callring.application.calling
 
 import com.greatwall.callring.application.ports.store.WorkHistory
-import com.greatwall.callring.domain.DecisionSnapshot
+import com.greatwall.callring.domain.calling.DecisionSnapshot
 import com.greatwall.callring.domain.model.*
 import java.util.concurrent.atomic.AtomicReference
 

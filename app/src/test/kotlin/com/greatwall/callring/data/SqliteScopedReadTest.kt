@@ -1,13 +1,22 @@
 package com.greatwall.callring.data
 
+import com.greatwall.callring.data.database.CallringDatabase
+import com.greatwall.callring.data.database.SqliteCoreStorageResource
+import com.greatwall.callring.data.database.long
+import com.greatwall.callring.data.database.text
+import com.greatwall.callring.data.query.SqliteScopedReadAdapter
+import com.greatwall.callring.domain.model.AuditRecord
+import com.greatwall.callring.domain.model.ProfileRecord
+import com.greatwall.callring.domain.model.RawCallRecord
+
 import com.greatwall.callring.application.conversation.operation.*
 import com.greatwall.callring.application.mapping.*
-import com.greatwall.callring.application.BusinessRevisionCoordinator
-import com.greatwall.callring.application.requiredValue
+import com.greatwall.callring.application.coordination.BusinessRevisionCoordinator
+import com.greatwall.callring.application.mapping.requiredValue
 import com.greatwall.callring.contracts.common.*
 import com.greatwall.callring.contracts.callers.*
 import com.greatwall.callring.contracts.ai.*
-import com.greatwall.callring.application.conversation.QueryService
+import com.greatwall.callring.application.conversation.query.QueryService
 import com.greatwall.callring.domain.*
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.*
@@ -51,7 +60,7 @@ class SqliteScopedReadTest {
                 val actual=mutableListOf<String>();var cursor:String?=null
                 do{val page=q.query(QuerySpec(AiDomain.D01,filter=QueryFilter(text=text),limit=1,cursor=cursor)).requiredValue();assertEquals(expected.size.toLong(),page.matchedTotal);actual+=page.items.map{it["number"].string()};cursor=page.nextCursor;if(cursor==null)assertTrue(page.complete)}while(cursor!=null)
                 assertEquals(expected,actual)
-                val legacy=com.greatwall.callring.application.conversation.ScopedToolReader(q).read(OperationId.CALLERS_SEARCH,aiObject("text" to aiString(text))) as AiJson.Obj
+                val legacy=com.greatwall.callring.application.conversation.query.ScopedToolReader(q).read(OperationId.CALLERS_SEARCH,aiObject("text" to aiString(text))) as AiJson.Obj
                 assertEquals(expected.size.toLong(),legacy["matchedTotal"].long())
             }
         }

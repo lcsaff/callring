@@ -3,14 +3,14 @@ package com.greatwall.callring.bootstrap
 import android.app.Notification
 import android.app.PendingIntent
 import android.content.Intent
-import com.greatwall.callring.application.requiredValue
+import com.greatwall.callring.application.mapping.requiredValue
 import com.greatwall.callring.contracts.callers.*
 import com.greatwall.callring.contracts.common.*
 import com.greatwall.callring.contracts.settings.*
 import com.greatwall.callring.contracts.ai.*
 import com.greatwall.callring.contracts.recording.RecordingSettingsPatch
 import com.greatwall.callring.contracts.command.CommandContext
-import com.greatwall.callring.platform.UiNotificationEntryPoints
+import com.greatwall.callring.platform.runtime.UiNotificationEntryPoints
 import com.greatwall.callring.contracts.runtime.AccessState
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.async
@@ -68,13 +68,13 @@ class AssemblyLifetimeTest {
         try {
             val recording = graph.recordings
             recording.javaClass.getDeclaredField("sources\$delegate").apply { isAccessible = true }
-                .set(recording, lazy { com.greatwall.callring.platform.ai.SystemRecordingSource(context.contentResolver) { true } })
-            val cipher = object : com.greatwall.callring.platform.ai.RecordingCipher {
+                .set(recording, lazy { com.greatwall.callring.platform.recording.SystemRecordingSource(context.contentResolver) { true } })
+            val cipher = object : com.greatwall.callring.data.recording.RecordingCipher {
                 override fun encrypt(value: String) = value
                 override fun decrypt(value: String) = value
             }
             recording.javaClass.getDeclaredField("storeDelegate").apply { isAccessible = true }.set(recording,
-                lazy { com.greatwall.callring.platform.ai.AndroidRecordingStore(context, graph.configuration.databaseName, cipher,
+                lazy { com.greatwall.callring.data.recording.AndroidRecordingStore(context, graph.configuration.databaseName, cipher,
                     recordingVersion = { graph.coordinator.capture().values.getValue("recording") }) })
             recording.store.persistSettings(com.greatwall.callring.application.recording.model.RecordingSettings(systemFolder = "content://t11-resume-folder/tree/root"))
             assertEquals(AccessState.GRANTED, graph.api.aiSettings.getRecordingView().requiredValue().folderAccess)

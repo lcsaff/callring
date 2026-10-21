@@ -11,11 +11,11 @@ import com.greatwall.callring.contracts.widget.*
 import com.greatwall.callring.contracts.recording.*
 import com.greatwall.callring.contracts.ai.*
 import com.greatwall.callring.contracts.command.*
-import com.greatwall.callring.application.requiredValue
-import com.greatwall.callring.application.conversation.OperationScopePlanner
+import com.greatwall.callring.application.mapping.requiredValue
+import com.greatwall.callring.application.conversation.execution.OperationScopePlanner
 import com.greatwall.callring.application.callers.NumberDeletionService
 import com.greatwall.callring.application.callers.NumberDeletionRecordings
-import com.greatwall.callring.platform.UiNotificationEntryPoints
+import com.greatwall.callring.platform.runtime.UiNotificationEntryPoints
 import java.io.File
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.*
@@ -168,16 +168,16 @@ class NumberDeletionIntegrationTest {
             android.database.sqlite.SQLiteDatabase.openDatabase(dbPath.path, null, android.database.sqlite.SQLiteDatabase.OPEN_READWRITE).use { db ->
                 db.beginTransaction()
                 try {
-                    val index = com.greatwall.callring.platform.ai.ArchiveProjectionIndex(db)
+                    val index = com.greatwall.callring.data.recording.ArchiveProjectionIndex(db)
                     for (id in 1L..size.toLong()) {
                         val row = CallArchive(id, "39999", 1, generation = 2, status = ArchiveStatus.COMPLETE)
-                        db.execSQL("INSERT INTO archives VALUES(?,?,?)", arrayOf<Any>(id, 2, com.greatwall.callring.platform.ai.RecordingJson.archive(row).toString()))
+                        db.execSQL("INSERT INTO archives VALUES(?,?,?)", arrayOf<Any>(id, 2, com.greatwall.callring.data.recording.RecordingJson.archive(row).toString()))
                         index.write(row)
                     }
                     val audio = File(graph.recordings.directory, "target.wav").apply { parentFile!!.mkdirs(); writeBytes(ByteArray(73)) }
                     val row = CallArchive(-1, "3\u200B1[2]3/4", 10, generation = 2, status = ArchiveStatus.COMPLETE,
                         audioPath = audio.path, transcript = "unrelated text".repeat(100000))
-                    db.execSQL("INSERT INTO archives VALUES(?,?,?)", arrayOf<Any>(-1, 2, com.greatwall.callring.platform.ai.RecordingJson.archive(row).toString()))
+                    db.execSQL("INSERT INTO archives VALUES(?,?,?)", arrayOf<Any>(-1, 2, com.greatwall.callring.data.recording.RecordingJson.archive(row).toString()))
                     index.write(row)
                     db.setTransactionSuccessful()
                 } finally { db.endTransaction() }
@@ -196,7 +196,7 @@ class NumberDeletionIntegrationTest {
                 if (method.name == "getAll") { enumerations++; enumerated += (value as Map<*, *>).size }
                 value
             } as android.content.SharedPreferences
-            val preferences = com.greatwall.callring.platform.AndroidPreferences(stored, measured, graph.configuration.defaultAppearance)
+            val preferences = com.greatwall.callring.data.preferences.AndroidPreferences(stored, measured, graph.configuration.defaultAppearance)
             val widgets = com.greatwall.callring.application.widget.WidgetBindingsService(preferences,
                 { error("installed widgets are not a deletion dependency") }, graph.coordinator, kotlinx.coroutines.Dispatchers.Unconfined, operationActive = { true })
             val service = NumberDeletionService(graph.backend.callers::numberDataImpact,
@@ -221,7 +221,7 @@ class NumberDeletionIntegrationTest {
     }
     private fun targetBindings(graph: BackendGraph, number: String): ApiResult<List<WidgetBinding>> {
         val context = RuntimeEnvironment.getApplication()
-        val preferences = com.greatwall.callring.platform.AndroidPreferences(
+        val preferences = com.greatwall.callring.data.preferences.AndroidPreferences(
             context.getSharedPreferences(graph.configuration.appearancePreferencesName, 0),
             context.getSharedPreferences(graph.configuration.widgetPreferencesName, 0), graph.configuration.defaultAppearance)
         return ApiResult.Success(preferences.bindingsForNumber(number))

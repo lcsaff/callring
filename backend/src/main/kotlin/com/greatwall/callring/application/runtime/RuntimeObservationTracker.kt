@@ -1,6 +1,6 @@
 package com.greatwall.callring.application.runtime
 
-import com.greatwall.callring.application.BusinessRevisionCoordinator
+import com.greatwall.callring.application.coordination.BusinessRevisionCoordinator
 import com.greatwall.callring.contracts.runtime.*
 
 /** One baseline shared by all bound capabilities; playback has its own transition publisher. */

@@ -1,5 +1,8 @@
 package com.greatwall.callring
 
+import com.greatwall.callring.application.mapping.requiredValue
+import com.greatwall.callring.domain.model.RawCallRecord
+
 import com.greatwall.callring.application.mapping.*
 import com.greatwall.callring.application.*
 import com.greatwall.callring.contracts.callers.*

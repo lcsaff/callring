@@ -1,6 +1,10 @@
 package com.greatwall.callring.application.calling
 
-import com.greatwall.callring.application.BusinessRevisionCoordinator
+import com.greatwall.callring.domain.calling.CallCorrelation
+import com.greatwall.callring.domain.calling.WorkClassifier
+import com.greatwall.callring.domain.model.RawCallRecord
+
+import com.greatwall.callring.application.coordination.BusinessRevisionCoordinator
 import com.greatwall.callring.application.coordination.*
 import com.greatwall.callring.application.mapping.toDomain
 import com.greatwall.callring.application.ports.store.*

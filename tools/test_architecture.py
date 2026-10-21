@@ -34,11 +34,16 @@ class ArchitectureTests(unittest.TestCase):
         self.check_bad(lambda r: self.domain_source(r, "import com.greatwall.callring.contracts.settings.TimeWindow", "test"))
     def test_valid_tree(self): self.assertEqual([], check_architecture.check(self.tree()))
     def test_concrete_backend_store_cast_is_rejected(self):
-        for value in ('store as SqliteCoreStorageResource', 'store as? com.greatwall.callring.data.SqliteCoreStorageResource', 'store.asSqliteCoreStorageResource()', '(SqliteCoreStorageResource) store'):
+        for value in ('store as SqliteCoreStorageResource', 'store as? com.greatwall.callring.data.database.SqliteCoreStorageResource', 'store.asSqliteCoreStorageResource()', '(SqliteCoreStorageResource) store'):
+            with self.subTest(value=value):
+                self.check_bad(lambda r: (r/'app/src/main/kotlin/Bad.kt').write_text('val source = ' + value))
+    def test_fully_qualified_relocated_resource_cast_is_rejected(self):
+        resource = 'com.greatwall.callring.data.database.SqliteCoreStorageResource'
+        for value in (f'store as {resource}', f'store as? {resource}', f'({resource}) store'):
             with self.subTest(value=value):
                 self.check_bad(lambda r: (r/'app/src/main/kotlin/Bad.kt').write_text('val source = ' + value))
     def test_other_sealed_or_keystore_casts_are_allowed(self):
-        root = self.tree(lambda r: (r/'app/src/main/kotlin/Good.kt').write_text('val json = value as? AiJson.Obj\nval key = value as java.security.KeyStore'))
+        root = self.tree(lambda r: (r/'app/src/main/kotlin/Good.kt').write_text('val json = value as? AiJson.Obj\nval key = value as java.security.KeyStore\nval other = value as? com.greatwall.callring.data.database.OtherResource'))
         self.assertEqual([], check_architecture.check(root))
     def test_contract_project_dependency(self): self.check_bad(lambda r: (r/'contracts/build.gradle').write_text("api project(':backend')"))
     def test_contract_android_import(self): self.check_bad(lambda r: (r/'contracts/src/main/kotlin/Bad.kt').write_text('import android.net.Uri'))

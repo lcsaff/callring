@@ -1,5 +1,7 @@
 package com.greatwall.callring.platform.ai
 
+import com.greatwall.callring.application.ports.platform.ConversationRequest
+
 import com.greatwall.callring.contracts.ai.*
 import com.greatwall.callring.application.recording.model.*
 import com.greatwall.callring.application.ports.*

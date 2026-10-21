@@ -1,5 +1,10 @@
 package com.greatwall.callring.platform.ai
 
+import com.greatwall.callring.data.recording.AndroidRecordingStore
+import com.greatwall.callring.data.recording.ArchiveProjectionIndex
+import com.greatwall.callring.data.recording.RecordingCipher
+import com.greatwall.callring.data.recording.RecordingJson
+
 import android.database.DatabaseUtils
 import android.database.sqlite.SQLiteDatabase
 import com.greatwall.callring.application.RecordingCandidate
@@ -17,7 +22,7 @@ import java.io.File
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [33], manifest = Config.NONE)
 class RecordingCandidatePaginationTest {
-    private val testCoordinator = com.greatwall.callring.application.BusinessRevisionCoordinator()
+    private val testCoordinator = com.greatwall.callring.application.coordination.BusinessRevisionCoordinator()
     private val context get() = RuntimeEnvironment.getApplication()
     private val cipher = object : RecordingCipher { override fun encrypt(value: String) = value; override fun decrypt(value: String) = value }
     @Test fun mixedThousandDueRowsConsumeOnlyEachPartitionsCandidatePrefix() = allDue(1_000)

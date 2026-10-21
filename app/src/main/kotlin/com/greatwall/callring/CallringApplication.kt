@@ -5,8 +5,8 @@ import android.app.Notification
 import android.app.PendingIntent
 import android.content.res.Configuration
 import com.greatwall.callring.bootstrap.*
-import com.greatwall.callring.platform.UiNotificationEntryPoints
-import com.greatwall.callring.ui.app.UiNotifications
+import com.greatwall.callring.platform.runtime.UiNotificationEntryPoints
+import com.greatwall.callring.ui.app.bridge.UiNotifications
 import com.greatwall.callring.ui.designsystem.DefaultAppearance
 import com.greatwall.callring.ui.overlay.*
 import com.greatwall.callring.ui.widget.observeWidgetUpdates

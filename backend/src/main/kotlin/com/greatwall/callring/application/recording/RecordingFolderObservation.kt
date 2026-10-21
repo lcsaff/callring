@@ -1,6 +1,6 @@
 package com.greatwall.callring.application.recording
 
-import com.greatwall.callring.application.BusinessRevisionCoordinator
+import com.greatwall.callring.application.coordination.BusinessRevisionCoordinator
 import com.greatwall.callring.contracts.recording.RecordingFolderView
 
 /** Provider grants may change outside a persisted configuration commit. */
