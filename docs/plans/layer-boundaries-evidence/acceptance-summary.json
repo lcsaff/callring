@@ -627,5 +627,12 @@
     "SIM_idle_reboot_overlay_widget_upgrade_download": "not_verified",
     "main_installation_or_user_data_modified": false
   },
-  "delivery": "Local acceptance bound to tested commit; only acceptance documentation follows. Main push and exact remote CI result are reported separately after execution."
+  "delivery": "Local acceptance bound to tested commit; only acceptance documentation follows. Main push and exact remote CI result are reported separately after execution.",
+  "device_followup_20261021": {
+    "summary": "device-fix-verification-summary.json",
+    "summary_sha256": "9bd188dca8f414667ac561eb75f36e920ed344d884e310c9c6aaadc0a2ccacbd",
+    "backend_tests_passed": 31,
+    "ui_tests_passed": 83,
+    "manual_scenarios": "not verified; see followup summary"
+  }
 }

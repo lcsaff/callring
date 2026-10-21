@@ -94,8 +94,14 @@ class WidgetHostTest {
             compose.captureArtifact("widget-host-global-two-sizes")
 
             compose.runOnIdle { views[0].quietSwitch()!!.performClick() }
-            compose.waitUntil(10_000) {
-                api.quietModeWrites.toList() == listOf(QuietMode.NON_WORK) && views.all { it.quietSwitch()?.isChecked == true }
+            try {
+                compose.waitUntil(10_000) {
+                    api.quietModeWrites.toList() == listOf(QuietMode.NON_WORK) && views.all { it.quietSwitch()?.isChecked == true }
+                }
+            } catch (failure: androidx.compose.ui.test.ComposeTimeoutException) {
+                var checked = emptyList<Boolean?>()
+                compose.runOnIdle { checked = views.map { it.quietSwitch()?.isChecked } }
+                throw AssertionError("quietWrites=${api.quietModeWrites}, quiet=${runBlocking { api.getQuietHours() }}, checked=$checked, refresh=${WidgetRefreshSignals.requests.value}", failure)
             }
             compose.runOnIdle { views[1].quietSwitch()!!.performClick() }
             compose.waitUntil(10_000) {

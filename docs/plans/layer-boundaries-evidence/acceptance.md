@@ -27,4 +27,7 @@
 
 旧全状态read/transaction、BackendState/StorageSession、BackendContext、nullable旧通知/第二publisher/双loader、数字业务分派、存储legacy投影及迁移forwarder/alias/default能力已关闭。保留的是唯一数据编码解释器和外部稳定协议标识；历史证据与现行业务实现分开。六组件稳定FQCN未变，唯一工作流分别在 RuntimeEventController、CalendarSyncJobController、CallLogSyncJobController、RecordingJobController、CaptureServiceController、PlaybackServiceController，21项直接控制器回归已验证。
 
-[最终机器摘要](acceptance-summary.json) SHA：f48f1c09378b00d723bb5d7a010ea9f0f89c3c7e5902cf1a0b752268dda88925。原始日志/JUnit/lint及43安全副本归档于本地 `build/qa/layer-boundaries/t15-final-run`、`t15-final-fixtures`，索引及SHA在摘要中。指标记录调用范围与消费行，不冒称SQLite物理扫描量。各阶段独立审查见本目录t03至t15-lifecycle-review；[删除账本](legacy-removal-ledger.md)记录最后消费者闭包。主线推送及该最终提交远端CI结果在执行后单独报告。
+[0.3.9机器摘要及后续补验指针](acceptance-summary.json)；补验前历史摘要SHA为f48f1c09378b00d723bb5d7a010ea9f0f89c3c7e5902cf1a0b752268dda88925（追加指针后文件摘要已变化）。原始日志/JUnit/lint及43安全副本归档于本地 `build/qa/layer-boundaries/t15-final-run`、`t15-final-fixtures`，索引及SHA在摘要中。指标记录调用范围与消费行，不冒称SQLite物理扫描量。各阶段独立审查见本目录t03至t15-lifecycle-review；[删除账本](legacy-removal-ledger.md)记录最后消费者闭包。主线推送及该最终提交远端CI结果在执行后单独报告。
+
+
+2026-10-21 真机补验（0.3.10/13）：隔离后端31项、UI83项全部通过，初次发现的SQL列更新/白名单镜像及测试装配问题已修复，未增加兼容回退。A9自动化部分已补齐，真实SIM、待机/重启及主包升级等人工场景仍未验收；以上0.3.9历史结果保持原样。最新范围及证据见[真机修复验收](device-fix-review.md)及[机器摘要](device-fix-verification-summary.json)。

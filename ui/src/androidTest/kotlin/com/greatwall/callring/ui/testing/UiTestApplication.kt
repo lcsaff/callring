@@ -9,6 +9,10 @@ import com.greatwall.callring.contracts.runtime.*
 import com.greatwall.callring.contracts.widget.*
 import com.greatwall.callring.ui.app.bridge.DefaultAppearance
 import com.greatwall.callring.ui.overlay.*
+import com.greatwall.callring.ui.widget.observeWidgetUpdates
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.*
 import java.time.ZoneId
 import java.util.concurrent.ConcurrentHashMap
@@ -17,9 +21,14 @@ import java.util.concurrent.atomic.AtomicLong
 
 /** Synthetic data for the independently installed UI test APK only. */
 class UiTestApplication : Application(), UiOverlayOwner {
+    private val lifetime = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
     override val overlaySessions = OverlaySessions()
     override val uiApi = UiDeviceFixture()
     override suspend fun reobservePlatform() { uiApi.runtime.getStatus() }
+    override fun onCreate() {
+        super.onCreate()
+        lifetime.observeWidgetUpdates(this, uiApi)
+    }
 }
 
 class UiDeviceFixture : UiFakeApi(true) {
