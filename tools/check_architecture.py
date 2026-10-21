@@ -5,26 +5,108 @@ import sys
 from check_backend_boundaries import without_comments, has_presentation_literal
 ROOT = Path(__file__).resolve().parents[1]
 
-OPERATION_FILES = {"ToolExecutor.kt", "ToolBatchEngine.kt", "OperationScopePlanner.kt", "ConfirmationTargets.kt", "ReceiptVerifier.kt", "ScopedToolReader.kt", "OperationCatalog.kt", "TaskPlanner.kt", "ConversationService.kt"}
-
 def numeric_operation_dispatch(path, source):
-    if path.name not in OPERATION_FILES:
-        return False
-    # Strings and comments are data, never executable selectors.
+    """Catch explicit metadata selectors and local aliases; not interprocedural analysis."""
     code = re.sub(r'"(?:\\.|[^"\\])*"', '""', without_comments(source))
-    identity = r'(?:legacyIndex|index|ordinal|displayOrder|operationCode)'
-    if re.search(r'\bwhen\s*\([^)]*\b' + identity + r'\b', code):
+    def typed_names(type_name):
+        pairs = re.findall(r'\b(\w+)\s*:\s*' + type_name + r'\b|\b' + type_name + r'\s+(\w+)\b', code)
+        return {name for pair in pairs for name in pair if name}
+
+    assignments = re.findall(r'\b(?:val|var|int|long|Integer|Long|String|OperationId|OperationDefinition)\s+(\w+)(?:\s*:\s*\w+)?\s*=\s*([^;\n]+)', code)
+    definitions = typed_names('OperationDefinition')
+    definitions.update(re.findall(r'\b(?:val|var)\s+(\w+)\s*=\s*OperationDefinition\s*\(', code))
+    while True:
+        added = {name for name, value in assignments if value.strip() in definitions} - definitions
+        if not added: break
+        definitions.update(added)
+    definition_receiver = '(?:' + '|'.join(re.escape(n) for n in definitions) + ')' if definitions else r'(?!)'
+    ids = typed_names('OperationId')
+    id_sources = [r'\bOperationId\s*\.\s*\w+',
+                  r'\b' + definition_receiver + r'\s*\.\s*(?:id\b|getId\s*\(\s*\))']
+    while True:
+        id_value = '(?:' + '|'.join(id_sources + [r'\b' + re.escape(n) + r'\b' for n in ids]) + ')'
+        added = {name for name, value in assignments if re.fullmatch(r'\s*' + id_value + r'\s*', value)} - ids
+        if not added: break
+        ids.update(added)
+    sources = [r'\b(?:legacyIndex|displayOrder|operationCode)\b',
+               r'\b' + definition_receiver + r'\s*\.\s*(?:getLegacyIndex|getDisplayOrder|getOperationCode)\s*\(\s*\)',
+               id_value + r'\s*\.\s*ordinal\b']
+    taint = '(?:' + '|'.join(sources) + ')'
+    aliases = set()
+    while True:
+        added = {name for name, value in assignments if re.search(taint, value)} - aliases
+        if not added:
+            break
+        aliases.update(added)
+        taint = '(?:' + '|'.join(sources + [r'\b' + re.escape(n) + r'\b' for n in aliases]) + ')'
+    if re.search(r'\b(?:when|if|switch)\s*\([^;{}\n]*' + taint, code):
         return True
-    if re.search(r'\b' + identity + r'\b\s*(?:==|!=|<=|>=|<|>|!?in\b)', code):
+    if re.search(taint + r'[^;{}\n]*(?:\.\s*(?:toInt|toLong|substring|removePrefix|drop|take)|(?:parseInt|parseLong))\s*\(', code):
         return True
-    if re.search(r'\boperationCode\b[^;\n]*(?:toInt|toLong|substring|removePrefix|drop|take)\s*\(', code):
+    if re.search(r'\b(?:parseInt|parseLong)\s*\([^;{}\n]*' + taint, code):
         return True
-    # Aliasing a protocol field before branching does not change its meaning.
-    aliases = re.findall(r'\bval\s+(\w+)\s*=\s*[^;\n]*\b' + identity + r'\b[^;\n]*', code)
-    for alias in aliases:
-        if re.search(r'\b(?:when|if)\s*\([^)]*\b' + re.escape(alias) + r'\b', code):
-            return True
     return False
+
+
+def concrete_resource_cast(source):
+    target = 'com.greatwall.callring.data.database.SqliteCoreStorageResource'
+    aliases = {'SqliteCoreStorageResource', target}
+    for name in re.findall(r'\bimport\s+' + re.escape(target) + r'\s+as\s+(\w+)', source):
+        aliases.add(name)
+    declarations = re.findall(r'\btypealias\s+(\w+)\s*=\s*([\w.]+)', source)
+    while True:
+        added = {name for name, value in declarations if value in aliases} - aliases
+        if not added:
+            break
+        aliases.update(added)
+    names = '(?:' + '|'.join(re.escape(n) for n in aliases) + ')'
+    return bool(re.search(r'\bas\s*\??\s*' + names + r'\b|\basSqliteCoreStorageResource\s*\(|\(\s*' + names + r'\s*\)', source))
+
+
+def removed_protocol_errors(path, module, package, source):
+    errors = []
+    if re.search(r'\b(?:BackendContext|coreScopeValues|LazyBackendStore)\b|\b\w*[Rr]esource\w*\s*\.\s*legacy\b', source):
+        errors.append('removed full-state context or resource projection')
+    production = path.parts[path.parts.index('src') + 1] == 'main'
+    if production and re.search(r'\b(?:CapabilityFallbacks|aiUnavailable|UnavailableCoreUnitOfWork|UnavailableQuietTransactions|Unavailable\w+Api)\b', source):
+        errors.append('removed unavailable capability assembly')
+    # Root assemblies may wire each other; consumers must receive narrow capabilities.
+    root_wiring = module == 'app' and package == 'com.greatwall.callring.bootstrap' and path.name in ('BackendGraph.kt', 'CoreAssembly.kt', 'RecordingAssembly.kt', 'ConversationAssembly.kt', 'ScopedQueryAssembly.kt', 'CompleteSnapshotAssembly.kt')
+    if not root_wiring and re.search(r':\s*(?:\(\s*\)\s*->\s*)?(?:CoreAssembly|RecordingAssembly|ConversationAssembly)\b', source):
+        errors.append('service consumes complete assembly context')
+    for declaration in re.finditer(r'\b(?:class|interface|object)\s+(\w+)([^{}]*)(?:\{([^{}]*)\})?', source):
+        if root_wiring and declaration.group(1) in ('BackendGraph', 'CoreAssembly', 'RecordingAssembly', 'ConversationAssembly'):
+            continue
+        body = declaration.group(2) + (declaration.group(3) or '')
+        if len(set(re.findall(r'\b(?:CoreAssembly|RecordingAssembly|ConversationAssembly)\b', body))) >= 2:
+            errors.append('replacement universal assembly context')
+    resources = set(re.findall(r'\b(\w+)\s*:\s*(?:CoreStorageResource|StorageResources)\b', source))
+    if any(re.search(r'\b' + re.escape(name) + r'\s*\.\s*legacy\b', source) for name in resources):
+        errors.append('removed typed resource legacy projection')
+    if production and re.search(r'\bfun\s+commandApi\s*\([^)]*\)\s*:[^=\n{]+(?:=\s*this\b|\{\s*return\s+this\b)', source):
+        errors.append('removed commandApi identity fallback')
+    if re.search(r'\bfun\s+load\s*\([^)]*\)\s*:\s*FullSnapshotFacts\b', source) and re.search(r'\bfun\s+save\s*\([^)]*:\s*FullSnapshotFacts\b', source):
+        errors.append('removed full-state load/save session')
+    if re.search(r'\bclass\s+BusinessRevisionCoordinator\b', source) and re.search(r'\bMutableSharedFlow\b', source) and re.search(r'\bMutableStateFlow\b', source):
+        errors.append('removed coordinator dual publisher')
+    if re.search(r'\bclass\s+SnapshotViewModel\b', source) and re.search(r'\bRequestLoader\s*[<(]', source) and re.search(r'\bRefreshCoordinator\s*[<(]', source):
+        errors.append('removed dual query loader')
+    for match in re.finditer(r'\b(?:class|interface)\s+(\w+)([^{}]*)(?:\{([^{}]*)\})?', source):
+        if match.group(1) in ('CallringBackend', 'CallringUiApi'):
+            continue
+        body = match.group(2) + (match.group(3) or '')
+        core = bool(re.search(r'\b(?:CallersApi|SettingsApi|CoreAssembly|CoreUnitOfWork)\b', body))
+        recording = bool(re.search(r'\b(?:RecordingApi|RecordingAssembly|RecordingService)\b', body))
+        conversation = bool(re.search(r'\b(?:ConversationApi|ConversationAssembly|ConversationService)\b', body))
+        if core and recording and conversation and not root_wiring:
+            errors.append('replacement full-capability context')
+    if module == 'contracts' and re.search(r'\binterface\s+CallringUiApi\b', source):
+        # Required capabilities have no property getter/default implementation.
+        if re.search(r'\bval\s+\w+\s*:[^;\n{}]+(?:\bget\s*\(|=)', source):
+            errors.append('CallringUiApi capabilities must be abstract')
+        if re.search(r'\bfun\s+commandApi\s*\([^)]*\)\s*:\s*[\w.]+\s*(?:=|\{)', source):
+            errors.append('CallringUiApi commandApi must be abstract')
+    return errors
 
 SHELL_WORKFLOW = {
     'RuntimeReceiver.kt': r'\bworker\s*\.\s*execute\s*[{(]',
@@ -97,9 +179,10 @@ def check(root=ROOT):
                 errors.append(f'{path.relative_to(root)}: removed mixed responsibility or JSON observation entry')
             if re.search(r'\b(?:BackendStore|BackendState|StorageSession|SqliteBackendStore|stateLoadCount|coreStateLoads|fullStateLoads|stateLoads|fullDiff|TableSnapshot|CallStore|ProfileStore|ScheduleStore|SettingsStore)\b|\b(?:resource|coreResource|store|it)\s*\.\s*legacy\b', references):
                 errors.append(f'{path.relative_to(root)}: removed full-state storage protocol')
+            errors.extend(f'{path.relative_to(root)}: {error}' for error in removed_protocol_errors(path, module, package, references))
             if numeric_operation_dispatch(path, source):
                 errors.append(f'{path.relative_to(root)}: numeric operation dispatch; use OperationId or explicit catalog policy')
-            if re.search(r'\bas\s*\??\s*(?:com\.greatwall\.callring\.data\.database\.)?SqliteCoreStorageResource\b|\basSqliteCoreStorageResource\s*\(|\(\s*(?:com\.greatwall\.callring\.data\.database\.)?SqliteCoreStorageResource\s*\)', references):
+            if concrete_resource_cast(references):
                 errors.append(f'{path.relative_to(root)}: concrete backend store cast; inject explicit resource capabilities')
             if re.search(r'\b(?:data\s+)?class\s+OperationContract\b|\bfun\s+(?:ToolRegistry\s*\.\s*)?operationContracts\s*\(', references):
                 errors.append(f'{path.relative_to(root)}: removed operation contract projection; consume OperationDefinition directly')

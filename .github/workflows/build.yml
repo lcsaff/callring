@@ -10,6 +10,7 @@ on:
     branches:
       - main
       - "feat/**"
+      - "codex/**"
   pull_request:
 
 permissions:
@@ -63,13 +64,6 @@ jobs:
           set -euo pipefail
           python3 tools/release/check_workflows.py
 
-      - name: Run unified verification
-        shell: bash
-        run: |
-          set -euo pipefail
-          gradle :backend:test :ui:testDebugUnitTest :app:testDebugUnitTest \
-            :app:assembleDebug :ui:lintDebug :app:lintDebug --console=plain
-
       # app/build.gradle falls back to ~/.android/debug.keystore when
       # signing.properties is absent; create a throwaway one for this build only.
       - name: Create throwaway debug keystore for the signing fallback
@@ -84,11 +78,11 @@ jobs:
             -dname "CN=Android Debug,O=Android,C=US"
           echo "Throwaway debug keystore created (this build is never released)."
 
-      - name: Assemble release APK for the tooling self test
+      - name: Run unified verification
         shell: bash
         run: |
           set -euo pipefail
-          gradle :app:assembleRelease --console=plain
+          python3 tools/verify_backend.py
 
       - name: Release tooling failure-sample self test
         shell: bash

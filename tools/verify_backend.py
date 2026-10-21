@@ -1,87 +1,76 @@
-"""Build and verify the backend; optional device checks use a separate application package."""
+"""Run the shared build gate; optional device checks install only backendqa."""
 from pathlib import Path
 import argparse
-import json
-import os
-import subprocess
+import re
 import sys
 import xml.etree.ElementTree as ET
+import verify_common as common
 
-# Preserve the workspace spelling used by Gradle; resolving a Windows junction
-# changes C: to D: and makes dex transforms mix roots in the same build cache.
 ROOT = Path(__file__).absolute().parents[1]
-ARTIFACTS = ROOT / "app/build/qa/backend-refactor"
-QA_PACKAGE = "com.greatwall.callring.backendqa"
+ARTIFACTS = ROOT / 'app/build/qa/backend-refactor'
+QA_PACKAGE = 'com.greatwall.callring.backendqa'
+RUNNER = 'android.test.InstrumentationTestRunner'
+REGISTRY = f'instrumentation:{QA_PACKAGE}/{RUNNER} (target={QA_PACKAGE})'
+SESSION = None
 
 
-def run(arguments, log_name):
-    result = subprocess.run(arguments, cwd=ROOT, stdout=subprocess.PIPE,
-                            stderr=subprocess.STDOUT, encoding="utf-8", errors="replace")
-    (ARTIFACTS / log_name).write_text(result.stdout, encoding="utf-8")
-    if result.returncode:
-        print(result.stdout[-8000:])
-        raise RuntimeError(f"Command failed ({result.returncode}); see {ARTIFACTS / log_name}")
-    return result.stdout
+def run(argv, log, timeout=common.DEVICE_TIMEOUT):
+    return SESSION.run(argv, log, timeout)
 
 
-def test_counts(folder):
-    files = list(folder.glob("TEST-*.xml"))
-    if not files:
-        raise RuntimeError(f"No test results in {folder}")
-    counts = {name: sum(int(ET.parse(path).getroot().get(name, 0)) for path in files)
-              for name in ("tests", "failures", "errors", "skipped")}
-    if counts["failures"] or counts["errors"]:
-        raise RuntimeError(f"Failing tests: {folder}: {counts}")
-    return counts
+def verified_apk():
+    return common.single_apk(ROOT/'app/build/outputs/apk/backendQa/output-metadata.json', QA_PACKAGE)
 
 
-def main():
-    parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--device", metavar="ADB_SERIAL", help="Install/run only the separate backendqa package")
-    args = parser.parse_args()
-    ARTIFACTS.mkdir(parents=True, exist_ok=True)
-    boundary = [sys.executable, "tools/check_backend_boundaries.py"]
-    print(run(boundary, "boundaries.log").strip())
-    gradle = str(ROOT / ("gradlew.bat" if os.name == "nt" else "gradlew"))
-    tasks = [":backend:test", ":app:testDebugUnitTest", ":app:assembleDebug", ":app:assembleRelease",
-             ":app:lintDebug", ":app:assembleDebugAndroidTest", ":app:assembleBackendQa", "--console=plain"]
-    if (ROOT / "ui/build.gradle").exists():
-        tasks[:0] = [":ui:testDebugUnitTest", ":ui:assembleDebug", ":ui:assembleDebugAndroidTest", ":ui:lintDebug"]
-    run([gradle, *tasks], "build.log")
-    summary = {
-        "backend": test_counts(ROOT / "backend/build/test-results/test"),
-        "app": test_counts(ROOT / "app/build/test-results/testDebugUnitTest"),
-        "device": "not_run",
-    }
-    if (ROOT / "ui/build.gradle").exists():
-        summary["ui"] = test_counts(ROOT / "ui/build/test-results/testDebugUnitTest")
-    if args.device:
-        metadata_path = ROOT / "app/build/outputs/apk/backendQa/output-metadata.json"
-        metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
-        if metadata["applicationId"] != QA_PACKAGE:
-            raise RuntimeError("Refusing to install an APK outside the dedicated backendqa package")
-        apk = metadata_path.parent / metadata["elements"][0]["outputFile"]
-        adb = ["adb", "-s", args.device]
-        run([*adb, "install", "-r", "-t", str(apk)], "device-install.log")
-        classes = ",".join(("com.greatwall.callring.data.SqliteCoreStorageResourceDeviceTest",
-                            "com.greatwall.callring.backend.BackendApiDeviceTest",
-                            "com.greatwall.callring.backend.BackendMutationDeviceTest",
-                            "com.greatwall.callring.BackendSchedulerDeviceTest"))
-        output = run([*adb, "shell", "am", "instrument", "-w", "-e", "class", classes,
-                      f"{QA_PACKAGE}/android.test.InstrumentationTestRunner"], "device-tests.log")
-        # adb may return zero even when the instrumentation runner failed.
-        if "OK (" not in output or any(marker in output for marker in
-                ("FAILURES!!!", "INSTRUMENTATION_FAILED", "INSTRUMENTATION_ABORTED", "shortMsg=")):
-            print(output[-8000:])
-            raise RuntimeError("Device test runner did not report success; see device-tests.log")
-        summary["device"] = output.strip()
-    (ARTIFACTS / "summary.json").write_text(json.dumps(summary, indent=2, ensure_ascii=False), encoding="utf-8")
-    print(json.dumps(summary, indent=2, ensure_ascii=False))
-
-
-if __name__ == "__main__":
+def device_checks(serial, summary):
+    adb = [common.find_android_tool('adb'), '-s', serial]
+    cleanup_errors = []
     try:
-        main()
-    except (OSError, RuntimeError, KeyError) as error:
-        print(str(error), file=sys.stderr)
-        sys.exit(1)
+        if run([*adb, 'get-state'], 'device-state.log', timeout=30).strip() != 'device':
+            raise RuntimeError(f'Device {serial} is not online')
+        apk = verified_apk()
+        badging = run([common.find_android_tool('aapt'), 'dump', 'badging', str(apk)], 'apk-badging.log', timeout=30)
+        package = re.search(r"^package: name='([^']+)'", badging, re.M)
+        if not package or package.group(1) != QA_PACKAGE: raise RuntimeError('APK actual package differs from backendqa')
+        install = run([*adb, 'install', '-r', '-t', str(apk)], 'device-install.log')
+        if not re.search(r'^Success[ \t]*$', install, re.M): raise RuntimeError('APK install did not report Success')
+        registry = run([*adb, 'shell', 'pm', 'list', 'instrumentation'], 'device-runners.log', timeout=30)
+        if REGISTRY not in registry.splitlines(): raise RuntimeError('Runner or target differs from backendqa')
+        classes = ','.join(('com.greatwall.callring.data.SqliteCoreStorageResourceDeviceTest',
+                            'com.greatwall.callring.backend.BackendApiDeviceTest',
+                            'com.greatwall.callring.backend.BackendMutationDeviceTest',
+                            'com.greatwall.callring.BackendSchedulerDeviceTest'))
+        output = run([*adb, 'shell', 'am', 'instrument', '-w', '-e', 'class', classes, f'{QA_PACKAGE}/{RUNNER}'], 'device-tests.log')
+        summary['device'] = {'serial': serial, 'package': QA_PACKAGE, 'tests': common.instrumentation_count(output)}
+    finally:
+        try:
+            run([*adb, 'shell', 'am', 'force-stop', QA_PACKAGE], 'device-cleanup.log', timeout=30)
+        except (OSError, RuntimeError) as error:
+            cleanup_errors.append(str(error))
+        summary['cleanup'] = {'status': 'failed' if cleanup_errors else 'passed', 'package': QA_PACKAGE, 'errors': cleanup_errors}
+        if cleanup_errors: raise RuntimeError('backendqa cleanup failed: ' + '; '.join(cleanup_errors))
+
+
+def main(argv=None):
+    global SESSION
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--device', metavar='ADB_SERIAL', help='Install/run only the separate backendqa package')
+    args = parser.parse_args(argv)
+    summary = common.new_summary(ROOT, args.device)
+    SESSION = common.VerificationRun(ROOT, ARTIFACTS, summary)
+    try:
+        common.execute_gate(SESSION)
+        if args.device: device_checks(args.device, summary)
+        summary['status'] = 'passed'
+    except (OSError, RuntimeError, ValueError, KeyError, TypeError, ET.ParseError) as error:
+        summary['status'] = 'failed'; summary['error'] = str(error)
+        raise
+    finally:
+        SESSION.write_summary()
+        print(__import__('json').dumps(summary, indent=2, ensure_ascii=False))
+
+
+if __name__ == '__main__':
+    try: main()
+    except (OSError, RuntimeError, ValueError, KeyError, TypeError, ET.ParseError) as error:
+        print(str(error), file=sys.stderr); sys.exit(1)

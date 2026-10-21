@@ -59,3 +59,15 @@ dependencies {
     debugImplementation 'androidx.compose.ui:ui-tooling'
     debugImplementation 'androidx.compose.ui:ui-test-manifest'
 }
+
+// Verify the resolved graph, including transitive project dependencies.
+tasks.register('checkDebugCompileClasspath') {
+    doLast {
+        def forbidden = configurations.debugCompileClasspath.incoming.resolutionResult.allComponents.find {
+            it.id instanceof org.gradle.api.artifacts.component.ProjectComponentIdentifier && it.id.projectPath == ':backend'
+        }
+        if (forbidden != null) {
+            throw new GradleException('UI debugCompileClasspath must not contain :backend')
+        }
+    }
+}

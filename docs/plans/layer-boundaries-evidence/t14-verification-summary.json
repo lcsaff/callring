@@ -1,0 +1,910 @@
+{
+  "slice": "T14",
+  "status": "spec_quality_root_verified",
+  "base": "59309437f01764fa724d04f05b4927fbcc18f2e9",
+  "source_freeze": {
+    "base": "59309437f01764fa724d04f05b4927fbcc18f2e9",
+    "algorithm": "sorted POSIX path LF raw bytes LF; deleted raw DELETED",
+    "sha256": "a368c276da8a9adc3d16f343cb22625043991596b3f156204a71e2067c9e0bee",
+    "paths": [
+      {
+        "path": ".github/workflows/build.yml",
+        "sha256": "7b8d255adfaa0ae40460c2a2db146cc2d9baacdeefe77cd9f44481674020e47c",
+        "bytes": 2665
+      },
+      {
+        "path": ".github/workflows/release.yml",
+        "sha256": "f2767f273023635233831dab8ba6508f6f1c7c783bcdcb5f2723f421ca287bf1",
+        "bytes": 9922
+      },
+      {
+        "path": "tools/check_architecture.py",
+        "sha256": "6344a3b1851a07530e5722069efab0206aae33020e861e30d7f66f83f8ba438e",
+        "bytes": 16953
+      },
+      {
+        "path": "tools/release/check_workflows.py",
+        "sha256": "9d5b7281e09ea838bed63548aa9131a471aa70c02b594304badf339ce4045eb3",
+        "bytes": 9879
+      },
+      {
+        "path": "tools/release/selftest.py",
+        "sha256": "c2fa4728ac365301de1aff8ab97a27269603e67442c9e4db08f8f5d16a346fab",
+        "bytes": 12824
+      },
+      {
+        "path": "tools/test_architecture.py",
+        "sha256": "f770e2d75f9e3f09a34146ae2862971d372e743851f782f4168a49e815837fa5",
+        "bytes": 26039
+      },
+      {
+        "path": "tools/test_verification.py",
+        "sha256": "829a15b430ab19c95f5359648edae10dd5df7ec41a0468f6e0699adb6b817779",
+        "bytes": 9994
+      },
+      {
+        "path": "tools/verify_backend.py",
+        "sha256": "3fa956d24695b262612e68ba599d52569eb7c81b5b7f25a0fd95961906688236",
+        "bytes": 3812
+      },
+      {
+        "path": "tools/verify_common.py",
+        "sha256": "6e2bf38d7bd2d8876c7218abc1c02e0da733cfa460dbf6858b12f94b0d829709",
+        "bytes": 8756
+      },
+      {
+        "path": "tools/verify_ui.py",
+        "sha256": "e3088263889173dc4fc7b3d58d459e97893b9d41b30e1662891c776931e2c883",
+        "bytes": 7457
+      },
+      {
+        "path": "ui/build.gradle",
+        "sha256": "ca2ac39481cf2926a3fa653294da06d0c18bff1b7a404f9d7342ab67df7affac",
+        "bytes": 3399
+      }
+    ]
+  },
+  "audit_sha256": {
+    "md": "5ff269cebf0e82956972896c88b7a38b03b130c71e930cb928146986b1897be4",
+    "json": "fccce79c4b2cb75a4c34bfa1245c234165614219bc99e2e8a733a890175d6e3b"
+  },
+  "unified_invocation": {
+    "argv": [
+      "python",
+      "tools/verify_backend.py"
+    ],
+    "exit_code": 0,
+    "full_gate_runs": 1,
+    "evidence": {
+      "status": "passed",
+      "root": "C:\\Users\\GreatWall\\.codex\\worktrees\\layer-boundaries\\callring",
+      "commit": "59309437f01764fa724d04f05b4927fbcc18f2e9",
+      "requested_serial": null,
+      "device": "not_run",
+      "cleanup": {
+        "status": "not_needed",
+        "errors": []
+      },
+      "commands": [
+        {
+          "argv": [
+            "git",
+            "rev-parse",
+            "HEAD"
+          ],
+          "log": "C:\\Users\\GreatWall\\.codex\\worktrees\\layer-boundaries\\callring\\app\\build\\qa\\backend-refactor\\commit.log",
+          "exit_code": 0,
+          "timeout": false,
+          "timeout_seconds": 30,
+          "log_sha256": "e1e062e87fd7a4567e5e15a8bac19e17b922ac38155e99ee2ec2b6e082bae52a"
+        },
+        {
+          "argv": [
+            "D:\\Apps\\Pythons\\Python310\\python.exe",
+            "tools/check_architecture.py"
+          ],
+          "log": "C:\\Users\\GreatWall\\.codex\\worktrees\\layer-boundaries\\callring\\app\\build\\qa\\backend-refactor\\python-1.log",
+          "exit_code": 0,
+          "timeout": false,
+          "timeout_seconds": 3600,
+          "log_sha256": "5b91d91dc7a48609d6c7de1b40ca2989c3cd3f5149113a2c7392c0b7eb8dedd6"
+        },
+        {
+          "argv": [
+            "D:\\Apps\\Pythons\\Python310\\python.exe",
+            "tools/check_backend_boundaries.py"
+          ],
+          "log": "C:\\Users\\GreatWall\\.codex\\worktrees\\layer-boundaries\\callring\\app\\build\\qa\\backend-refactor\\python-2.log",
+          "exit_code": 0,
+          "timeout": false,
+          "timeout_seconds": 3600,
+          "log_sha256": "4fb0a65ba3efb3e0618847cbb4e528924c4ff5635dec53546e6e88975e5124c0"
+        },
+        {
+          "argv": [
+            "D:\\Apps\\Pythons\\Python310\\python.exe",
+            "-m",
+            "unittest",
+            "discover",
+            "-s",
+            "tools",
+            "-p",
+            "test_architecture.py"
+          ],
+          "log": "C:\\Users\\GreatWall\\.codex\\worktrees\\layer-boundaries\\callring\\app\\build\\qa\\backend-refactor\\python-3.log",
+          "exit_code": 0,
+          "timeout": false,
+          "timeout_seconds": 3600,
+          "log_sha256": "e34bc4e90b2a67ce39b04cc4c5e1646072477260731cd8032079137ee8c5867d"
+        },
+        {
+          "argv": [
+            "D:\\Apps\\Pythons\\Python310\\python.exe",
+            "-m",
+            "unittest",
+            "discover",
+            "-s",
+            "tools",
+            "-p",
+            "test_backend_boundaries.py"
+          ],
+          "log": "C:\\Users\\GreatWall\\.codex\\worktrees\\layer-boundaries\\callring\\app\\build\\qa\\backend-refactor\\python-4.log",
+          "exit_code": 0,
+          "timeout": false,
+          "timeout_seconds": 3600,
+          "log_sha256": "0f7e4b97443e54aca647179972594d13bb587afcbf151fab8228148587ea844a"
+        },
+        {
+          "argv": [
+            "D:\\Apps\\Pythons\\Python310\\python.exe",
+            "-m",
+            "unittest",
+            "discover",
+            "-s",
+            "tools",
+            "-p",
+            "test_verification.py"
+          ],
+          "log": "C:\\Users\\GreatWall\\.codex\\worktrees\\layer-boundaries\\callring\\app\\build\\qa\\backend-refactor\\python-5.log",
+          "exit_code": 0,
+          "timeout": false,
+          "timeout_seconds": 3600,
+          "log_sha256": "dc7b29482d4a22a28ef848954eb4d5e458c299d74ee9ae0f00cef251bc490a1c"
+        },
+        {
+          "argv": [
+            "C:\\Users\\GreatWall\\.codex\\worktrees\\layer-boundaries\\callring\\gradlew.bat",
+            "--version"
+          ],
+          "log": "C:\\Users\\GreatWall\\.codex\\worktrees\\layer-boundaries\\callring\\app\\build\\qa\\backend-refactor\\gradle-version.log",
+          "exit_code": 0,
+          "timeout": false,
+          "timeout_seconds": 120,
+          "log_sha256": "060ce5282984110030660b8be0f27371f93173e90cadf307518b2621f37f13f9"
+        },
+        {
+          "argv": [
+            "C:\\Users\\GreatWall\\.codex\\worktrees\\layer-boundaries\\callring\\gradlew.bat",
+            ":contracts:test",
+            ":backend:test",
+            ":ui:testDebugUnitTest",
+            ":app:testDebugUnitTest",
+            ":ui:checkDebugCompileClasspath",
+            ":ui:assembleDebug",
+            ":app:assembleDebug",
+            ":app:assembleRelease",
+            ":app:assembleBackendQa",
+            ":ui:assembleDebugAndroidTest",
+            ":app:assembleDebugAndroidTest",
+            ":ui:lintDebug",
+            ":app:lintDebug",
+            "--console=plain"
+          ],
+          "log": "C:\\Users\\GreatWall\\.codex\\worktrees\\layer-boundaries\\callring\\app\\build\\qa\\backend-refactor\\build.log",
+          "exit_code": 0,
+          "timeout": false,
+          "timeout_seconds": 3600,
+          "log_sha256": "cb3348b765ef3a4eaaa83967c761dc012de1396f500d0c2c46304fef8993d936"
+        }
+      ],
+      "gradle_tasks": {
+        ":contracts:test": "NO-SOURCE",
+        ":backend:test": "UP-TO-DATE",
+        ":ui:testDebugUnitTest": "UP-TO-DATE",
+        ":app:testDebugUnitTest": "UP-TO-DATE",
+        ":ui:checkDebugCompileClasspath": "EXECUTED",
+        ":ui:assembleDebug": "EXECUTED",
+        ":app:assembleDebug": "UP-TO-DATE",
+        ":app:assembleRelease": "EXECUTED",
+        ":app:assembleBackendQa": "EXECUTED",
+        ":ui:assembleDebugAndroidTest": "EXECUTED",
+        ":app:assembleDebugAndroidTest": "EXECUTED",
+        ":ui:lintDebug": "EXECUTED",
+        ":app:lintDebug": "EXECUTED"
+      },
+      "contracts": {
+        "state": "NO-SOURCE",
+        "tests": 0
+      },
+      "backend": {
+        "state": "UP-TO-DATE",
+        "tests": 363,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0,
+        "xml_files": [
+          "C:\\Users\\GreatWall\\.codex\\worktrees\\layer-boundaries\\callring\\backend\\build\\test-results\\test\\TEST-com.greatwall.callring.AiSettingsMergeTest.xml",
+          "C:\\Users\\GreatWall\\.codex\\worktrees\\layer-boundaries\\callring\\backend\\build\\test-results\\test\\TEST-com.greatwall.callring.BusinessRevisionCoordinatorTest.xml",
+          "C:\\Users\\GreatWall\\.codex\\worktrees\\layer-boundaries\\callring\\backend\\build\\test-results\\test\\TEST-com.greatwall.callring.CallCorrelationTest.xml",
+          "C:\\Users\\GreatWall\\.codex\\worktrees\\layer-boundaries\\callring\\backend\\build\\test-results\\test\\TEST-com.greatwall.callring.CallringBackendTest.xml",
+          "C:\\Users\\GreatWall\\.codex\\worktrees\\layer-boundaries\\callring\\backend\\build\\test-results\\test\\TEST-com.greatwall.callring.CapabilityCatalogTest.xml",
+          "C:\\Users\\GreatWall\\.codex\\worktrees\\layer-boundaries\\callring\\backend\\build\\test-results\\test\\TEST-com.greatwall.callring.ChunkRedactionTest.xml",
+          "C:\\Users\\GreatWall\\.codex\\worktrees\\layer-boundaries\\callring\\backend\\build\\test-results\\test\\TEST-com.greatwall.callring.CompatibilityMigrationTest.xml",
+          "C:\\Users\\GreatWall\\.codex\\worktrees\\layer-boundaries\\callring\\backend\\build\\test-results\\test\\TEST-com.greatwall.callring.ConfirmationTargetTest.xml",
+          "C:\\Users\\GreatWall\\.codex\\worktrees\\layer-boundaries\\callring\\backend\\build\\test-results\\test\\TEST-com.greatwall.callring.ContextAssemblerTest.xml",
+          "C:\\Users\\GreatWall\\.codex\\worktrees\\layer-boundaries\\callring\\backend\\build\\test-results\\test\\TEST-com.greatwall.callring.ContextBudgetTest.xml",
+          "C:\\Users\\GreatWall\\.codex\\worktrees\\layer-boundaries\\callring\\backend\\build\\test-results\\test\\TEST-com.greatwall.callring.ContractMappingsTest.xml",
+          "C:\\Users\\GreatWall\\.codex\\worktrees\\layer-boundaries\\callring\\backend\\build\\test-results\\test\\TEST-com.greatwall.callring.ConversationApiContractTest.xml",
+          "C:\\Users\\GreatWall\\.codex\\worktrees\\layer-boundaries\\callring\\backend\\build\\test-results\\test\\TEST-com.greatwall.callring.ConversationLazyTest.xml",
+          "C:\\Users\\GreatWall\\.codex\\worktrees\\layer-boundaries\\callring\\backend\\build\\test-results\\test\\TEST-com.greatwall.callring.ConversationServiceTest.xml",
+          "C:\\Users\\GreatWall\\.codex\\worktrees\\layer-boundaries\\callring\\backend\\build\\test-results\\test\\TEST-com.greatwall.callring.CoreSnapshotProjectionTest.xml",
+          "C:\\Users\\GreatWall\\.codex\\worktrees\\layer-boundaries\\callring\\backend\\build\\test-results\\test\\TEST-com.greatwall.callring.DecisionInputsTest.xml",
+          "C:\\Users\\GreatWall\\.codex\\worktrees\\layer-boundaries\\callring\\backend\\build\\test-results\\test\\TEST-com.greatwall.callring.DecisionPublicationTest.xml",
+          "C:\\Users\\GreatWall\\.codex\\worktrees\\layer-boundaries\\callring\\backend\\build\\test-results\\test\\TEST-com.greatwall.callring.DeletionVerificationRegressionTest.xml",
+          "C:\\Users\\GreatWall\\.codex\\worktrees\\layer-boundaries\\callring\\backend\\build\\test-results\\test\\TEST-com.greatwall.callring.DirectoryEnumeratorTest.xml",
+          "C:\\Users\\GreatWall\\.codex\\worktrees\\layer-boundaries\\callring\\backend\\build\\test-results\\test\\TEST-com.greatwall.callring.DomainIsolationTest.xml",
+          "C:\\Users\\GreatWall\\.codex\\worktrees\\layer-boundaries\\callring\\backend\\build\\test-results\\test\\TEST-com.greatwall.callring.DomainRegressionTest.xml",
+          "C:\\Users\\GreatWall\\.codex\\worktrees\\layer-boundaries\\callring\\backend\\build\\test-results\\test\\TEST-com.greatwall.callring.DraftMergeTest.xml",
+          "C:\\Users\\GreatWall\\.codex\\worktrees\\layer-boundaries\\callring\\backend\\build\\test-results\\test\\TEST-com.greatwall.callring.ForegroundActionServiceTest.xml",
+          "C:\\Users\\GreatWall\\.codex\\worktrees\\layer-boundaries\\callring\\backend\\build\\test-results\\test\\TEST-com.greatwall.callring.ForegroundLockOrderTest.xml",
+          "C:\\Users\\GreatWall\\.codex\\worktrees\\layer-boundaries\\callring\\backend\\build\\test-results\\test\\TEST-com.greatwall.callring.ForegroundResourceRegistryTest.xml",
+          "C:\\Users\\GreatWall\\.codex\\worktrees\\layer-boundaries\\callring\\backend\\build\\test-results\\test\\TEST-com.greatwall.callring.FullSnapshotConsistencyTest.xml",
+          "C:\\Users\\GreatWall\\.codex\\worktrees\\layer-boundaries\\callring\\backend\\build\\test-results\\test\\TEST-com.greatwall.callring.NumberDeletionRegressionTest.xml",
+          "C:\\Users\\GreatWall\\.codex\\worktrees\\layer-boundaries\\callring\\backend\\build\\test-results\\test\\TEST-com.greatwall.callring.NumberDeletionServiceTest.xml",
+          "C:\\Users\\GreatWall\\.codex\\worktrees\\layer-boundaries\\callring\\backend\\build\\test-results\\test\\TEST-com.greatwall.callring.NumberDeletionToolTest.xml",
+          "C:\\Users\\GreatWall\\.codex\\worktrees\\layer-boundaries\\callring\\backend\\build\\test-results\\test\\TEST-com.greatwall.callring.OperationCatalogTest.xml",
+          "C:\\Users\\GreatWall\\.codex\\worktrees\\layer-boundaries\\callring\\backend\\build\\test-results\\test\\TEST-com.greatwall.callring.OperationScopePlannerTest.xml",
+          "C:\\Users\\GreatWall\\.codex\\worktrees\\layer-boundaries\\callring\\backend\\build\\test-results\\test\\TEST-com.greatwall.callring.QueryObservationIsolationTest.xml",
+          "C:\\Users\\GreatWall\\.codex\\worktrees\\layer-boundaries\\callring\\backend\\build\\test-results\\test\\TEST-com.greatwall.callring.QueryProjectionBoundaryTest.xml",
+          "C:\\Users\\GreatWall\\.codex\\worktrees\\layer-boundaries\\callring\\backend\\build\\test-results\\test\\TEST-com.greatwall.callring.QuerySnapshotConsistencyTest.xml",
+          "C:\\Users\\GreatWall\\.codex\\worktrees\\layer-boundaries\\callring\\backend\\build\\test-results\\test\\TEST-com.greatwall.callring.ReadbackDocumentStoreTest.xml",
+          "C:\\Users\\GreatWall\\.codex\\worktrees\\layer-boundaries\\callring\\backend\\build\\test-results\\test\\TEST-com.greatwall.callring.ReceiptVerifierTest.xml",
+          "C:\\Users\\GreatWall\\.codex\\worktrees\\layer-boundaries\\callring\\backend\\build\\test-results\\test\\TEST-com.greatwall.callring.RecordingApplicationServiceTest.xml",
+          "C:\\Users\\GreatWall\\.codex\\worktrees\\layer-boundaries\\callring\\backend\\build\\test-results\\test\\TEST-com.greatwall.callring.RecordingArchiveCommandsTest.xml",
+          "C:\\Users\\GreatWall\\.codex\\worktrees\\layer-boundaries\\callring\\backend\\build\\test-results\\test\\TEST-com.greatwall.callring.RecordingAssociationTest.xml",
+          "C:\\Users\\GreatWall\\.codex\\worktrees\\layer-boundaries\\callring\\backend\\build\\test-results\\test\\TEST-com.greatwall.callring.RecordingRegistrationServiceTest.xml",
+          "C:\\Users\\GreatWall\\.codex\\worktrees\\layer-boundaries\\callring\\backend\\build\\test-results\\test\\TEST-com.greatwall.callring.RecordingServiceTest.xml",
+          "C:\\Users\\GreatWall\\.codex\\worktrees\\layer-boundaries\\callring\\backend\\build\\test-results\\test\\TEST-com.greatwall.callring.RecordingWorkflowTest.xml",
+          "C:\\Users\\GreatWall\\.codex\\worktrees\\layer-boundaries\\callring\\backend\\build\\test-results\\test\\TEST-com.greatwall.callring.ReportHomeReadTest.xml",
+          "C:\\Users\\GreatWall\\.codex\\worktrees\\layer-boundaries\\callring\\backend\\build\\test-results\\test\\TEST-com.greatwall.callring.ScopedAggregateTest.xml",
+          "C:\\Users\\GreatWall\\.codex\\worktrees\\layer-boundaries\\callring\\backend\\build\\test-results\\test\\TEST-com.greatwall.callring.ScopedQueryContractTest.xml",
+          "C:\\Users\\GreatWall\\.codex\\worktrees\\layer-boundaries\\callring\\backend\\build\\test-results\\test\\TEST-com.greatwall.callring.ScopedRevisionTest.xml",
+          "C:\\Users\\GreatWall\\.codex\\worktrees\\layer-boundaries\\callring\\backend\\build\\test-results\\test\\TEST-com.greatwall.callring.ScopedToolReaderTest.xml",
+          "C:\\Users\\GreatWall\\.codex\\worktrees\\layer-boundaries\\callring\\backend\\build\\test-results\\test\\TEST-com.greatwall.callring.SecretRedactorTest.xml",
+          "C:\\Users\\GreatWall\\.codex\\worktrees\\layer-boundaries\\callring\\backend\\build\\test-results\\test\\TEST-com.greatwall.callring.SharedBusinessCommandsTest.xml",
+          "C:\\Users\\GreatWall\\.codex\\worktrees\\layer-boundaries\\callring\\backend\\build\\test-results\\test\\TEST-com.greatwall.callring.SmallServiceCapabilitiesTest.xml",
+          "C:\\Users\\GreatWall\\.codex\\worktrees\\layer-boundaries\\callring\\backend\\build\\test-results\\test\\TEST-com.greatwall.callring.StepLedgerTest.xml",
+          "C:\\Users\\GreatWall\\.codex\\worktrees\\layer-boundaries\\callring\\backend\\build\\test-results\\test\\TEST-com.greatwall.callring.T11PermissionGrantTest.xml",
+          "C:\\Users\\GreatWall\\.codex\\worktrees\\layer-boundaries\\callring\\backend\\build\\test-results\\test\\TEST-com.greatwall.callring.T11RuntimeObservationTest.xml",
+          "C:\\Users\\GreatWall\\.codex\\worktrees\\layer-boundaries\\callring\\backend\\build\\test-results\\test\\TEST-com.greatwall.callring.TaskPlannerTest.xml",
+          "C:\\Users\\GreatWall\\.codex\\worktrees\\layer-boundaries\\callring\\backend\\build\\test-results\\test\\TEST-com.greatwall.callring.ThinkingPolicyMatrixTest.xml",
+          "C:\\Users\\GreatWall\\.codex\\worktrees\\layer-boundaries\\callring\\backend\\build\\test-results\\test\\TEST-com.greatwall.callring.ThinkingPolicyResolverTest.xml",
+          "C:\\Users\\GreatWall\\.codex\\worktrees\\layer-boundaries\\callring\\backend\\build\\test-results\\test\\TEST-com.greatwall.callring.ThinkingToolApiCompatibilityTest.xml",
+          "C:\\Users\\GreatWall\\.codex\\worktrees\\layer-boundaries\\callring\\backend\\build\\test-results\\test\\TEST-com.greatwall.callring.ToolBatchEngineTest.xml",
+          "C:\\Users\\GreatWall\\.codex\\worktrees\\layer-boundaries\\callring\\backend\\build\\test-results\\test\\TEST-com.greatwall.callring.ToolCompatibilityBaselineTest.xml",
+          "C:\\Users\\GreatWall\\.codex\\worktrees\\layer-boundaries\\callring\\backend\\build\\test-results\\test\\TEST-com.greatwall.callring.ToolOperationCoverageTest.xml",
+          "C:\\Users\\GreatWall\\.codex\\worktrees\\layer-boundaries\\callring\\backend\\build\\test-results\\test\\TEST-com.greatwall.callring.ToolRegistryTest.xml",
+          "C:\\Users\\GreatWall\\.codex\\worktrees\\layer-boundaries\\callring\\backend\\build\\test-results\\test\\TEST-com.greatwall.callring.UseCaseRunnerTest.xml",
+          "C:\\Users\\GreatWall\\.codex\\worktrees\\layer-boundaries\\callring\\backend\\build\\test-results\\test\\TEST-com.greatwall.callring.WorkClassifierTest.xml",
+          "C:\\Users\\GreatWall\\.codex\\worktrees\\layer-boundaries\\callring\\backend\\build\\test-results\\test\\TEST-com.greatwall.callring.callers.CallerServiceTest.xml",
+          "C:\\Users\\GreatWall\\.codex\\worktrees\\layer-boundaries\\callring\\backend\\build\\test-results\\test\\TEST-com.greatwall.callring.coordination.HistorySettingsServiceTest.xml",
+          "C:\\Users\\GreatWall\\.codex\\worktrees\\layer-boundaries\\callring\\backend\\build\\test-results\\test\\TEST-com.greatwall.callring.coordination.InvalidationTrackerTest.xml",
+          "C:\\Users\\GreatWall\\.codex\\worktrees\\layer-boundaries\\callring\\backend\\build\\test-results\\test\\TEST-com.greatwall.callring.coordination.PositionServiceTest.xml",
+          "C:\\Users\\GreatWall\\.codex\\worktrees\\layer-boundaries\\callring\\backend\\build\\test-results\\test\\TEST-com.greatwall.callring.coordination.QuietSettingsServiceTest.xml",
+          "C:\\Users\\GreatWall\\.codex\\worktrees\\layer-boundaries\\callring\\backend\\build\\test-results\\test\\TEST-com.greatwall.callring.coordination.SimpleSettingsServiceTest.xml",
+          "C:\\Users\\GreatWall\\.codex\\worktrees\\layer-boundaries\\callring\\backend\\build\\test-results\\test\\TEST-com.greatwall.callring.coordination.StatisticsAndOverlayServiceTest.xml"
+        ],
+        "xml_sha256": "a3e1ef1791d51036d7e2eb88cf8717935d3873f31b09c13260829938c78546c4"
+      },
+      "ui": {
+        "state": "UP-TO-DATE",
+        "tests": 310,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0,
+        "xml_files": [
+          "C:\\Users\\GreatWall\\.codex\\worktrees\\layer-boundaries\\callring\\ui\\build\\test-results\\testDebugUnitTest\\TEST-com.greatwall.callring.ui.app.AiCompatibilityComposeTest.xml",
+          "C:\\Users\\GreatWall\\.codex\\worktrees\\layer-boundaries\\callring\\ui\\build\\test-results\\testDebugUnitTest\\TEST-com.greatwall.callring.ui.app.AiCompatibilityUiTest.xml",
+          "C:\\Users\\GreatWall\\.codex\\worktrees\\layer-boundaries\\callring\\ui\\build\\test-results\\testDebugUnitTest\\TEST-com.greatwall.callring.ui.app.CallringActivityTest.xml",
+          "C:\\Users\\GreatWall\\.codex\\worktrees\\layer-boundaries\\callring\\ui\\build\\test-results\\testDebugUnitTest\\TEST-com.greatwall.callring.ui.app.ConfirmationSummaryTest.xml",
+          "C:\\Users\\GreatWall\\.codex\\worktrees\\layer-boundaries\\callring\\ui\\build\\test-results\\testDebugUnitTest\\TEST-com.greatwall.callring.ui.app.ConversationComposerTest.xml",
+          "C:\\Users\\GreatWall\\.codex\\worktrees\\layer-boundaries\\callring\\ui\\build\\test-results\\testDebugUnitTest\\TEST-com.greatwall.callring.ui.app.ConversationConnectionRegressionTest.xml",
+          "C:\\Users\\GreatWall\\.codex\\worktrees\\layer-boundaries\\callring\\ui\\build\\test-results\\testDebugUnitTest\\TEST-com.greatwall.callring.ui.app.ConversationCopyTest.xml",
+          "C:\\Users\\GreatWall\\.codex\\worktrees\\layer-boundaries\\callring\\ui\\build\\test-results\\testDebugUnitTest\\TEST-com.greatwall.callring.ui.app.ConversationLayoutTest.xml",
+          "C:\\Users\\GreatWall\\.codex\\worktrees\\layer-boundaries\\callring\\ui\\build\\test-results\\testDebugUnitTest\\TEST-com.greatwall.callring.ui.app.ConversationNavigationTest.xml",
+          "C:\\Users\\GreatWall\\.codex\\worktrees\\layer-boundaries\\callring\\ui\\build\\test-results\\testDebugUnitTest\\TEST-com.greatwall.callring.ui.app.ConversationProgressReviewTest.xml",
+          "C:\\Users\\GreatWall\\.codex\\worktrees\\layer-boundaries\\callring\\ui\\build\\test-results\\testDebugUnitTest\\TEST-com.greatwall.callring.ui.app.ConversationReviewUiTest.xml",
+          "C:\\Users\\GreatWall\\.codex\\worktrees\\layer-boundaries\\callring\\ui\\build\\test-results\\testDebugUnitTest\\TEST-com.greatwall.callring.ui.app.ConversationStateUiTest.xml",
+          "C:\\Users\\GreatWall\\.codex\\worktrees\\layer-boundaries\\callring\\ui\\build\\test-results\\testDebugUnitTest\\TEST-com.greatwall.callring.ui.app.CredentialDialogTest.xml",
+          "C:\\Users\\GreatWall\\.codex\\worktrees\\layer-boundaries\\callring\\ui\\build\\test-results\\testDebugUnitTest\\TEST-com.greatwall.callring.ui.app.FirstConnectionUiTest.xml",
+          "C:\\Users\\GreatWall\\.codex\\worktrees\\layer-boundaries\\callring\\ui\\build\\test-results\\testDebugUnitTest\\TEST-com.greatwall.callring.ui.app.ForegroundActionHostTest.xml",
+          "C:\\Users\\GreatWall\\.codex\\worktrees\\layer-boundaries\\callring\\ui\\build\\test-results\\testDebugUnitTest\\TEST-com.greatwall.callring.ui.app.HomeStructureJvmTest.xml",
+          "C:\\Users\\GreatWall\\.codex\\worktrees\\layer-boundaries\\callring\\ui\\build\\test-results\\testDebugUnitTest\\TEST-com.greatwall.callring.ui.app.MarkdownCompatibilityTest.xml",
+          "C:\\Users\\GreatWall\\.codex\\worktrees\\layer-boundaries\\callring\\ui\\build\\test-results\\testDebugUnitTest\\TEST-com.greatwall.callring.ui.app.RenderedDestinationTest.xml",
+          "C:\\Users\\GreatWall\\.codex\\worktrees\\layer-boundaries\\callring\\ui\\build\\test-results\\testDebugUnitTest\\TEST-com.greatwall.callring.ui.app.RetainedTimeRefreshTest.xml",
+          "C:\\Users\\GreatWall\\.codex\\worktrees\\layer-boundaries\\callring\\ui\\build\\test-results\\testDebugUnitTest\\TEST-com.greatwall.callring.ui.app.TimeRefreshScheduleTest.xml",
+          "C:\\Users\\GreatWall\\.codex\\worktrees\\layer-boundaries\\callring\\ui\\build\\test-results\\testDebugUnitTest\\TEST-com.greatwall.callring.ui.app.UiDestinationTest.xml",
+          "C:\\Users\\GreatWall\\.codex\\worktrees\\layer-boundaries\\callring\\ui\\build\\test-results\\testDebugUnitTest\\TEST-com.greatwall.callring.ui.app.UiNavigationStateTest.xml",
+          "C:\\Users\\GreatWall\\.codex\\worktrees\\layer-boundaries\\callring\\ui\\build\\test-results\\testDebugUnitTest\\TEST-com.greatwall.callring.ui.app.bridge.AppearanceThemeMapperTest.xml",
+          "C:\\Users\\GreatWall\\.codex\\worktrees\\layer-boundaries\\callring\\ui\\build\\test-results\\testDebugUnitTest\\TEST-com.greatwall.callring.ui.designsystem.BrandButtonJvmTest.xml",
+          "C:\\Users\\GreatWall\\.codex\\worktrees\\layer-boundaries\\callring\\ui\\build\\test-results\\testDebugUnitTest\\TEST-com.greatwall.callring.ui.designsystem.InteractionJvmTest.xml",
+          "C:\\Users\\GreatWall\\.codex\\worktrees\\layer-boundaries\\callring\\ui\\build\\test-results\\testDebugUnitTest\\TEST-com.greatwall.callring.ui.designsystem.PickerLayoutJvmTest.xml",
+          "C:\\Users\\GreatWall\\.codex\\worktrees\\layer-boundaries\\callring\\ui\\build\\test-results\\testDebugUnitTest\\TEST-com.greatwall.callring.ui.designsystem.ScorePaletteTest.xml",
+          "C:\\Users\\GreatWall\\.codex\\worktrees\\layer-boundaries\\callring\\ui\\build\\test-results\\testDebugUnitTest\\TEST-com.greatwall.callring.ui.designsystem.ThemeTest.xml",
+          "C:\\Users\\GreatWall\\.codex\\worktrees\\layer-boundaries\\callring\\ui\\build\\test-results\\testDebugUnitTest\\TEST-com.greatwall.callring.ui.designsystem.components.ScreenFrameCompactTitleTest.xml",
+          "C:\\Users\\GreatWall\\.codex\\worktrees\\layer-boundaries\\callring\\ui\\build\\test-results\\testDebugUnitTest\\TEST-com.greatwall.callring.ui.feature.ai.AiSettingsScreenTest.xml",
+          "C:\\Users\\GreatWall\\.codex\\worktrees\\layer-boundaries\\callring\\ui\\build\\test-results\\testDebugUnitTest\\TEST-com.greatwall.callring.ui.feature.callers.CallerEditorViewModelTest.xml",
+          "C:\\Users\\GreatWall\\.codex\\worktrees\\layer-boundaries\\callring\\ui\\build\\test-results\\testDebugUnitTest\\TEST-com.greatwall.callring.ui.feature.callers.CallerListScreenJvmTest.xml",
+          "C:\\Users\\GreatWall\\.codex\\worktrees\\layer-boundaries\\callring\\ui\\build\\test-results\\testDebugUnitTest\\TEST-com.greatwall.callring.ui.feature.callers.CallerListViewModelTest.xml",
+          "C:\\Users\\GreatWall\\.codex\\worktrees\\layer-boundaries\\callring\\ui\\build\\test-results\\testDebugUnitTest\\TEST-com.greatwall.callring.ui.feature.callers.NumberDeletionDialogsTest.xml",
+          "C:\\Users\\GreatWall\\.codex\\worktrees\\layer-boundaries\\callring\\ui\\build\\test-results\\testDebugUnitTest\\TEST-com.greatwall.callring.ui.feature.callers.NumberLookupViewModelTest.xml",
+          "C:\\Users\\GreatWall\\.codex\\worktrees\\layer-boundaries\\callring\\ui\\build\\test-results\\testDebugUnitTest\\TEST-com.greatwall.callring.ui.feature.home.HomeQuietScreenJvmTest.xml",
+          "C:\\Users\\GreatWall\\.codex\\worktrees\\layer-boundaries\\callring\\ui\\build\\test-results\\testDebugUnitTest\\TEST-com.greatwall.callring.ui.feature.home.HomeQuietViewModelTest.xml",
+          "C:\\Users\\GreatWall\\.codex\\worktrees\\layer-boundaries\\callring\\ui\\build\\test-results\\testDebugUnitTest\\TEST-com.greatwall.callring.ui.feature.home.HomeViewModelTest.xml",
+          "C:\\Users\\GreatWall\\.codex\\worktrees\\layer-boundaries\\callring\\ui\\build\\test-results\\testDebugUnitTest\\TEST-com.greatwall.callring.ui.feature.recording.RecordingArchiveListTest.xml",
+          "C:\\Users\\GreatWall\\.codex\\worktrees\\layer-boundaries\\callring\\ui\\build\\test-results\\testDebugUnitTest\\TEST-com.greatwall.callring.ui.feature.recording.RecordingScreensTest.xml",
+          "C:\\Users\\GreatWall\\.codex\\worktrees\\layer-boundaries\\callring\\ui\\build\\test-results\\testDebugUnitTest\\TEST-com.greatwall.callring.ui.feature.recording.RecordingViewModelsTest.xml",
+          "C:\\Users\\GreatWall\\.codex\\worktrees\\layer-boundaries\\callring\\ui\\build\\test-results\\testDebugUnitTest\\TEST-com.greatwall.callring.ui.feature.recording.T11ArchiveRefreshTest.xml",
+          "C:\\Users\\GreatWall\\.codex\\worktrees\\layer-boundaries\\callring\\ui\\build\\test-results\\testDebugUnitTest\\TEST-com.greatwall.callring.ui.feature.report.ReportScreenJvmTest.xml",
+          "C:\\Users\\GreatWall\\.codex\\worktrees\\layer-boundaries\\callring\\ui\\build\\test-results\\testDebugUnitTest\\TEST-com.greatwall.callring.ui.feature.report.ReportViewModelTest.xml",
+          "C:\\Users\\GreatWall\\.codex\\worktrees\\layer-boundaries\\callring\\ui\\build\\test-results\\testDebugUnitTest\\TEST-com.greatwall.callring.ui.feature.settings.AppearanceViewModelTest.xml",
+          "C:\\Users\\GreatWall\\.codex\\worktrees\\layer-boundaries\\callring\\ui\\build\\test-results\\testDebugUnitTest\\TEST-com.greatwall.callring.ui.feature.settings.RuntimeOverlayTestScreenJvmTest.xml",
+          "C:\\Users\\GreatWall\\.codex\\worktrees\\layer-boundaries\\callring\\ui\\build\\test-results\\testDebugUnitTest\\TEST-com.greatwall.callring.ui.feature.settings.ScoreSettingsViewModelTest.xml",
+          "C:\\Users\\GreatWall\\.codex\\worktrees\\layer-boundaries\\callring\\ui\\build\\test-results\\testDebugUnitTest\\TEST-com.greatwall.callring.ui.feature.settings.SettingsDraftCodecsTest.xml",
+          "C:\\Users\\GreatWall\\.codex\\worktrees\\layer-boundaries\\callring\\ui\\build\\test-results\\testDebugUnitTest\\TEST-com.greatwall.callring.ui.feature.settings.SettingsScreensJvmTest.xml",
+          "C:\\Users\\GreatWall\\.codex\\worktrees\\layer-boundaries\\callring\\ui\\build\\test-results\\testDebugUnitTest\\TEST-com.greatwall.callring.ui.feature.settings.SharedWorkScheduleScreenJvmTest.xml",
+          "C:\\Users\\GreatWall\\.codex\\worktrees\\layer-boundaries\\callring\\ui\\build\\test-results\\testDebugUnitTest\\TEST-com.greatwall.callring.ui.feature.settings.UnifiedWorkScheduleTest.xml",
+          "C:\\Users\\GreatWall\\.codex\\worktrees\\layer-boundaries\\callring\\ui\\build\\test-results\\testDebugUnitTest\\TEST-com.greatwall.callring.ui.feature.settings.WorkScheduleViewModelTest.xml",
+          "C:\\Users\\GreatWall\\.codex\\worktrees\\layer-boundaries\\callring\\ui\\build\\test-results\\testDebugUnitTest\\TEST-com.greatwall.callring.ui.feature.settings.components.WindowsInputTest.xml",
+          "C:\\Users\\GreatWall\\.codex\\worktrees\\layer-boundaries\\callring\\ui\\build\\test-results\\testDebugUnitTest\\TEST-com.greatwall.callring.ui.feature.shared.PageControlsTest.xml",
+          "C:\\Users\\GreatWall\\.codex\\worktrees\\layer-boundaries\\callring\\ui\\build\\test-results\\testDebugUnitTest\\TEST-com.greatwall.callring.ui.feature.update.AppUpdateScreenTest.xml",
+          "C:\\Users\\GreatWall\\.codex\\worktrees\\layer-boundaries\\callring\\ui\\build\\test-results\\testDebugUnitTest\\TEST-com.greatwall.callring.ui.feature.update.AppUpdateViewModelTest.xml",
+          "C:\\Users\\GreatWall\\.codex\\worktrees\\layer-boundaries\\callring\\ui\\build\\test-results\\testDebugUnitTest\\TEST-com.greatwall.callring.ui.format.UiFormatTest.xml",
+          "C:\\Users\\GreatWall\\.codex\\worktrees\\layer-boundaries\\callring\\ui\\build\\test-results\\testDebugUnitTest\\TEST-com.greatwall.callring.ui.overlay.OverlayControllerTest.xml",
+          "C:\\Users\\GreatWall\\.codex\\worktrees\\layer-boundaries\\callring\\ui\\build\\test-results\\testDebugUnitTest\\TEST-com.greatwall.callring.ui.overlay.OverlaySessionsTest.xml",
+          "C:\\Users\\GreatWall\\.codex\\worktrees\\layer-boundaries\\callring\\ui\\build\\test-results\\testDebugUnitTest\\TEST-com.greatwall.callring.ui.overlay.OverlayTestPreviewScreenJvmTest.xml",
+          "C:\\Users\\GreatWall\\.codex\\worktrees\\layer-boundaries\\callring\\ui\\build\\test-results\\testDebugUnitTest\\TEST-com.greatwall.callring.ui.overlay.OverlayTestPreviewTest.xml",
+          "C:\\Users\\GreatWall\\.codex\\worktrees\\layer-boundaries\\callring\\ui\\build\\test-results\\testDebugUnitTest\\TEST-com.greatwall.callring.ui.overlay.OverlayViewModelTest.xml",
+          "C:\\Users\\GreatWall\\.codex\\worktrees\\layer-boundaries\\callring\\ui\\build\\test-results\\testDebugUnitTest\\TEST-com.greatwall.callring.ui.overlay.OverlayVisibilityTest.xml",
+          "C:\\Users\\GreatWall\\.codex\\worktrees\\layer-boundaries\\callring\\ui\\build\\test-results\\testDebugUnitTest\\TEST-com.greatwall.callring.ui.overlay.OverlayWindowJvmTest.xml",
+          "C:\\Users\\GreatWall\\.codex\\worktrees\\layer-boundaries\\callring\\ui\\build\\test-results\\testDebugUnitTest\\TEST-com.greatwall.callring.ui.overlay.WindowPlacementTest.xml",
+          "C:\\Users\\GreatWall\\.codex\\worktrees\\layer-boundaries\\callring\\ui\\build\\test-results\\testDebugUnitTest\\TEST-com.greatwall.callring.ui.state.ImmediateEditorTest.xml",
+          "C:\\Users\\GreatWall\\.codex\\worktrees\\layer-boundaries\\callring\\ui\\build\\test-results\\testDebugUnitTest\\TEST-com.greatwall.callring.ui.state.RefreshCoordinatorTest.xml",
+          "C:\\Users\\GreatWall\\.codex\\worktrees\\layer-boundaries\\callring\\ui\\build\\test-results\\testDebugUnitTest\\TEST-com.greatwall.callring.ui.state.RefreshIsolationTest.xml",
+          "C:\\Users\\GreatWall\\.codex\\worktrees\\layer-boundaries\\callring\\ui\\build\\test-results\\testDebugUnitTest\\TEST-com.greatwall.callring.ui.state.RequestLoaderTest.xml",
+          "C:\\Users\\GreatWall\\.codex\\worktrees\\layer-boundaries\\callring\\ui\\build\\test-results\\testDebugUnitTest\\TEST-com.greatwall.callring.ui.state.SimpleSettingsRefreshTest.xml",
+          "C:\\Users\\GreatWall\\.codex\\worktrees\\layer-boundaries\\callring\\ui\\build\\test-results\\testDebugUnitTest\\TEST-com.greatwall.callring.ui.state.SnapshotViewModelTest.xml",
+          "C:\\Users\\GreatWall\\.codex\\worktrees\\layer-boundaries\\callring\\ui\\build\\test-results\\testDebugUnitTest\\TEST-com.greatwall.callring.ui.state.T11ConsumerMatrixTest.xml",
+          "C:\\Users\\GreatWall\\.codex\\worktrees\\layer-boundaries\\callring\\ui\\build\\test-results\\testDebugUnitTest\\TEST-com.greatwall.callring.ui.widget.T11WidgetSessionTest.xml",
+          "C:\\Users\\GreatWall\\.codex\\worktrees\\layer-boundaries\\callring\\ui\\build\\test-results\\testDebugUnitTest\\TEST-com.greatwall.callring.ui.widget.WidgetConfigurationModelTest.xml",
+          "C:\\Users\\GreatWall\\.codex\\worktrees\\layer-boundaries\\callring\\ui\\build\\test-results\\testDebugUnitTest\\TEST-com.greatwall.callring.ui.widget.WidgetModelTest.xml",
+          "C:\\Users\\GreatWall\\.codex\\worktrees\\layer-boundaries\\callring\\ui\\build\\test-results\\testDebugUnitTest\\TEST-com.greatwall.callring.ui.widget.WidgetUpdatesTest.xml"
+        ],
+        "xml_sha256": "b34530d53a99b827b0f6eecd10fcd3412ba10d766502241b50b875a5782f2bf8"
+      },
+      "app": {
+        "state": "UP-TO-DATE",
+        "tests": 356,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0,
+        "xml_files": [
+          "C:\\Users\\GreatWall\\.codex\\worktrees\\layer-boundaries\\callring\\app\\build\\test-results\\testDebugUnitTest\\TEST-com.greatwall.callring.CallStateSnapshotTest.xml",
+          "C:\\Users\\GreatWall\\.codex\\worktrees\\layer-boundaries\\callring\\app\\build\\test-results\\testDebugUnitTest\\TEST-com.greatwall.callring.PreparationGateTest.xml",
+          "C:\\Users\\GreatWall\\.codex\\worktrees\\layer-boundaries\\callring\\app\\build\\test-results\\testDebugUnitTest\\TEST-com.greatwall.callring.SessionGateTest.xml",
+          "C:\\Users\\GreatWall\\.codex\\worktrees\\layer-boundaries\\callring\\app\\build\\test-results\\testDebugUnitTest\\TEST-com.greatwall.callring.bootstrap.AssemblyLifetimeTest.xml",
+          "C:\\Users\\GreatWall\\.codex\\worktrees\\layer-boundaries\\callring\\app\\build\\test-results\\testDebugUnitTest\\TEST-com.greatwall.callring.bootstrap.CompleteSnapshotAssemblyTest.xml",
+          "C:\\Users\\GreatWall\\.codex\\worktrees\\layer-boundaries\\callring\\app\\build\\test-results\\testDebugUnitTest\\TEST-com.greatwall.callring.bootstrap.LazyStorageResourcesTest.xml",
+          "C:\\Users\\GreatWall\\.codex\\worktrees\\layer-boundaries\\callring\\app\\build\\test-results\\testDebugUnitTest\\TEST-com.greatwall.callring.bootstrap.NumberDeletionIntegrationTest.xml",
+          "C:\\Users\\GreatWall\\.codex\\worktrees\\layer-boundaries\\callring\\app\\build\\test-results\\testDebugUnitTest\\TEST-com.greatwall.callring.bootstrap.ScopedQueryAssemblyTest.xml",
+          "C:\\Users\\GreatWall\\.codex\\worktrees\\layer-boundaries\\callring\\app\\build\\test-results\\testDebugUnitTest\\TEST-com.greatwall.callring.bootstrap.StorageResourcesTest.xml",
+          "C:\\Users\\GreatWall\\.codex\\worktrees\\layer-boundaries\\callring\\app\\build\\test-results\\testDebugUnitTest\\TEST-com.greatwall.callring.data.CallAccessContractTest.xml",
+          "C:\\Users\\GreatWall\\.codex\\worktrees\\layer-boundaries\\callring\\app\\build\\test-results\\testDebugUnitTest\\TEST-com.greatwall.callring.data.CallerAccessContractTest.xml",
+          "C:\\Users\\GreatWall\\.codex\\worktrees\\layer-boundaries\\callring\\app\\build\\test-results\\testDebugUnitTest\\TEST-com.greatwall.callring.data.CallerSqlSemanticsTest.xml",
+          "C:\\Users\\GreatWall\\.codex\\worktrees\\layer-boundaries\\callring\\app\\build\\test-results\\testDebugUnitTest\\TEST-com.greatwall.callring.data.CallingMigrationTest.xml",
+          "C:\\Users\\GreatWall\\.codex\\worktrees\\layer-boundaries\\callring\\app\\build\\test-results\\testDebugUnitTest\\TEST-com.greatwall.callring.data.CallingSqlSemanticsTest.xml",
+          "C:\\Users\\GreatWall\\.codex\\worktrees\\layer-boundaries\\callring\\app\\build\\test-results\\testDebugUnitTest\\TEST-com.greatwall.callring.data.CoreSnapshotSourceTest.xml",
+          "C:\\Users\\GreatWall\\.codex\\worktrees\\layer-boundaries\\callring\\app\\build\\test-results\\testDebugUnitTest\\TEST-com.greatwall.callring.data.DatabaseInitializationTest.xml",
+          "C:\\Users\\GreatWall\\.codex\\worktrees\\layer-boundaries\\callring\\app\\build\\test-results\\testDebugUnitTest\\TEST-com.greatwall.callring.data.HistorySettingsAccessContractTest.xml",
+          "C:\\Users\\GreatWall\\.codex\\worktrees\\layer-boundaries\\callring\\app\\build\\test-results\\testDebugUnitTest\\TEST-com.greatwall.callring.data.HistorySettingsSqlTest.xml",
+          "C:\\Users\\GreatWall\\.codex\\worktrees\\layer-boundaries\\callring\\app\\build\\test-results\\testDebugUnitTest\\TEST-com.greatwall.callring.data.LocalAccessContractTest.xml",
+          "C:\\Users\\GreatWall\\.codex\\worktrees\\layer-boundaries\\callring\\app\\build\\test-results\\testDebugUnitTest\\TEST-com.greatwall.callring.data.QuerySnapshotConsistencyTest.xml",
+          "C:\\Users\\GreatWall\\.codex\\worktrees\\layer-boundaries\\callring\\app\\build\\test-results\\testDebugUnitTest\\TEST-com.greatwall.callring.data.QuietModeMemoryStoreTest.xml",
+          "C:\\Users\\GreatWall\\.codex\\worktrees\\layer-boundaries\\callring\\app\\build\\test-results\\testDebugUnitTest\\TEST-com.greatwall.callring.data.RecordingCallAccessTest.xml",
+          "C:\\Users\\GreatWall\\.codex\\worktrees\\layer-boundaries\\callring\\app\\build\\test-results\\testDebugUnitTest\\TEST-com.greatwall.callring.data.ReportReadContractTest.xml",
+          "C:\\Users\\GreatWall\\.codex\\worktrees\\layer-boundaries\\callring\\app\\build\\test-results\\testDebugUnitTest\\TEST-com.greatwall.callring.data.ScopedTransactionTest.xml",
+          "C:\\Users\\GreatWall\\.codex\\worktrees\\layer-boundaries\\callring\\app\\build\\test-results\\testDebugUnitTest\\TEST-com.greatwall.callring.data.SimpleSettingsAccessContractTest.xml",
+          "C:\\Users\\GreatWall\\.codex\\worktrees\\layer-boundaries\\callring\\app\\build\\test-results\\testDebugUnitTest\\TEST-com.greatwall.callring.data.SqlAccessProbeTest.xml",
+          "C:\\Users\\GreatWall\\.codex\\worktrees\\layer-boundaries\\callring\\app\\build\\test-results\\testDebugUnitTest\\TEST-com.greatwall.callring.data.SqliteScopedReadTest.xml",
+          "C:\\Users\\GreatWall\\.codex\\worktrees\\layer-boundaries\\callring\\app\\build\\test-results\\testDebugUnitTest\\TEST-com.greatwall.callring.data.StoragePolicyCharacterization.xml",
+          "C:\\Users\\GreatWall\\.codex\\worktrees\\layer-boundaries\\callring\\app\\build\\test-results\\testDebugUnitTest\\TEST-com.greatwall.callring.entrypoint.CalendarAndCallLogControllersTest.xml",
+          "C:\\Users\\GreatWall\\.codex\\worktrees\\layer-boundaries\\callring\\app\\build\\test-results\\testDebugUnitTest\\TEST-com.greatwall.callring.entrypoint.CaptureServiceControllerTest.xml",
+          "C:\\Users\\GreatWall\\.codex\\worktrees\\layer-boundaries\\callring\\app\\build\\test-results\\testDebugUnitTest\\TEST-com.greatwall.callring.entrypoint.EntryJobControllersTest.xml",
+          "C:\\Users\\GreatWall\\.codex\\worktrees\\layer-boundaries\\callring\\app\\build\\test-results\\testDebugUnitTest\\TEST-com.greatwall.callring.entrypoint.PlaybackServiceControllerTest.xml",
+          "C:\\Users\\GreatWall\\.codex\\worktrees\\layer-boundaries\\callring\\app\\build\\test-results\\testDebugUnitTest\\TEST-com.greatwall.callring.platform.AndroidPreferencesTest.xml",
+          "C:\\Users\\GreatWall\\.codex\\worktrees\\layer-boundaries\\callring\\app\\build\\test-results\\testDebugUnitTest\\TEST-com.greatwall.callring.platform.CalendarRefreshPolicyTest.xml",
+          "C:\\Users\\GreatWall\\.codex\\worktrees\\layer-boundaries\\callring\\app\\build\\test-results\\testDebugUnitTest\\TEST-com.greatwall.callring.platform.HolidayCalendarSourceTest.xml",
+          "C:\\Users\\GreatWall\\.codex\\worktrees\\layer-boundaries\\callring\\app\\build\\test-results\\testDebugUnitTest\\TEST-com.greatwall.callring.platform.JobRunsTest.xml",
+          "C:\\Users\\GreatWall\\.codex\\worktrees\\layer-boundaries\\callring\\app\\build\\test-results\\testDebugUnitTest\\TEST-com.greatwall.callring.platform.PlatformSafetyTest.xml",
+          "C:\\Users\\GreatWall\\.codex\\worktrees\\layer-boundaries\\callring\\app\\build\\test-results\\testDebugUnitTest\\TEST-com.greatwall.callring.platform.PlaybackCommandDispatchTest.xml",
+          "C:\\Users\\GreatWall\\.codex\\worktrees\\layer-boundaries\\callring\\app\\build\\test-results\\testDebugUnitTest\\TEST-com.greatwall.callring.platform.PublicationAdaptersTest.xml",
+          "C:\\Users\\GreatWall\\.codex\\worktrees\\layer-boundaries\\callring\\app\\build\\test-results\\testDebugUnitTest\\TEST-com.greatwall.callring.platform.RingtonePreparationTest.xml",
+          "C:\\Users\\GreatWall\\.codex\\worktrees\\layer-boundaries\\callring\\app\\build\\test-results\\testDebugUnitTest\\TEST-com.greatwall.callring.platform.RuntimeSnapshotsTest.xml",
+          "C:\\Users\\GreatWall\\.codex\\worktrees\\layer-boundaries\\callring\\app\\build\\test-results\\testDebugUnitTest\\TEST-com.greatwall.callring.platform.ai.AiSettingsServiceTest.xml",
+          "C:\\Users\\GreatWall\\.codex\\worktrees\\layer-boundaries\\callring\\app\\build\\test-results\\testDebugUnitTest\\TEST-com.greatwall.callring.platform.ai.AndroidRecordingStoreTest.xml",
+          "C:\\Users\\GreatWall\\.codex\\worktrees\\layer-boundaries\\callring\\app\\build\\test-results\\testDebugUnitTest\\TEST-com.greatwall.callring.platform.ai.ArchiveBoundedParserTest.xml",
+          "C:\\Users\\GreatWall\\.codex\\worktrees\\layer-boundaries\\callring\\app\\build\\test-results\\testDebugUnitTest\\TEST-com.greatwall.callring.platform.ai.ArchiveProjectionMigrationTest.xml",
+          "C:\\Users\\GreatWall\\.codex\\worktrees\\layer-boundaries\\callring\\app\\build\\test-results\\testDebugUnitTest\\TEST-com.greatwall.callring.platform.ai.CompatibleAiClientTest.xml",
+          "C:\\Users\\GreatWall\\.codex\\worktrees\\layer-boundaries\\callring\\app\\build\\test-results\\testDebugUnitTest\\TEST-com.greatwall.callring.platform.ai.ConversationCompatibilityTest.xml",
+          "C:\\Users\\GreatWall\\.codex\\worktrees\\layer-boundaries\\callring\\app\\build\\test-results\\testDebugUnitTest\\TEST-com.greatwall.callring.platform.ai.ConversationProtocolTest.xml",
+          "C:\\Users\\GreatWall\\.codex\\worktrees\\layer-boundaries\\callring\\app\\build\\test-results\\testDebugUnitTest\\TEST-com.greatwall.callring.platform.ai.IndependentRecordingRuntimeTest.xml",
+          "C:\\Users\\GreatWall\\.codex\\worktrees\\layer-boundaries\\callring\\app\\build\\test-results\\testDebugUnitTest\\TEST-com.greatwall.callring.platform.ai.PcmWaveChunksTest.xml",
+          "C:\\Users\\GreatWall\\.codex\\worktrees\\layer-boundaries\\callring\\app\\build\\test-results\\testDebugUnitTest\\TEST-com.greatwall.callring.platform.ai.ProviderProfileTest.xml",
+          "C:\\Users\\GreatWall\\.codex\\worktrees\\layer-boundaries\\callring\\app\\build\\test-results\\testDebugUnitTest\\TEST-com.greatwall.callring.platform.ai.RecordingCandidatePaginationTest.xml",
+          "C:\\Users\\GreatWall\\.codex\\worktrees\\layer-boundaries\\callring\\app\\build\\test-results\\testDebugUnitTest\\TEST-com.greatwall.callring.platform.ai.RecordingCommandContextTest.xml",
+          "C:\\Users\\GreatWall\\.codex\\worktrees\\layer-boundaries\\callring\\app\\build\\test-results\\testDebugUnitTest\\TEST-com.greatwall.callring.platform.ai.RecordingFolderViewTest.xml",
+          "C:\\Users\\GreatWall\\.codex\\worktrees\\layer-boundaries\\callring\\app\\build\\test-results\\testDebugUnitTest\\TEST-com.greatwall.callring.platform.ai.RecordingMetadataReadsTest.xml",
+          "C:\\Users\\GreatWall\\.codex\\worktrees\\layer-boundaries\\callring\\app\\build\\test-results\\testDebugUnitTest\\TEST-com.greatwall.callring.platform.ai.RecordingPublicationTest.xml",
+          "C:\\Users\\GreatWall\\.codex\\worktrees\\layer-boundaries\\callring\\app\\build\\test-results\\testDebugUnitTest\\TEST-com.greatwall.callring.platform.ai.RecordingScopedQueryTest.xml",
+          "C:\\Users\\GreatWall\\.codex\\worktrees\\layer-boundaries\\callring\\app\\build\\test-results\\testDebugUnitTest\\TEST-com.greatwall.callring.platform.ai.RecordingSnapshotSourceTest.xml",
+          "C:\\Users\\GreatWall\\.codex\\worktrees\\layer-boundaries\\callring\\app\\build\\test-results\\testDebugUnitTest\\TEST-com.greatwall.callring.platform.ai.ScopedDirectoryTest.xml",
+          "C:\\Users\\GreatWall\\.codex\\worktrees\\layer-boundaries\\callring\\app\\build\\test-results\\testDebugUnitTest\\TEST-com.greatwall.callring.platform.ai.SpecialSecretWireRegressionTest.xml",
+          "C:\\Users\\GreatWall\\.codex\\worktrees\\layer-boundaries\\callring\\app\\build\\test-results\\testDebugUnitTest\\TEST-com.greatwall.callring.platform.ai.ThinkingModeInjectionTest.xml",
+          "C:\\Users\\GreatWall\\.codex\\worktrees\\layer-boundaries\\callring\\app\\build\\test-results\\testDebugUnitTest\\TEST-com.greatwall.callring.platform.ai.ToolBusinessIntegrationTest.xml",
+          "C:\\Users\\GreatWall\\.codex\\worktrees\\layer-boundaries\\callring\\app\\build\\test-results\\testDebugUnitTest\\TEST-com.greatwall.callring.platform.calling.IncomingCallCoordinatorTest.xml",
+          "C:\\Users\\GreatWall\\.codex\\worktrees\\layer-boundaries\\callring\\app\\build\\test-results\\testDebugUnitTest\\TEST-com.greatwall.callring.platform.calling.ScreeningControllerTest.xml",
+          "C:\\Users\\GreatWall\\.codex\\worktrees\\layer-boundaries\\callring\\app\\build\\test-results\\testDebugUnitTest\\TEST-com.greatwall.callring.platform.update.AndroidAppUpdateTest.xml",
+          "C:\\Users\\GreatWall\\.codex\\worktrees\\layer-boundaries\\callring\\app\\build\\test-results\\testDebugUnitTest\\TEST-com.greatwall.callring.platform.update.GitHubReleaseClientTest.xml",
+          "C:\\Users\\GreatWall\\.codex\\worktrees\\layer-boundaries\\callring\\app\\build\\test-results\\testDebugUnitTest\\TEST-com.greatwall.callring.platform.update.UpdateContractTest.xml",
+          "C:\\Users\\GreatWall\\.codex\\worktrees\\layer-boundaries\\callring\\app\\build\\test-results\\testDebugUnitTest\\TEST-com.greatwall.callring.platform.update.UpdateThreadingRegressionTest.xml",
+          "C:\\Users\\GreatWall\\.codex\\worktrees\\layer-boundaries\\callring\\app\\build\\test-results\\testDebugUnitTest\\TEST-com.greatwall.callring.platform.update.UpdateVerificationTest.xml"
+        ],
+        "xml_sha256": "9903cbf38bcea7ef92f6490e5a61b4148929dc3fc0669e5856aeeb9cd731e755"
+      },
+      "lint": {
+        "ui": {
+          "report": "C:\\Users\\GreatWall\\.codex\\worktrees\\layer-boundaries\\callring\\ui\\build\\reports\\lint-results-debug.xml",
+          "sha256": "40875550437ca1523a09fc0f267cfe9a960053fdba3aa051b2178bd32253752e"
+        },
+        "app": {
+          "report": "C:\\Users\\GreatWall\\.codex\\worktrees\\layer-boundaries\\callring\\app\\build\\reports\\lint-results-debug.xml",
+          "sha256": "fa5c1431fae77980347896be5edfffdad8c1c4b3c55cd8d32b482dbcf8ef8ab3"
+        }
+      },
+      "apk_builds": {
+        ":ui:assembleDebug": "EXECUTED",
+        ":app:assembleDebug": "UP-TO-DATE",
+        ":app:assembleRelease": "EXECUTED",
+        ":app:assembleBackendQa": "EXECUTED",
+        ":ui:assembleDebugAndroidTest": "EXECUTED",
+        ":app:assembleDebugAndroidTest": "EXECUTED"
+      }
+    },
+    "tested_source_freeze": {
+      "base": "59309437f01764fa724d04f05b4927fbcc18f2e9",
+      "algorithm": "sorted POSIX path LF raw bytes LF; deleted raw DELETED",
+      "sha256": "ad4303c6ee7d1b202f4bda7153b23fb1130f8047af70539eeac47667512efd28",
+      "paths": [
+        {
+          "path": ".github/workflows/build.yml",
+          "sha256": "7b8d255adfaa0ae40460c2a2db146cc2d9baacdeefe77cd9f44481674020e47c",
+          "bytes": 2665
+        },
+        {
+          "path": ".github/workflows/release.yml",
+          "sha256": "f2767f273023635233831dab8ba6508f6f1c7c783bcdcb5f2723f421ca287bf1",
+          "bytes": 9922
+        },
+        {
+          "path": "tools/check_architecture.py",
+          "sha256": "6b23659ebab377277f43af1afc86e9c2375264162e248affa8799cbdf679cb14",
+          "bytes": 16092
+        },
+        {
+          "path": "tools/release/check_workflows.py",
+          "sha256": "9d5b7281e09ea838bed63548aa9131a471aa70c02b594304badf339ce4045eb3",
+          "bytes": 9879
+        },
+        {
+          "path": "tools/release/selftest.py",
+          "sha256": "c2fa4728ac365301de1aff8ab97a27269603e67442c9e4db08f8f5d16a346fab",
+          "bytes": 12824
+        },
+        {
+          "path": "tools/test_architecture.py",
+          "sha256": "6bc156fc5bade8c5cba0b25396e04ec036ceca309d9630c93f995755c8ba23a8",
+          "bytes": 23397
+        },
+        {
+          "path": "tools/test_verification.py",
+          "sha256": "829a15b430ab19c95f5359648edae10dd5df7ec41a0468f6e0699adb6b817779",
+          "bytes": 9994
+        },
+        {
+          "path": "tools/verify_backend.py",
+          "sha256": "3fa956d24695b262612e68ba599d52569eb7c81b5b7f25a0fd95961906688236",
+          "bytes": 3812
+        },
+        {
+          "path": "tools/verify_common.py",
+          "sha256": "6e2bf38d7bd2d8876c7218abc1c02e0da733cfa460dbf6858b12f94b0d829709",
+          "bytes": 8756
+        },
+        {
+          "path": "tools/verify_ui.py",
+          "sha256": "e3088263889173dc4fc7b3d58d459e97893b9d41b30e1662891c776931e2c883",
+          "bytes": 7457
+        },
+        {
+          "path": "ui/build.gradle",
+          "sha256": "ca2ac39481cf2926a3fa653294da06d0c18bff1b7a404f9d7342ab67df7affac",
+          "bytes": 3399
+        }
+      ]
+    }
+  },
+  "python_checks": {
+    "architecture": {
+      "tests": 48,
+      "exit_code": 0,
+      "scope": "original full gate, before review fix (48 tests)"
+    },
+    "backend_boundaries": {
+      "tests": 5,
+      "exit_code": 0
+    },
+    "verification_faults": {
+      "tests": 12,
+      "exit_code": 0
+    },
+    "guards_exit_codes": [
+      0,
+      0
+    ]
+  },
+  "tdd": {
+    "architecture_initial_red": {
+      "command": "python -m unittest discover -s tools -p test_architecture.py",
+      "exit_code": 1,
+      "failures": 18,
+      "evidence": "initial tool transcript; new helper/alias/ordinary-index/default-context cases"
+    },
+    "followup_red": {
+      "exit_code": 1,
+      "failures": 2,
+      "evidence": "tool transcript; bootstrap complete-context and typed legacy/dual-path cases"
+    },
+    "metadata_shape_red": {
+      "exit_code": 1,
+      "errors": 1,
+      "evidence": "tool transcript; malformed valid JSON shape AttributeError, replaced with explicit rejection"
+    },
+    "green_evidence": "full gate python-3.log / python-4.log / python-5.log"
+  },
+  "actual_classpath": {
+    "original_sha256": "ca2ac39481cf2926a3fa653294da06d0c18bff1b7a404f9d7342ab67df7affac",
+    "argv": [
+      "C:\\Users\\GreatWall\\.codex\\worktrees\\layer-boundaries\\callring\\gradlew.bat",
+      ":ui:checkDebugCompileClasspath",
+      "--console=plain"
+    ],
+    "injected_sha256": "b2a1b49377fc10bdc2e297c23335b486b65d3d0acae80855f363969bc284f863",
+    "red_exit": 1,
+    "restored_sha256": "ca2ac39481cf2926a3fa653294da06d0c18bff1b7a404f9d7342ab67df7affac",
+    "green_exit": 0,
+    "only_task": ":ui:checkDebugCompileClasspath",
+    "violation_full_gate_run": false,
+    "restoration_exact": true
+  },
+  "release_tooling": {
+    "command": [
+      "python",
+      "tools/release/selftest.py"
+    ],
+    "exit_code": 0,
+    "release_samples": 19,
+    "workflow_samples": 9,
+    "extra_gradle_runs": 0
+  },
+  "workflow_checker": {
+    "command": [
+      "python",
+      "tools/release/check_workflows.py"
+    ],
+    "exit_code": 0
+  },
+  "apks": [
+    {
+      "metadata": "app/build/outputs/apk/debug/output-metadata.json",
+      "applicationId": "com.greatwall.callring",
+      "apk": "app/build/outputs/apk/debug/app-debug.apk",
+      "bytes": 50581162,
+      "sha256": "dbfde26de7440973f58f5c19460a791f47340b497b2c686478f5aded2b560ca0",
+      "device": "not_run"
+    },
+    {
+      "metadata": "app/build/outputs/apk/release/output-metadata.json",
+      "applicationId": "com.greatwall.callring",
+      "apk": "app/build/outputs/apk/release/app-release.apk",
+      "bytes": 37686577,
+      "sha256": "aba8b83b51a66788b233f4a0b387157627eed35b1de0750fff841a77ce605409",
+      "device": "not_run"
+    },
+    {
+      "metadata": "app/build/outputs/apk/backendQa/output-metadata.json",
+      "applicationId": "com.greatwall.callring.backendqa",
+      "apk": "app/build/outputs/apk/backendQa/app-backendQa.apk",
+      "bytes": 49581778,
+      "sha256": "0e6b7eeebef910aabf9a876e707846476792ec7af459adea16a1fddf5d271d1b",
+      "device": "not_run"
+    },
+    {
+      "metadata": "ui/build/outputs/apk/androidTest/debug/output-metadata.json",
+      "applicationId": "com.greatwall.callring.ui.test",
+      "apk": "ui/build/outputs/apk/androidTest/debug/ui-debug-androidTest.apk",
+      "bytes": 49049605,
+      "sha256": "9ff0658c01f69ab815d48b75b0851085ec690fb4acbe1d714c765b01468724d6",
+      "device": "not_run"
+    },
+    {
+      "metadata": "app/build/outputs/apk/androidTest/debug/output-metadata.json",
+      "applicationId": "com.greatwall.callring.test",
+      "apk": "app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk",
+      "bytes": 5740,
+      "sha256": "c73c10deb129c663e539f371a0ba88910d4af22076079523d37e18af9c6dd5c1",
+      "device": "not_run"
+    }
+  ],
+  "additional_logs": {
+    "t14-classpath-red.log": {
+      "path": "C:\\Users\\GreatWall\\.codex\\worktrees\\layer-boundaries\\callring\\build\\qa\\layer-boundaries\\t14-classpath-red.log",
+      "sha256": "b53910e2beca9f2651bf1a8c66bc7fd9ad060a288b16ae643f7d55238d3b2750"
+    },
+    "t14-classpath-green.log": {
+      "path": "C:\\Users\\GreatWall\\.codex\\worktrees\\layer-boundaries\\callring\\build\\qa\\layer-boundaries\\t14-classpath-green.log",
+      "sha256": "8caf7558d42acf0016d2f7bdef416c5ea8c5e2689984a03b9049bcfa635366aa"
+    },
+    "t14-unified-console.log": {
+      "path": "C:\\Users\\GreatWall\\.codex\\worktrees\\layer-boundaries\\callring\\build\\qa\\layer-boundaries\\t14-unified-console.log",
+      "sha256": "2c8d972b37c1d7cffa4b88ba59241bec770177e7156d91c460022444ae044480"
+    },
+    "t14-release-selftest.log": {
+      "path": "C:\\Users\\GreatWall\\.codex\\worktrees\\layer-boundaries\\callring\\build\\qa\\layer-boundaries\\t14-release-selftest.log",
+      "sha256": "2d2a968d9ae7a983dd360db42c44e18b53c9f0cf537bce8d0e4c07c2987351d2"
+    },
+    "t14-workflows.log": {
+      "path": "C:\\Users\\GreatWall\\.codex\\worktrees\\layer-boundaries\\callring\\build\\qa\\layer-boundaries\\t14-workflows.log",
+      "sha256": "bc72e342898d333659089e6cda0133ba04e6481d1fa302a3e25693c532e75589"
+    },
+    "t14-review-ordinal-red.log": {
+      "path": "C:\\Users\\GreatWall\\.codex\\worktrees\\layer-boundaries\\callring\\build\\qa\\layer-boundaries\\t14-review-ordinal-red.log",
+      "sha256": "90d6494ae05650b917dabf9e39c2aa6789fbd68d83398b62b74ede8ec64a9cd5"
+    },
+    "t14-review-ordinal-green.log": {
+      "path": "C:\\Users\\GreatWall\\.codex\\worktrees\\layer-boundaries\\callring\\build\\qa\\layer-boundaries\\t14-review-ordinal-green.log",
+      "sha256": "938bdd3857552180c6be33df0888ebfd4cb9581c957e0f297d40153a6ad377da"
+    },
+    "t14-review-architecture.log": {
+      "path": "C:\\Users\\GreatWall\\.codex\\worktrees\\layer-boundaries\\callring\\build\\qa\\layer-boundaries\\t14-review-architecture.log",
+      "sha256": "8bffd7dee18fe8da405646338848960a13831fdc7b3150017321f3e0b5b34260"
+    },
+    "t14-review-default-red.log": {
+      "path": "C:\\Users\\GreatWall\\.codex\\worktrees\\layer-boundaries\\callring\\build\\qa\\layer-boundaries\\t14-review-default-red.log",
+      "sha256": "9a2d6d62b58d2de02aa1e45820640ea21ac2331812428f8d14ae283f97510be8"
+    },
+    "t14-review-default-green.log": {
+      "path": "C:\\Users\\GreatWall\\.codex\\worktrees\\layer-boundaries\\callring\\build\\qa\\layer-boundaries\\t14-review-default-green.log",
+      "sha256": "42f68647dd86e7dd3c02a106547b45dc92d704678afc06f0b733be5f1dcf7427"
+    }
+  },
+  "xml_aggregate_algorithm": "Common implementation: absolute WindowsPath string ordering via key=str; absolute path UTF-8 LF raw XML bytes LF. Independent established relative/WindowsPath aggregation is recorded separately.",
+  "sample_provenance": "Reuse T13b2a archived 43 safe samples including 2 historical SQL baselines. No sample re-copy. Business JVM tasks were UP-TO-DATE this run, so raw sample tests did not rerun; future execution may rewrite raw output.",
+  "production_source_count": {
+    "app": 92,
+    "backend": 140,
+    "contracts": 23,
+    "ui": 105,
+    "total": 360,
+    "changed_kt_java": []
+  },
+  "devices": {
+    "status": "not_run",
+    "adb_commands": [],
+    "serial": null,
+    "sim_idle_reboot_upgrade_download": "not_verified"
+  },
+  "scope_exclusions": [
+    "No Kotlin/Java changes",
+    "No business lifecycle fix",
+    "No contract snapshot/golden/version/signing changes",
+    "No stage/commit/push/adb"
+  ],
+  "review": {
+    "spec": "PASS /root/t14_spec_review",
+    "quality": "PASS /root/t14_quality_review",
+    "root": "Frozen paths, all 18 recorded logs and 5 APK bytes/SHA independently verified; prior root guard suite PASS. Full gate and later guard-only fixes are recorded separately.",
+    "pending_business_finding": "T15 accepted lifecycle P2 is outside T14 and must be fixed before final acceptance."
+  },
+  "after_review": {
+    "finding": "P2 explicit OperationDefinition.id/getId ordinal and Java metadata getters were not traced",
+    "changed_paths": [
+      "tools/check_architecture.py",
+      "tools/test_architecture.py"
+    ],
+    "red": {
+      "argv": [
+        "python",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "tools",
+        "-p",
+        "test_architecture.py"
+      ],
+      "exit_code": 1,
+      "failures": 11,
+      "log": "build/qa/layer-boundaries/t14-review-ordinal-red.log"
+    },
+    "green": {
+      "argv": [
+        "python",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "tools",
+        "-p",
+        "test_architecture.py"
+      ],
+      "exit_code": 0,
+      "tests": 49,
+      "log": "build/qa/layer-boundaries/t14-review-ordinal-green.log"
+    },
+    "architecture": {
+      "argv": [
+        "python",
+        "tools/check_architecture.py"
+      ],
+      "exit_code": 0,
+      "log": "build/qa/layer-boundaries/t14-review-architecture.log"
+    },
+    "gradle_reruns": 0,
+    "evidence_scope": "Full gate tested ad4303c6 bytes. Only the two guard/test files then changed; targeted architecture checks tested final freeze. No claim that original full gate tested final guard bytes.",
+    "ordinal_fix_freeze": {
+      "base": "59309437f01764fa724d04f05b4927fbcc18f2e9",
+      "algorithm": "sorted POSIX path LF raw bytes LF; deleted raw DELETED",
+      "sha256": "1e581ecd4eeb7cfc52ecf61c3e66de3981180ec7634083c9a447943ef664811e",
+      "paths": [
+        {
+          "path": ".github/workflows/build.yml",
+          "sha256": "7b8d255adfaa0ae40460c2a2db146cc2d9baacdeefe77cd9f44481674020e47c",
+          "bytes": 2665
+        },
+        {
+          "path": ".github/workflows/release.yml",
+          "sha256": "f2767f273023635233831dab8ba6508f6f1c7c783bcdcb5f2723f421ca287bf1",
+          "bytes": 9922
+        },
+        {
+          "path": "tools/check_architecture.py",
+          "sha256": "2e3945932b61bdb8947d350f17018bd35cd8489bc107e2b728eeeddc0efc9b72",
+          "bytes": 16898
+        },
+        {
+          "path": "tools/release/check_workflows.py",
+          "sha256": "9d5b7281e09ea838bed63548aa9131a471aa70c02b594304badf339ce4045eb3",
+          "bytes": 9879
+        },
+        {
+          "path": "tools/release/selftest.py",
+          "sha256": "c2fa4728ac365301de1aff8ab97a27269603e67442c9e4db08f8f5d16a346fab",
+          "bytes": 12824
+        },
+        {
+          "path": "tools/test_architecture.py",
+          "sha256": "5537748fdfc98133bd524d634b24038dbbac8278a44021145e99d0af9fa39abc",
+          "bytes": 25251
+        },
+        {
+          "path": "tools/test_verification.py",
+          "sha256": "829a15b430ab19c95f5359648edae10dd5df7ec41a0468f6e0699adb6b817779",
+          "bytes": 9994
+        },
+        {
+          "path": "tools/verify_backend.py",
+          "sha256": "3fa956d24695b262612e68ba599d52569eb7c81b5b7f25a0fd95961906688236",
+          "bytes": 3812
+        },
+        {
+          "path": "tools/verify_common.py",
+          "sha256": "6e2bf38d7bd2d8876c7218abc1c02e0da733cfa460dbf6858b12f94b0d829709",
+          "bytes": 8756
+        },
+        {
+          "path": "tools/verify_ui.py",
+          "sha256": "e3088263889173dc4fc7b3d58d459e97893b9d41b30e1662891c776931e2c883",
+          "bytes": 7457
+        },
+        {
+          "path": "ui/build.gradle",
+          "sha256": "ca2ac39481cf2926a3fa653294da06d0c18bff1b7a404f9d7342ab67df7affac",
+          "bytes": 3399
+        }
+      ]
+    },
+    "default_capability_followup": {
+      "names": [
+        "UnavailableCoreUnitOfWork",
+        "UnavailableQuietTransactions"
+      ],
+      "scope": "Exact removed production defaults only; test fakes and ordinary unavailable states allowed",
+      "red": {
+        "argv": [
+          "python",
+          "-m",
+          "unittest",
+          "discover",
+          "-s",
+          "tools",
+          "-p",
+          "test_architecture.py"
+        ],
+        "exit_code": 1,
+        "failures": 2,
+        "log": "build/qa/layer-boundaries/t14-review-default-red.log"
+      },
+      "green": {
+        "argv": [
+          "python",
+          "-m",
+          "unittest",
+          "discover",
+          "-s",
+          "tools",
+          "-p",
+          "test_architecture.py"
+        ],
+        "exit_code": 0,
+        "tests": 50,
+        "log": "build/qa/layer-boundaries/t14-review-default-green.log"
+      },
+      "architecture": {
+        "argv": [
+          "python",
+          "tools/check_architecture.py"
+        ],
+        "exit_code": 0,
+        "log": "build/qa/layer-boundaries/t14-review-architecture.log"
+      },
+      "gradle_reruns": 0
+    }
+  },
+  "independent_junit_aggregate": {
+    "backend": {
+      "format": "WindowsPath sorted, relative POSIX path LF raw XML bytes LF",
+      "files": 70,
+      "sha256": "29dfead6098e820f42f754bcf5804ba03caf7899d9e33eb0150784119cb21a00"
+    },
+    "ui": {
+      "format": "WindowsPath sorted, relative POSIX path LF raw XML bytes LF",
+      "files": 76,
+      "sha256": "f70fd5b7e634e758e83fb24a761a7fbe21959c56ac31fa8d86fe7b46bfa9110e"
+    },
+    "app": {
+      "format": "WindowsPath sorted, relative POSIX path LF raw XML bytes LF",
+      "files": 69,
+      "sha256": "fc456a0e10990d7e2b52bbd2ff9b67f4df319c7a08bcedc64654fb56ae750f12"
+    }
+  }
+}

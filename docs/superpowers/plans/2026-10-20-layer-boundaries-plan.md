@@ -282,10 +282,10 @@ T10b1已于86fdfcf双审完成。T10b2按真实事务/媒体依赖再拆为b2a�
 
 **修改：** `tools/check_backend_boundaries.py`、`tools/test_backend_boundaries.py`、`tools/check_architecture.py`、`tools/test_architecture.py`、`tools/verify_backend.py`、`tools/verify_ui.py`、`.github/workflows/build.yml` 及使用旧验证入口的 release workflow。
 
-- [ ] 硬检查 D1–D10、UI 编译类路径、domain 纯净、旧全量协议、数字操作分派、具体存储强转；测试 fixture 覆盖允许装配及禁止反向依赖的正负例。
-- [ ] 仅检查具体危险模式，避免误拒绝合法 sealed 类型匹配/JSON 转换；不能用 broad allowlist 放过整个 app/bootstrap。
-- [ ] contracts:test 和架构检查纳入统一命令及 CI；Windows 使用 gradlew.bat，CI 沿用实际 Gradle 入口，不新增不必要工具链。
-- [ ] CI 触发覆盖实际 codex/**/PR 使用方式；依赖变化在普通构建中即可发现，发布流程继续遵守现有签名和版本规则。
+- [x] 硬检查 D1–D10、UI 编译类路径、domain 纯净、旧全量协议、数字操作分派、具体存储强转；测试 fixture 覆盖允许装配及禁止反向依赖的正负例。
+- [x] 仅检查具体危险模式，避免误拒绝合法 sealed 类型匹配/JSON 转换；不能用 broad allowlist 放过整个 app/bootstrap。
+- [x] contracts:test 和架构检查纳入统一命令及 CI；Windows 使用 gradlew.bat，CI 沿用实际 Gradle 入口，不新增不必要工具链。
+- [x] CI 触发覆盖实际 codex/**/PR 使用方式；依赖变化在普通构建中即可发现，发布流程继续遵守现有签名和版本规则。
 
 **门：** 同类耦合重新引入会在 CI 中失败；旧工具入口可运行且包含新模块验证。
 

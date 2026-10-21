@@ -99,15 +99,17 @@
 
 版本只在根 `version.properties`（`versionCode`/`versionName`）维护：根 `build.gradle` 校验后注入 `app/build.gradle`，发布工具读同一文件，标签统一为 `v<versionName>`（当前 `0.3.8` / `versionCode 11`）。改版本请用 `python tools/release/version_tool.py set --code N --name X.Y.Z --published-max M`，脚本会拒绝 `0.3`、`v0.3.0`、非递增 versionCode 等输入。
 
-统一验证入口（`backend` 是 `java-library`，测试任务为 `:backend:test`）：
+统一验证入口（无设备参数时只执行构建与静态/JVM 检查）：
 
 ```powershell
 python tools/verify_backend.py
+# 使用同一完整门，设备选项保留 UI 专用测试包与 app-ops 恢复：
 python tools/verify_ui.py
-.\gradlew.bat :contracts:test :backend:test :ui:testDebugUnitTest :app:testDebugUnitTest :app:assembleDebug :ui:lintDebug :app:lintDebug
 ```
 
-Debug 构建生成 `app/build/outputs/apk/debug/app-debug.apk`；Release 构建生成 `app/build/outputs/apk/release/app-release.apk`。UI 验证另运行 `:ui:assembleDebugAndroidTest`，日志和带计数的结果写入忽略目录 `ui/build/qa/`。
+两个入口共享 `tools/verify_common.py` 的唯一任务表：两架构守卫及各自 unittest、验证工具故障 unittest、`:contracts:test`、backend/UI/app JVM、解析后 UI debugCompileClasspath、UI/app Debug、app Release/backendQa、UI/app AndroidTest APK 和双 lint。contracts 无测试源码时单列 NO-SOURCE；三个业务模块必须存在已执行且无失败的测试。本轮命令和精确任务行确认后才读取匹配的执行/缓存 XML。
+
+Windows 保留工作树路径并调用 `gradlew.bat`；Linux/CI 使用 PATH 中已安装的 Gradle 8.13。每次启动即覆盖本轮 summary，失败和超时同样写命令、退出码、设备请求与清理结果。backend 入口证据在 `app/build/qa/backend-refactor/`，UI 入口在 `ui/build/qa/`。Debug/Release APK 分别在 `app/build/outputs/apk/debug/app-debug.apk` 与 `app/build/outputs/apk/release/app-release.apk`。
 
 签名：`app/build.gradle` 的 `signingConfigs.release` 优先读取被 gitignore 的根 `signing.properties`（`storeFile`/`storePassword`/`keyAlias`/`keyPassword`），文件缺失时回退本机 Android debug keystore。**当前发行身份是本机 debug 证书**（证书 SHA-256 `5a901cad…24b4`）；v0.2 正式包的发行密钥已丢失，任何构建都无法覆盖 v0.2 安装。覆盖升级要求同包名、同签名且 versionCode 递增。`backendQa` 变体沿用 debug 签名并带 `.backendqa` / `-backend-qa` 后缀，不得作为正式包发布。
 

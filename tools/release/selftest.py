@@ -68,6 +68,30 @@ def load_json(path: Path) -> dict:
     return json.loads(path.read_text(encoding="utf-8"))
 
 
+def workflow_samples():
+    """Exercise real workflow/gate sources, including comment-only decoys."""
+    import check_workflows as checker
+    base = ROOT / '.github/workflows/build.yml'
+    good = base.read_text(encoding='utf-8')
+    common = (ROOT/'tools/verify_common.py').read_text(encoding='utf-8')
+    backend = (ROOT/'tools/verify_backend.py').read_text(encoding='utf-8')
+    cases = [
+        ('valid_gate', good, common, backend, True),
+        ('missing_gate', good.replace('python3 tools/verify_backend.py', '# python3 tools/verify_backend.py'), common, backend, False),
+        ('missing_codex', good.replace('      - "codex/**"', '# codex/**'), common, backend, False),
+        ('missing_pr', good.replace('  pull_request:', '# pull_request:'), common, backend, False),
+    ]
+    for task in (':contracts:test', ':app:assembleRelease', ':ui:checkDebugCompileClasspath'):
+        cases.append(('missing_' + task, good, common.replace(repr(task) + ',', ''), backend, False))
+    cases.append(('entry_no_gate', good, common, backend.replace('common.execute_gate(SESSION)', 'pass # common.execute_gate(SESSION)'), False))
+    cases.append(('missing_python_check', good, common.replace("('tools/check_architecture.py',),", ''), backend, False))
+    for name, workflow, shared, entry, expected in cases:
+        problems = checker.gate_problems('build.yml', workflow, shared, entry)
+        if bool(problems) == expected:
+            raise RuntimeError(f'Workflow sample {name} behaved incorrectly: {problems}')
+        print(f'[OK] workflow sample: {name}')
+
+
 def main(argv=None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--release-apk", default=str(DEFAULT_RELEASE_APK),
@@ -79,6 +103,8 @@ def main(argv=None) -> int:
                         help="published versionCode ceiling (default: current versionCode - 1)")
     parser.add_argument("--keep", action="store_true", help="keep the temporary fixture directories")
     args = parser.parse_args(argv)
+
+    workflow_samples()
 
     release_apk = Path(args.release_apk)
     debug_apk = Path(args.debug_apk)

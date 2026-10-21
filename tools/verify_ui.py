@@ -2,91 +2,31 @@
 from pathlib import Path
 import argparse
 import json
-import os
 import re
-import shutil
-import subprocess
 import sys
 import time
 import xml.etree.ElementTree as ET
+import verify_common as common
 
-ROOT = Path(__file__).resolve().parents[1]
+ROOT = Path(__file__).absolute().parents[1]
 ARTIFACTS = ROOT / "ui/build/qa"
 TEST_PACKAGE = "com.greatwall.callring.ui.test"
 RUNNER = "com.greatwall.callring.ui.testing.UiTestRunner"
-DEVICE_TIMEOUT = 180
+DEVICE_TIMEOUT = common.DEVICE_TIMEOUT
+SESSION = None
 
 
 def run(arguments, log_name, timeout=DEVICE_TIMEOUT):
-    try:
-        result = subprocess.run(arguments, cwd=ROOT, stdout=subprocess.PIPE,
-                                stderr=subprocess.STDOUT, encoding="utf-8", errors="replace",
-                                timeout=timeout)
-    except subprocess.TimeoutExpired as error:
-        output = error.stdout or b""
-        if isinstance(output, bytes):
-            output = output.decode("utf-8", errors="replace")
-        (ARTIFACTS / log_name).write_text(output + "\nCOMMAND TIMED OUT\n", encoding="utf-8")
-        raise RuntimeError(f"Command timed out after {timeout}s; see {ARTIFACTS / log_name}") from error
-    (ARTIFACTS / log_name).write_text(result.stdout, encoding="utf-8")
-    if result.returncode:
-        raise RuntimeError(f"Command failed ({result.returncode}); see {ARTIFACTS / log_name}")
-    return result.stdout
-
-
-def test_counts(folder):
-    files = list(folder.glob("TEST-*.xml"))
-    if not files:
-        raise RuntimeError(f"No test results in {folder}")
-    counts = {name: sum(int(ET.parse(path).getroot().get(name, 0)) for path in files)
-              for name in ("tests", "failures", "errors", "skipped")}
-    if not counts["tests"] or counts["failures"] or counts["errors"]:
-        raise RuntimeError(f"Missing or failing tests: {folder}: {counts}")
-    return counts
-
-
-def sdk_roots():
-    return [Path(value) for name in ("ANDROID_HOME", "ANDROID_SDK_ROOT")
-            if (value := os.environ.get(name))]
-
-
-def find_android_tool(name):
-    executable = name + (".exe" if os.name == "nt" else "")
-    if found := shutil.which(executable):
-        return found
-    for sdk in sdk_roots():
-        candidates = ([sdk / "platform-tools" / executable] if name == "adb" else
-                      sorted((sdk / "build-tools").glob(f"*/{executable}"), reverse=True))
-        for candidate in candidates:
-            if candidate.is_file():
-                return str(candidate)
-    raise RuntimeError(f"Cannot find {name}; add it to PATH or set ANDROID_HOME/ANDROID_SDK_ROOT")
+    return SESSION.run(arguments, log_name, timeout)
 
 
 def verified_apk():
-    metadata_path = ROOT / "ui/build/outputs/apk/androidTest/debug/output-metadata.json"
-    metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
-    elements = metadata.get("elements", [])
-    if metadata.get("applicationId") != TEST_PACKAGE or len(elements) != 1:
-        raise RuntimeError("Refusing APK metadata outside the single isolated UI test package")
-    apk = (metadata_path.parent / elements[0]["outputFile"]).resolve()
-    if apk.parent != metadata_path.parent.resolve() or not apk.is_file():
-        raise RuntimeError("Refusing missing APK or output path outside the UI test output directory")
-    badging = run([find_android_tool("aapt"), "dump", "badging", str(apk)], "apk-badging.log")
+    apk = common.single_apk(ROOT / "ui/build/outputs/apk/androidTest/debug/output-metadata.json", TEST_PACKAGE)
+    badging = run([common.find_android_tool("aapt"), "dump", "badging", str(apk)], "apk-badging.log", timeout=30)
     package = re.search(r"^package: name='([^']+)'", badging, re.MULTILINE)
     if not package or package.group(1) != TEST_PACKAGE:
         raise RuntimeError("Refusing APK whose actual package differs from the isolated UI test package")
     return apk
-
-
-def instrumentation_count(output):
-    if re.search(r"FAILURES|shortMsg\s*=|INSTRUMENTATION_(?:FAILED|ABORTED)|"
-                 r"INSTRUMENTATION_RESULT:\s*(?:Error|error)|Process crashed", output, re.IGNORECASE):
-        raise RuntimeError("UI instrumentation reported failure; see device-tests.log")
-    match = re.search(r"^OK\s*\((\d+)\s+tests?\)", output, re.MULTILINE)
-    if not match or int(match.group(1)) == 0:
-        raise RuntimeError("UI instrumentation did not report OK (N tests); see device-tests.log")
-    return int(match.group(1))
 
 
 def appop_mode(output, operation):
@@ -112,7 +52,7 @@ def check_unlocked(adb, suffix):
 
 
 def device_checks(serial, summary):
-    adb = [find_android_tool("adb"), "-s", serial]
+    adb = [common.find_android_tool("adb"), "-s", serial]
     if run([*adb, "get-state"], "device-state.log", timeout=30).strip() != "device":
         raise RuntimeError(f"Device {serial} is not online")
     check_unlocked(adb, "before-install")
@@ -157,7 +97,7 @@ def device_checks(serial, summary):
                 raise RuntimeError(f"Device did not grant test-only {operation}")
         output = run([*adb, "shell", "am", "instrument", "-w", "-e", "package",
                       "com.greatwall.callring.ui", f"{TEST_PACKAGE}/{RUNNER}"], "device-tests.log")
-        summary["device"] = {"serial": serial, "package": TEST_PACKAGE, "tests": instrumentation_count(output)}
+        summary["device"] = {"serial": serial, "package": TEST_PACKAGE, "tests": common.instrumentation_count(output)}
     finally:
         # Also stops remote instrumentation if adb timed out; never stop another package.
         try:
@@ -179,32 +119,30 @@ def device_checks(serial, summary):
             raise RuntimeError("UI test cleanup incomplete: " + "; ".join(cleanup_errors))
 
 
-def main():
+def main(argv=None):
+    global SESSION
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--device", metavar="ADB_SERIAL", help="Run on an awake, manually unlocked device")
-    args = parser.parse_args()
-    ARTIFACTS.mkdir(parents=True, exist_ok=True)
-    summary = {"status": "running", "device": "not_run"}
+    args = parser.parse_args(argv)
+    summary = common.new_summary(ROOT, args.device)
+    SESSION = common.VerificationRun(ROOT, ARTIFACTS, summary)
     try:
-        gradle = str(ROOT / ("gradlew.bat" if os.name == "nt" else "gradlew"))
-        run([gradle, ":ui:testDebugUnitTest", ":ui:assembleDebugAndroidTest", ":ui:lintDebug",
-             "--console=plain"], "build.log", timeout=1800)
-        summary["ui"] = test_counts(ROOT / "ui/build/test-results/testDebugUnitTest")
+        common.execute_gate(SESSION)
         if args.device:
             device_checks(args.device, summary)
         summary["status"] = "passed"
-    except (OSError, RuntimeError, ValueError, KeyError, ET.ParseError) as error:
+    except (OSError, RuntimeError, ValueError, KeyError, TypeError, ET.ParseError) as error:
         summary["status"] = "failed"
         summary["error"] = str(error)
         raise
     finally:
-        (ARTIFACTS / "summary.json").write_text(json.dumps(summary, indent=2, ensure_ascii=False), encoding="utf-8")
+        SESSION.write_summary()
         print(json.dumps(summary, indent=2, ensure_ascii=False))
 
 
 if __name__ == "__main__":
     try:
         main()
-    except (OSError, RuntimeError, ValueError, KeyError, ET.ParseError) as error:
+    except (OSError, RuntimeError, ValueError, KeyError, TypeError, ET.ParseError) as error:
         print(str(error), file=sys.stderr)
         sys.exit(1)

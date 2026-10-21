@@ -88,3 +88,9 @@ ThemeRegistry/DefaultAppearance/偏好解析归唯一app/bridge；designsystem�
 六根组件原工作流主体已删除，唯一实现分别为 RuntimeEventController、CalendarSyncJobController、CallLogSyncJobController、RecordingJobController、CaptureServiceController、PlaybackServiceController。原类只保留实际Android生命周期、Intent/Job/通知/媒体/权限/调度资源接线和稳定注册身份，没有旧入口业务forwarder、typealias或第二工作流。controller不收Graph、Context、Service或完整业务API；既有gates、JobRuns与CalendarRefreshPolicy继续唯一复用。
 
 T13代码和最终文件归属闭合，PROJECT/README已同步；实际验证与源码冻结见[t13b2c实施证据](t13b2c-implementation.md)。这不关闭T14统一CI或T15设备/最终验收。沿用[T13b2a归档43安全样本](t13b2a-implementation.md)（含2历史SQL基线），本片无额外归档；当前完整门执行原数据集测试。
+
+## T14 守卫与工具入口闭包候选
+
+新文件/改名 helper 的具名 operation metadata 数字选择、局部别名与 Java switch，实际 SQLite 资源 import/typealias 强转，以及旧 Context/全状态协议/资源 legacy/default capability/双 publisher 和 loader 的具体模式纳入守卫；正常分页、非操作 enum、显式目录排序/校验/导出、JSON/sealed/Keystore/自有 token 与直接持有具体资源的白盒 SQL 保留。静态规则不证明任意跨函数混淆。
+
+旧 verify_backend/verify_ui 内各自维护的 Gradle 任务表、JVM/XML 汇总和 subprocess 路径已替换为唯一 verify_common；没有新旧入口分叉。原两个 CLI 继续可运行且执行全部新模块门，UI 专用设备/解锁/app-ops 恢复保留；backendQa 增单 APK/真实包/在线/安装/runner target/正数测试/限时/专包 finally 清理。两 CI 使用同一无设备入口，签名和版本约束保留。当前为冻结候选，完整门与双审以 t14-implementation.md / t14-verification-summary.json 及负责人记录为准；不关闭 T15。

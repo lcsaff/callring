@@ -154,8 +154,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          gradle :backend:test :ui:testDebugUnitTest :app:testDebugUnitTest \
-            :app:assembleRelease :app:lintDebug --console=plain
+          python3 tools/verify_backend.py
 
       - name: Stage release artifacts and generate metadata
         shell: bash
