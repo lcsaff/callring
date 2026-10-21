@@ -3,7 +3,7 @@ package com.greatwall.callring.platform.calling
 import android.Manifest
 import android.content.Context
 import android.content.pm.PackageManager
-import com.greatwall.callring.application.ports.SyncScheduler
+import com.greatwall.callring.application.ports.platform.SyncScheduler
 import java.time.Clock
 
 /** Recovery scheduler binder calls share only the shutdown gate, never the executor drain. */

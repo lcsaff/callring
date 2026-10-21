@@ -54,7 +54,7 @@ class CompleteSnapshotAssemblyTest {
         }
     }
 
-    @Test fun realStoresRetainLegacySnapshotButLazyChatStartsWithDiscoveryAndNoBusinessReads() = runBlocking {
+    @Test fun realStoresRetainCompleteSnapshotButLazyChatStartsWithDiscoveryAndNoBusinessReads() = runBlocking {
         val context = RuntimeEnvironment.getApplication()
         val configuration = BackendConfiguration(AppearanceSettings(ThemeSelection.PRESET, "default", null, ColorMode.FOLLOW_SYSTEM), databaseName = "small_snapshot.db", ringPreferencesName = "small_ring", widgetPreferencesName = "small_widgets", appearancePreferencesName = "small_appearance")
         val notifications = object : UiNotificationEntryPoints {

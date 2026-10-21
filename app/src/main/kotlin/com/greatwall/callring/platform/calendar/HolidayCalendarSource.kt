@@ -3,7 +3,7 @@ package com.greatwall.callring.platform.calendar
 import com.greatwall.callring.data.codec.StrictJson
 
 import com.greatwall.callring.domain.model.CalendarYear
-import com.greatwall.callring.application.ports.CalendarSource
+import com.greatwall.callring.application.ports.platform.CalendarSource
 import com.greatwall.callring.domain.model.CalendarImport
 import com.greatwall.callring.data.codec.WorkConfigCodec
 import java.io.IOException

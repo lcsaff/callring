@@ -1,12 +1,14 @@
 package com.greatwall.callring.data.preferences
 
-import com.greatwall.callring.application.ports.query.SourceRow
+import com.greatwall.callring.application.ports.store.PreferenceStore
+
+
 
 import android.content.SharedPreferences
 import com.greatwall.callring.contracts.common.*
 import com.greatwall.callring.contracts.settings.*
 import com.greatwall.callring.contracts.widget.*
-import com.greatwall.callring.contracts.ai.*
+
 import com.greatwall.callring.application.ports.*
 
 internal fun SharedPreferences.Editor.commitOrThrow() {
@@ -53,9 +55,9 @@ class AndroidPreferences(
     private val widgets: SharedPreferences,
     private val defaultAppearance: AppearanceSettings,
 ) : PreferenceStore {
-    fun scopedBindingRows():Sequence<com.greatwall.callring.application.ports.query.SourceRow> = widgets.all.entries.asSequence().filter{it.key.startsWith("number_")}.map{entry->
+    fun scopedBindings():Sequence<WidgetBinding> = widgets.all.entries.asSequence().filter{it.key.startsWith("number_")}.map{entry->
         val id=entry.key.removePrefix("number_").toInt()
-        com.greatwall.callring.application.ports.query.SourceRow("binding:$id",aiObject("kind" to aiString("stored_binding"),"widgetId" to aiNumber(id.toLong()),"number" to aiString(entry.value as String)))
+        WidgetBinding(id, entry.value as String)
     }
     @Synchronized
     override fun getAppearance(): AppearanceSettings {
@@ -105,7 +107,7 @@ class AndroidPreferences(
 
     @Synchronized override fun bindingsForNumber(number: String): List<WidgetBinding> = widgets.all.entries
         .asSequence().filter { it.key.startsWith("number_") }
-        .filter { com.greatwall.callring.application.sameRecordingNumber(it.value as? String ?: throw IllegalStateException("snapshot.binding_invalid"), number) }
+        .filter { com.greatwall.callring.domain.model.sameRecordingNumber(it.value as? String ?: throw IllegalStateException("snapshot.binding_invalid"), number) }
         .map { WidgetBinding(it.key.removePrefix("number_").toInt(), it.value as String) }.sortedBy { it.widgetId }.toList()
 
     @Synchronized override fun listBindings(): List<WidgetBinding> = widgets.all.entries.filter { it.key.startsWith("number_") }.map {

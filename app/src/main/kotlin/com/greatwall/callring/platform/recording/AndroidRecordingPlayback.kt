@@ -4,10 +4,10 @@ import com.greatwall.callring.application.ports.recording.PreparedRecordingPlayb
 import com.greatwall.callring.application.ports.recording.RecordingPlayback
 
 import android.media.MediaPlayer
-import com.greatwall.callring.application.AudioReference
+import com.greatwall.callring.application.ports.recording.AudioReference
 import com.greatwall.callring.application.recording.*
 import com.greatwall.callring.contracts.runtime.*
-import com.greatwall.callring.contracts.ai.*
+import com.greatwall.callring.application.ports.recording.RecordingPlaybackObservation
 import java.io.File
 import java.io.IOException
 
@@ -46,10 +46,9 @@ class AndroidRecordingPlayback(private val directory: File, private val finished
         PlaybackStatus(if (player == null) PlaybackMode.NONE else PlaybackMode.PREVIEW,
             if (player?.isPlaying == true) PlaybackState.PLAYING else PlaybackState.IDLE)
     }
-    override fun snapshot(): AiJson.Obj = synchronized(lock) {
-        aiObject("mode" to aiString(if (player == null) "NONE" else "PREVIEW"),
-            "state" to aiString(if (player?.isPlaying == true) "PLAYING" else "IDLE"),
-            "callId" to (callId?.let(::aiNumber) ?: AiJson.Null))
+    override fun observation(): RecordingPlaybackObservation = synchronized(lock) {
+        RecordingPlaybackObservation(PlaybackStatus(if (player == null) PlaybackMode.NONE else PlaybackMode.PREVIEW,
+            if (player?.isPlaying == true) PlaybackState.PLAYING else PlaybackState.IDLE), callId)
     }
     override fun close() { stop() }
 }

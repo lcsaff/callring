@@ -1,5 +1,9 @@
 package com.greatwall.callring
 
+import com.greatwall.callring.application.ports.platform.AudioController
+import com.greatwall.callring.application.ports.platform.PreparedRingtoneImport
+import com.greatwall.callring.application.ports.platform.SyncScheduler
+
 import com.greatwall.callring.application.ports.store.WidgetBindingStore
 
 import com.greatwall.callring.application.coordination.BusinessRevisionCoordinator
@@ -30,7 +34,7 @@ class SmallServiceCapabilitiesTest {
         var fail = false
         var installedReads = 0
         val store = object : WidgetBindingStore {
-            override fun bindingsForNumber(number: String) = listBindings().filter { com.greatwall.callring.application.sameRecordingNumber(it.number, number) }
+            override fun bindingsForNumber(number: String) = listBindings().filter { com.greatwall.callring.domain.model.sameRecordingNumber(it.number, number) }
             override fun listBindings() = rows.values.toList()
             override fun getBinding(widgetId: Int) = rows[widgetId]
             override fun saveBinding(binding: WidgetBinding) {

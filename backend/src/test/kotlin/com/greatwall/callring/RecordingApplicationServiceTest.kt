@@ -1,5 +1,12 @@
 package com.greatwall.callring
 
+import com.greatwall.callring.application.ports.recording.AiClient
+import com.greatwall.callring.application.ports.recording.AudioReference
+import com.greatwall.callring.application.ports.recording.NumberRecordingMetadata
+import com.greatwall.callring.application.ports.recording.RecordingArchiveMetadata
+import com.greatwall.callring.application.ports.recording.RecordingCandidate
+import com.greatwall.callring.domain.calling.RecordingCall
+
 import com.greatwall.callring.application.coordination.BusinessRevisionCoordinator
 import com.greatwall.callring.application.mapping.requiredValue
 import com.greatwall.callring.application.ports.recording.PreparedRecordingAudio
@@ -245,7 +252,7 @@ class RecordingApplicationServiceTest {
         override fun activate(prepared: PreparedRecordingPlayback, callId: Long) { effects += "start"; if (failStart) throw IOException("forced"); playing = true }
         override fun stop(): Boolean { if (!playing) return false; effects += "stop"; playing = false; return true }
         override fun status() = PlaybackStatus(PlaybackMode.NONE, PlaybackState.IDLE)
-        override fun snapshot() = aiObject()
+        override fun observation() = com.greatwall.callring.application.ports.recording.RecordingPlaybackObservation(status(), null)
         override fun authorize(document: DocumentRef) = Unit
         override fun list(folder: String): List<RecordingFile> { if (failDirectory) throw SecurityException(); return directoryFiles }
         override fun inspect(folder: String, document: DocumentRef): RecordingFile? = null

@@ -6,8 +6,8 @@ import com.greatwall.callring.platform.runtime.UiNotificationEntryPoints
 
 import android.content.Context
 import com.greatwall.callring.application.CallringBackend
-import com.greatwall.callring.application.IncomingRecordingSession
-import com.greatwall.callring.application.findRecordingCall
+import com.greatwall.callring.application.recording.IncomingRecordingSession
+import com.greatwall.callring.application.recording.findRecordingCall
 import com.greatwall.callring.application.conversation.query.QueryService
 import com.greatwall.callring.contracts.CallringUiApi
 import com.greatwall.callring.contracts.callers.IncomingCallUiSink

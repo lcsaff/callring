@@ -212,3 +212,21 @@ private fun currentSchedule(s: FullSnapshotFacts) =
             }
             .thenBy { it.configVersion },
     ) ?: defaultWorkSchedule()
+
+fun snapshotSourceCount(id: String, data: AiJson): Long {
+    fun rows(key: String): Long =
+        when (val child = (data as? AiJson.Obj)?.fields?.get(key)) {
+            is AiJson.Arr -> child.values.size.toLong()
+            is AiJson.Obj -> child.fields.size.toLong()
+            else -> 0L
+        }
+    return when (id) {
+        "D02" -> rows("options")
+        "D05" -> rows("intervals") + rows("numbers")
+        "D06" -> rows("history")
+        "D07" -> rows("years") + rows("holidays") + rows("makeupDates")
+        "D09" -> rows("entries")
+        "D15" -> rows("events") + rows("links") + rows("deleted")
+        else -> (data as? AiJson.Arr)?.values?.size?.toLong() ?: 1L
+    }
+}

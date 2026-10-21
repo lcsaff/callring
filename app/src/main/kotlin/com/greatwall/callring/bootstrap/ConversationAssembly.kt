@@ -28,18 +28,10 @@ internal class ConversationAssembly(
             { core.preferenceStore }, { core.diagnostics },
             com.greatwall.callring.platform.recording.SystemRecordingSource(application.contentResolver),
             coordinator, resources, core.playbackState::snapshot, ui::installedWidgets,
-            ::jobStatus, configuration.clock)
+            com.greatwall.callring.platform.scheduler.AndroidJobObservation(application)::observe, configuration.clock)
     }
     val queries: QueryService get() = queriesDelegate.value
     fun sourceQueries() = if (queriesDelegate.isInitialized()) queriesDelegate.value.sourceQueries.get() else 0L
-    private fun jobStatus(): AiJson.Obj {
-        val scheduler = application.getSystemService(android.app.job.JobScheduler::class.java)
-        return if (scheduler == null) aiObject("available" to aiBool(false))
-        else aiObject("available" to aiBool(true), "pending" to AiJson.Arr(
-            scheduler.allPendingJobs.filter { it.service.packageName == application.packageName }.map {
-                aiObject("service" to aiString(it.service.className), "jobId" to aiNumber(it.id.toLong()))
-            }))
-    }
     private val snapshotsDelegate = lazy {
         ensureOpen()
         completeSnapshotApi(core.backend, core.store, recordings(), core.diagnostics,

@@ -1,10 +1,12 @@
 package com.greatwall.callring.application.ports.recording
 
+import com.greatwall.callring.domain.calling.RecordingCall
+
 import com.greatwall.callring.application.*
 import com.greatwall.callring.contracts.common.DocumentRef
 import com.greatwall.callring.contracts.recording.*
 import com.greatwall.callring.contracts.runtime.PlaybackStatus
-import com.greatwall.callring.contracts.ai.AiJson
+
 
 interface RecordingIdentityReads {
     fun findRecording(id: Long): RecordingCall?
@@ -27,12 +29,14 @@ interface RecordingAudioFiles {
     fun deleteOwned(reference: AudioReference)
 }
 interface PreparedRecordingPlayback : AutoCloseable
+data class RecordingPlaybackObservation(val status: PlaybackStatus, val callId: Long?)
+
 interface RecordingPlayback {
     fun prepare(reference: AudioReference): PreparedRecordingPlayback
     fun activate(prepared: PreparedRecordingPlayback, callId: Long)
     fun stop(): Boolean
     fun status(): PlaybackStatus
-    fun snapshot(): AiJson.Obj
+    fun observation(): RecordingPlaybackObservation
 }
 interface RecordingDirectory {
     fun authorize(document: DocumentRef)

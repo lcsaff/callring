@@ -16,7 +16,7 @@ import android.provider.Settings
 import android.telephony.TelephonyManager
 import com.greatwall.callring.contracts.runtime.*
 import com.greatwall.callring.contracts.widget.*
-import com.greatwall.callring.application.ports.RuntimeProbe
+import com.greatwall.callring.application.ports.platform.RuntimeProbe
 import java.time.Clock
 
 class AndroidRuntimeProbe(

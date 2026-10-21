@@ -1,8 +1,8 @@
 package com.greatwall.callring.platform.ai
 
 import com.greatwall.callring.domain.ai.ThinkingContract
-import com.greatwall.callring.application.AiClient
-import com.greatwall.callring.application.AiFailure
+import com.greatwall.callring.application.ports.recording.AiClient
+import com.greatwall.callring.application.ports.recording.AiFailure
 import com.greatwall.callring.contracts.recording.*
 import com.greatwall.callring.contracts.ai.*
 import com.greatwall.callring.application.recording.model.*
@@ -44,7 +44,7 @@ class CompatibleAiClient(
         }
     }
 
-    override fun transcribe(connection: AiConnection, reference: com.greatwall.callring.application.AudioReference): String = safe {
+    override fun transcribe(connection: AiConnection, reference: com.greatwall.callring.application.ports.recording.AudioReference): String = safe {
         val audio = File(reference.location)
         validate(connection)
         if (connection.protocol != AiProtocol.OPENAI) throw AiFailure("ai.transcription_requires_openai")
@@ -171,7 +171,7 @@ class CompatibleAiClient(
         checkCancelled()
         if (transcription) {
             val provider = testAudio ?: throw AiFailure("ai.test_audio_unavailable")
-            safe { transcribe(connection, com.greatwall.callring.application.AudioReference(provider().absolutePath)) }
+            safe { transcribe(connection, com.greatwall.callring.application.ports.recording.AudioReference(provider().absolutePath)) }
         } else {
             analyze(connection, "This is a connection test. A fictional caller asks to schedule a meeting tomorrow. No personal information is included.", thinkingMode)
         }

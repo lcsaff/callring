@@ -1,5 +1,7 @@
 package com.greatwall.callring
 
+import com.greatwall.callring.application.ports.recording.NumberRecordingMetadata
+
 import com.greatwall.callring.application.coordination.BusinessRevisionCoordinator
 import com.greatwall.callring.application.mapping.requiredValue
 

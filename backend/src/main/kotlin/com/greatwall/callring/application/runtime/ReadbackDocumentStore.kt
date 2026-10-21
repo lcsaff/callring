@@ -1,7 +1,7 @@
 package com.greatwall.callring.application.runtime
 
 import com.greatwall.callring.contracts.common.DocumentRef
-import com.greatwall.callring.application.ports.DocumentStore
+import com.greatwall.callring.application.ports.platform.DocumentStore
 import java.io.OutputStream
 import java.security.MessageDigest
 import java.util.IdentityHashMap

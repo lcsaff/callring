@@ -12,7 +12,7 @@ import android.content.pm.PackageManager
 import android.media.MediaRecorder
 import android.os.IBinder
 import com.greatwall.callring.bootstrap.BackendProvider
-import com.greatwall.callring.application.RecordingCall
+import com.greatwall.callring.domain.calling.RecordingCall
 import java.io.File
 import java.util.UUID
 import java.util.concurrent.Executors
@@ -81,7 +81,7 @@ class CallCaptureService : Service() {
                 if (audio != null && candidate != null) {
                     val runtime = BackendProvider.from(this).backendGraph.recordings
                     try {
-                        if (valid) runtime.service.attachCapture(candidate, com.greatwall.callring.application.AudioReference(audio.absolutePath))
+                        if (valid) runtime.service.attachCapture(candidate, com.greatwall.callring.application.ports.recording.AudioReference(audio.absolutePath))
                         else { audio.delete(); runtime.service.captureFailure(candidate, "recording.capture_restricted") }
                     } catch (_: Exception) { audio.delete(); runtime.service.captureFailure(candidate, "recording.capture_restricted") }
                 }

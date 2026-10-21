@@ -1,6 +1,6 @@
 package com.greatwall.callring.platform.ai
 
-import com.greatwall.callring.application.AiFailure
+import com.greatwall.callring.application.ports.recording.AiFailure
 import com.greatwall.callring.contracts.ai.*
 import com.greatwall.callring.application.recording.model.*
 import org.json.JSONObject
@@ -59,7 +59,7 @@ class CompatibleAiClientTest {
         val file = File.createTempFile("speech", ".wav").apply { writeBytes(byteArrayOf(1, 2, 3)) }
         try {
             val response = Response("""{"text":"hello world"}"""); var endpoint = ""
-            assertEquals("hello world", CompatibleAiClient(openConnection = { endpoint = it.toString(); response }).transcribe(config, com.greatwall.callring.application.AudioReference(file.absolutePath)))
+            assertEquals("hello world", CompatibleAiClient(openConnection = { endpoint = it.toString(); response }).transcribe(config, com.greatwall.callring.application.ports.recording.AudioReference(file.absolutePath)))
             assertTrue(endpoint.endsWith("/audio/transcriptions"))
             val sent = response.sent.toString("UTF-8")
             assertTrue(sent.contains("name=\"model\"")); assertTrue(sent.contains("test-model")); assertTrue(sent.contains("filename=\"recording.wav\""))
@@ -87,7 +87,7 @@ class CompatibleAiClientTest {
     @Test fun rejectsLenientTranscriptionEnvelope() {
         val file = File.createTempFile("speech", ".wav").apply { writeBytes(byteArrayOf(1)) }
         try {
-            assertEquals("ai.invalid_response", failure { CompatibleAiClient(openConnection = { Response("{'text':'hello'}") }).transcribe(config, com.greatwall.callring.application.AudioReference(file.absolutePath)) }.reason)
+            assertEquals("ai.invalid_response", failure { CompatibleAiClient(openConnection = { Response("{'text':'hello'}") }).transcribe(config, com.greatwall.callring.application.ports.recording.AudioReference(file.absolutePath)) }.reason)
         } finally { file.delete() }
     }
     @Test fun rejectsOversizedTranscriptWithoutNetwork() {
@@ -175,7 +175,7 @@ class CompatibleAiClientTest {
         assertEquals(1, opened)
     }
     @Test fun cancelDuringAudioUploadStopsFollowingWrites() {
-        lateinit var operation: com.greatwall.callring.application.AiClient
+        lateinit var operation: com.greatwall.callring.application.ports.recording.AiClient
         var payloadWrites = 0
         val response = object : Response("""{"text":"hello"}""") {
             override fun getOutputStream(): OutputStream = object : OutputStream() {
@@ -188,7 +188,7 @@ class CompatibleAiClientTest {
         operation = CompatibleAiClient(openConnection = { response }).operation { false }
         val audio = File.createTempFile("speech", ".wav").apply { writeBytes(ByteArray(24_000)) }
         try {
-            assertEquals("recording.cancelled", failure { operation.transcribe(config, com.greatwall.callring.application.AudioReference(audio.absolutePath)) }.reason)
+            assertEquals("recording.cancelled", failure { operation.transcribe(config, com.greatwall.callring.application.ports.recording.AudioReference(audio.absolutePath)) }.reason)
             assertEquals(1, payloadWrites)
             assertTrue(response.disconnected)
         } finally { audio.delete() }
@@ -228,7 +228,7 @@ class CompatibleAiClientTest {
         val file = File.createTempFile("speech", ".wav").apply { writeBytes(byteArrayOf(1, 2, 3)) }
         try {
             val response = Response("""{"text":"hello world"}""")
-            CompatibleAiClient(openConnection = { response }).transcribe(qwen, com.greatwall.callring.application.AudioReference(file.absolutePath))
+            CompatibleAiClient(openConnection = { response }).transcribe(qwen, com.greatwall.callring.application.ports.recording.AudioReference(file.absolutePath))
             val sent = response.sent.toString("UTF-8")
             assertFalse(sent.contains("enable_thinking")); assertFalse(sent.contains("thinking")); assertFalse(sent.contains("preserve_thinking"))
             assertTrue(sent.contains("name=\"model\"")); assertTrue(sent.contains("qwen3.8-flash"))

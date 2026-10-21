@@ -1,5 +1,9 @@
 package com.greatwall.callring
 
+import com.greatwall.callring.application.ports.recording.AiClient
+import com.greatwall.callring.application.ports.recording.AiFailure
+import com.greatwall.callring.application.ports.recording.RecordingCandidate
+
 import com.greatwall.callring.application.coordination.BusinessRevisionCoordinator
 import com.greatwall.callring.application.ports.recording.RecordingArchiveMutations
 import com.greatwall.callring.application.ports.recording.RecordingArchiveState
@@ -57,7 +61,7 @@ class RecordingWorkflowTest {
         override fun operation(cancelled: () -> Boolean): AiClient = this
         override fun cancel() = Unit
         override fun test(connection: AiConnection, transcription: Boolean) {}
-        override fun transcribe(connection: AiConnection, reference: com.greatwall.callring.application.AudioReference): String { transcriptions++; return "Caller says hello" }
+        override fun transcribe(connection: AiConnection, reference: com.greatwall.callring.application.ports.recording.AudioReference): String { transcriptions++; return "Caller says hello" }
         override fun analyze(connection: AiConnection, transcript: String): CallAnalysis {
             analyses++; beforeAnalysis()
             if (fail) throw AiFailure("ai.temporary", true)
@@ -118,7 +122,7 @@ class RecordingWorkflowTest {
         configure()
         val brokenClient = object : AiClient by client {
             override fun operation(cancelled: () -> Boolean): AiClient = this
-            override fun transcribe(connection: AiConnection, reference: com.greatwall.callring.application.AudioReference): String = throw AiFailure("ai.authentication")
+            override fun transcribe(connection: AiConnection, reference: com.greatwall.callring.application.ports.recording.AudioReference): String = throw AiFailure("ai.authentication")
         }
         val brokenWorkflow = RecordingWorkflow(store, commands, brokenClient, { 1000L })
         brokenWorkflow.attach(1, "31234", 100, "/private/test.m4a", RecordingSource.IMPORTED, 1000, null, false)
@@ -160,7 +164,7 @@ class RecordingWorkflowTest {
         var stopped = false
         val cancellable = object : AiClient by client {
             override fun operation(cancelled: () -> Boolean): AiClient = this
-            override fun transcribe(connection: AiConnection, reference: com.greatwall.callring.application.AudioReference): String {
+            override fun transcribe(connection: AiConnection, reference: com.greatwall.callring.application.ports.recording.AudioReference): String {
                 stopped = true
                 throw AiFailure("recording.cancelled")
             }

@@ -6,7 +6,7 @@ import com.greatwall.callring.application.ports.recording.RecordingAudioFiles
 import android.content.Context
 import android.media.MediaMetadataRetriever
 import android.net.Uri
-import com.greatwall.callring.application.AudioReference
+import com.greatwall.callring.application.ports.recording.AudioReference
 import com.greatwall.callring.application.recording.*
 import com.greatwall.callring.contracts.common.DocumentRef
 import kotlinx.coroutines.CancellationException

@@ -21,7 +21,7 @@ import android.util.Base64
 import com.greatwall.callring.application.*
 import com.greatwall.callring.application.recording.*
 import com.greatwall.callring.data.preferences.updatePreferences
-import com.greatwall.callring.application.RecordingCall
+import com.greatwall.callring.domain.calling.RecordingCall
 import com.greatwall.callring.contracts.recording.*
 import com.greatwall.callring.contracts.ai.*
 import com.greatwall.callring.application.recording.model.*

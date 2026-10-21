@@ -1,0 +1,567 @@
+{
+  "baseline": "a4fe96403f34f2e4beff635e94d2a38186bb2915",
+  "sourceCandidate": {
+    "path": "build/qa/layer-boundaries/t13b2a-source-freeze.json",
+    "sha256": "8a8b0a417c1f9605377d8e0d05d6d49e78c6649668966a6a2499f1fb07bc9f14",
+    "paths": 93,
+    "manifestSha256": "827566a702745bdbec57bdf147cbbf42c2d30c81e1a0bb2e3531cf95e29e9b51",
+    "afterGateSha256": "8a8b0a417c1f9605377d8e0d05d6d49e78c6649668966a6a2499f1fb07bc9f14"
+  },
+  "gate": {
+    "path": "build/qa/layer-boundaries/t13b2a-fullgate.log",
+    "sha256": "9043da1feb6d3318c284d206d34d936d624d3c4c8ae5b1031276bbc23ef2c429",
+    "bytes": 18921,
+    "command": ".\\gradlew.bat :contracts:test :backend:test :ui:testDebugUnitTest :app:testDebugUnitTest :app:assembleDebug :ui:lintDebug :app:lintDebug :app:compileBackendQaKotlin :ui:compileDebugAndroidTestKotlin :app:compileDebugAndroidTestKotlin --console=plain",
+    "exit": 0,
+    "exitFile": {
+      "path": "build/qa/layer-boundaries/t13b2a-fullgate.exit",
+      "sha256": "13bf7b3039c63bf5a50491fa3cfd8eb4e699d1ba1436315aef9cbe5711530354",
+      "bytes": 3
+    },
+    "summary": [
+      "BUILD SUCCESSFUL in 1m 27s",
+      "155 actionable tasks: 21 executed, 134 up-to-date"
+    ]
+  },
+  "tests": {
+    "backend": {
+      "taskState": "EXECUTED",
+      "xmlGlob": "backend/build/test-results/test/TEST-*.xml",
+      "xmlFiles": 70,
+      "aggregateXmlSha256": "29dfead6098e820f42f754bcf5804ba03caf7899d9e33eb0150784119cb21a00",
+      "timestampMin": "2026-10-21T00:20:48.397Z",
+      "timestampMax": "2026-10-21T00:20:50.777Z",
+      "tests": 363,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "ui": {
+      "taskState": "UP-TO-DATE",
+      "xmlGlob": "ui/build/test-results/testDebugUnitTest/TEST-*.xml",
+      "xmlFiles": 75,
+      "aggregateXmlSha256": "d7bb94955050d52ef05e9e6f1f7051a9cb58b7f48ab1c3727021716e6518292c",
+      "timestampMin": "2026-10-20T23:55:24.271Z",
+      "timestampMax": "2026-10-20T23:56:00.701Z",
+      "tests": 312,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "cacheNote": "Unchanged UI source/tests; XML retained from prior actual execution, not claimed executed again."
+    },
+    "app": {
+      "taskState": "EXECUTED",
+      "xmlGlob": "app/build/test-results/testDebugUnitTest/TEST-*.xml",
+      "xmlFiles": 65,
+      "aggregateXmlSha256": "9a3afbdf7611f594f2cafcc18f8950050b11e5a2f2edd99193b995b32700f8d2",
+      "timestampMin": "2026-10-21T00:20:58.018Z",
+      "timestampMax": "2026-10-21T00:21:59.325Z",
+      "tests": 335,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "contracts": {
+      "taskState": "NO-SOURCE"
+    }
+  },
+  "lint": {
+    "ui": {
+      "path": "ui/build/reports/lint-results-debug.xml",
+      "sha256": "61094a8dcd24ddb283ce063ded1fd7e83d26b9903c9a7d6a4190cbc16df7b045",
+      "bytes": 38102,
+      "severities": {
+        "Warning": 30,
+        "Hint": 3
+      },
+      "taskState": "EXECUTED",
+      "analyzeTaskState": "UP-TO-DATE",
+      "reportTaskState": "UP-TO-DATE"
+    },
+    "app": {
+      "path": "app/build/reports/lint-results-debug.xml",
+      "sha256": "870f75067afdbd0613d441d5411e734123f76480f1f3cf8b5a91c11e1e5e993a",
+      "bytes": 7927,
+      "severities": {
+        "Warning": 6
+      },
+      "taskState": "EXECUTED",
+      "analyzeTaskState": "EXECUTED",
+      "reportTaskState": "EXECUTED"
+    }
+  },
+  "buildTasks": {
+    ":app:compileBackendQaKotlin": "EXECUTED",
+    ":ui:compileDebugAndroidTestKotlin": "UP-TO-DATE",
+    ":app:compileDebugAndroidTestKotlin": "NO-SOURCE",
+    ":app:assembleDebug": "EXECUTED"
+  },
+  "release": {
+    "path": "build/qa/layer-boundaries/t13b2a-release.log",
+    "sha256": "07c8d9d2626fa18490a1d4c74e612ec506e4eb1eaa4ceb6f6ed70eacb621b879",
+    "bytes": 4972,
+    "exit": 0,
+    "command": ":backend:compileKotlin :app:compileDebugKotlin :app:compileReleaseKotlin :app:compileReleaseJavaWithJavac --console=plain",
+    "compileReleaseKotlin": "EXECUTED",
+    "compileReleaseJavaWithJavac": "EXECUTED"
+  },
+  "guards": [
+    {
+      "path": "build/qa/layer-boundaries/t13b2a-architecture.log",
+      "sha256": "8bffd7dee18fe8da405646338848960a13831fdc7b3150017321f3e0b5b34260",
+      "bytes": 78,
+      "exit": 0,
+      "command": "python tools/check_architecture.py"
+    },
+    {
+      "path": "build/qa/layer-boundaries/t13b2a-backend-boundaries.log",
+      "sha256": "36ffbae67d064fc99a6ce693a0232904ab79fd35a25fffa7e779a066c0065398",
+      "bytes": 130,
+      "exit": 0,
+      "command": "python tools/check_backend_boundaries.py"
+    },
+    {
+      "path": "build/qa/layer-boundaries/t13b2a-architecture-tests.log",
+      "sha256": "e02153e35a77ad5bd1ab775211c746b06b732198d49269131f79cc8326e97d12",
+      "bytes": 137,
+      "exit": 0,
+      "command": "python -m unittest discover -s tools -p test_architecture.py"
+    },
+    {
+      "path": "build/qa/layer-boundaries/t13b2a-backend-boundary-tests.log",
+      "sha256": "970596b861026dd1013bc3c489ecb55817d0a390bf94da264efd5f67ba376fe0",
+      "bytes": 108,
+      "exit": 0,
+      "command": "python -m unittest discover -s tools -p test_backend_boundaries.py"
+    }
+  ],
+  "guardSources": [
+    {
+      "path": "tools/check_architecture.py",
+      "sha256": "27408528afc116cbd1a36590a964c0f824ddc01ff7602e3819cfa3cbd579cfdc",
+      "bytes": 8028
+    },
+    {
+      "path": "tools/test_architecture.py",
+      "sha256": "db22c85266929761ee1512f4b6e8e6986c64d89f68581e0a2f51ba1a19d4708d",
+      "bytes": 13347
+    }
+  ],
+  "staticChecks": {
+    "diffCheck": {
+      "path": "build/qa/layer-boundaries/t13b2a-diff-check.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0,
+      "exit": 0
+    },
+    "untrackedWhitespace": [],
+    "oldMovedImports": []
+  },
+  "fileMapAudit": {
+    "path": "build/qa/layer-boundaries/t13b2a-filemap-audit.json",
+    "sha256": "3537a46fe33a5fd3729e793f276eff34445473e45c386c2f6a344ef9e499e84f",
+    "bytes": 33389
+  },
+  "removalManifest": {
+    "path": "build/qa/layer-boundaries/t13b2a-removal-manifest.json",
+    "sha256": "3be85a9f77702c75bc882f119d3b6cfb395965b677b31b834f889f44fcfa4f6b",
+    "bytes": 28316
+  },
+  "fixtures": [
+    {
+      "source": "app/build/qa/layer-boundaries/caller-access-1000.json",
+      "copy": "build/qa/layer-boundaries/t13b2a-fixtures/layer-boundaries/caller-access-1000.json",
+      "sha256": "8de64dba3174e4ef9168a2969fd69a3604a8e53a2081ef36951a0e3b5c2afdee",
+      "bytes": 660,
+      "historicalBaseline": false,
+      "historicalNote": null
+    },
+    {
+      "source": "app/build/qa/layer-boundaries/caller-access-10000.json",
+      "copy": "build/qa/layer-boundaries/t13b2a-fixtures/layer-boundaries/caller-access-10000.json",
+      "sha256": "b58d113ad4249e2620acf0edbef269bac0594d38f2f26a0957ce90a1d4c40626",
+      "bytes": 661,
+      "historicalBaseline": false,
+      "historicalNote": null
+    },
+    {
+      "source": "app/build/qa/layer-boundaries/calling-access-1000.json",
+      "copy": "build/qa/layer-boundaries/t13b2a-fixtures/layer-boundaries/calling-access-1000.json",
+      "sha256": "22f61e7358eff07b789861b13a573873a77505f8c905c9c6719893095bd81987",
+      "bytes": 5464,
+      "historicalBaseline": false,
+      "historicalNote": null
+    },
+    {
+      "source": "app/build/qa/layer-boundaries/calling-access-10000.json",
+      "copy": "build/qa/layer-boundaries/t13b2a-fixtures/layer-boundaries/calling-access-10000.json",
+      "sha256": "e402c52effdeb19ba7126af91cb643abe3d901863eb985d71fc6eea81bf71263",
+      "bytes": 5465,
+      "historicalBaseline": false,
+      "historicalNote": null
+    },
+    {
+      "source": "app/build/qa/layer-boundaries/history-settings-1000.json",
+      "copy": "build/qa/layer-boundaries/t13b2a-fixtures/layer-boundaries/history-settings-1000.json",
+      "sha256": "3fb355603f5280d2a86997135fdaab35fd789d2b915aa21d0397dc13ce83a5f1",
+      "bytes": 2422,
+      "historicalBaseline": false,
+      "historicalNote": null
+    },
+    {
+      "source": "app/build/qa/layer-boundaries/history-settings-10000.json",
+      "copy": "build/qa/layer-boundaries/t13b2a-fixtures/layer-boundaries/history-settings-10000.json",
+      "sha256": "26a0eb8ad8bf8322486d1a39e828af5d3d9f11077deb413ef0d38e972db4d791",
+      "bytes": 2423,
+      "historicalBaseline": false,
+      "historicalNote": null
+    },
+    {
+      "source": "app/build/qa/layer-boundaries/local-access-1000.json",
+      "copy": "build/qa/layer-boundaries/t13b2a-fixtures/layer-boundaries/local-access-1000.json",
+      "sha256": "a1deb2f072e4720c31a66f0aeb1090e9cda55d38ac8cccfb2f27ced6f89f9b49",
+      "bytes": 1747,
+      "historicalBaseline": false,
+      "historicalNote": null
+    },
+    {
+      "source": "app/build/qa/layer-boundaries/local-access-10000.json",
+      "copy": "build/qa/layer-boundaries/t13b2a-fixtures/layer-boundaries/local-access-10000.json",
+      "sha256": "5c483fb1e68817c1ae028747370ed430fe422b4b8d6a267d0b7de0e9c3c8bce9",
+      "bytes": 1748,
+      "historicalBaseline": false,
+      "historicalNote": null
+    },
+    {
+      "source": "app/build/qa/layer-boundaries/settings-access-1000.json",
+      "copy": "build/qa/layer-boundaries/t13b2a-fixtures/layer-boundaries/settings-access-1000.json",
+      "sha256": "9f58def94c5556176d366c59e94a7d7ee2fe42444c0667841c438037b992098f",
+      "bytes": 4939,
+      "historicalBaseline": false,
+      "historicalNote": null
+    },
+    {
+      "source": "app/build/qa/layer-boundaries/settings-access-10000.json",
+      "copy": "build/qa/layer-boundaries/t13b2a-fixtures/layer-boundaries/settings-access-10000.json",
+      "sha256": "3498e45f96860017b66db503aa46ca397c8e3cfead6c0d36771e9640175403da",
+      "bytes": 4940,
+      "historicalBaseline": false,
+      "historicalNote": null
+    },
+    {
+      "source": "app/build/qa/layer-boundaries/sql-baseline-1000.json",
+      "copy": "build/qa/layer-boundaries/t13b2a-fixtures/layer-boundaries/sql-baseline-1000.json",
+      "sha256": "707e5446f934c87b70a98e6bc891b1cca593e4a83ebafb1119def678da72b124",
+      "bytes": 15205,
+      "historicalBaseline": true,
+      "historicalNote": "historical non-regenerated baseline"
+    },
+    {
+      "source": "app/build/qa/layer-boundaries/sql-baseline-10000.json",
+      "copy": "build/qa/layer-boundaries/t13b2a-fixtures/layer-boundaries/sql-baseline-10000.json",
+      "sha256": "2bc0f7967ad010ca46e61d9b39ba3259807fa56e874e60fdd649efdfbd25703f",
+      "bytes": 15212,
+      "historicalBaseline": true,
+      "historicalNote": "historical non-regenerated baseline"
+    },
+    {
+      "source": "app/build/qa/layer-boundaries/sql-caller-1000.json",
+      "copy": "build/qa/layer-boundaries/t13b2a-fixtures/layer-boundaries/sql-caller-1000.json",
+      "sha256": "28dd75e65b3e4520a8c38f572394495cfd27a49de8309a3d1bbe23b602d59190",
+      "bytes": 5676,
+      "historicalBaseline": false,
+      "historicalNote": null
+    },
+    {
+      "source": "app/build/qa/layer-boundaries/sql-caller-10000.json",
+      "copy": "build/qa/layer-boundaries/t13b2a-fixtures/layer-boundaries/sql-caller-10000.json",
+      "sha256": "32b192f1b0418e47285bb4bec97a2cf95f1cec8ea400c65dff08943df8a9b66a",
+      "bytes": 5677,
+      "historicalBaseline": false,
+      "historicalNote": null
+    },
+    {
+      "source": "app/build/qa/layer-boundaries/sql-calling-1000.json",
+      "copy": "build/qa/layer-boundaries/t13b2a-fixtures/layer-boundaries/sql-calling-1000.json",
+      "sha256": "54a55fee1c4cc4e457718abcb18dbf53ae08dd7df8a251dfd749f0218661d109",
+      "bytes": 6944,
+      "historicalBaseline": false,
+      "historicalNote": null
+    },
+    {
+      "source": "app/build/qa/layer-boundaries/sql-calling-10000.json",
+      "copy": "build/qa/layer-boundaries/t13b2a-fixtures/layer-boundaries/sql-calling-10000.json",
+      "sha256": "4af178fafeb26b623ba7791b3d8aa7269433cfcf0d340bc35ce92e0bbb831496",
+      "bytes": 6945,
+      "historicalBaseline": false,
+      "historicalNote": null
+    },
+    {
+      "source": "app/build/qa/layer-boundaries/sql-history-settings-1000.json",
+      "copy": "build/qa/layer-boundaries/t13b2a-fixtures/layer-boundaries/sql-history-settings-1000.json",
+      "sha256": "43fedb35e8ede1511b673f9f8807449bff6d44ece0590fe26ccf240e2d3d0dc8",
+      "bytes": 12345,
+      "historicalBaseline": false,
+      "historicalNote": null
+    },
+    {
+      "source": "app/build/qa/layer-boundaries/sql-history-settings-10000.json",
+      "copy": "build/qa/layer-boundaries/t13b2a-fixtures/layer-boundaries/sql-history-settings-10000.json",
+      "sha256": "147b1603354fb092b4d3a4f916e0fb865c382fea2b31fe8fb0fe597123225625",
+      "bytes": 12364,
+      "historicalBaseline": false,
+      "historicalNote": null
+    },
+    {
+      "source": "app/build/qa/layer-boundaries/sql-scoped-1000.json",
+      "copy": "build/qa/layer-boundaries/t13b2a-fixtures/layer-boundaries/sql-scoped-1000.json",
+      "sha256": "6b8aeae4fa80fa5ace5d34f79ea3e664a543c4057c3c984020720ce5e3460567",
+      "bytes": 7037,
+      "historicalBaseline": false,
+      "historicalNote": null
+    },
+    {
+      "source": "app/build/qa/layer-boundaries/sql-scoped-10000.json",
+      "copy": "build/qa/layer-boundaries/t13b2a-fixtures/layer-boundaries/sql-scoped-10000.json",
+      "sha256": "85b79d6f896b15692bfc40eb75b80acd2b465fd02f53d4cc68a18eaa1fbae936",
+      "bytes": 7038,
+      "historicalBaseline": false,
+      "historicalNote": null
+    },
+    {
+      "source": "app/build/qa/layer-boundaries/sql-settings-1000.json",
+      "copy": "build/qa/layer-boundaries/t13b2a-fixtures/layer-boundaries/sql-settings-1000.json",
+      "sha256": "92e56caaaaf933f879c9d896ac12e48c1b5ef2e64bd66e0b14da40e94aa284fc",
+      "bytes": 12536,
+      "historicalBaseline": false,
+      "historicalNote": null
+    },
+    {
+      "source": "app/build/qa/layer-boundaries/sql-settings-10000.json",
+      "copy": "build/qa/layer-boundaries/t13b2a-fixtures/layer-boundaries/sql-settings-10000.json",
+      "sha256": "2190177e421ebcdcdaa64c45e89598e8faf75bf7834d46010b0c8e6e790ed485",
+      "bytes": 12537,
+      "historicalBaseline": false,
+      "historicalNote": null
+    },
+    {
+      "source": "app/build/qa/layer-boundaries/t10b1-call-1000.json",
+      "copy": "build/qa/layer-boundaries/t13b2a-fixtures/layer-boundaries/t10b1-call-1000.json",
+      "sha256": "d28cef1c43eb3003e525fd8558dedf47c20cd32202c7bbbcafa993e4a516f714",
+      "bytes": 115,
+      "historicalBaseline": false,
+      "historicalNote": null
+    },
+    {
+      "source": "app/build/qa/layer-boundaries/t10b1-call-10000.json",
+      "copy": "build/qa/layer-boundaries/t13b2a-fixtures/layer-boundaries/t10b1-call-10000.json",
+      "sha256": "b6ea737a4076b6e6122671b9f52294b94535b451991c618016482b49892bd4d0",
+      "bytes": 116,
+      "historicalBaseline": false,
+      "historicalNote": null
+    },
+    {
+      "source": "app/build/qa/layer-boundaries/t10b1-metadata-cold-1000.json",
+      "copy": "build/qa/layer-boundaries/t13b2a-fixtures/layer-boundaries/t10b1-metadata-cold-1000.json",
+      "sha256": "d5cfd42e4848139e2c68e37ab7689996d7ab6e03c124f7806f0fb5183dc3aa8b",
+      "bytes": 177,
+      "historicalBaseline": false,
+      "historicalNote": null
+    },
+    {
+      "source": "app/build/qa/layer-boundaries/t10b1-metadata-cold-10000.json",
+      "copy": "build/qa/layer-boundaries/t13b2a-fixtures/layer-boundaries/t10b1-metadata-cold-10000.json",
+      "sha256": "20e500d34ceb6a9e176224dd86cd59af3d71386b49d0503ad3672c0397f711d6",
+      "bytes": 182,
+      "historicalBaseline": false,
+      "historicalNote": null
+    },
+    {
+      "source": "app/build/qa/layer-boundaries/t10b1-metadata-cold.json",
+      "copy": "build/qa/layer-boundaries/t13b2a-fixtures/layer-boundaries/t10b1-metadata-cold.json",
+      "sha256": "a7c26ebbf49f591912dd85495b91d2860387cec665f6122a09e8cfaf1c2693b2",
+      "bytes": 171,
+      "historicalBaseline": false,
+      "historicalNote": null
+    },
+    {
+      "source": "app/build/qa/layer-boundaries/t10b1-metadata-warm-1000.json",
+      "copy": "build/qa/layer-boundaries/t13b2a-fixtures/layer-boundaries/t10b1-metadata-warm-1000.json",
+      "sha256": "d90706293157c047ee2db158939ae7a4a91caabe4deddfba1b69d910656f6f25",
+      "bytes": 257,
+      "historicalBaseline": false,
+      "historicalNote": null
+    },
+    {
+      "source": "app/build/qa/layer-boundaries/t10b1-metadata-warm-10000.json",
+      "copy": "build/qa/layer-boundaries/t13b2a-fixtures/layer-boundaries/t10b1-metadata-warm-10000.json",
+      "sha256": "f650a6c1bc561b0afcafcf2b81f28ba8331c035cff25816e6db7c829356bde35",
+      "bytes": 258,
+      "historicalBaseline": false,
+      "historicalNote": null
+    },
+    {
+      "source": "app/build/qa/layer-boundaries/t10b1-pagination-1000.json",
+      "copy": "build/qa/layer-boundaries/t13b2a-fixtures/layer-boundaries/t10b1-pagination-1000.json",
+      "sha256": "aab3c0ca519af5f2d95ac5b09d1ef15ab06a8941140c119fcca428b870cc144a",
+      "bytes": 2107,
+      "historicalBaseline": false,
+      "historicalNote": null
+    },
+    {
+      "source": "app/build/qa/layer-boundaries/t10b1-pagination-10000.json",
+      "copy": "build/qa/layer-boundaries/t13b2a-fixtures/layer-boundaries/t10b1-pagination-10000.json",
+      "sha256": "e2386b609247db8f722ca848a015ceb924e452af2c6ede29b691917d4bced17b",
+      "bytes": 17058,
+      "historicalBaseline": false,
+      "historicalNote": null
+    },
+    {
+      "source": "app/build/qa/layer-boundaries/t10b1-pagination-future.json",
+      "copy": "build/qa/layer-boundaries/t13b2a-fixtures/layer-boundaries/t10b1-pagination-future.json",
+      "sha256": "f1cf41f7ee1f0d76f94ab05a9d71979b373918d58c2d5e9b9e3ce5830240c919",
+      "bytes": 287,
+      "historicalBaseline": false,
+      "historicalNote": null
+    },
+    {
+      "source": "app/build/qa/layer-boundaries/t10b3-number-access-1000.json",
+      "copy": "build/qa/layer-boundaries/t13b2a-fixtures/layer-boundaries/t10b3-number-access-1000.json",
+      "sha256": "869709dd4ac4698c7a54a581109442e9d6ab522722630256dad2cf2957b6a979",
+      "bytes": 333,
+      "historicalBaseline": false,
+      "historicalNote": null
+    },
+    {
+      "source": "app/build/qa/layer-boundaries/t10b3-number-access-10000.json",
+      "copy": "build/qa/layer-boundaries/t13b2a-fixtures/layer-boundaries/t10b3-number-access-10000.json",
+      "sha256": "07a2c5a88bbfa65da050086ad87089ab615476022dd7e3b26cc06768ef9027b5",
+      "bytes": 335,
+      "historicalBaseline": false,
+      "historicalNote": null
+    },
+    {
+      "source": "app/build/qa/report-home-access-1000.json",
+      "copy": "build/qa/layer-boundaries/t13b2a-fixtures/report-home-access-1000.json",
+      "sha256": "b413f2ec38a643cce577baa530b490f479cfa193107b0c33b735f7c735b394d5",
+      "bytes": 891,
+      "historicalBaseline": false,
+      "historicalNote": null
+    },
+    {
+      "source": "app/build/qa/report-home-access-10000.json",
+      "copy": "build/qa/layer-boundaries/t13b2a-fixtures/report-home-access-10000.json",
+      "sha256": "a8f2a6123499e93bf2f4b37359bbd7de27e1afe44765783704733f3af4eb53d8",
+      "bytes": 892,
+      "historicalBaseline": false,
+      "historicalNote": null
+    },
+    {
+      "source": "app/build/qa/review-diagnostics.json",
+      "copy": "build/qa/layer-boundaries/t13b2a-fixtures/review-diagnostics.json",
+      "sha256": "4029f912469b9db329ca71af05abbc9af6c81a985213ac5bae7eeedb7c701a0f",
+      "bytes": 3016,
+      "historicalBaseline": false,
+      "historicalNote": null
+    },
+    {
+      "source": "app/build/qa/scoped-source-access-1000.json",
+      "copy": "build/qa/layer-boundaries/t13b2a-fixtures/scoped-source-access-1000.json",
+      "sha256": "28b77ee69e46f0290c2dc9c27b3b5ac146a92ea29e22740a9256861ec2f76a88",
+      "bytes": 291,
+      "historicalBaseline": false,
+      "historicalNote": null
+    },
+    {
+      "source": "app/build/qa/scoped-source-access-10000.json",
+      "copy": "build/qa/layer-boundaries/t13b2a-fixtures/scoped-source-access-10000.json",
+      "sha256": "c5ba6a63e069c622909358f6c1d1515156ca5e3086f58bad42b6e0df5a718f86",
+      "bytes": 292,
+      "historicalBaseline": false,
+      "historicalNote": null
+    },
+    {
+      "source": "app/build/qa/sql-report-home-1000.json",
+      "copy": "build/qa/layer-boundaries/t13b2a-fixtures/sql-report-home-1000.json",
+      "sha256": "3e24d52341043465c8db2087e8fded2a8b7165f371494796875fd41848f14c92",
+      "bytes": 4002,
+      "historicalBaseline": false,
+      "historicalNote": null
+    },
+    {
+      "source": "app/build/qa/sql-report-home-10000.json",
+      "copy": "build/qa/layer-boundaries/t13b2a-fixtures/sql-report-home-10000.json",
+      "sha256": "3e24d52341043465c8db2087e8fded2a8b7165f371494796875fd41848f14c92",
+      "bytes": 4002,
+      "historicalBaseline": false,
+      "historicalNote": null
+    },
+    {
+      "source": "app/build/qa/sql-scoped-source-1000.json",
+      "copy": "build/qa/layer-boundaries/t13b2a-fixtures/sql-scoped-source-1000.json",
+      "sha256": "1365a3ff5285d81758a7e2013a239ee4485de22c5a096ff6a0fbe99ac4d2dd18",
+      "bytes": 938,
+      "historicalBaseline": false,
+      "historicalNote": null
+    },
+    {
+      "source": "app/build/qa/sql-scoped-source-10000.json",
+      "copy": "build/qa/layer-boundaries/t13b2a-fixtures/sql-scoped-source-10000.json",
+      "sha256": "1365a3ff5285d81758a7e2013a239ee4485de22c5a096ff6a0fbe99ac4d2dd18",
+      "bytes": 938,
+      "historicalBaseline": false,
+      "historicalNote": null
+    }
+  ],
+  "fixtureNote": "43 safe JSON copies preserve per-file SHA; two sql-baseline files remain historical non-regenerated. All old tracked samples remain unchanged.",
+  "preparationLogs": [
+    {
+      "path": "build/qa/layer-boundaries/t13b2a-red.log",
+      "sha256": "29bed03d492683f039354f83410b7fe50269bf41d9bf61ba456f7589f4572d9e",
+      "bytes": 3302
+    },
+    {
+      "path": "build/qa/layer-boundaries/t13b2a-guard-red.log",
+      "sha256": "e74fc4232e0662366851648bcc56bf76dfb446105b3437a3650a1202caf37522",
+      "bytes": 8880
+    },
+    {
+      "path": "build/qa/layer-boundaries/t13b2a-guard-green.log",
+      "sha256": "f2de348eba0fb2071e0ef52b13f305201615b0d585ab27969e99381b0019d4ec",
+      "bytes": 137
+    },
+    {
+      "path": "build/qa/layer-boundaries/t13b2a-compile1.log",
+      "sha256": "7a11c09dcfca44fde46358fdde38de736f36be6f223a743e50070dc46ab7a5e5",
+      "bytes": 4147
+    },
+    {
+      "path": "build/qa/layer-boundaries/t13b2a-compile2.log",
+      "sha256": "2dd7b72851048b17c223b8698ab4bf7c8a7d99b97c6d05100218badffe964484",
+      "bytes": 3023
+    },
+    {
+      "path": "build/qa/layer-boundaries/t13b2a-targeted1.log",
+      "sha256": "82818a59538745a2d267403f05c29c145c14d9c54b7a69d035ac7a22d4e0777c",
+      "bytes": 10096
+    },
+    {
+      "path": "build/qa/layer-boundaries/t13b2a-targeted2.log",
+      "sha256": "7c126f3df1bb2c09bffafad4193c4998311a176ac27d37419806b507753d74b4",
+      "bytes": 6983
+    },
+    {
+      "path": "build/qa/layer-boundaries/t13b2a-projection-tests.log",
+      "sha256": "6ff7be4b353d2863db33cab854a661374f010cae4139c97162ea05b4defd36b2",
+      "bytes": 4173
+    }
+  ],
+  "mainSources": {
+    "app": 86,
+    "backend": 140,
+    "contracts": 23,
+    "ui": 92
+  },
+  "device": "not run",
+  "reviewState": "Independent specification /root/t13b2a_spec_review PASS, then independent quality /root/t13b2a_quality_review PASS. Root independently verified source/manifest, guards, XML/log/lint/fixtures and filemap. T13b2b/b2c/T14/T15 remain pending."
+}

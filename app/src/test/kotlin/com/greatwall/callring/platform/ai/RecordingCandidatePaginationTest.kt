@@ -7,7 +7,7 @@ import com.greatwall.callring.data.recording.RecordingJson
 
 import android.database.DatabaseUtils
 import android.database.sqlite.SQLiteDatabase
-import com.greatwall.callring.application.RecordingCandidate
+import com.greatwall.callring.application.ports.recording.RecordingCandidate
 import com.greatwall.callring.contracts.recording.*
 import org.json.JSONObject
 import org.json.JSONArray

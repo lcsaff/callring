@@ -4,6 +4,41 @@ import unittest
 import check_architecture
 
 class ArchitectureTests(unittest.TestCase):
+    def query_source(self, root, module, package, text, name='Projection.kt'):
+        path = root / module / 'src/main/kotlin' / name
+        path.write_text('package com.greatwall.callring.' + package + '\n' + text)
+
+    def test_bootstrap_cannot_reintroduce_query_projection(self):
+        for body in ('fun rows() = SourceRow("current", value)', 'fun view() = safeValue(settings)',
+                     'fun parts() = SnapshotPart(data, count = 1)', 'fun value() = aiObject("x" to aiBool(true))',
+                     'fun sourceCount(id: String, data: AiJson) = 1L'):
+            with self.subTest(body=body):
+                self.check_bad(lambda root: self.query_source(root, 'app', 'bootstrap', body))
+
+    def test_query_projector_cannot_take_a_complete_facade(self):
+        for dependency in ('BackendGraph', 'CallringBackend', 'CallringUiApi', 'RecordingAssembly', 'CoreAssembly'):
+            with self.subTest(dependency=dependency):
+                self.check_bad(lambda root: self.query_source(root, 'backend', 'application.conversation.query',
+                    'class Projection(private val source: ' + dependency + ')'))
+
+    def test_query_wiring_and_explicit_json_payload_are_allowed(self):
+        root = self.tree()
+        self.query_source(root, 'app', 'bootstrap', 'val view = WidgetQueryProjection({ stored() }, ::installed)')
+        self.query_source(root, 'backend', 'application.conversation.query',
+            'class Projection(private val read: () -> AppearanceSettings) { fun json(value: Map<String, Any?>) = safeValue(value) }')
+        self.assertEqual([], check_architecture.check(root))
+
+    def test_removed_mixed_files_and_json_observers_cannot_return(self):
+        for module, package, body, name in (
+            ('app', 'platform', 'fun copyBounded() {}', 'PlatformSafety.kt'),
+            ('backend', 'application', 'interface AiClient', 'RecordingPorts.kt'),
+            ('backend', 'application', 'class IncomingRecordingSession', 'RecordingAssociations.kt'),
+            ('backend', 'application.ports', 'interface RuntimeProbe', 'BackendPorts.kt'),
+            ('app', 'data.preferences', 'fun scopedBindingRows() = rows', 'Preferences.kt'),
+            ('backend', 'application.recording', 'fun playbackSnapshot() = json', 'RecordingService.kt'),
+            ('backend', 'application.recording', 'fun activitySnapshot() = json', 'RecordingWorkflow.kt')):
+            self.check_bad(lambda root: self.query_source(root, module, package, body, name))
+
     def tree(self, mutation=None):
         temp = tempfile.TemporaryDirectory()
         self.addCleanup(temp.cleanup)

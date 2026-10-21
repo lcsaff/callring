@@ -1,7 +1,7 @@
 package com.greatwall.callring
 
 import com.greatwall.callring.application.callers.NumberDeletionRecordings
-import com.greatwall.callring.application.NumberRecordingMetadata
+import com.greatwall.callring.application.ports.recording.NumberRecordingMetadata
 import com.greatwall.callring.contracts.command.CommandContext
 import com.greatwall.callring.contracts.common.ApiResult
 

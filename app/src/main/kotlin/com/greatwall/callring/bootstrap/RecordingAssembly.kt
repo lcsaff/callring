@@ -1,5 +1,8 @@
 package com.greatwall.callring.bootstrap
 
+import com.greatwall.callring.application.ports.recording.AiClient
+import com.greatwall.callring.domain.calling.RecordingCall
+
 import com.greatwall.callring.application.coordination.BusinessRevisionCoordinator
 import com.greatwall.callring.application.ports.recording.RecordingDirectory
 import com.greatwall.callring.application.recording.RecordingWorkflow

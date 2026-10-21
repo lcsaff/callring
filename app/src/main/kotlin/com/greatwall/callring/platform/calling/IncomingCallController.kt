@@ -1,7 +1,7 @@
 package com.greatwall.callring.platform.calling
 
-import com.greatwall.callring.application.IncomingRecordingSession
-import com.greatwall.callring.application.RecordingCall
+import com.greatwall.callring.application.recording.IncomingRecordingSession
+import com.greatwall.callring.domain.calling.RecordingCall
 import com.greatwall.callring.contracts.callers.IncomingCallUiSink
 import java.io.Closeable
 import java.time.Clock

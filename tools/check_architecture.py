@@ -44,6 +44,23 @@ def check(root=ROOT):
             if path.suffix not in ('.kt','.java'):continue
             source=without_comments(path.read_text(encoding='utf-8'))
             references=re.sub(r'"(?:\\.|[^"\\])*"', '""', source)
+            package_match = re.search(r'\bpackage\s+([\w.]+)', references)
+            package = package_match.group(1) if package_match else ''
+            if module == 'app' and 'main' in path.relative_to(directory/'src').parts[:1] and package == 'com.greatwall.callring.bootstrap' and re.search(
+                    r'\b(?:SourceRow|SnapshotPart|safeValue|aiObject|sourceCount|snapshotSourceCount)\s*\(', references):
+                errors.append(f'{path.relative_to(root)}: bootstrap query projection; inject backend projectors')
+            if module == 'backend' and package == 'com.greatwall.callring.application.conversation.query' and re.search(
+                    r':\s*(?:com\.greatwall\.callring\.[\w.]+\.)?(?:BackendGraph|CallringBackend|CallringUiApi|RecordingAssembly|CoreAssembly)\b', references):
+                errors.append(f'{path.relative_to(root)}: query projector depends on a complete facade')
+            removed_mixed = {
+                ('com.greatwall.callring.application', 'RecordingPorts.kt'),
+                ('com.greatwall.callring.application', 'RecordingAssociations.kt'),
+                ('com.greatwall.callring.application.ports', 'BackendPorts.kt'),
+                ('com.greatwall.callring.platform', 'PlatformSafety.kt'),
+            }
+            if (package, path.name) in removed_mixed or re.search(
+                    r'\bfun\s+(?:scopedBindingRows|playbackSnapshot|activitySnapshot)\s*\(', references):
+                errors.append(f'{path.relative_to(root)}: removed mixed responsibility or JSON observation entry')
             if re.search(r'\b(?:BackendStore|BackendState|StorageSession|SqliteBackendStore|stateLoadCount|coreStateLoads|fullStateLoads|stateLoads|fullDiff|TableSnapshot|CallStore|ProfileStore|ScheduleStore|SettingsStore)\b|\b(?:resource|coreResource|store|it)\s*\.\s*legacy\b', references):
                 errors.append(f'{path.relative_to(root)}: removed full-state storage protocol')
             if numeric_operation_dispatch(path, source):

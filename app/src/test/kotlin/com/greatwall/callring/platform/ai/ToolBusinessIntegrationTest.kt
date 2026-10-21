@@ -1,5 +1,10 @@
 package com.greatwall.callring.platform.ai
 
+import com.greatwall.callring.application.ports.platform.CalendarSource
+import com.greatwall.callring.application.ports.platform.RuntimeProbe
+import com.greatwall.callring.application.ports.platform.SyncScheduler
+import com.greatwall.callring.application.ports.recording.AiClient
+
 import com.greatwall.callring.application.conversation.execution.ConversationService
 import com.greatwall.callring.application.conversation.execution.ReceiptVerifier
 import com.greatwall.callring.application.conversation.execution.ToolBatchEngine
@@ -82,7 +87,7 @@ class ToolBusinessIntegrationTest {
         var tests = 0
         override fun test(connection: AiConnection, transcription: Boolean) { connection.validate(); if(transcription) require(connection.protocol == AiProtocol.OPENAI); tests++ }
         override fun analyze(connection: AiConnection, transcript: String): CallAnalysis = error("No paid analysis in tools test")
-        override fun transcribe(connection: AiConnection, reference: com.greatwall.callring.application.AudioReference): String = error("No paid transcription in tools test")
+        override fun transcribe(connection: AiConnection, reference: com.greatwall.callring.application.ports.recording.AudioReference): String = error("No paid transcription in tools test")
     }
     private inner class Fixture(namespaceTag: String) : AutoCloseable {
         val namespace = "tool_${namespaceTag}"
@@ -116,7 +121,7 @@ class ToolBusinessIntegrationTest {
                 {diagnostics},
                 SystemRecordingSource(context.contentResolver),coordinator,resources,
                 {PlaybackStatus(PlaybackMode.NONE,PlaybackState.IDLE)},
-                {WidgetInstallState(listOf(1),AccessState.GRANTED)}, {aiObject()}, Clock.fixed(Instant.ofEpochMilli(now),ZoneOffset.UTC))
+                {WidgetInstallState(listOf(1),AccessState.GRANTED)}, {com.greatwall.callring.application.conversation.query.ScheduledJobsObservation(false, emptyList())}, Clock.fixed(Instant.ofEpochMilli(now),ZoneOffset.UTC))
         }
         var recordingId = -1L
         val resources = ForegroundResourceRegistry()
@@ -193,7 +198,7 @@ class ToolBusinessIntegrationTest {
         for((offset,kind) in cases.withIndex())Fixture("identity-$offset").use{f->
             f.seed()
             if(kind=="statistics-off")f.backend.settings.setStatisticsEnabled(false).requiredValue()
-            val name=when(kind){"blank-name"->"   ";"long-unicode"->"😀合成".repeat(1500);else->" Synthetic "}
+            val name=when(kind){"blank-name"->"   ";"long-unicode"->"馃榾鍚堟垚".repeat(1500);else->" Synthetic "}
             val department=if(kind=="blank-department")" \t "else" Unit "
             val old=f.recordingStore.get(f.recordingId)!!
             f.runtime.archiveCommands.compareAndSet(old.callId,old.generation,old.copy(generation=old.generation+1,analysis=CallAnalysis(name=name,organization=department)), null, false)
@@ -355,7 +360,7 @@ class ToolBusinessIntegrationTest {
                     override val domains=setOf(AiDomain.D19)
                     override fun version(domain:AiDomain)=0L
                     override fun query(spec:QuerySpec,after:String?)=error("unused")
-                    override fun get(domain:AiDomain,key:String,projection:String)=SourceRow(key,aiObject("recordingPlayback" to fixture.runtime.service.playbackSnapshot()))
+                    override fun get(domain:AiDomain,key:String,projection:String)=SourceRow(key,aiObject("recordingPlayback" to com.greatwall.callring.application.conversation.query.recordingPlaybackValue(fixture.runtime.service.playbackObservation())))
                 }))
                 assertEquals("Authoritative readback ${definition.id}",VerificationStatus.VERIFIED,ReceiptVerifier(queries).verify(definition.id,call,receipt).verification)
             }

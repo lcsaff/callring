@@ -131,7 +131,7 @@ class RecordingPublicationTest {
             android.database.sqlite.SQLiteDatabase.openDatabase(context.getDatabasePath(namespace + "_recording.db").path, null,
                 android.database.sqlite.SQLiteDatabase.OPEN_READWRITE).use { db ->
                 db.execSQL("CREATE TRIGGER reject_capture BEFORE UPDATE ON archives BEGIN SELECT RAISE(ABORT,'forced failure'); END")
-                assertTrue(runCatching { runtime.service.attachCapture(com.greatwall.callring.application.RecordingCall(-1, "31234", 1, null), com.greatwall.callring.application.AudioReference(newAudio.absolutePath)) }.isFailure)
+                assertTrue(runCatching { runtime.service.attachCapture(com.greatwall.callring.domain.calling.RecordingCall(-1, "31234", 1, null), com.greatwall.callring.application.ports.recording.AudioReference(newAudio.absolutePath)) }.isFailure)
             }
             assertEquals(before + 1, coordinator.marker())
             assertEquals(setOf(DataDomain.RUNTIME), coordinator.invalidations.snapshots.value.let { snapshot -> snapshot.domains.filterValues { it.lastAnyRevision == snapshot.revision }.keys })

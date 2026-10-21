@@ -1,5 +1,11 @@
 package com.greatwall.callring.data
 
+import com.greatwall.callring.application.ports.platform.AudioController
+import com.greatwall.callring.application.ports.platform.DocumentStore
+import com.greatwall.callring.application.ports.platform.RuntimeProbe
+import com.greatwall.callring.application.ports.platform.SyncScheduler
+import com.greatwall.callring.application.ports.store.PreferenceStore
+
 import com.greatwall.callring.application.coordination.BusinessRevisionCoordinator
 import com.greatwall.callring.application.mapping.requiredValue
 import com.greatwall.callring.data.database.SqliteCoreStorageResource
@@ -142,6 +148,6 @@ class HistorySettingsSqlTest {
         val runtime = java.lang.reflect.Proxy.newProxyInstance(RuntimeProbe::class.java.classLoader,arrayOf(RuntimeProbe::class.java)) { _,_,_ -> error("unused") } as RuntimeProbe
         val audio = java.lang.reflect.Proxy.newProxyInstance(AudioController::class.java.classLoader,arrayOf(AudioController::class.java)) { _,_,_ -> error("unused") } as AudioController
         val sync = object : SyncScheduler { override fun requestSync(atEpochMillis: Long) = com.greatwall.callring.contracts.runtime.SyncRequestReceipt(com.greatwall.callring.contracts.runtime.SyncRequestState.QUEUED,atEpochMillis) }
-        return CallringBackend(prefs,unsupported,runtime,audio,sync,Clock.fixed(Instant.parse("2026-10-21T00:00:00Z"),ZoneOffset.UTC),Dispatchers.Unconfined,coordinator=coordinator,coreTransactions=store.sessions, numberRecordings = com.greatwall.callring.EmptyNumberRecordings, identityArchive = { com.greatwall.callring.contracts.common.ApiResult.Success(null) }, operationActive = { true }, conversationProvider = { com.greatwall.callring.testing.FixtureConversationApi }, aiSettingsProvider = { com.greatwall.callring.testing.FixtureAiSettingsApi }, updateProvider = { com.greatwall.callring.testing.FixtureAppUpdateApi }, snapshotsProvider = { com.greatwall.callring.testing.FixtureAiSnapshotApi }, recordingsProvider = { com.greatwall.callring.testing.FixtureRecordingApi }, calendarSource = com.greatwall.callring.application.ports.CalendarSource { throw AssertionError("Unexpected calendar source") }, persistenceActive = { true })
+        return CallringBackend(prefs,unsupported,runtime,audio,sync,Clock.fixed(Instant.parse("2026-10-21T00:00:00Z"),ZoneOffset.UTC),Dispatchers.Unconfined,coordinator=coordinator,coreTransactions=store.sessions, numberRecordings = com.greatwall.callring.EmptyNumberRecordings, identityArchive = { com.greatwall.callring.contracts.common.ApiResult.Success(null) }, operationActive = { true }, conversationProvider = { com.greatwall.callring.testing.FixtureConversationApi }, aiSettingsProvider = { com.greatwall.callring.testing.FixtureAiSettingsApi }, updateProvider = { com.greatwall.callring.testing.FixtureAppUpdateApi }, snapshotsProvider = { com.greatwall.callring.testing.FixtureAiSnapshotApi }, recordingsProvider = { com.greatwall.callring.testing.FixtureRecordingApi }, calendarSource = com.greatwall.callring.application.ports.platform.CalendarSource { throw AssertionError("Unexpected calendar source") }, persistenceActive = { true })
     }
 }

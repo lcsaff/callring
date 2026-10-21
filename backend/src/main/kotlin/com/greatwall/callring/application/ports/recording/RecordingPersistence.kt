@@ -1,7 +1,6 @@
 package com.greatwall.callring.application.ports.recording
 
-import com.greatwall.callring.application.RecordingCall
-import com.greatwall.callring.application.RecordingCandidate
+import com.greatwall.callring.domain.calling.RecordingCall
 import com.greatwall.callring.contracts.recording.CallArchive
 import com.greatwall.callring.application.recording.model.RecordingSettings
 

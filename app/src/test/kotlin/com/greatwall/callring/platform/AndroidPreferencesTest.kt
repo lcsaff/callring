@@ -15,6 +15,23 @@ class AndroidPreferencesTest {
     private val default =
         AppearanceSettings(ThemeSelection.PRESET, "provided_by_ui", null, ColorMode.FOLLOW_SYSTEM)
 
+    @Test fun scopedBindingsKeepOriginalParseExceptionsDistinctFromFullListingValidation() {
+        val widgets = MemoryPreferences()
+        val adapter = AndroidPreferences(MemoryPreferences(), widgets, default)
+        widgets.values["number_bad"] = "00123"
+        assertThrows(NumberFormatException::class.java) { adapter.scopedBindings().toList() }
+        assertThrows(IllegalStateException::class.java) { adapter.listBindings() }
+        widgets.values.clear()
+        widgets.values["number_9"] = 123
+        assertThrows(ClassCastException::class.java) { adapter.scopedBindings().toList() }
+        assertThrows(IllegalStateException::class.java) { adapter.listBindings() }
+        widgets.values.clear()
+        widgets.values["number_9"] = "00123"
+        widgets.values["number_2"] = "+00123"
+        assertEquals(listOf(WidgetBinding(9, "00123"), WidgetBinding(2, "+00123")), adapter.scopedBindings().toList())
+        assertEquals(listOf(2, 9), adapter.listBindings().map { it.widgetId })
+    }
+
     @Test fun bindingPersistenceDoesNotPublishBusinessChanges() {
         val coordinator = BusinessRevisionCoordinator()
         val adapter = AndroidPreferences(MemoryPreferences(), MemoryPreferences(), default)

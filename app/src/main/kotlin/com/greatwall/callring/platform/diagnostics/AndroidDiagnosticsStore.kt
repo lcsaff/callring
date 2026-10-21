@@ -34,7 +34,7 @@ class AndroidDiagnosticsStore(
     private val coordinator: com.greatwall.callring.application.coordination.BusinessRevisionCoordinator = com.greatwall.callring.application.coordination.BusinessRevisionCoordinator(),
 ) : Closeable {
     fun scopedReads():com.greatwall.callring.application.ports.query.ScopedReadPort {
-        val base=com.greatwall.callring.data.query.ValueScopedReadSource(setOf(com.greatwall.callring.contracts.ai.AiDomain.D20),{coordinator.capture().values.getValue("diagnostics")}){spec->
+        val base=com.greatwall.callring.data.query.ValueScopedReadSource(setOf(com.greatwall.callring.contracts.ai.AiDomain.D20),{coordinator.capture().values.getValue("diagnostics")},{"source_snapshot"}){spec->
             require(spec.projection=="default")
             storedEntries().map{(key,entry)->
                 val points=entry.message.codePointCount(0,entry.message.length).toLong()

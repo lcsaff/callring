@@ -1,15 +1,15 @@
 package com.greatwall.callring.application.recording
 
-import com.greatwall.callring.application.AiClient
-import com.greatwall.callring.application.AiFailure
-import com.greatwall.callring.application.AudioReference
-import com.greatwall.callring.application.RecordingCandidate
+import com.greatwall.callring.application.ports.recording.AiClient
+import com.greatwall.callring.application.ports.recording.AiFailure
+import com.greatwall.callring.application.ports.recording.AudioReference
+import com.greatwall.callring.application.ports.recording.RecordingCandidate
 import com.greatwall.callring.application.ports.recording.RecordingWorkflowReads
 
 import com.greatwall.callring.contracts.recording.*
-import com.greatwall.callring.contracts.ai.*
+import com.greatwall.callring.contracts.ai.AiProtocol
+import com.greatwall.callring.application.recording.model.RecordingActivityObservation
 import com.greatwall.callring.application.recording.policy.*
-import com.greatwall.callring.application.recording.*
 import com.greatwall.callring.contracts.command.CommandContext
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicLong
@@ -26,7 +26,7 @@ class RecordingWorkflow(
     private val cancelledOperations = ConcurrentHashMap<Long, AtomicBoolean>()
     private val activeClients = ConcurrentHashMap<Long, AiClient>()
     private val versions = AtomicLong(System.currentTimeMillis() * 1000)
-    fun activitySnapshot()=aiObject("running" to aiNumber(running.size.toLong()),"activeClients" to aiNumber(activeClients.size.toLong()),"cancelledOperations" to aiNumber(cancelledOperations.values.count{it.get()}.toLong()))
+    fun activityObservation() = RecordingActivityObservation(running.size.toLong(), activeClients.size.toLong(), cancelledOperations.values.count{it.get()}.toLong())
     private fun version(previous: Long = 0): Long = versions.updateAndGet { maxOf(it + 1, previous + 1) }
 
     fun attach(callId: Long, number: String, startedAt: Long, path: String, source: RecordingSource, duration: Long, command: CommandContext?, playbackStopped: Boolean): CallArchive {

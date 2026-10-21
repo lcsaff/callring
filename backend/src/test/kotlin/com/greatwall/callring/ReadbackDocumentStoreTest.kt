@@ -2,7 +2,7 @@ package com.greatwall.callring
 
 import com.greatwall.callring.application.runtime.ReadbackDocumentStore
 import com.greatwall.callring.contracts.common.DocumentRef
-import com.greatwall.callring.application.ports.DocumentStore
+import com.greatwall.callring.application.ports.platform.DocumentStore
 import java.io.*
 import org.junit.Assert.*
 import org.junit.Test

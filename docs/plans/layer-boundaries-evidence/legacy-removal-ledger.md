@@ -1,5 +1,9 @@
 # 旧实现删除追踪
 
+当前执行切片 T13b2a：bootstrap 查询/完整快照投影及 job JSON 已退出；RecordingPorts、RecordingAssociations、BackendPorts、PlatformSafety 旧混合文件与 playbackSnapshot/activitySnapshot/scopedBindingRows 旧入口全部删除，真实消费者迁至窄 port、typed observation 与 backend projector。没有旧包转发、alias 或双实现；逐项最后消费者/唯一新入口见 [T13b2a 实施证据](t13b2a-implementation.md)。此处仅记录候选实现，实际门/独立审查以同片 summary 和负责人 review 为准。
+
+仍待 T13b2b：Theme/Appearance 桥、CallerCard/form、混合 UI 文件；T13b2c：六系统组件 controller、PROJECT/README 与最终全集清单。T14/T15 仍 pending，本片不能记为 T13 全部完成。
+
 用户要求本次修改不留下迁移兼容代码或未删除干净的旧实现。本表追踪仍有真实消费者的迁移路径；不是最终保留清单。切片审查同时确认新实现与删除项，最终所有待删除项必须关闭。
 
 | 当前旧路径 | 仍使用它的业务 | 删除门 |

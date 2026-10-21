@@ -11,9 +11,9 @@ import com.greatwall.callring.application.ports.*
 import java.util.TreeMap
 
 /** For preferences/platform APIs which intrinsically expose a small source snapshot or row stream. */
-class ValueScopedReadSource(override val domains:Set<AiDomain>,private val versionProvider:(AiDomain)->Long,private val rows:(QuerySpec)->Sequence<SourceRow>):ScopedReadPort {
+class ValueScopedReadSource(override val domains:Set<AiDomain>,private val versionProvider:(AiDomain)->Long,private val consistencyProvider:(AiDomain)->String,private val rows:(QuerySpec)->Sequence<SourceRow>):ScopedReadPort {
     override fun version(domain:AiDomain)=versionProvider(domain)
-    override fun consistency(domain:AiDomain)=if(domain in setOf(AiDomain.D12,AiDomain.D13,AiDomain.D18,AiDomain.D19))"live_probe"else"source_snapshot"
+    override fun consistency(domain:AiDomain)=consistencyProvider(domain)
     private fun matches(row:SourceRow,f:QueryFilter):Boolean {
         require(f.year==null&&f.date==null&&f.zone==null&&f.start==null&&f.end==null)
         fun value(name:String)= (row.value[name] as? AiJson.Str)?.value

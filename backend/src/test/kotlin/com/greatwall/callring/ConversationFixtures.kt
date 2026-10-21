@@ -1,5 +1,12 @@
 package com.greatwall.callring
 
+import com.greatwall.callring.application.ports.platform.AudioController
+import com.greatwall.callring.application.ports.platform.DocumentStore
+import com.greatwall.callring.application.ports.platform.PreparedRingtoneImport
+import com.greatwall.callring.application.ports.platform.RuntimeProbe
+import com.greatwall.callring.application.ports.platform.SyncScheduler
+import com.greatwall.callring.application.ports.store.PreferenceStore
+
 import com.greatwall.callring.application.coordination.BusinessRevisionCoordinator
 import com.greatwall.callring.application.ports.query.ScopedReadPort
 import com.greatwall.callring.application.ports.query.SourcePage
@@ -32,7 +39,7 @@ class ConversationFixtures {
             override fun getBinding(widgetId: Int) = bindings[widgetId]
             override fun saveBinding(binding: WidgetBinding) { bindings[binding.widgetId] = binding }
             override fun removeBinding(widgetId: Int) { bindings.remove(widgetId) }
-            override fun bindingsForNumber(number: String) = listBindings().filter { com.greatwall.callring.application.sameRecordingNumber(it.number, number) }
+            override fun bindingsForNumber(number: String) = listBindings().filter { com.greatwall.callring.domain.model.sameRecordingNumber(it.number, number) }
             override fun listBindings() = bindings.values.toList()
         },
         object : DocumentStore {
@@ -63,7 +70,7 @@ class ConversationFixtures {
             override fun stopPlayback() = Unit
         },
         object : SyncScheduler { override fun requestSync(atEpochMillis: Long) = SyncRequestReceipt(SyncRequestState.QUEUED, atEpochMillis) },
-        Clock.fixed(Instant.ofEpochMilli(now), ZoneOffset.UTC), coordinator = coordinator, coreTransactions = core, numberRecordings = com.greatwall.callring.EmptyNumberRecordings, identityArchive = { com.greatwall.callring.contracts.common.ApiResult.Success(null) }, operationActive = { true }, conversationProvider = { com.greatwall.callring.testing.FixtureConversationApi }, aiSettingsProvider = { com.greatwall.callring.testing.FixtureAiSettingsApi }, updateProvider = { com.greatwall.callring.testing.FixtureAppUpdateApi }, snapshotsProvider = { com.greatwall.callring.testing.FixtureAiSnapshotApi }, recordingsProvider = { com.greatwall.callring.testing.FixtureRecordingApi }, calendarSource = com.greatwall.callring.application.ports.CalendarSource { throw AssertionError("Unexpected calendar source") }, persistenceActive = { true })
+        Clock.fixed(Instant.ofEpochMilli(now), ZoneOffset.UTC), coordinator = coordinator, coreTransactions = core, numberRecordings = com.greatwall.callring.EmptyNumberRecordings, identityArchive = { com.greatwall.callring.contracts.common.ApiResult.Success(null) }, operationActive = { true }, conversationProvider = { com.greatwall.callring.testing.FixtureConversationApi }, aiSettingsProvider = { com.greatwall.callring.testing.FixtureAiSettingsApi }, updateProvider = { com.greatwall.callring.testing.FixtureAppUpdateApi }, snapshotsProvider = { com.greatwall.callring.testing.FixtureAiSnapshotApi }, recordingsProvider = { com.greatwall.callring.testing.FixtureRecordingApi }, calendarSource = com.greatwall.callring.application.ports.platform.CalendarSource { throw AssertionError("Unexpected calendar source") }, persistenceActive = { true })
 }
 
 /** Write-only tests must supply the source capability explicitly and reject accidental reads. */

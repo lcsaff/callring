@@ -4,7 +4,7 @@ import com.greatwall.callring.application.coordination.requireOperationActive
 
 import com.greatwall.callring.application.coordination.BusinessRevisionCoordinator
 import com.greatwall.callring.application.coordination.*
-import com.greatwall.callring.application.ports.SyncScheduler
+import com.greatwall.callring.application.ports.platform.SyncScheduler
 import com.greatwall.callring.application.ports.store.StatisticsTransactions
 import com.greatwall.callring.contracts.change.DataDomain
 import com.greatwall.callring.contracts.command.CommandContext

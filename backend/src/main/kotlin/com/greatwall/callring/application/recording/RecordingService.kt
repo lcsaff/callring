@@ -1,5 +1,9 @@
 package com.greatwall.callring.application.recording
 
+import com.greatwall.callring.application.ports.recording.AiFailure
+import com.greatwall.callring.application.ports.recording.AudioReference
+import com.greatwall.callring.domain.calling.RecordingCall
+
 import com.greatwall.callring.application.coordination.BusinessRevisionCoordinator
 import com.greatwall.callring.application.ports.recording.PreparedRecordingAudio
 import com.greatwall.callring.application.ports.recording.RecordingArchiveState
@@ -146,7 +150,7 @@ class RecordingService(
         return CapturePlan(call, privileged)
     }
     fun playbackStatus() = playback.status()
-    fun playbackSnapshot() = playback.snapshot()
+    fun playbackObservation() = playback.observation()
     fun captureFailure(call: RecordingCall, reason: String): Unit = coordinator.guard {
         noteMissing(call, reason)
         val value = state.get(call.id)

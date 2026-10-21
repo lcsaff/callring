@@ -1,5 +1,13 @@
 package com.greatwall.callring
 
+import com.greatwall.callring.application.ports.platform.AudioController
+import com.greatwall.callring.application.ports.platform.CalendarSource
+import com.greatwall.callring.application.ports.platform.DocumentStore
+import com.greatwall.callring.application.ports.platform.PreparedRingtoneImport
+import com.greatwall.callring.application.ports.platform.RuntimeProbe
+import com.greatwall.callring.application.ports.platform.SyncScheduler
+import com.greatwall.callring.application.ports.store.PreferenceStore
+
 import com.greatwall.callring.application.mapping.*
 import com.greatwall.callring.application.CallringBackend
 import com.greatwall.callring.contracts.common.*
@@ -60,7 +68,7 @@ class CallringBackendTest {
     private val now = Instant.parse("2026-10-12T10:00:00Z").toEpochMilli()
 
     private class Prefs : PreferenceStore {
-        override fun bindingsForNumber(number: String) = listBindings().filter { com.greatwall.callring.application.sameRecordingNumber(it.number, number) }
+        override fun bindingsForNumber(number: String) = listBindings().filter { com.greatwall.callring.domain.model.sameRecordingNumber(it.number, number) }
         override fun listBindings() = bindings.values.toList()
         @Volatile
         var appearanceValue =

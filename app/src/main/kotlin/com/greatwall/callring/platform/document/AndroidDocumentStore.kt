@@ -1,8 +1,7 @@
 package com.greatwall.callring.platform.document
 
-import com.greatwall.callring.platform.DocumentLimitExceeded
-import com.greatwall.callring.platform.copyBounded
-import com.greatwall.callring.platform.validateDocumentUri
+import com.greatwall.callring.application.ports.platform.DocumentStore
+
 
 import com.greatwall.callring.data.codec.StrictJson
 
