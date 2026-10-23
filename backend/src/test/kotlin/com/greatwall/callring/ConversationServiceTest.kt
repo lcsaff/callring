@@ -28,7 +28,7 @@ class ConversationServiceTest {
 
     @Test fun actualPhaseTransitionsHaveBoundedPerTurnMonotonicTimings()=runBlocking {
         val f=ConversationFixtures();val client=Client(ArrayDeque(listOf(ConversationReply.Final("one"),ConversationReply.Final("two"))))
-        val service=ConversationService({f.backend},queries(f),::settings,f.coordinator,{client}, documentWriteVerified={false})
+        val service=ConversationService({f.backend},queries(f),::settings,f.coordinator,{client}, numberMatcher=com.greatwall.callring.domain.calling.PrefixLengthNumberMatcher, documentWriteVerified={false})
         try{
             repeat(2){
                 service.send(service.state.value.sessionId,"hello");withTimeout(5000){service.state.first{!it.busy}}
@@ -48,7 +48,7 @@ class ConversationServiceTest {
                 override suspend fun exchange(connection:AiConnection,encoded:ByteArray):ConversationReply=if(round++==0)ConversationReply.ToolBatch("",listOf(ConversationToolCall("c","root_checkNumber",args,wireArguments=args.encode())))else ConversationReply.Final("done")
                 override fun cancel()=Unit
             }
-            val service=ConversationService({f.backend},queries(f),{settings().copy(analysis=settings().analysis.copy(protocol=protocol,apiKey=key))},f.coordinator,{client}, documentWriteVerified={false})
+            val service=ConversationService({f.backend},queries(f),{settings().copy(analysis=settings().analysis.copy(protocol=protocol,apiKey=key))},f.coordinator,{client}, numberMatcher=com.greatwall.callring.domain.calling.PrefixLengthNumberMatcher, documentWriteVerified={false})
             try{
                 service.send(service.state.value.sessionId,"hello");withTimeout(5000){service.state.first{!it.busy}}
                 val replay=captured.flatMap{it.messages}.flatMap{it.toolCalls}.first()
@@ -60,7 +60,7 @@ class ConversationServiceTest {
         val f=ConversationFixtures()
         val connection=AiConnection(url="https://dashscope.aliyuncs.com/compatible-mode/v1",model="qwen3.8-flash",apiKey="secret")
         val client=Client(ArrayDeque(listOf(ConversationReply.Final("done"))))
-        val service=ConversationService({f.backend},queries(f),{RecordingSettings(analysis=connection)},f.coordinator,{client}, documentWriteVerified={false})
+        val service=ConversationService({f.backend},queries(f),{RecordingSettings(analysis=connection)},f.coordinator,{client}, numberMatcher=com.greatwall.callring.domain.calling.PrefixLengthNumberMatcher, documentWriteVerified={false})
         try {
             assertTrue(service.sendTo(service.state.value.sessionId,"next",AiConnectionView(connection.protocol,connection.url,connection.model,true,ProviderProfile.STANDARD)) is ApiResult.Failure)
             assertEquals(0,client.requests)
@@ -74,7 +74,7 @@ class ConversationServiceTest {
             override suspend fun exchange(connection:AiConnection,encoded:ByteArray):ConversationReply { entered.complete(Unit);awaitCancellation() }
             override fun cancel() {cancelled=true}
         }
-        val service=ConversationService({f.backend},queries(f),{config},f.coordinator,{client}, documentWriteVerified={false})
+        val service=ConversationService({f.backend},queries(f),{config},f.coordinator,{client}, numberMatcher=com.greatwall.callring.domain.calling.PrefixLengthNumberMatcher, documentWriteVerified={false})
         try {
             service.send(service.state.value.sessionId,"hello"); withTimeout(5000){entered.await()}
             config=config.copy(conversationCompatibility=ConversationCompatibility.STANDARD);f.coordinator.publishResource("aiConfig", setOf("aiConfig"), com.greatwall.callring.application.coordination.ChangeImpact.wide(setOf(com.greatwall.callring.contracts.change.DataDomain.AI_SETTINGS)))
@@ -88,7 +88,7 @@ class ConversationServiceTest {
         val original = config.analysis
         val disclosed = AiConnectionView(original.protocol,original.url,original.model,true)
         val client = Client(ArrayDeque(listOf(ConversationReply.Final("done"))))
-        val service = ConversationService({ f.backend },queries(f),{ config },f.coordinator,{ client }, documentWriteVerified={false})
+        val service = ConversationService({ f.backend },queries(f),{ config },f.coordinator,{ client }, numberMatcher=com.greatwall.callring.domain.calling.PrefixLengthNumberMatcher, documentWriteVerified={false})
         try {
             for(connection in listOf(original.copy(url = "https://new.example/v1"),original.copy(model = "new"),original.copy(protocol = AiProtocol.ANTHROPIC))) {
                 config = config.copy(analysis = connection)
@@ -111,7 +111,7 @@ class ConversationServiceTest {
             override suspend fun exchange(connection: AiConnection, encoded: ByteArray): ConversationReply { entered.complete(Unit); awaitCancellation() }
             override fun cancel() { cancelled = true }
         }
-        val service = ConversationService({ fixture.backend }, queries(fixture), { configuration }, fixture.coordinator, { client }, documentWriteVerified={false})
+        val service = ConversationService({ fixture.backend }, queries(fixture), { configuration }, fixture.coordinator, { client }, numberMatcher=com.greatwall.callring.domain.calling.PrefixLengthNumberMatcher, documentWriteVerified={false})
         service.send(service.state.value.sessionId,"old target")
         withTimeout(5000) { entered.await() }
         configuration = configuration.copy(analysis = configuration.analysis.copy(model = "changed"))
@@ -131,7 +131,7 @@ class ConversationServiceTest {
             override suspend fun exchange(connection: AiConnection, encoded: ByteArray): ConversationReply { requests++;return when(requests){1->discover("settings_getQuietHours","settings_setQuietEnabled");2->ConversationReply.ToolBatch("",listOf(ConversationToolCall("read","settings_getQuietHours",aiObject())));3->{entered.complete(Unit);reply.await()};else->ConversationReply.Final("done")} }
             override fun cancel() = Unit
         }
-        val service = ConversationService({ fixture.backend }, queries(fixture), ::settings, fixture.coordinator, { client }, documentWriteVerified={false})
+        val service = ConversationService({ fixture.backend }, queries(fixture), ::settings, fixture.coordinator, { client }, numberMatcher=com.greatwall.callring.domain.calling.PrefixLengthNumberMatcher, documentWriteVerified={false})
         service.foreground.attachHost()
         service.send(service.state.value.sessionId,"change quiet")
         withTimeout(5000) { entered.await() }
@@ -148,7 +148,7 @@ class ConversationServiceTest {
         val fixture = ConversationFixtures()
         val first = ConversationToolCall("one", "settings_setQuietEnabled", aiObject("enabled" to aiBool(true)))
         val client = Client(ArrayDeque(listOf(discover("settings_setQuietEnabled"),ConversationReply.ToolBatch("", listOf(first)), ConversationReply.ToolBatch("", listOf(first.copy(arguments = aiObject("enabled" to aiBool(false))))))))
-        val service = ConversationService({ fixture.backend }, queries(fixture), ::settings, fixture.coordinator, { client }, documentWriteVerified={false})
+        val service = ConversationService({ fixture.backend }, queries(fixture), ::settings, fixture.coordinator, { client }, numberMatcher=com.greatwall.callring.domain.calling.PrefixLengthNumberMatcher, documentWriteVerified={false})
         service.foreground.attachHost()
         service.send(service.state.value.sessionId,"change")
         withTimeout(5000) { service.state.first { !it.busy } }
@@ -166,7 +166,7 @@ class ConversationServiceTest {
             override suspend fun exchange(connection: AiConnection, encoded: ByteArray): ConversationReply { requests++; entered.complete(Unit); awaitCancellation() }
             override fun cancel() { cancelled = true }
         }
-        val service = ConversationService({ fixture.backend },queries(fixture),::settings,fixture.coordinator,{ client }, documentWriteVerified={false})
+        val service = ConversationService({ fixture.backend },queries(fixture),::settings,fixture.coordinator,{ client }, numberMatcher=com.greatwall.callring.domain.calling.PrefixLengthNumberMatcher, documentWriteVerified={false})
         val session = service.state.value.sessionId
         service.send(session,"first")
         withTimeout(5000) { entered.await() }
@@ -187,7 +187,7 @@ class ConversationServiceTest {
             override suspend fun exchange(connection: AiConnection, encoded: ByteArray): ConversationReply { requests++;return if(requests==1)discover("settings_setQuietEnabled")else ConversationReply.ToolBatch("",listOf(ConversationToolCall("one","settings_setQuietEnabled",aiObject("enabled" to aiBool(true))))) }
             override fun cancel() = Unit
         }
-        val service = ConversationService({ fixture.backend },queries(fixture),::settings,fixture.coordinator,{ client }, documentWriteVerified={false})
+        val service = ConversationService({ fixture.backend },queries(fixture),::settings,fixture.coordinator,{ client }, numberMatcher=com.greatwall.callring.domain.calling.PrefixLengthNumberMatcher, documentWriteVerified={false})
         service.foreground.attachHost()
         service.send(service.state.value.sessionId,"change")
         withTimeout(5000) { service.state.first { !it.busy } }
@@ -209,7 +209,7 @@ class ConversationServiceTest {
             }
             override fun cancel()=Unit
         }
-        val service=ConversationService({f.backend},queries(f),::settings,f.coordinator,{client}, documentWriteVerified={false});service.foreground.attachHost()
+        val service=ConversationService({f.backend},queries(f),::settings,f.coordinator,{client}, numberMatcher=com.greatwall.callring.domain.calling.PrefixLengthNumberMatcher, documentWriteVerified={false});service.foreground.attachHost()
         try {
             val session=service.state.value.sessionId;service.send(session,"two operations");withTimeout(5000){service.state.first{!it.busy}}
             assertEquals(ConversationPhase.PARTIAL,service.state.value.phase);assertEquals(listOf(task),service.state.value.continuableTasks)
@@ -228,7 +228,7 @@ class ConversationServiceTest {
             override suspend fun exchange(connection:AiConnection,encoded:ByteArray):ConversationReply {n++;return when(n){1->discover("task_prepare","settings_setQuietEnabled");2->ConversationReply.ToolBatch("",listOf(ConversationToolCall("plan","task_prepare",aiObject("kind" to aiString("OPERATIONS"),"expectedCount" to aiNumber(2)))));3,5->ConversationReply.ToolBatch("",listOf(ConversationToolCall("save-$n","settings_setQuietEnabled",aiObject("taskId" to aiString(task),"enabled" to aiBool(n==3)))));else->ConversationReply.Final("done")}}
             override fun cancel()=Unit
         }
-        val service=ConversationService({f.backend},queries(f),::settings,f.coordinator,{client}, documentWriteVerified={false});service.foreground.attachHost()
+        val service=ConversationService({f.backend},queries(f),::settings,f.coordinator,{client}, numberMatcher=com.greatwall.callring.domain.calling.PrefixLengthNumberMatcher, documentWriteVerified={false});service.foreground.attachHost()
         try{service.send(service.state.value.sessionId,"two operations");withTimeout(5000){service.state.first{!it.busy}};assertEquals(ConversationPhase.COMPLETED,service.state.value.phase);assertEquals(6,n);assertEquals(2L,f.coordinator.capture().values["core"])}finally{service.close()}
     }
     @Test fun providerBatchThatCannotFitRequiredWireHistoryNeverStartsAWrite()=runBlocking {
@@ -238,7 +238,7 @@ class ConversationServiceTest {
             override suspend fun exchange(connection:AiConnection,encoded:ByteArray):ConversationReply {n++;return if(n==1)discover("settings_saveAppearance")else ConversationReply.ToolBatch("",listOf(ConversationToolCall("large","settings_saveAppearance",aiObject("colorMode" to aiString("DARK"),"presetId" to aiString("x".repeat(50000))))))}
             override fun cancel()=Unit
         }
-        val original=f.appearance;val service=ConversationService({f.backend},queries(f),::settings,f.coordinator,{client}, documentWriteVerified={false});service.foreground.attachHost()
+        val original=f.appearance;val service=ConversationService({f.backend},queries(f),::settings,f.coordinator,{client}, numberMatcher=com.greatwall.callring.domain.calling.PrefixLengthNumberMatcher, documentWriteVerified={false});service.foreground.attachHost()
         try{service.send(service.state.value.sessionId,"change");withTimeout(5000){service.state.first{!it.busy}};assertEquals(original,f.appearance);assertEquals("ai.context_budget_exceeded",service.state.value.error?.message);assertTrue(service.state.value.receipts.none{it.status==ToolStatus.COMMITTED})}finally{service.close()}
     }
     @Test fun sameFieldChangedAfterModelReadCannotBeRetriedOrReportedComplete()=runBlocking {
@@ -248,7 +248,7 @@ class ConversationServiceTest {
             override suspend fun exchange(connection:AiConnection,encoded:ByteArray):ConversationReply {n++;return when(n){1->discover("settings_getQuietHours","settings_setQuietEnabled");2->ConversationReply.ToolBatch("",listOf(ConversationToolCall("read","settings_getQuietHours",aiObject())));3->{entered.complete(Unit);next.await()};else->ConversationReply.Final("done")}}
             override fun cancel()=Unit
         }
-        val service=ConversationService({f.backend},queries(f),::settings,f.coordinator,{client}, documentWriteVerified={false});service.foreground.attachHost()
+        val service=ConversationService({f.backend},queries(f),::settings,f.coordinator,{client}, numberMatcher=com.greatwall.callring.domain.calling.PrefixLengthNumberMatcher, documentWriteVerified={false});service.foreground.attachHost()
         try {
             service.send(service.state.value.sessionId,"enable quiet");withTimeout(5000){entered.await()}
             f.backend.settings.setQuietMode(QuietMode.NON_WORK).requiredValue()
@@ -275,7 +275,7 @@ class ConversationServiceTest {
         val f = ConversationFixtures()
         val calls = listOf(ConversationToolCall("one", "settings_setQuietEnabled", aiObject("enabled" to aiBool(true))), ConversationToolCall("two", "run_sql", aiObject()))
         val client = Client(ArrayDeque<ConversationReply>(listOf(discover("settings_setQuietEnabled"),ConversationReply.ToolBatch("", calls),ConversationReply.Final("done"))))
-        val service = ConversationService({ f.backend }, queries(f), ::settings, f.coordinator, { client }, documentWriteVerified={false})
+        val service = ConversationService({ f.backend }, queries(f), ::settings, f.coordinator, { client }, numberMatcher=com.greatwall.callring.domain.calling.PrefixLengthNumberMatcher, documentWriteVerified={false})
         service.foreground.attachHost()
         val session = service.state.value.sessionId
         assertTrue(service.send(session, "enable quiet") is ApiResult.Success)
@@ -289,7 +289,7 @@ class ConversationServiceTest {
         val f = ConversationFixtures()
         val call = ConversationToolCall("one", "settings_setQuietEnabled", aiObject("enabled" to aiBool(true)))
         val client = Client(ArrayDeque<ConversationReply>(listOf(discover("settings_setQuietEnabled"),ConversationReply.ToolBatch("", listOf(call)), ConversationReply.ToolBatch("", listOf(call)), ConversationReply.Final("done"))))
-        val service = ConversationService({ f.backend }, queries(f), ::settings, f.coordinator, { client }, documentWriteVerified={false})
+        val service = ConversationService({ f.backend }, queries(f), ::settings, f.coordinator, { client }, numberMatcher=com.greatwall.callring.domain.calling.PrefixLengthNumberMatcher, documentWriteVerified={false})
         service.foreground.attachHost()
         service.send(service.state.value.sessionId, "enable quiet")
         withTimeout(5000) { service.state.first { !it.busy } }

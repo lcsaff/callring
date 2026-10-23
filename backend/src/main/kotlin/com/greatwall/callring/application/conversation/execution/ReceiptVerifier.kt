@@ -52,6 +52,13 @@ class ReceiptVerifier(private val q:QueryService,private val catalog:OperationCa
                 OperationId.CALLERS_SAVE_PROFILE ->{val v=get(AiDomain.D01,a.s("number"));sameValue(v["stored"],aiBool(true))&&compare(v,aliases=mapOf("positionId" to "position_id"))}
                 OperationId.CALLERS_SET_WHITELISTED ->compare(get(AiDomain.D01,a.s("number")),aiObject("number" to a["number"],"whitelisted" to a["enabled"]))
                 OperationId.REPORTS_EXPORT_CSV ->documentProof.isNotEmpty()
+                OperationId.SETTINGS_SAVE_NUMBER_RULE -> {
+                    val actual=get(AiDomain.D10,"configuration")["numberRule"] as? AiJson.Obj
+                    val base=a.obj("base")
+                    val unchanged=a["prefix"]==base["prefix"]&&sameValue(a["length"],base["length"])
+                    val revision=if(unchanged)base.l("revision") else Math.addExact(base.l("revision"),1)
+                    actual!=null&&sameValue(actual["prefix"],a["prefix"])&&sameValue(actual["length"],a["length"])&&sameValue(actual["revision"],aiNumber(revision))&&sameValue(actual["revision"],receiptObject()["revision"])
+                }
                 OperationId.SETTINGS_SET_STATISTICS_ENABLED ->sameValue(get(AiDomain.D10,"configuration")["statisticsEnabled"],a["enabled"])
                 OperationId.SETTINGS_SET_OVERLAY_ENABLED ->sameValue(get(AiDomain.D10,"configuration")["overlay"],a["enabled"])
                 OperationId.SETTINGS_SAVE_QUIET_HOURS ->compare(get(AiDomain.D10,"configuration"),aliases=mapOf("mode" to "quiet_mode","allNumbers" to "all_numbers","weeklyWindows" to "quiet_windows"))

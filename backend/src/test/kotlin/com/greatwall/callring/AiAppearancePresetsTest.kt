@@ -43,7 +43,7 @@ class AiAppearancePresetsTest {
         val q = QueryService(listOf(source), revision = f.coordinator::marker)
         val executor = ToolExecutor({ f.backend }, f.coordinator,
             ForegroundActionService(checkCommand = { _, _ -> true }).also { it.attachHost() }, ForegroundResourceRegistry(),
-            queries = q, documentWriteVerified = { false })
+            queries = q, numberMatcher=com.greatwall.callring.domain.calling.PrefixLengthNumberMatcher, documentWriteVerified= { false })
         val engine = ToolBatchEngine({ f.backend }, executor, q, f.coordinator,
             "session", "turn", 1, { true })
     }

@@ -39,6 +39,7 @@ class ConversationService(
     private val clientFactory:()->ConversationClient,
     private val scope:CoroutineScope=CoroutineScope(SupervisorJob()+Dispatchers.Default),
     val resources:ForegroundResourceRegistry=ForegroundResourceRegistry(),
+    numberMatcher:com.greatwall.callring.domain.calling.NumberMatcher,
     documentWriteVerified:suspend(DocumentRef)->Boolean,
 ):ConversationApi,AutoCloseable {
     private val lock=Any()
@@ -65,7 +66,7 @@ class ConversationService(
         }
         return state.value.copy(phase=phase,phaseSpans=phaseSpans.toList(),diagnosticsComplete=phaseTraceComplete)
     }
-    private val executor=ToolExecutor(api,coordinator,foreground,resources,queries=queries,documentWriteVerified=documentWriteVerified)
+    private val executor=ToolExecutor(api,coordinator,foreground,resources,queries=queries,numberMatcher=numberMatcher,documentWriteVerified=documentWriteVerified)
     private val monitor=scope.launch {
         coordinator.invalidations.snapshots.map { it.token(ChangeSubscription(setOf(DataDomain.AI_SETTINGS))) }.distinctUntilChanged().collect {
             if(state.value.busy&&fingerprint.isNotEmpty()&&runCatching{connectionFingerprint(settings())!=fingerprint}.getOrDefault(true)) {

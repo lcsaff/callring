@@ -65,7 +65,7 @@ class T11PermissionGrantTest {
         }
         val command = com.greatwall.callring.contracts.command.CommandContext("old-proof", f.coordinator.capture(), 1,
             expectedScopes = mapOf("runtime:capability:CALL_LOG" to 0L), mayCommit = { foreground.hasHost }) { true }
-        val executor = ToolExecutor({ api }, f.coordinator, foreground, ForegroundResourceRegistry(), queries=unusedToolQueries(), documentWriteVerified={false})
+        val executor = ToolExecutor({ api }, f.coordinator, foreground, ForegroundResourceRegistry(), queries=unusedToolQueries(), numberMatcher=com.greatwall.callring.domain.calling.PrefixLengthNumberMatcher, documentWriteVerified={false})
         val result = async { executor.execute(ConversationToolCall("action", "system_requestCapability", aiObject("capability" to aiString("CALL_LOG"))),
             ToolExecutionContext("s", "t", 1, command)) }
         val ticket = withTimeout(5000) { foreground.pending.first { it != null }!! }
@@ -85,7 +85,7 @@ class T11PermissionGrantTest {
             val key = if (settings) "runtime:status" else "runtime:capability:CALL_LOG"
             val command = com.greatwall.callring.contracts.command.CommandContext("op", f.coordinator.capture(), 1,
                 expectedScopes = mapOf(key to f.coordinator.marker()), mayCommit = { foreground.hasHost }) { true }
-            val executor = ToolExecutor({ f.backend }, f.coordinator, foreground, ForegroundResourceRegistry(), queries=unusedToolQueries(), documentWriteVerified={false})
+            val executor = ToolExecutor({ f.backend }, f.coordinator, foreground, ForegroundResourceRegistry(), queries=unusedToolQueries(), numberMatcher=com.greatwall.callring.domain.calling.PrefixLengthNumberMatcher, documentWriteVerified={false})
             val call = ConversationToolCall("action", if (settings) "system_openApplicationSettings" else "system_requestCapability",
                 if (settings) aiObject() else aiObject("capability" to aiString("CALL_LOG")))
             val receipt = async { executor.execute(call, ToolExecutionContext("session", "turn", 1, command)) }
@@ -129,11 +129,11 @@ class T11PermissionGrantTest {
             override fun query(spec: QuerySpec, after: String?) = SourcePage(listOf(get(spec.domain, "current", spec.projection)), 1)
         }
         val queries = QueryService(listOf(source), revision = f.coordinator::marker)
-        val conversation = ConversationService({ f.backend }, queries, { RecordingSettings() }, f.coordinator, { error("no provider") }, documentWriteVerified={false})
+        val conversation = ConversationService({ f.backend }, queries, { RecordingSettings() }, f.coordinator, { error("no provider") }, numberMatcher=com.greatwall.callring.domain.calling.PrefixLengthNumberMatcher, documentWriteVerified={false})
         try {
             val foreground = conversation.foreground
             val host = foreground.attachHost()
-            val executor = ToolExecutor({ f.backend }, f.coordinator, foreground, ForegroundResourceRegistry(), queries = queries, documentWriteVerified={false})
+            val executor = ToolExecutor({ f.backend }, f.coordinator, foreground, ForegroundResourceRegistry(), queries = queries, numberMatcher=com.greatwall.callring.domain.calling.PrefixLengthNumberMatcher, documentWriteVerified={false})
             val engine = ToolBatchEngine({ f.backend }, executor, queries, f.coordinator, "session", "turn", 1, { true })
             queries.get(AiDomain.D19, "current").requiredValue()
             val plan = engine.execute(listOf(ConversationToolCall("plan", "task_prepare", aiObject("kind" to aiString("OPERATIONS"), "expectedCount" to aiNumber(2))))).single()

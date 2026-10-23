@@ -22,8 +22,8 @@ class ThinkingToolApiCompatibilityTest {
     private fun tool(id: OperationId) = registry.definitions.first { it.id == id }
 
     @Test fun operationSetAndNumbersStayUnchanged() {
-        assertEquals(((1..72).map { "O%02d".format(it) } + (1..9).map { "X%02d".format(it) }).toSet(), registry.definitions.map { it.operationCode }.toSet())
-        assertEquals(81, registry.definitions.map { it.name }.toSet().size)
+        assertEquals(((1..72).map { "O%02d".format(it) } + (1..11).map { "X%02d".format(it) }).toSet(), registry.definitions.map { it.operationCode }.toSet())
+        assertEquals(83, registry.definitions.map { it.name }.toSet().size)
     }
 
     @Test fun legacyCompatibilityArgumentStillAccepted() {

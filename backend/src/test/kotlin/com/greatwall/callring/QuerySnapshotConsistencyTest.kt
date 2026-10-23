@@ -222,7 +222,7 @@ class QuerySnapshotConsistencyTest {
             }
         val query = QueryService(listOf(source))
         val result = runCatching {
-            ScopedToolReader(query)
+            ScopedToolReader(query,com.greatwall.callring.domain.calling.PrefixLengthNumberMatcher)
                 .read(
                     OperationId.REPORTS_LOAD,
                     aiObject(

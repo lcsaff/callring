@@ -43,6 +43,7 @@ internal class ConversationAssembly(
         ensureOpen()
         ConversationService(api, queries, { recordings().store.settings() }, coordinator,
             { CompatibleConversationClient() }, resources = resources,
+            numberMatcher = configuration.numberMatcher,
             documentWriteVerified = { core.documents.verifyWrite(it) })
     }
     val service: ConversationService get() = synchronized(lifetime) { ensureOpen(); serviceDelegate.value }

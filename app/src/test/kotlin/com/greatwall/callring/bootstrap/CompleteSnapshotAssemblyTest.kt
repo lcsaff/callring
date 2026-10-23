@@ -90,7 +90,7 @@ class CompleteSnapshotAssemblyTest {
         }
         val client = CompatibleConversationClient { http }
         val beforeReads=graph.businessReadCounters()
-        val conversation=ConversationService({graph.api},graph.queries,{store.settings()},graph.coordinator,{client}, documentWriteVerified={false})
+        val conversation=ConversationService({graph.api},graph.queries,{store.settings()},graph.coordinator,{client}, numberMatcher=com.greatwall.callring.domain.calling.PrefixLengthNumberMatcher, documentWriteVerified={false})
         conversation.send(conversation.state.value.sessionId,"你好")
         withTimeout(5000){conversation.state.first{!it.busy}}
         assertEquals(ConversationPhase.COMPLETED,conversation.state.value.phase)

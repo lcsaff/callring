@@ -38,12 +38,12 @@ class ToolBatchEngineTest {
         val source=object:ScopedReadPort {
             override val domains=AiDomain.entries.toSet()
             override fun version(domain:AiDomain)=f.coordinator.capture().values.getValue(if(domain==AiDomain.D11)"preferences"else"core")
-            override fun get(domain:AiDomain,key:String,projection:String):SourceRow? = if(domain==AiDomain.D11)SourceRow("current",safeValue(f.appearance) as AiJson.Obj)else f.core.people[key]?.let{SourceRow(key,aiObject("number" to aiString(key),"stored" to aiNumber(1),"name" to aiString(if(mismatchProfileReadback)"wrong"else it.name),"department" to aiString(it.department),"position_id" to aiNumber(it.positionId),"whitelisted" to aiBool(it.whitelisted)))}
+            override fun get(domain:AiDomain,key:String,projection:String):SourceRow? = if(domain==AiDomain.D10)SourceRow(key,aiObject("numberRule" to safeValue(f.core.numberRuleSettings)))else if(domain==AiDomain.D11)SourceRow("current",safeValue(f.appearance) as AiJson.Obj)else f.core.people[key]?.let{SourceRow(key,aiObject("number" to aiString(key),"stored" to aiNumber(1),"name" to aiString(if(mismatchProfileReadback)"wrong"else it.name),"department" to aiString(it.department),"position_id" to aiNumber(it.positionId),"whitelisted" to aiBool(it.whitelisted)))}
             override fun query(spec:QuerySpec,after:String?)=SourcePage(spec.filter.number?.let{get(spec.domain,it,spec.projection)}?.let{listOf(it)}?:emptyList(),if(spec.filter.number in f.core.people)1 else 0)
         }
         val q=QueryService(listOf(source),revision=f.coordinator::marker)
         val foreground=ForegroundActionService(checkCommand = { _, _ -> true }).also{it.attachHost()}
-        val executor=ToolExecutor({f.backend},f.coordinator,foreground,ForegroundResourceRegistry(),registry=ToolRegistry(OperationCatalog(OperationCatalog.defaultDefinitions().shuffled(kotlin.random.Random(1201)))),queries=q, documentWriteVerified={false})
+        val executor=ToolExecutor({f.backend},f.coordinator,foreground,ForegroundResourceRegistry(),registry=ToolRegistry(OperationCatalog(OperationCatalog.defaultDefinitions().shuffled(kotlin.random.Random(1201)))),queries=q, numberMatcher=com.greatwall.callring.domain.calling.PrefixLengthNumberMatcher, documentWriteVerified={false})
         val engine=ToolBatchEngine({f.backend},executor,q,f.coordinator,"session","turn",1,{true})
         fun profile(id:String,number:String,task:String)=ConversationToolCall(id,"callers_saveProfile",aiObject("number" to aiString(number),"name" to aiString("合成测试-$number"),"taskId" to aiString(task)))
         suspend fun plan(n:Int):String {
@@ -161,7 +161,7 @@ class ToolBatchEngineTest {
                 override fun commandApi(context:CommandContext)=api(context)
             }
         }
-        val executor=ToolExecutor({api()},t.f.coordinator,host,ForegroundResourceRegistry(),queries=t.q, documentWriteVerified={false})
+        val executor=ToolExecutor({api()},t.f.coordinator,host,ForegroundResourceRegistry(),queries=t.q, numberMatcher=com.greatwall.callring.domain.calling.PrefixLengthNumberMatcher, documentWriteVerified={false})
         val engine=ToolBatchEngine({api()},executor,t.q,t.f.coordinator,"s","t",1,{true})
         val result=engine.execute(listOf(ConversationToolCall("write","settings_saveAppearance",aiObject("colorMode" to aiString("DARK"))))).single()
         assertEquals(ToolStatus.FAILED,result.status);assertEquals(ColorMode.FOLLOW_SYSTEM,t.f.appearance.colorMode)

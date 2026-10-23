@@ -225,7 +225,7 @@ class ToolBusinessIntegrationTest {
                 val disclosed=f.recordingStore.get(f.recordingId)!!
                 f.runtime.archiveCommands.compareAndSet(disclosed.callId,disclosed.generation,disclosed.copy(generation=disclosed.generation+1), null, false)
             }
-            val executor=ToolExecutor({wrapped},f.coordinator,f.foreground,f.resources,queries=queries, documentWriteVerified={false})
+            val executor=ToolExecutor({wrapped},f.coordinator,f.foreground,f.resources,queries=queries, numberMatcher=com.greatwall.callring.domain.calling.PrefixLengthNumberMatcher, documentWriteVerified={false})
             val engine=ToolBatchEngine({wrapped},executor,queries,f.coordinator,"s","t",1,{true})
             val host=launch {f.foreground.pending.filterNotNull().collect{ticket->
                 val token=f.foreground.attachHost()
@@ -263,7 +263,7 @@ class ToolBusinessIntegrationTest {
             }}
             val queries=QueryService(listOf(f.store.fixtureScopedReads(f.coordinator)),revision=f.coordinator::marker)
             val configured=f.recordingStore.settings().copy(analysis=f.recordingStore.settings().analysis.copy(model="qwen3.8-flash"),conversationCompatibility=ConversationCompatibility.QWEN_FAST)
-            val service=ConversationService({f.api()},queries,{configured},f.coordinator,{client}, documentWriteVerified={false})
+            val service=ConversationService({f.api()},queries,{configured},f.coordinator,{client}, numberMatcher=com.greatwall.callring.domain.calling.PrefixLengthNumberMatcher, documentWriteVerified={false})
             try{
                 service.send(service.state.value.sessionId,"synthetic diagnostic capture");withTimeout(10000){service.state.first{!it.busy}}
                 val state=service.state.value;assertEquals(ConversationPhase.COMPLETED,state.phase);assertEquals(3,sent.size);assertEquals(3,state.exchanges.size)
@@ -280,7 +280,7 @@ class ToolBusinessIntegrationTest {
             }finally{service.close()}
         }
     }
-    @Test fun all72ToolsInvokeProductionBusinessApisAndInvalidSchemaNeverMutates() = runBlocking {
+    @Test fun all74BusinessToolsInvokeProductionApisAndInvalidSchemaNeverMutates() = runBlocking {
         provider()
         val registry = ToolRegistry(OperationCatalog(OperationCatalog.defaultDefinitions().shuffled(kotlin.random.Random(1202))))
         val covered = mutableSetOf<OperationId>()
@@ -309,7 +309,7 @@ class ToolBusinessIntegrationTest {
                     fixture.foreground.deliver(ticket.requestId,ForegroundHostResult(status,document))
                 }
             } }
-            val executor = ToolExecutor({ root },fixture.coordinator,fixture.foreground,fixture.resources,registry,queries=fixture.queries,documentWriteVerified={fixture.docs.verifyWrite(it)})
+            val executor = ToolExecutor({ root },fixture.coordinator,fixture.foreground,fixture.resources,registry,queries=fixture.queries,numberMatcher=com.greatwall.callring.domain.calling.PrefixLengthNumberMatcher, documentWriteVerified={fixture.docs.verifyWrite(it)})
             fun scope(id: String) = ToolExecutionContext("session","turn",1,CommandContext(id,fixture.coordinator.capture(),1) { true })
             val call = ConversationToolCall("call",definition.name,parseAiJson(arguments(definition.id,fixture.recordingId)) as AiJson.Obj)
             val engine=ToolBatchEngine({root},executor,fixture.queries,fixture.coordinator,"session","turn",1,{true})
@@ -328,7 +328,7 @@ class ToolBusinessIntegrationTest {
                     OperationId.CALLERS_GET_OVERVIEW -> setOf(AiDomain.D01,AiDomain.D05,AiDomain.D06,AiDomain.D04)
                     OperationId.CALLERS_GET_LATEST_CALL -> setOf(AiDomain.D04)
                     OperationId.REPORTS_LOAD -> setOf(AiDomain.D05,AiDomain.D04)
-                    OperationId.SETTINGS_GET_SUMMARY,OperationId.SETTINGS_GET_QUIET_HOURS,OperationId.SETTINGS_GET_SCORE_SETTINGS -> setOf(AiDomain.D10)
+                    OperationId.ROOT_CHECK_NUMBER,OperationId.SETTINGS_GET_NUMBER_RULE,OperationId.SETTINGS_GET_SUMMARY,OperationId.SETTINGS_GET_QUIET_HOURS,OperationId.SETTINGS_GET_SCORE_SETTINGS -> setOf(AiDomain.D10)
                     OperationId.SETTINGS_GET_POSITIONS -> setOf(AiDomain.D02)
                     OperationId.SETTINGS_GET_WORK_SCHEDULE -> setOf(AiDomain.D06)
                     OperationId.SETTINGS_GET_CALENDAR -> setOf(AiDomain.D07)
@@ -344,7 +344,7 @@ class ToolBusinessIntegrationTest {
                     OperationId.AI_GET_SETTINGS -> setOf(AiDomain.D14)
                     else -> error("Missing source-domain test expectation for ${definition.id}")
                 }
-                expectedDomains.forEach { domain -> assertTrue("${definition.id} missing $domain source stamp",receipt.value.encode().contains("\"domain\":\"${domain.name}\"")) }
+                expectedDomains.forEach { domain -> assertTrue("${definition.id} missing $domain source stamp",(receipt.value.encode()+receipt.verificationEvidence.encode()).contains("\"domain\":\"${domain.name}\"")) }
 
             } else assertTrue("${definition.id} missing real API $expected in ${fixture.calls}",expected in fixture.calls)
             if(definition.id==OperationId.RECORDINGS_GET_SETTINGS) {
@@ -377,14 +377,14 @@ class ToolBusinessIntegrationTest {
             println("TOOL_PROOF ${definition.id} ${definition.name} status=${receipt.status} api=$expected invalid=FAILED")
             host.cancelAndJoin()
         }
-        assertEquals(72,covered.size)
+        assertEquals(74,covered.size)
     }
     @Test fun allExtensionsExecuteThroughShuffledCatalogAndCompositeChildReadback()=runBlocking {
         provider()
         Fixture("named-extensions").use { f ->
             f.seed()
             val registry=ToolRegistry(OperationCatalog(OperationCatalog.defaultDefinitions().shuffled(kotlin.random.Random(1203))))
-            val executor=ToolExecutor({f.api()},f.coordinator,f.foreground,f.resources,registry,queries=f.queries,documentWriteVerified={f.docs.verifyWrite(it)})
+            val executor=ToolExecutor({f.api()},f.coordinator,f.foreground,f.resources,registry,queries=f.queries,numberMatcher=com.greatwall.callring.domain.calling.PrefixLengthNumberMatcher, documentWriteVerified={f.docs.verifyWrite(it)})
             val engine=ToolBatchEngine({f.api()},executor,f.queries,f.coordinator,"session","turn",1,{true})
             var sequence=0
             val covered=linkedSetOf<OperationId>()
@@ -432,7 +432,7 @@ class ToolBusinessIntegrationTest {
         for(operation in listOf(OperationId.SETTINGS_DELETE_POSITION,OperationId.SETTINGS_DELETE_LEAVE,OperationId.RECORDINGS_TEST_CONNECTION,OperationId.RECORDINGS_DELETE,OperationId.RECORDINGS_ADOPT_IDENTITY)) Fixture("confirm-${operation.name}").use { fixture ->
             fixture.seed()
             val root = fixture.api()
-            val executor = ToolExecutor({ root },fixture.coordinator,fixture.foreground,fixture.resources, queries=fixture.queries, documentWriteVerified={false})
+            val executor = ToolExecutor({ root },fixture.coordinator,fixture.foreground,fixture.resources, queries=fixture.queries, numberMatcher=com.greatwall.callring.domain.calling.PrefixLengthNumberMatcher, documentWriteVerified={false})
             val definition = executor.registry.definitions.single { it.id == operation }
             for(changed in listOf(false,true)) {
                 val command = CommandContext(java.util.UUID.randomUUID().toString(),fixture.coordinator.capture(),1) { true }
@@ -482,6 +482,8 @@ class ToolBusinessIntegrationTest {
         OperationId.SETTINGS_DELETE_DATE_OVERRIDE -> """{"date":"2026-10-19"}"""
         OperationId.SETTINGS_SAVE_LEAVE -> """{"id":1,"note":"changed note"}"""
         OperationId.SETTINGS_DELETE_LEAVE -> """{"id":1}"""
+        OperationId.SETTINGS_SAVE_NUMBER_RULE -> """{"base":{"prefix":"3","length":5,"revision":0},"prefix":"8","length":6}"""
+        OperationId.SETTINGS_GET_NUMBER_RULE -> """{}"""
         OperationId.SETTINGS_SAVE_SCORE_SETTINGS -> """{"repeatMinutes":15}"""
         OperationId.SETTINGS_SAVE_APPEARANCE -> """{"colorMode":"DARK"}"""
         OperationId.WIDGETS_GET_BINDING,OperationId.WIDGETS_REMOVE_BINDING -> """{"widgetId":1}"""

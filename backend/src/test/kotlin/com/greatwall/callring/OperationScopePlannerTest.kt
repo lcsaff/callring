@@ -60,4 +60,11 @@ class OperationScopePlannerTest {
     assertTrue(OperationScopePlanner.writeOperations.containsAll(direct))
     assertEquals(direct, OperationScopePlanner.writeOperations)
     }
+    @Test fun numberRuleUsesOnlyExactRuleScopeAndPreservesDisclosedD10Revision()=runBlocking {
+        q.get(AiDomain.D10,"configuration").requiredValue()
+        c.publishCore(setOf("numberRule"),com.greatwall.callring.application.coordination.ChangeImpact(emptyMap()))
+        val scopes=OperationScopePlanner(q,c).prepare(ConversationToolCall("save","settings_saveNumberRule",aiObject()),OperationId.SETTINGS_SAVE_NUMBER_RULE)
+        assertEquals(mapOf("numberRule" to 0L),scopes)
+        assertEquals(0L,q.observedRevision(AiDomain.D10,"configuration"))
+    }
 }

@@ -10,6 +10,7 @@ import com.greatwall.callring.application.conversation.execution.optS
 import com.greatwall.callring.application.conversation.execution.s
 
 import com.greatwall.callring.application.conversation.operation.*
+import com.greatwall.callring.application.mapping.toSnapshot
 import com.greatwall.callring.application.mapping.requiredValue
 import com.greatwall.callring.contracts.common.*
 import com.greatwall.callring.contracts.ai.*
@@ -17,9 +18,19 @@ import com.greatwall.callring.application.ports.BackendFailure
 import java.time.*
 
 /** Tool reads always use authoritative source projections. */
-class ScopedToolReader(private val q:QueryService,private val catalog:OperationCatalog = OperationCatalog()) {
+internal data class SourceToolResult(val value: AiJson, val evidence: AiJson = AiJson.Null)
+class ScopedToolReader(private val q:QueryService,private val numberMatcher:com.greatwall.callring.domain.calling.NumberMatcher,private val catalog:OperationCatalog = OperationCatalog()) {
+    internal suspend fun readWithEvidence(operation:OperationId,a:AiJson.Obj):SourceToolResult {
+        if(operation !in setOf(OperationId.ROOT_CHECK_NUMBER,OperationId.SETTINGS_GET_NUMBER_RULE))return SourceToolResult(read(operation,a))
+        val observed=q.get(AiDomain.D10,"configuration").requiredValue()
+        val rule=observed.value.obj("numberRule")
+        val settings=com.greatwall.callring.contracts.settings.NumberRuleSettings(rule.s("prefix"),rule.l("length").exactInt(),rule.l("revision"))
+        val value=if(operation==OperationId.ROOT_CHECK_NUMBER) safeValue(com.greatwall.callring.application.mapping.checkNumber(a.s("raw"),settings.toSnapshot(),numberMatcher)) else safeValue(settings)
+        return SourceToolResult(value,AiJson.Arr(listOf(aiObject("value" to observed.value,"stamp" to observed.stamp.json()))))
+    }
     suspend fun read(operation:OperationId,a:AiJson.Obj):AiJson {
         require(catalog[operation].readSource==ReadStrategy.SOURCE)
+        if(operation in setOf(OperationId.ROOT_CHECK_NUMBER,OperationId.SETTINGS_GET_NUMBER_RULE))return readWithEvidence(operation,a).value
         val domains=when(operation) {
             OperationId.HOME_LOAD -> setOf(AiDomain.D10,AiDomain.D06,AiDomain.D19,AiDomain.D05)
             OperationId.CALLERS_GET_EDITOR -> setOf(AiDomain.D01,AiDomain.D02)

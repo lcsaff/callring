@@ -23,15 +23,15 @@ class ScopedToolReaderTest {
             override fun version(domain:AiDomain)=0L
             override fun query(spec:QuerySpec,after:String?):SourcePage {requests+=spec;return SourcePage(emptyList(),0)}
         }))
-        val r=ScopedToolReader(q)
+        val r=ScopedToolReader(q,com.greatwall.callring.domain.calling.PrefixLengthNumberMatcher)
         val call=ConversationToolCall("a","callers_search",aiObject("text" to aiString("test"),"limit" to aiNumber(20)))
         val value=r.read(OperationId.CALLERS_SEARCH,call.arguments)
         assertEquals(QuerySpec(AiDomain.D01,filter=QueryFilter(text="test"),limit=20),requests.single())
         assertEquals(true,(value as AiJson.Obj)["complete"].boolean())
-        assertEquals(29,ToolRegistry().definitions.count{it.execution==ExecutionStrategy.SOURCE})
+        assertEquals(31,ToolRegistry().definitions.count{it.execution==ExecutionStrategy.SOURCE})
     }
     @Test fun UIPageIndexCannotMasqueradeAsCompleteSourcePage()=runBlocking {
-        val q=QueryService(emptyList());val r=ScopedToolReader(q)
+        val q=QueryService(emptyList());val r=ScopedToolReader(q,com.greatwall.callring.domain.calling.PrefixLengthNumberMatcher)
         val result=runCatching{r.read(OperationId.CALLERS_SEARCH,aiObject("page" to aiObject("pageIndex" to aiNumber(1))))}
         assertTrue(result.exceptionOrNull() is BackendFailure)
     }

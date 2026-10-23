@@ -49,7 +49,7 @@ class ConfirmationTargetTest {
             }
             val foreground = ForegroundActionService(checkCommand = ForegroundCommandValidator(f.coordinator)::check)
             val host = foreground.attachHost()
-            val executor = ToolExecutor({ root() },f.coordinator,foreground,ForegroundResourceRegistry(), queries=unusedToolQueries(), documentWriteVerified={false})
+            val executor = ToolExecutor({ root() },f.coordinator,foreground,ForegroundResourceRegistry(), queries=unusedToolQueries(), numberMatcher=com.greatwall.callring.domain.calling.PrefixLengthNumberMatcher, documentWriteVerified={false})
             val definition = executor.registry.definitions.single { it.id == operation }
             fun call(id: Long = 1) = ConversationToolCall("call",definition.name,when(operation) {
                 OperationId.SETTINGS_DELETE_POSITION,OperationId.SETTINGS_DELETE_LEAVE -> aiObject("id" to aiNumber(id))

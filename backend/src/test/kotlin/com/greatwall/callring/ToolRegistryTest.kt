@@ -16,10 +16,10 @@ class ToolRegistryTest {
         assertTrue(error.fieldErrors.containsKey("$.colorMode"))
         assertFalse(error.toString().contains("secret-invalid-value"))
     }
-    @Test fun all81OperationsHaveUniqueStrictSchemasAndRejectUnknownArguments() {
+    @Test fun all83OperationsHaveUniqueStrictSchemasAndRejectUnknownArguments() {
         val registry = ToolRegistry()
-        assertEquals(((1..72).map { "O%02d".format(it) } + (1..9).map { "X%02d".format(it) }).toSet(), registry.definitions.map { it.operationCode }.toSet())
-        assertEquals(81, registry.definitions.map { it.name }.toSet().size)
+        assertEquals(((1..72).map { "O%02d".format(it) } + (1..11).map { "X%02d".format(it) }).toSet(), registry.definitions.map { it.operationCode }.toSet())
+        assertEquals(83, registry.definitions.map { it.name }.toSet().size)
         val check = registry.definitions.first()
         registry.validate(ConversationToolCall("one", check.name, aiObject("raw" to aiString("31234"))))
         assertTrue(runCatching { registry.validate(ConversationToolCall("two", check.name, aiObject("uri" to aiString("content://forged")))) }.isFailure)

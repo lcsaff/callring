@@ -38,6 +38,7 @@ class ToolExecutor(
     private val resources: ForegroundResourceRegistry,
     val registry: ToolRegistry = ToolRegistry(),
     private val queries:QueryService,
+    private val numberMatcher:com.greatwall.callring.domain.calling.NumberMatcher,
     private val documentWriteVerified:suspend(DocumentRef)->Boolean,
 ) {
     val foregroundReady:Boolean get()=foreground.hasHost
@@ -46,7 +47,10 @@ class ToolExecutor(
         try {
             val definition = registry.validate(call)
             if(definition.id==OperationId.DISCOVER_TOOLS)return ToolReceipt(scope.command.operationId,call.id,ToolStatus.READ,CapabilityCatalog(registry).discover(call.arguments.optS("category"),(call.arguments["exactNames"] as? AiJson.Arr)?.values?.map{it.string()}?:emptyList(),call.arguments.optS("query"),call.arguments.optS("cursor"),(call.arguments.optL("limit")?:8).exactInt()).json())
-            if(definition.execution==ExecutionStrategy.SOURCE)return ToolReceipt(scope.command.operationId,call.id,ToolStatus.READ,ScopedToolReader(queries,registry.catalog).read(definition.id,call.arguments))
+            if(definition.execution==ExecutionStrategy.SOURCE) {
+                val result=ScopedToolReader(queries,numberMatcher,registry.catalog).readWithEvidence(definition.id,call.arguments)
+                return ToolReceipt(scope.command.operationId,call.id,ToolStatus.READ,result.value,verificationEvidence=result.evidence)
+            }
             if (definition.write) {
                 require(foreground.hasHost) { "action.foreground_required" }
                 coordinator.guard(scope.command) {}
@@ -84,7 +88,12 @@ class ToolExecutor(
             }
             val a = call.arguments
             val value: Any? = when (definition.id) {
-                OperationId.ROOT_CHECK_NUMBER -> bound.checkNumber(a.s("raw"))
+                OperationId.SETTINGS_SAVE_NUMBER_RULE -> {
+                    val base=a.obj("base").let { NumberRuleSettings(it.s("prefix"),it.l("length").exactInt(),it.l("revision")) }
+                    val saved=bound.settings.saveNumberRule(SaveNumberRule(base,a.s("prefix"),a.l("length").exactInt())).requiredValue()
+                    noOp=saved==base
+                    saved
+                }
                 OperationId.CALLERS_SAVE_PROFILE -> {
                     val current = bound.callers.getEditor(a.s("number")).requiredValue().draft
                     val draft=current.copy(name=a.optS("name")?:current.name,department=a.optS("department")?:current.department,positionId=if(a.has("positionId"))a.optL("positionId")else current.positionId,whitelisted=a.optB("whitelisted")?:current.whitelisted)

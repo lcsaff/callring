@@ -24,6 +24,29 @@ import org.robolectric.annotation.Config
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [33], manifest = Config.NONE)
 class AssemblyLifetimeTest {
+    @Test fun configuredMatcherReachesRealConversationExecutorAndCancelledRuleSaveNeverAccessesSql()=runBlocking {
+        val probe=com.greatwall.callring.data.database.SqlAccessProbe()
+        val matcher=com.greatwall.callring.domain.calling.NumberMatcher { number,rule -> number=="91234"&&rule.prefix=="3" }
+        graph("number-rule-ai-config",matcher,probe).use { graph ->
+            graph.api.settings.getNumberRule().requiredValue()
+            assertTrue(graph.api.checkNumber("91234").matchesRule)
+            val conversation=graph.api.conversation as com.greatwall.callring.application.conversation.execution.ConversationService
+            val executor=conversation.javaClass.getDeclaredField("executor").apply{isAccessible=true}.get(conversation) as com.greatwall.callring.application.conversation.execution.ToolExecutor
+            conversation.foreground.attachHost()
+            val context=com.greatwall.callring.application.conversation.execution.ToolExecutionContext("session","turn",1,CommandContext("root",graph.coordinator.capture(),1){true})
+            val root=executor.execute(ConversationToolCall("root","root_checkNumber",aiObject("raw" to aiString("91234"))),context)
+            assertEquals(aiBool(true),(root.value as AiJson.Obj)["matchesRule"])
+            assertEquals(setOf("normalized","validProfileNumber","matchesRule"),root.value.let{it as AiJson.Obj}.fields.keys)
+            assertTrue(root.verificationEvidence.encode().contains("\"domain\":\"D10\""))
+            val marker=graph.coordinator.marker();val measurements=probe.snapshot()
+            val cancelled=executor.execute(ConversationToolCall("cancel","settings_saveNumberRule",aiObject("base" to aiObject("prefix" to aiString("3"),"length" to aiNumber(5),"revision" to aiNumber(0)),"prefix" to aiString("8"),"length" to aiNumber(6))),context.copy(command=CommandContext("cancel",graph.coordinator.capture(),1){false}))
+            assertEquals(ToolStatus.FAILED,cancelled.status);assertEquals("ai.cancelled",cancelled.error?.message)
+            assertEquals("cancelled executor must not touch SQL",measurements,probe.snapshot())
+            assertEquals(marker,graph.coordinator.marker())
+            assertEquals(NumberRuleSettings("3",5,0),graph.api.settings.getNumberRule().requiredValue())
+        }
+    }
+
     @Test fun numberRulePreparationIsExplicitAndRetainedApisNeverReloadAfterClose() = runBlocking {
         val graph = graph("number-rule-lifetime")
         val context = RuntimeEnvironment.getApplication()
@@ -338,11 +361,11 @@ class AssemblyLifetimeTest {
         } finally { replacement.close() }
     }
 
-    private fun graph(name: String): BackendGraph {
+    private fun graph(name: String,matcher:com.greatwall.callring.domain.calling.NumberMatcher=com.greatwall.callring.domain.calling.PrefixLengthNumberMatcher,probe:com.greatwall.callring.data.database.SqlAccessProbe?=null): BackendGraph {
         val context = RuntimeEnvironment.getApplication()
         return BackendGraph(context, BackendConfiguration(
             AppearanceSettings(ThemeSelection.PRESET, "default", null, ColorMode.FOLLOW_SYSTEM),
-            databaseName = "$name.db", ringPreferencesName = "${name}_ring",
+            numberMatcher=matcher, sqlAccessProbe=probe, databaseName = "$name.db", ringPreferencesName = "${name}_ring",
             widgetPreferencesName = "${name}_widgets", appearancePreferencesName = "${name}_appearance"),
             object : UiNotificationEntryPoints {
                 override fun home(requestCode: Int) = PendingIntent.getActivity(context, requestCode, Intent("fixture"), PendingIntent.FLAG_IMMUTABLE)

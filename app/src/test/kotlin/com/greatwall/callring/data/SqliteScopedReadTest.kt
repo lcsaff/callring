@@ -83,7 +83,7 @@ class SqliteScopedReadTest {
                 val actual=mutableListOf<String>();var cursor:String?=null
                 do{val page=q.query(QuerySpec(AiDomain.D01,filter=QueryFilter(text=text),limit=1,cursor=cursor)).requiredValue();assertEquals(expected.size.toLong(),page.matchedTotal);actual+=page.items.map{it["number"].string()};cursor=page.nextCursor;if(cursor==null)assertTrue(page.complete)}while(cursor!=null)
                 assertEquals(expected,actual)
-                val legacy=com.greatwall.callring.application.conversation.query.ScopedToolReader(q).read(OperationId.CALLERS_SEARCH,aiObject("text" to aiString(text))) as AiJson.Obj
+                val legacy=com.greatwall.callring.application.conversation.query.ScopedToolReader(q,com.greatwall.callring.domain.calling.PrefixLengthNumberMatcher).read(OperationId.CALLERS_SEARCH,aiObject("text" to aiString(text))) as AiJson.Obj
                 assertEquals(expected.size.toLong(),legacy["matchedTotal"].long())
             }
         }
