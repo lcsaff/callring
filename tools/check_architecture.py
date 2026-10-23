@@ -148,6 +148,16 @@ def check(root=ROOT):
             references=re.sub(r'"(?:\\.|[^"\\])*"', '""', source)
             package_match = re.search(r'\bpackage\s+([\w.]+)', references)
             package = package_match.group(1) if package_match else ''
+            if path.relative_to(directory/'src').parts[0] == 'main':
+                ai_consumer = package.startswith(('com.greatwall.callring.application.conversation.execution',
+                                                  'com.greatwall.callring.application.conversation.query'))
+                if (module == 'ui' or ai_consumer) and re.search(r'\bPrefixLengthNumberMatcher\b', references):
+                    errors.append(f'{path.relative_to(root)}: number matcher consumer references default implementation')
+                matching_consumer = module == 'ui' or package.startswith(tuple('com.greatwall.callring.' + part for part in
+                    ('domain.model', 'domain.calling', 'application.calling', 'application.callers',
+                     'application.conversation', 'platform.calling', 'data')))
+                if matching_consumer and '3[0-9]{4}' in source:
+                    errors.append(f'{path.relative_to(root)}: removed fixed number matching rule')
             if module == 'app' and path.relative_to(directory/'src').parts[0] == 'main':
                 errors.extend(f'{path.relative_to(root)}: {error}' for error in component_boundary_errors(path, package, references))
             if module == 'ui':

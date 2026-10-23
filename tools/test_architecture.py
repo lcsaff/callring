@@ -94,6 +94,30 @@ class ArchitectureTests(unittest.TestCase):
             'fun media() { val recorder = MediaRecorder(); recorder.prepare() } }', 'CallCaptureService.kt')
         self.assertEqual([], check_architecture.check(root))
 
+    def test_number_matching_consumers_cannot_reference_default_strategy(self):
+        for module, package in (('ui', 'ui.feature.callers'),
+                                ('backend', 'application.conversation.execution'),
+                                ('backend', 'application.conversation.query')):
+            with self.subTest(package=package):
+                self.check_bad(lambda root: self.query_source(root, module, package,
+                    'val matcher = PrefixLengthNumberMatcher'))
+
+    def test_number_matching_consumers_cannot_restore_fixed_regex(self):
+        for module, package in (('backend', 'domain.model'), ('backend', 'application.calling'),
+                                ('app', 'platform.calling'), ('app', 'data.query')):
+            with self.subTest(package=package):
+                self.check_bad(lambda root: self.query_source(root, module, package,
+                    'fun matches(number: String) = number.matches(Regex("3[0-9]{4}"))'))
+
+    def test_number_matching_injection_and_unrelated_prefix_checks_are_allowed(self):
+        root = self.tree()
+        self.query_source(root, 'app', 'bootstrap', 'val matcher = PrefixLengthNumberMatcher')
+        self.query_source(root, 'backend', 'application.conversation.query',
+            'class Reader(val matcher: NumberMatcher) { fun file(name: String) = name.startsWith("recording:") }')
+        self.query_source(root, 'backend', 'domain.calling',
+            'object PrefixLengthNumberMatcher { fun matches(n: String, r: NumberRule) = n.startsWith(r.prefix) }')
+        self.assertEqual([], check_architecture.check(root))
+
     def tree(self, mutation=None):
         temp = tempfile.TemporaryDirectory()
         self.addCleanup(temp.cleanup)
