@@ -177,7 +177,7 @@ T10c removes only missing-capability method bodies: `UiEditsApi`'s seven edits, 
     ]
   },
   "change/ChangeFeed.kt": {
-    "sha256": "4eff1514512947eda5465d10baf05e213f6af6eca8661a737c8c79553f5a8c4e",
+    "sha256": "178950eba34fea2449a7b55d8c34cdb1a1210cf2e8e21ebf84b38b413bb46a21",
     "declarations": [
       "ChangeFeed",
       "DataDomain"
@@ -292,7 +292,7 @@ T10c removes only missing-capability method bodies: `UiEditsApi`'s seven edits, 
     ]
   },
   "settings/SettingsApi.kt": {
-    "sha256": "ccd044c69dd63a0cc063feb2057199aa72c02df460a7cd71351d87f91aa5f219",
+    "sha256": "6082117a40273fb5d4c04df6169a4e3198263c761b52e723eeaee09fc4a2c2c1",
     "declarations": [
       "SettingsApi",
       "RingtoneApi",
@@ -319,7 +319,9 @@ T10c removes only missing-capability method bodies: `UiEditsApi`'s seven edits, 
       "AppearanceSettings",
       "SettingsSummary",
       "AudioSource",
-      "RingtoneSettings"
+      "RingtoneSettings",
+      "NumberRuleSettings",
+      "SaveNumberRule"
     ]
   },
   "settings/ThemePresets.kt": {
@@ -346,3 +348,7 @@ T10c removes only missing-capability method bodies: `UiEditsApi`'s seven edits, 
 The approved number-rule plan appends `settings_getNumberRule` (X10, index/order82) and `settings_saveNumberRule` (X11,83). All earlier names, identifiers, argument schemas and ordering remain unchanged. O01 `root_checkNumber` keeps `raw` and its three result fields (`normalized`, `validProfileNumber`, `matchesRule`), with receipt classification changed from COMPUTATION to SOURCE_READ and description naming the configured rule. It reads the observed D10 configuration numberRule once, uses the common number mapping and the matcher injected from BackendConfiguration, and attaches the actual source stamp as receipt evidence.
 
 GET returns prefix/length/revision. SAVE requires base{prefix,length,revision}, prefix and length, delegates to the bound formal SettingsApi command, uses only the numberRule scope and no separate confirmation, and verifies durable D10 prefix/length plus the committed rule revision. Existing records stay unchanged; later synchronization may import historical calls. Cancelled commands return established FAILED/ai.cancelled before writes/publication. Failed submissions remain cached within a task; retry in a new task requires a current base. Committed repeats reuse the ledger receipt; continuation retries readback without replaying the command. Mismatch remains COMMITTED_UNVERIFIED. The formal command's durable base revision check independently protects against stale writes.
+
+## Configurable number rule contract update (2026-10-23)
+
+Reviewed additions are `NumberRuleSettings`, `SaveNumberRule`, `SettingsApi.getNumberRule/saveNumberRule` and `DataDomain.NUMBER_RULES`. The two affected contract inventory records above are refreshed for these approved additions; existing declarations retain their wire identities. `CallringUiApi.checkNumber` is synchronous and reads prepared memory; clients first await `settings.getNumberRule`.

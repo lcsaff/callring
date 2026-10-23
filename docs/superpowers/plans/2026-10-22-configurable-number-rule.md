@@ -8,7 +8,7 @@
 
 **Tech Stack:** Kotlin/JVM、Android、Compose、SQLite、现有 contracts / backend / ui / app 四模块与 AI OperationCatalog / CommandCommitter / QueryService。
 
-**状态：** 修改计划，未实施；以下规则边界是本计划采用的方案，不表示已有代码具备这些能力。日期：2026-10-22；2026-10-23 补充实施审查要求。
+**状态：** 2026-10-23 已获实施指令，实施中；仅勾选项有对应完成证据，其余能力尚未验收。计划日期：2026-10-22；2026-10-23 补充实施审查要求。
 
 ---
 
@@ -216,7 +216,7 @@ UiDestination 现有通用设置路由可复用，不新增独立导航系统。
 **Files:** 新增 NumberMatcher.kt；修改 NumberIdentity.kt 的迁移先在分支内保留至消费者任务完成，禁止把不能编译的中间状态作为已完成交付。
 **Test:** 新增 backend/src/test/kotlin/com/greatwall/callring/NumberMatcherTest.kt。
 
-- [ ] 添加并运行以下域行为测试：
+- [x] 添加并运行以下域行为测试：
 ```kotlin
 package com.greatwall.callring
 
@@ -246,17 +246,17 @@ class NumberMatcherTest {
     }
 }
 ```
-- [ ] Run: .\gradlew.bat :backend:test --tests com.greatwall.callring.NumberMatcherTest
-- [ ] 失败预期：新增类型不存在；实现第 2 节代码后，预期全部通过。
-- [ ] 自查：纯 domain 不导入 application/contracts/Android；默认结果无变化。
-- [ ] 记录独立提交：feat: define configurable number matching strategy。
+- [x] Run: .\gradlew.bat :backend:test --tests com.greatwall.callring.NumberMatcherTest
+- [x] 失败预期：新增类型不存在；实现第 2 节代码后，预期全部通过。
+- [x] 自查：纯 domain 不导入 application/contracts/Android；默认结果无变化。
+- [x] 记录独立提交：feat: define configurable number matching strategy。
 
 ### Task 2：实现配置事务与共享状态
 
 **Files:** 新增 NumberRuleTransactions.kt、NumberRuleState.kt、NumberRuleSettingsService.kt、NumberRuleMappings.kt；修改 3.3 文件和 CallringBackend、CoreAssembly、BackendConfiguration。
 **Tests:** 新增 backend/src/test/kotlin/com/greatwall/callring/NumberRuleSettingsServiceTest.kt、app/src/test/kotlin/com/greatwall/callring/data/NumberRuleStorageTest.kt。
 
-- [ ] 按下表建立精确断言，先运行红测：
+- [x] 按下表建立精确断言，先运行红测：
 
 | 测试名 | 输入/安排 | 必须断言 |
 |---|---|---|
@@ -274,83 +274,83 @@ class NumberMatcherTest {
 | closedPreparationDoesNotInstall | 暂停加载，关闭所有者后再放行 | 不安装快照、不发布，不允许再次加载 |
 | preparationFailureIsExplicit | 冷启动配置损坏且无有效快照 | 准备明确失败，checkNumber 不返回默认结果 |
 
-- [ ] 实现 get/save 两个正式入口。save 使用持久 base 校验；numberRule 为精确冲突键；MutationDelta 只发布 NUMBER_RULES。
-- [ ] 采用单条 settings JSON 记录 version/prefix/length/revision，由一个解释器编码/解码；SQLite 查询投影复用解释器，不维护第二份缺省解释。
-- [ ] CoreAssembly/BackendGraph 提供生命周期内唯一的规则准备入口，按 1.3 的共享加载、关闭及失败约定初始化快照，并沿既有系统 refresh 路径复用；图构造不打开数据库。同步 checkNumber 只检查就绪并读内存，不能自行补做 IO。
-- [ ] 复用现有 CommandCommitter：SQL 成功后 publishCore，再在 afterCommit 安装预先准备好的不可变规则值，均位于同一 fence。所有规则状态读取先取得同一 fence，因此收到通知的消费者不能在 afterCommit 之前取到旧规则。afterCommit 只安装已准备好的值，不解析配置、不做 IO。通过并发测试证实此顺序，不改通用提交协议；domain matcher 的纯计算不持锁、不访问存储。
-- [ ] Run: .\gradlew.bat :backend:test --tests com.greatwall.callring.NumberRuleSettingsServiceTest :app:testDebugUnitTest --tests com.greatwall.callring.data.NumberRuleStorageTest
-- [ ] 预期：表中断言全部通过，绑定命令不新建规则状态。
-- [ ] 记录独立提交：feat: persist and publish number rule configuration。
+- [x] 实现 get/save 两个正式入口。save 使用持久 base 校验；numberRule 为精确冲突键；MutationDelta 只发布 NUMBER_RULES。
+- [x] 采用单条 settings JSON 记录 version/prefix/length/revision，由一个解释器编码/解码；SQLite 查询投影复用解释器，不维护第二份缺省解释。
+- [x] CoreAssembly/BackendGraph 提供生命周期内唯一的规则准备入口，按 1.3 的共享加载、关闭及失败约定初始化快照，并沿既有系统 refresh 路径复用；图构造不打开数据库。同步 checkNumber 只检查就绪并读内存，不能自行补做 IO。
+- [x] 复用现有 CommandCommitter：SQL 成功后 publishCore，再在 afterCommit 安装预先准备好的不可变规则值，均位于同一 fence。所有规则状态读取先取得同一 fence，因此收到通知的消费者不能在 afterCommit 之前取到旧规则。afterCommit 只安装已准备好的值，不解析配置、不做 IO。通过并发测试证实此顺序，不改通用提交协议；domain matcher 的纯计算不持锁、不访问存储。
+- [x] Run: .\gradlew.bat :backend:test --tests com.greatwall.callring.NumberRuleSettingsServiceTest :app:testDebugUnitTest --tests com.greatwall.callring.data.NumberRuleStorageTest
+- [x] 预期：表中断言全部通过，绑定命令不新建规则状态。
+- [x] 记录独立提交：feat: persist and publish number rule configuration。
 
 ### Task 3：迁移消费者与同次来电一致性
 
 **Files:** 3.2 所有必改消费者、必要签名调用点；最终删除 NumberIdentity.matchesRule 与旧 callerCheck。
 **Tests:** 新增 backend/src/test/kotlin/com/greatwall/callring/NumberRuleConsumerTest.kt；扩展 DecisionPublicationTest、app 的 IncomingCallCoordinatorTest、ScreeningControllerTest、CallingSqlSemanticsTest。
 
-- [ ] 添加拒绝所有号码的替代策略，并经 BackendConfiguration 注入：
+- [x] 添加拒绝所有号码的替代策略，并经 BackendConfiguration 注入：
 ```kotlin
 val rejectAll = NumberMatcher { _, _ -> false }
 val acceptAllDigits = NumberMatcher { number, _ ->
     number.isNotEmpty() && number.all { it in '0'..'9' }
 }
 ```
-- [ ] 对同一组 31234/812345 断言：直接号码检查、号码概览、来电 matched、统计入库资格和导入过滤均使用注入策略；消费方不得包含新算法。
-- [ ] 用可控执行器暂停来电 writer：旧规则下评估 31234 → 改为 8/6 → 放行 writer；该会话保留旧匹配事实，下一次来电按新规则。inspectAgain 不重新套用新规则。
-- [ ] 保持 CallLogImportService.import 经 CommandCommitter 在同一协调 fence 内完成整批事务的现有边界；在 fence 内捕获规则快照，整批复用。本期不为了允许保存穿插导入而拆事务或缩小锁范围。
-- [ ] 导入并发红测使用两个执行线程和可控屏障：暂停已持有 fence 的导入，另一线程发起保存；确认保存已发起但尚未提交，再释放导入，等待导入和保存依次完成。断言本批次全部采用旧规则、保存后下一批采用新规则。不得在放行导入前等待保存完成；测试使用有界等待和 finally 释放屏障，防止互相等待。不修改统计开关与通话去重的既有语义。
-- [ ] 复核红测覆盖旧匹配=true/false 两个方向：首次评估后修改规则使新匹配相反，同时分别更新 quiet、overlay、白名单等非规则设置。inspectAgain 保留首次 revision/matched，但 silence、overlayEnabled 等按首次匹配事实和最新设置重新计算；下一会话使用新规则。覆盖 quiet.allNumbers 的既有语义，并验证异步统计入库沿用首次匹配事实及现有统计区间检查。
-- [ ] 删除全部旧固定匹配消费者；对需要判断业务命中的地方注入 NumberMatcher，不用默认参数悄悄补回旧规则。
-- [ ] Run: .\gradlew.bat :backend:test --tests com.greatwall.callring.NumberRuleConsumerTest --tests com.greatwall.callring.DecisionPublicationTest
-- [ ] Run: .\gradlew.bat :app:testDebugUnitTest --tests com.greatwall.callring.platform.calling.IncomingCallCoordinatorTest --tests com.greatwall.callring.platform.calling.ScreeningControllerTest --tests com.greatwall.callring.data.CallingSqlSemanticsTest
-- [ ] 预期：匹配事实固定，既有权限/静音复核仍生效，默认统计去重结果不变。
-- [ ] 记录独立提交：refactor: route call consumers through number matching strategy。
+- [x] 对同一组 31234/812345 断言：直接号码检查、号码概览、来电 matched、统计入库资格和导入过滤均使用注入策略；消费方不得包含新算法。
+- [x] 用可控执行器暂停来电 writer：旧规则下评估 31234 → 改为 8/6 → 放行 writer；该会话保留旧匹配事实，下一次来电按新规则。inspectAgain 不重新套用新规则。
+- [x] 保持 CallLogImportService.import 经 CommandCommitter 在同一协调 fence 内完成整批事务的现有边界；在 fence 内捕获规则快照，整批复用。本期不为了允许保存穿插导入而拆事务或缩小锁范围。
+- [x] 导入并发红测使用两个执行线程和可控屏障：暂停已持有 fence 的导入，另一线程发起保存；确认保存已发起但尚未提交，再释放导入，等待导入和保存依次完成。断言本批次全部采用旧规则、保存后下一批采用新规则。不得在放行导入前等待保存完成；测试使用有界等待和 finally 释放屏障，防止互相等待。不修改统计开关与通话去重的既有语义。
+- [x] 复核红测覆盖旧匹配=true/false 两个方向：首次评估后修改规则使新匹配相反，同时分别更新 quiet、overlay、白名单等非规则设置。inspectAgain 保留首次 revision/matched，但 silence、overlayEnabled 等按首次匹配事实和最新设置重新计算；下一会话使用新规则。覆盖 quiet.allNumbers 的既有语义，并验证异步统计入库沿用首次匹配事实及现有统计区间检查。
+- [x] 删除全部旧固定匹配消费者；对需要判断业务命中的地方注入 NumberMatcher，不用默认参数悄悄补回旧规则。
+- [x] Run: .\gradlew.bat :backend:test --tests com.greatwall.callring.NumberRuleConsumerTest --tests com.greatwall.callring.DecisionPublicationTest
+- [x] Run: .\gradlew.bat :app:testDebugUnitTest --tests com.greatwall.callring.platform.calling.IncomingCallCoordinatorTest --tests com.greatwall.callring.platform.calling.ScreeningControllerTest --tests com.greatwall.callring.data.CallingSqlSemanticsTest
+- [x] 预期：匹配事实固定，既有权限/静音复核仍生效，默认统计去重结果不变。
+- [x] 记录独立提交：refactor: route call consumers through number matching strategy。
 
 ### Task 4：接通 AI 查询与完整快照
 
 **Files:** 3.4 中 SafeProjection、SqliteScopedReadAdapter、SourceDependencies、FullSnapshotReader、SqliteFullSnapshotReader、FullSnapshotProjection。
 **Tests:** 扩展 app 的 SqliteScopedReadTest、CoreSnapshotSourceTest；backend 的 CoreSnapshotProjectionTest、FullSnapshotConsistencyTest。
 
-- [ ] 红测：保存 8/6 后，局部 D10 与完整 D10 中 numberRule 均为 8/6，规则 revision 相同。
-- [ ] 红测：修改规则使 D10 版本变化；D01 人员目录、D16 录音归档无写入时其版本不变。
-- [ ] 用正式规则映射形成投影；不在完整投影与局部投影各实现一遍默认规则和字段解释。
-- [ ] Run: .\gradlew.bat :backend:test --tests com.greatwall.callring.CoreSnapshotProjectionTest --tests com.greatwall.callring.FullSnapshotConsistencyTest :app:testDebugUnitTest --tests com.greatwall.callring.data.SqliteScopedReadTest --tests com.greatwall.callring.data.CoreSnapshotSourceTest
-- [ ] 预期：两种读取一致，完整快照仍只在显式入口加载。
-- [ ] 记录独立提交：feat: expose number rule through authoritative query sources。
+- [x] 红测：保存 8/6 后，局部 D10 与完整 D10 中 numberRule 均为 8/6，规则 revision 相同。
+- [x] 红测：修改规则使 D10 版本变化；D01 人员目录、D16 录音归档无写入时其版本不变。
+- [x] 用正式规则映射形成投影；不在完整投影与局部投影各实现一遍默认规则和字段解释。
+- [x] Run: .\gradlew.bat :backend:test --tests com.greatwall.callring.CoreSnapshotProjectionTest --tests com.greatwall.callring.FullSnapshotConsistencyTest :app:testDebugUnitTest --tests com.greatwall.callring.data.SqliteScopedReadTest --tests com.greatwall.callring.data.CoreSnapshotSourceTest
+- [x] 预期：两种读取一致，完整快照仍只在显式入口加载。
+- [x] 记录独立提交：feat: expose number rule through authoritative query sources。
 
 ### Task 5：接通 AI 工具、冲突保护与回执
 
 **Files:** 3.4 中其余操作与执行文件。
 **Tests:** 扩展 ToolRegistryTest、ScopedToolReaderTest、OperationScopePlannerTest、ReceiptVerifierTest、ToolCompatibilityBaselineTest；新增 backend/src/test/kotlin/com/greatwall/callring/NumberRuleToolTest.kt。
 
-- [ ] 红测：工具目录发现 get/save，参数类型和 base 校验有效；保存不会接受模型提供的策略类名。
-- [ ] 红测：AI 已读旧规则后页面修改，旧 AI 保存失败；只改外观时规则保存不会因无关作用域被拒。
-- [ ] 红测：AI 保存后数据库读回不符返回 COMMITTED_UNVERIFIED，禁止宣称 VERIFIED；取消、失败、重复提交结果各自明确。
-- [ ] 红测：root_checkNumber 原参数/三字段结果兼容；规则读取来源被记录为 D10 观察；替代 matcher 经唯一注入影响其结果。
-- [ ] 工具执行只调用正式服务；作用域键统一 numberRule；回执以持久值及提交标记验证，不以工具返回值自证。
-- [ ] Run: .\gradlew.bat :backend:test --tests com.greatwall.callring.NumberRuleToolTest --tests com.greatwall.callring.ToolRegistryTest --tests com.greatwall.callring.ScopedToolReaderTest --tests com.greatwall.callring.OperationScopePlannerTest --tests com.greatwall.callring.ReceiptVerifierTest
-- [ ] 审核外部协议增量：保留旧身份/编号/字段，对新增操作与 root_checkNumber 读取策略变化写明理由。仅在本方案审核通过后更新兼容基线及其固定 hash，不能先重生成让测试变绿。
-- [ ] 记录独立提交：feat: integrate number rule tools with verified business commands。
+- [x] 红测：工具目录发现 get/save，参数类型和 base 校验有效；保存不会接受模型提供的策略类名。
+- [x] 红测：AI 已读旧规则后页面修改，旧 AI 保存失败；只改外观时规则保存不会因无关作用域被拒。
+- [x] 红测：AI 保存后数据库读回不符返回 COMMITTED_UNVERIFIED，禁止宣称 VERIFIED；取消、失败、重复提交结果各自明确。
+- [x] 红测：root_checkNumber 原参数/三字段结果兼容；规则读取来源被记录为 D10 观察；替代 matcher 经唯一注入影响其结果。
+- [x] 工具执行只调用正式服务；作用域键统一 numberRule；回执以持久值及提交标记验证，不以工具返回值自证。
+- [x] Run: .\gradlew.bat :backend:test --tests com.greatwall.callring.NumberRuleToolTest --tests com.greatwall.callring.ToolRegistryTest --tests com.greatwall.callring.ScopedToolReaderTest --tests com.greatwall.callring.OperationScopePlannerTest --tests com.greatwall.callring.ReceiptVerifierTest
+- [x] 审核外部协议增量：保留旧身份/编号/字段，对新增操作与 root_checkNumber 读取策略变化写明理由。仅在本方案审核通过后更新兼容基线及其固定 hash，不能先重生成让测试变绿。
+- [x] 记录独立提交：feat: integrate number rule tools with verified business commands。
 
 ### Task 6：页面与精准刷新
 
 **Files:** 新增 NumberRuleScreen/ViewModel；修改 3.5 文件及 3.2 的 CallringActivity、WidgetConfigurationModel 冷启动入口。
 **Tests:** 新增 ui/src/test/kotlin/com/greatwall/callring/ui/feature/settings/NumberRuleViewModelTest.kt、ui/src/test/kotlin/com/greatwall/callring/ui/feature/settings/NumberRuleScreenTest.kt；扩展 CallerListViewModelTest、NumberLookupViewModelTest、RefreshIsolationTest。
 
-- [ ] 冷启动红测覆盖直接打开 Report/EditCaller、号码查询、规则试匹配及 Widget 配置：暂停规则加载时不调用 checkNumber、不解析目标或保存绑定；放行后按持久规则继续。配置损坏时显示加载错误、保留原始目标/输入，重试成功后继续；关闭页面或所有者后，过期加载不得回写。
-- [ ] 将入口测试加入现有 Activity/Widget 测试或新增对应测试，并纳入本任务定向验证与统一门；不能仅以 NumberRuleViewModelTest 替代入口测试。
-- [ ] 红测：prefix 非数字、长度不足和超范围均显示对应字段错误，不写入；空前缀标注不限前缀。
-- [ ] 红测：页面 base 过期保存失败保留草稿；AI 修改后未编辑页面刷新，正在编辑页面显示冲突且不覆盖输入。
-- [ ] 红测：规则变更时 CallerList.search loader 增量 0，号码匹配提示更新；号码查询无需修改输入即可更新。
-- [ ] 红测：无关录音、报表、人员搜索的 loader 增量为 0；已保存历史记录数量不变。
-- [ ] 页面使用显式保存和正式服务；说明“已有记录不重算；后续同步可能补入历史通话”。不展示策略接口等技术细节。
-- [ ] Run: .\gradlew.bat :ui:testDebugUnitTest --tests com.greatwall.callring.ui.feature.settings.NumberRuleViewModelTest --tests com.greatwall.callring.ui.feature.settings.NumberRuleScreenTest --tests com.greatwall.callring.ui.feature.callers.CallerListViewModelTest --tests com.greatwall.callring.ui.feature.callers.NumberLookupViewModelTest --tests com.greatwall.callring.ui.state.RefreshIsolationTest
-- [ ] 预期：双向可见、冲突明确，精准刷新通过。
-- [ ] 记录独立提交：feat: add number rule settings and targeted refresh。
+- [x] 冷启动红测覆盖直接打开 Report/EditCaller、号码查询、规则试匹配及 Widget 配置：暂停规则加载时不调用 checkNumber、不解析目标或保存绑定；放行后按持久规则继续。配置损坏时显示加载错误、保留原始目标/输入，重试成功后继续；关闭页面或所有者后，过期加载不得回写。
+- [x] 将入口测试加入现有 Activity/Widget 测试或新增对应测试，并纳入本任务定向验证与统一门；不能仅以 NumberRuleViewModelTest 替代入口测试。
+- [x] 红测：prefix 非数字、长度不足和超范围均显示对应字段错误，不写入；空前缀标注不限前缀。
+- [x] 红测：页面 base 过期保存失败保留草稿；AI 修改后未编辑页面刷新，正在编辑页面显示冲突且不覆盖输入。
+- [x] 红测：规则变更时 CallerList.search loader 增量 0，号码匹配提示更新；号码查询无需修改输入即可更新。
+- [x] 红测：无关录音、报表、人员搜索的 loader 增量为 0；已保存历史记录数量不变。
+- [x] 页面使用显式保存和正式服务；说明“已有记录不重算；后续同步可能补入历史通话”。不展示策略接口等技术细节。
+- [x] Run: .\gradlew.bat :ui:testDebugUnitTest --tests com.greatwall.callring.ui.feature.settings.NumberRuleViewModelTest --tests com.greatwall.callring.ui.feature.settings.NumberRuleScreenTest --tests com.greatwall.callring.ui.feature.callers.CallerListViewModelTest --tests com.greatwall.callring.ui.feature.callers.NumberLookupViewModelTest --tests com.greatwall.callring.ui.state.RefreshIsolationTest
+- [x] 预期：双向可见、冲突明确，精准刷新通过。
+- [x] 记录独立提交：feat: add number rule settings and targeted refresh。
 
 ### Task 7：防止算法重新散落与交付验收
 
 **Files:** tools/check_architecture.py、tools/test_architecture.py；按需 tools/check_backend_boundaries.py、tools/test_backend_boundaries.py；README.md、docs/contracts/current-api.md、docs/contracts/ai-operation-compatibility.json。
-**Tests:** 新增 backend/src/test/kotlin/com/greatwall/callring/NumberMatchingIsolationTest.kt；新增 app/src/test/kotlin/com/greatwall/callring/bootstrap/NumberMatcherInjectionTest.kt。
+**Tests（实施调整）：** 复用并扩展 NumberRuleConsumerTest、CallingSqlSemanticsTest 和 AssemblyLifetimeTest 的真实装配/主调用链替代策略测试；架构守卫正反例在 tools/test_architecture.py。已有覆盖不再另建重复包装测试类。
 
 - [ ] 在主调用链注入 rejectAll/acceptAllDigits，证明不修改 UI/AI/存储文件即可替换算法；覆盖重建决策快照与绑定命令，防止工厂重新取默认 matcher。
 - [ ] 架构守卫只约束明确边界：domain 无跨层依赖；UI/AI executor 不引用 PrefixLengthNumberMatcher；消费方不得恢复旧 3[0-9]{4} 固定业务规则。必须有违规样例失败、合规样例通过的守卫测试；不做会误伤其它 startsWith 用途的全仓字符串禁令。
@@ -396,3 +396,14 @@ python tools/verify_backend.py
 - 导入保持整批事务与协调锁，改为验证保存等待导入结束，避免测试等待顺序造成死锁。
 - 同次来电复核将首次匹配事实输入最新决策计算，覆盖派生静音/悬浮窗结果和非规则设置变化，禁止仅覆盖 matched。
 - 本次仅修订计划，新增验收项均未实施、未执行。
+
+### 实施进度（2026-10-23）
+
+- Task 1：提交 `306d276`。基线 `:backend:test` 通过；新增类型缺失的红测已确认；实现后完整 backend JVM 测试 376 项通过，其中 NumberMatcherTest 7 项。规格及代码质量审查均无待修复项。
+- Task 2：提交 `4cf215a`；384 项 backend、3 项存储、11 项 AssemblyLifetime 测试通过；严格 JSON 解码、取消加载及空操作均有红绿证据（工作树 build/task2-evidence）；规格与代码质量审查通过。
+- Task 3：提交 `11035ac`；完整 backend 390、app JVM 368、最终 app 定向 37 项通过，红绿及 XML 证据位于工作树 build/task3-evidence；独立规格与代码质量审查通过。
+- Task 4：提交 `2cb1c58`；20 项投影定向测试通过，局部/完整 D10 默认与保存值一致；独立规格与代码质量审查通过，证据工作树 build/task4-evidence。
+- Task 5：提交 `9b64b0d`；10 个 backend 套件 58 项通过；app 装配与 74 工具业务集成用例通过（旧工具数量断言修正后定向复验）。协议差异限定 O01 来源分类/描述与新增 X10/X11，基线摘要同步，证据工作树 build/task5-evidence。
+- Task 6：页面 `8e46132`、冷启动入口 `aa5b893`；完整 UI JVM 测试通过，证据工作树 build/task6-evidence 与 build/task6-full-ui.log。
+- Task 7：统一门与最终交付进行中；设备验收尚未执行（ADB 无连接设备），当前分支不表示设备验收通过。
+- 按用户要求，Task 5 起取消逐任务双轮独立审查，保留实现者自查、必要定向测试与最终统一门。
