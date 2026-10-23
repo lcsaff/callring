@@ -8,7 +8,7 @@
 
 **Tech Stack:** Kotlin/JVM、Android、Compose、SQLite、现有 contracts / backend / ui / app 四模块与 AI OperationCatalog / CommandCommitter / QueryService。
 
-**状态：** 修改计划，未实施；以下规则边界是本计划采用的方案，不表示已有代码具备这些能力。日期：2026-10-22。
+**状态：** 修改计划，未实施；以下规则边界是本计划采用的方案，不表示已有代码具备这些能力。日期：2026-10-22；2026-10-23 补充实施审查要求。
 
 ---
 
@@ -51,6 +51,9 @@
 - 一批系统通话导入捕获一份规则。处理期间修改规则不使同一批次前后采用不同算法参数。
 - 保存后开始的新来电、新导入批次、新号码检查采用新规则。
 - 同步 checkNumber 读取已初始化的内存快照，不直接访问 SQLite；冷启动先沿正式初始化路径准备规则，不能隐式返回“默认命中”。
+- 冷启动初始化由 CoreAssembly/BackendGraph 生命周期内的唯一规则准备入口负责，在后台 dispatcher 读取持久配置；并发准备共享同一次加载。图构造和普通同步 checkNumber 均不打开数据库。加载、安装与关闭遵循既有锁顺序；过期或关闭后的加载不得安装快照或重开资源。
+- UI 在调用 checkNumber 前等待规则准备完成：Activity 暂存 Report/EditCaller 等原始导航目标，展示加载状态，成功后再解析号码；号码查询、规则试匹配及 Widget 配置同样经过准备屏障。加载失败显示明确错误和重试入口，保留原始目标/输入，不能按默认规则继续导航或保存。同步 checkNumber 在未就绪时明确拒绝调用，不能伪造三字段成功结果。系统来电冷启动沿正式 refresh 路径准备规则，失败进入既有失败处理；AI 查询与导入也不得绕过准备入口。
+- inspectAgain 将首次匹配事实（规则 revision 与 matched）作为最新决策计算的输入，再结合当前非规则设置计算 silence、overlayEnabled 等派生结果。不得先按新规则完整 evaluate，再仅 copy 覆盖 matched；也不得直接返回整份旧 assessment。
 
 ## 2. 稳定的算法接口
 
@@ -125,6 +128,8 @@ object PrefixLengthNumberMatcher : NumberMatcher {
 | app/src/main/kotlin/com/greatwall/callring/bootstrap/CoreAssembly.kt | 创建/初始化共享规则状态、传递策略及关闭约束 |
 | app/src/main/kotlin/com/greatwall/callring/bootstrap/BackendGraph.kt | 对齐来电记录函数引用签名与初始化、关闭顺序 |
 | app/src/main/kotlin/com/greatwall/callring/platform/calling/IncomingCallCoordinator.kt | 首次评估匹配事实传入异步记录；inspectAgain 保留同次来电规则事实 |
+| ui/src/main/kotlin/com/greatwall/callring/ui/app/CallringActivity.kt | 冷启动等待规则就绪后再解析 Report/EditCaller 导航目标，保留加载失败后的原始目标 |
+| ui/src/main/kotlin/com/greatwall/callring/ui/widget/WidgetConfigurationModel.kt | 检查号码及保存绑定前等待规则就绪，加载失败保留输入并禁止保存 |
 
 ScreeningController.kt 与 IncomingCallController.kt 仅当实际调用签名受影响才调整，不提前重写。DecisionQueryService.kt 仅当快照工厂签名必须显式传策略才调整；不能遗漏其冷启动 refresh 路径。若 matcher 由 DecisionMirror 持有并在工厂封装，则保持原文件不变。
 
@@ -265,10 +270,13 @@ class NumberMatcherTest {
 | commandBindingsShareState | 创建两个 commandApi 绑定 | 一方保存后另一方号码检查返回新结果 |
 | ruleVersionOverflowRollsBack | revision=Long.MAX_VALUE | 保存失败、持久值和快照不变 |
 | closedOwnerDoesNotReload | 关闭后查询/保存 | 不重开 SQL，不重新初始化状态 |
+| coldPreparationIsShared | 并发请求首次准备规则 | 只有一次配置加载，成功后同步 checkNumber 不访问 SQL |
+| closedPreparationDoesNotInstall | 暂停加载，关闭所有者后再放行 | 不安装快照、不发布，不允许再次加载 |
+| preparationFailureIsExplicit | 冷启动配置损坏且无有效快照 | 准备明确失败，checkNumber 不返回默认结果 |
 
 - [ ] 实现 get/save 两个正式入口。save 使用持久 base 校验；numberRule 为精确冲突键；MutationDelta 只发布 NUMBER_RULES。
 - [ ] 采用单条 settings JSON 记录 version/prefix/length/revision，由一个解释器编码/解码；SQLite 查询投影复用解释器，不维护第二份缺省解释。
-- [ ] CoreAssembly 显式初始化快照；初始化复用既有生命周期入口，不把数据库打开提前到原本无 IO 的图构造阶段。
+- [ ] CoreAssembly/BackendGraph 提供生命周期内唯一的规则准备入口，按 1.3 的共享加载、关闭及失败约定初始化快照，并沿既有系统 refresh 路径复用；图构造不打开数据库。同步 checkNumber 只检查就绪并读内存，不能自行补做 IO。
 - [ ] 复用现有 CommandCommitter：SQL 成功后 publishCore，再在 afterCommit 安装预先准备好的不可变规则值，均位于同一 fence。所有规则状态读取先取得同一 fence，因此收到通知的消费者不能在 afterCommit 之前取到旧规则。afterCommit 只安装已准备好的值，不解析配置、不做 IO。通过并发测试证实此顺序，不改通用提交协议；domain matcher 的纯计算不持锁、不访问存储。
 - [ ] Run: .\gradlew.bat :backend:test --tests com.greatwall.callring.NumberRuleSettingsServiceTest :app:testDebugUnitTest --tests com.greatwall.callring.data.NumberRuleStorageTest
 - [ ] 预期：表中断言全部通过，绑定命令不新建规则状态。
@@ -288,7 +296,9 @@ val acceptAllDigits = NumberMatcher { number, _ ->
 ```
 - [ ] 对同一组 31234/812345 断言：直接号码检查、号码概览、来电 matched、统计入库资格和导入过滤均使用注入策略；消费方不得包含新算法。
 - [ ] 用可控执行器暂停来电 writer：旧规则下评估 31234 → 改为 8/6 → 放行 writer；该会话保留旧匹配事实，下一次来电按新规则。inspectAgain 不重新套用新规则。
-- [ ] 暂停导入批次中间步骤并保存新规则，断言本批次保持一致，下一批使用新规则；不修改统计开关与通话去重的既有语义。
+- [ ] 保持 CallLogImportService.import 经 CommandCommitter 在同一协调 fence 内完成整批事务的现有边界；在 fence 内捕获规则快照，整批复用。本期不为了允许保存穿插导入而拆事务或缩小锁范围。
+- [ ] 导入并发红测使用两个执行线程和可控屏障：暂停已持有 fence 的导入，另一线程发起保存；确认保存已发起但尚未提交，再释放导入，等待导入和保存依次完成。断言本批次全部采用旧规则、保存后下一批采用新规则。不得在放行导入前等待保存完成；测试使用有界等待和 finally 释放屏障，防止互相等待。不修改统计开关与通话去重的既有语义。
+- [ ] 复核红测覆盖旧匹配=true/false 两个方向：首次评估后修改规则使新匹配相反，同时分别更新 quiet、overlay、白名单等非规则设置。inspectAgain 保留首次 revision/matched，但 silence、overlayEnabled 等按首次匹配事实和最新设置重新计算；下一会话使用新规则。覆盖 quiet.allNumbers 的既有语义，并验证异步统计入库沿用首次匹配事实及现有统计区间检查。
 - [ ] 删除全部旧固定匹配消费者；对需要判断业务命中的地方注入 NumberMatcher，不用默认参数悄悄补回旧规则。
 - [ ] Run: .\gradlew.bat :backend:test --tests com.greatwall.callring.NumberRuleConsumerTest --tests com.greatwall.callring.DecisionPublicationTest
 - [ ] Run: .\gradlew.bat :app:testDebugUnitTest --tests com.greatwall.callring.platform.calling.IncomingCallCoordinatorTest --tests com.greatwall.callring.platform.calling.ScreeningControllerTest --tests com.greatwall.callring.data.CallingSqlSemanticsTest
@@ -323,9 +333,11 @@ val acceptAllDigits = NumberMatcher { number, _ ->
 
 ### Task 6：页面与精准刷新
 
-**Files:** 新增 NumberRuleScreen/ViewModel；修改 3.5 文件。
+**Files:** 新增 NumberRuleScreen/ViewModel；修改 3.5 文件及 3.2 的 CallringActivity、WidgetConfigurationModel 冷启动入口。
 **Tests:** 新增 ui/src/test/kotlin/com/greatwall/callring/ui/feature/settings/NumberRuleViewModelTest.kt、ui/src/test/kotlin/com/greatwall/callring/ui/feature/settings/NumberRuleScreenTest.kt；扩展 CallerListViewModelTest、NumberLookupViewModelTest、RefreshIsolationTest。
 
+- [ ] 冷启动红测覆盖直接打开 Report/EditCaller、号码查询、规则试匹配及 Widget 配置：暂停规则加载时不调用 checkNumber、不解析目标或保存绑定；放行后按持久规则继续。配置损坏时显示加载错误、保留原始目标/输入，重试成功后继续；关闭页面或所有者后，过期加载不得回写。
+- [ ] 将入口测试加入现有 Activity/Widget 测试或新增对应测试，并纳入本任务定向验证与统一门；不能仅以 NumberRuleViewModelTest 替代入口测试。
 - [ ] 红测：prefix 非数字、长度不足和超范围均显示对应字段错误，不写入；空前缀标注不限前缀。
 - [ ] 红测：页面 base 过期保存失败保留草稿；AI 修改后未编辑页面刷新，正在编辑页面显示冲突且不覆盖输入。
 - [ ] 红测：规则变更时 CallerList.search loader 增量 0，号码匹配提示更新；号码查询无需修改输入即可更新。
@@ -361,7 +373,9 @@ python tools/verify_backend.py
 - [ ] 页面、AI、来电及导入共用唯一算法与配置业务。
 - [ ] 调整配置不需要改代码；重启后保留；非法配置不会发布。
 - [ ] 相同输入/配置/输出契约下替换策略，只修改策略实现与测试，或新增策略时另改唯一装配点。
-- [ ] 一次来电/一批导入的规则事实稳定，无异步新旧规则混用。
+- [ ] 冷启动各同步号码检查消费者先等待规则就绪；图构造与同步 checkNumber 无数据库访问，加载失败、重试及关闭行为有验证证据。
+- [ ] 一次来电/一批导入的规则事实稳定，无异步新旧规则混用；同次来电复核以首次匹配事实和最新非规则设置重新计算派生决策。
+- [ ] 导入持锁期间保存等待，导入完成后保存生效，下一批使用新规则；并发测试不在持锁导入放行前等待保存完成。
 - [ ] 取消/并发/重复提交/关闭均符合项目约束；规则修改只触发必要刷新。
 - [ ] AI 能发现、查询、修改及验证规则，旧工具协议兼容，无第二套业务逻辑。
 - [ ] 局部与完整快照一致；所有已有固定匹配入口迁出并删除。
@@ -375,3 +389,10 @@ python tools/verify_backend.py
 - 加入前一清单遗漏的异步来电一致性、策略注入和初始化生命周期；不沿用 39 文件作为完整数量承诺。
 - 运行快照和 commandApi 绑定共用同一所有者，无 domain 数据库访问、全局可变默认规则或第二匹配实现。
 - 尚未执行任何编码、构建或测试；上面的命令和测试名是实施验收步骤，不是已通过证据。
+
+### 2026-10-23 实施审查补充
+
+- 明确冷启动规则准备的生命周期所有者、后台共享加载、UI 导航及 Widget 屏障、失败重试与关闭验收；补入对应文件触点。
+- 导入保持整批事务与协调锁，改为验证保存等待导入结束，避免测试等待顺序造成死锁。
+- 同次来电复核将首次匹配事实输入最新决策计算，覆盖派生静音/悬浮窗结果和非规则设置变化，禁止仅覆盖 matched。
+- 本次仅修订计划，新增验收项均未实施、未执行。
