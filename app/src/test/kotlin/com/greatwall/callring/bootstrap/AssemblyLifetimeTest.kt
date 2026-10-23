@@ -24,6 +24,29 @@ import org.robolectric.annotation.Config
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [33], manifest = Config.NONE)
 class AssemblyLifetimeTest {
+    @Test fun numberRulePreparationIsExplicitAndRetainedApisNeverReloadAfterClose() = runBlocking {
+        val graph = graph("number-rule-lifetime")
+        val context = RuntimeEnvironment.getApplication()
+        val file = context.getDatabasePath("number-rule-lifetime.db")
+        val backend = graph.backend
+        val api = graph.api
+        assertFalse("construction must not open core persistence",file.exists())
+        assertThrows(IllegalStateException::class.java) { api.checkNumber("31234") }
+        val base = api.settings.getNumberRule().requiredValue()
+        assertTrue(file.exists())
+        assertTrue(api.checkNumber("31234").matchesRule)
+        val bound = api.commandApi(CommandContext("rule-lifetime",graph.coordinator.capture(),0) { true })
+        assertEquals(NumberRuleSettings("8",6,1),bound.settings.saveNumberRule(SaveNumberRule(base,"8",6)).requiredValue())
+        assertTrue(api.checkNumber("812345").matchesRule)
+        assertFalse(api.checkNumber("31234").matchesRule)
+        graph.close()
+        assertTrue(api.settings.getNumberRule() is ApiResult.Failure)
+        assertTrue(backend.prepareNumberRule() is ApiResult.Failure)
+        assertThrows(com.greatwall.callring.application.ports.BackendFailure::class.java) { api.checkNumber("812345") }
+        assertThrows(com.greatwall.callring.application.ports.BackendFailure::class.java) { bound.checkNumber("812345") }
+        Unit
+    }
+
     @Test fun retainedSnapshotRejectsBeforeCredentialStoreInitialization() = runBlocking {
         val graph = graph("terminal-snapshot")
         val recording = graph.recordings

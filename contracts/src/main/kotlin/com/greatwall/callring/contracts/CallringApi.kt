@@ -30,6 +30,7 @@ interface CallringUiApi {
     val widgets: WidgetBindingsApi
     val changes: ChangeFeed
 
-    // 纯计算，可同步调用；不拨号、不记录事件、不访问系统通话记录。
+    // 纯计算；调用前须成功 await settings.getNumberRule()。未准备或已关闭时明确失败。
+    // 不拨号、不记录事件、不访问数据库或系统通话记录。
     fun checkNumber(raw: String): NumberCheck
 }

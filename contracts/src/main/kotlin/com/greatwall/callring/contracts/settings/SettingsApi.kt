@@ -4,6 +4,9 @@ import com.greatwall.callring.contracts.common.*
 import java.time.LocalDate
 
 interface SettingsApi {
+    /** Authoritative durable read; success prepares shared synchronous number checks. */
+    suspend fun getNumberRule(): ApiResult<NumberRuleSettings>
+    suspend fun saveNumberRule(command: SaveNumberRule): ApiResult<NumberRuleSettings>
     suspend fun getSummary(): ApiResult<SettingsSummary>
     suspend fun setStatisticsEnabled(enabled: Boolean): ApiResult<Unit>
     suspend fun setOverlayEnabled(enabled: Boolean): ApiResult<Unit>
@@ -181,3 +184,6 @@ data class RingtoneSettings(
     val displayName: String,
     val previewSeconds: Int
 )
+
+data class NumberRuleSettings(val prefix: String, val length: Int, val revision: Long)
+data class SaveNumberRule(val base: NumberRuleSettings, val prefix: String, val length: Int)

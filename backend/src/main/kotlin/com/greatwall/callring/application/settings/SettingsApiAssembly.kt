@@ -6,6 +6,7 @@ import com.greatwall.callring.contracts.settings.*
 import java.time.LocalDate
 
 internal fun createSettingsApi(
+    numberRuleService: NumberRuleSettingsService,
     summaryService: SettingsSummaryService,
     statisticsService: StatisticsSettingsService,
     overlayService: OverlaySettingsService,
@@ -18,6 +19,8 @@ internal fun createSettingsApi(
     appearanceService: AppearanceService,
 ): SettingsApi =
     object : SettingsApi {
+        override suspend fun getNumberRule() = numberRuleService.get()
+        override suspend fun saveNumberRule(command: SaveNumberRule) = numberRuleService.save(command)
         override suspend fun getSummary() = summaryService.get()
 
         override suspend fun setStatisticsEnabled(enabled: Boolean) = statisticsService.set(enabled)

@@ -236,13 +236,13 @@ class DomainRegressionTest {
             unusedPort(),
             Clock.fixed(Instant.parse("2026-10-14T02:00:00Z"), ZoneOffset.UTC),
             Dispatchers.Unconfined,
-            coreTransactions = unusedPort(),
+            coreTransactions = MemoryCoreUnitOfWork(),
             calendarSource = unusedPort(),
             numberRecordings = com.greatwall.callring.EmptyNumberRecordings,
             identityArchive = { com.greatwall.callring.contracts.common.ApiResult.Success(null) },
             operationActive = { true },
             conversationProvider = { unusedPort() }, aiSettingsProvider = { unusedPort() },
-            updateProvider = { unusedPort() }, snapshotsProvider = { unusedPort() }, recordingsProvider = { unusedPort() }, persistenceActive = { true })
+            updateProvider = { unusedPort() }, snapshotsProvider = { unusedPort() }, recordingsProvider = { unusedPort() }, persistenceActive = { true }).also { kotlinx.coroutines.runBlocking { it.prepareNumberRule().requiredValue() } }
     }
 
     @Suppress("UNCHECKED_CAST")

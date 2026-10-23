@@ -15,7 +15,7 @@ import com.greatwall.callring.domain.model.*
 
 /** One adapter per leased session; shares its SQL connection and lifetime checks. */
 internal class SqliteSimpleSettings(private val sql: SqlAccess, private val checkLease: (Boolean) -> Unit) :
-    ScoreWriter, OverlayWriter, StatisticsWriter, PositionWriter, SummaryReader {
+    NumberRuleWriter, ScoreWriter, OverlayWriter, StatisticsWriter, PositionWriter, SummaryReader {
     private fun checkActive(write: Boolean = false) = checkLease(write)
     private fun settings(vararg keys: String): Map<String, String?> {
         checkActive()
@@ -28,6 +28,14 @@ internal class SqliteSimpleSettings(private val sql: SqlAccess, private val chec
         checkActive(true)
         if (sql.update("settings", values("value" to value), "key=?", arrayOf(key)) == 0)
             sql.insert("settings", values("key" to key, "value" to value))
+    }
+    override fun numberRule(): com.greatwall.callring.contracts.settings.NumberRuleSettings {
+        val values = settings("number_rule")
+        return if (!values.containsKey("number_rule")) com.greatwall.callring.contracts.settings.NumberRuleSettings("3",5,0)
+        else com.greatwall.callring.data.codec.NumberRuleCodec.decode(values["number_rule"])
+    }
+    override fun saveNumberRule(value: com.greatwall.callring.contracts.settings.NumberRuleSettings) {
+        putSetting("number_rule",com.greatwall.callring.data.codec.NumberRuleCodec.encode(value))
     }
     private var loadedScore: ScoreSettings? = null
     override fun score(): ScoreSettings {

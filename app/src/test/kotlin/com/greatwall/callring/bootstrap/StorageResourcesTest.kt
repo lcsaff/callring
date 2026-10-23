@@ -53,6 +53,8 @@ class StorageResourcesTest {
             object : CoreUnitOfWork {
                 private val session =
                     object : CoreWriteSession {
+                        override fun numberRule(): com.greatwall.callring.contracts.settings.NumberRuleSettings = error("unused")
+                        override fun saveNumberRule(value: com.greatwall.callring.contracts.settings.NumberRuleSettings): Unit = error("unused")
                         override fun visitReportCalls(
                             number: String,
                             start: Long,

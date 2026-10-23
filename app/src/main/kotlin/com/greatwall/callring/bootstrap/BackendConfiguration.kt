@@ -19,6 +19,7 @@ data class BackendConfiguration(
     val audioDirectory: File? = null,
     val clock: Clock = Clock.systemUTC(),
     val dispatcher: CoroutineDispatcher = Dispatchers.IO,
+    val numberMatcher: com.greatwall.callring.domain.calling.NumberMatcher = com.greatwall.callring.domain.calling.PrefixLengthNumberMatcher,
     val sqlAccessProbe: com.greatwall.callring.data.database.SqlAccessProbe? = null,
 ) {
     init {

@@ -53,9 +53,15 @@ class CallringBackend(
     private val snapshotsProvider: () -> AiSnapshotApi,
     private val recordingsProvider: (CommandContext?) -> RecordingApi,
     private val decisions: com.greatwall.callring.application.calling.DecisionMirror = com.greatwall.callring.application.calling.DecisionMirror(),
+    private val numberRuleState: com.greatwall.callring.application.calling.NumberRuleState = com.greatwall.callring.application.calling.NumberRuleState(coordinator),
+    private val numberMatcher: com.greatwall.callring.domain.calling.NumberMatcher = com.greatwall.callring.domain.calling.PrefixLengthNumberMatcher,
     private val commandContext: CommandContext? = null,
     private val runtimeObservations: com.greatwall.callring.application.runtime.RuntimeObservationTracker = com.greatwall.callring.application.runtime.RuntimeObservationTracker(coordinator),
 ) : CallringUiApi {
+    private val numberRuleService = com.greatwall.callring.application.settings.NumberRuleSettingsService(coreTransactions, coordinator, numberRuleState, dispatcher, commandContext, operationActive)
+    /** Explicit lifecycle preparation for synchronous consumers; never opens storage at construction. */
+    suspend fun prepareNumberRule(): ApiResult<Unit> = numberRuleService.prepare()
+
     private val callerQueries =
         com.greatwall.callring.application.callers.CallerQueryService(
             coreTransactions,
@@ -221,12 +227,12 @@ class CallringBackend(
             override fun snapshots() = coordinator.invalidations.snapshots
         }
 
-    override fun checkNumber(raw: String): NumberCheck {
-        val identity = com.greatwall.callring.domain.model.NumberIdentity.parse(raw)
-        return NumberCheck(identity.normalized, identity.validProfileNumber, identity.matchesRule)
+    override fun checkNumber(raw: String): NumberCheck = synchronized(coordinator.fence) {
+        com.greatwall.callring.application.coordination.requireOperationActive(operationActive)
+        com.greatwall.callring.application.mapping.checkNumber(raw, numberRuleState.snapshot(), numberMatcher)
     }
 
-    private fun settingsApi() = createSettingsApi(summaryService, statisticsService, overlayService,
+    private fun settingsApi() = createSettingsApi(numberRuleService, summaryService, statisticsService, overlayService,
         quietService, positionService, workScheduleService, calendarService, leaveService, scoreService, appearanceService)
     private fun editsApi() = createUiEditsApi(callerCommands, quietService, workScheduleService,
         scoreService, appearanceService, positionService, leaveService)
@@ -234,7 +240,7 @@ class CallringBackend(
     private fun bound(command: CommandContext) = CallringBackend(preferences, documents, runtimeProbe,
         audio, syncScheduler, clock, dispatcher, calendarSource, coordinator, coreTransactions,
         numberRecordings, identityArchive, operationActive, persistenceActive, conversationProvider, aiSettingsProvider,
-        updateProvider, snapshotsProvider, recordingsProvider, decisions, command, runtimeObservations)
+        updateProvider, snapshotsProvider, recordingsProvider, decisions, numberRuleState, numberMatcher, command, runtimeObservations)
 
     override fun commandApi(context: CommandContext): CallringUiApi = bound(context)
 

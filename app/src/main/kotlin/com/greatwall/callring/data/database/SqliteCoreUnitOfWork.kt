@@ -368,6 +368,9 @@ internal class SqliteCoreUnitOfWork(private val db: SQLiteDatabase, private val 
         private val settings =
             com.greatwall.callring.data.settings.SqliteSimpleSettings(sql, ::checkActive)
 
+        override fun numberRule() = settings.numberRule()
+        override fun saveNumberRule(value: com.greatwall.callring.contracts.settings.NumberRuleSettings) = settings.saveNumberRule(value)
+
         override fun score() = settings.score()
 
         override fun saveScore(value: ScoreSettings) = settings.saveScore(value)

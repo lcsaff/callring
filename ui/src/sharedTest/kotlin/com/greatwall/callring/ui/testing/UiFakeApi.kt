@@ -17,6 +17,8 @@ import java.time.LocalDate
 
 /** Deterministic screen fixtures. No business rules or production wiring live in this source set. */
 open class UiFakeApi(private val overlayEnabled: Boolean = false) : CallringUiApi, HomeApi, CallersApi, ReportsApi, SettingsApi, RingtoneApi, RuntimeApi, WidgetBindingsApi, ChangeFeed {
+    override suspend fun getNumberRule(): ApiResult<NumberRuleSettings> = unexpected()
+    override suspend fun saveNumberRule(command: SaveNumberRule): ApiResult<NumberRuleSettings> = unexpected()
     override suspend fun setQuietEnabled(enabled: Boolean): ApiResult<QuietSettings> = unexpected()
     override suspend fun synchronizeCalendar(year: Int): ApiResult<CalendarInfo> = unexpected()
     override fun commandApi(context: CommandContext): CallringUiApi = this

@@ -20,6 +20,7 @@ interface QuietTransactions {
 }
 
 interface CoreReadSession :
+    NumberRuleReader,
     ReportReader,
     HomeReader,
     CallingReader,
@@ -37,6 +38,7 @@ interface CoreReadSession :
 
 interface CoreWriteSession :
     CoreReadSession,
+    NumberRuleWriter,
     CallingWriter,
     QuietWriter,
     ScoreWriter,
@@ -49,6 +51,7 @@ interface CoreWriteSession :
     CallerProfileWriter {}
 
 interface CoreUnitOfWork :
+    NumberRuleTransactions,
     ReportReads,
     HomeReads,
     CallingTransactions,
@@ -101,6 +104,9 @@ interface CoreUnitOfWork :
     override fun <T> readLeaves(block: (LeaveReader) -> T): T = readSession { block(it) }
 
     override fun <T> writeLeaves(block: (LeaveWriter) -> T): T = writeSession { block(it) }
+
+    override fun <T> readNumberRule(block: (NumberRuleReader) -> T): T = readSession { block(it) }
+    override fun <T> writeNumberRule(block: (NumberRuleWriter) -> T): T = writeSession { block(it) }
 
     fun <T> readSession(block: (CoreReadSession) -> T): T
 

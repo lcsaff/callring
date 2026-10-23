@@ -109,7 +109,7 @@ internal class CoreAssembly(
             aiSettingsProvider = { command -> if (command == null) recordings().aiSettings else recordings().aiSettings.bound(command) },
             updateProvider = { update() },
             snapshotsProvider = { conversation().snapshots },
-            recordingsProvider = { command -> if (command == null) recordings().service else recordings().service.bound(command) }, persistenceActive = persistenceActive)
+            recordingsProvider = { command -> if (command == null) recordings().service else recordings().service.bound(command) }, persistenceActive = persistenceActive, numberMatcher = configuration.numberMatcher)
     }
     val backend: CallringBackend
         get() =

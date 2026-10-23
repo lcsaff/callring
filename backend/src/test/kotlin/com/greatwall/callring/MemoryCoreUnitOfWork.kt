@@ -15,6 +15,7 @@ import com.greatwall.callring.domain.model.*
 
 /** Deterministic in-memory implementation of the same narrow session ports. */
 internal class MemoryCoreUnitOfWork : CoreUnitOfWork {
+    var numberRuleSettings = com.greatwall.callring.contracts.settings.NumberRuleSettings("3", 5, 0)
     val decision = DecisionFixture()
     val people = linkedMapOf<String, ProfileRecord>()
     val roles = linkedMapOf<Long, PositionRecord>()
@@ -30,6 +31,8 @@ internal class MemoryCoreUnitOfWork : CoreUnitOfWork {
     var failCommit = false
     private val session =
         object : CoreWriteSession {
+            override fun numberRule() = numberRuleSettings
+            override fun saveNumberRule(value: com.greatwall.callring.contracts.settings.NumberRuleSettings) { numberRuleSettings = value }
             override fun visitReportCalls(
                 number: String,
                 start: Long,
@@ -422,6 +425,7 @@ internal class MemoryCoreUnitOfWork : CoreUnitOfWork {
         remember(decision.overrides); remember(decision.leaves); remember(decision.intervals)
         val makeup = decision.makeupDates.toSet()
         val quiet = decision.quiet; val overlay = decision.overlay; val leaveVersion = decision.leaveVersion
+        val rule = numberRuleSettings
         val selected = selectedRole; val mode = lastMode; val score = scoreSettings
         val callId = nextCall; val roleId = nextRole; val leaveId = nextLeave; val scheduleId = nextSchedule
         try {
@@ -432,6 +436,7 @@ internal class MemoryCoreUnitOfWork : CoreUnitOfWork {
             undo.forEach { it() }
             decision.makeupDates.clear(); decision.makeupDates.addAll(makeup)
             decision.quiet = quiet; decision.overlay = overlay; decision.leaveVersion = leaveVersion
+            numberRuleSettings = rule
             selectedRole = selected; lastMode = mode; scoreSettings = score
             nextCall = callId; nextRole = roleId; nextLeave = leaveId; nextSchedule = scheduleId
             throw failure
