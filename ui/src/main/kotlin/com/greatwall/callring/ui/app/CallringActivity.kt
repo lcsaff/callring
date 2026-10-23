@@ -26,11 +26,11 @@ import com.greatwall.callring.ui.overlay.CallringOverlayService
 import kotlinx.coroutines.launch
 
 class CallringActivity : ComponentActivity() {
+    private lateinit var startupGate: NumberRuleStartupGate
     private lateinit var actionHost: ForegroundActionHost
     private var notice by mutableStateOf<UiNotice?>(null)
     private var noticeSequence = 0L
     private fun notifyUser(text: String) { notice = UiNotice(++noticeSequence, text) }
-    private var destination by mutableStateOf<UiDestination>(UiDestination.Home)
     private var requestSequence by mutableLongStateOf(0)
     private var refreshSignal by mutableLongStateOf(0)
     private val timeChanges = object : BroadcastReceiver() {
@@ -41,10 +41,29 @@ class CallringActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         requestSequence = savedInstanceState?.getLong(STATE_REQUEST_SEQUENCE) ?: 0
-        destination = readDestination(intent)
         val api = (application as UiApiOwner).uiApi
         actionHost = ForegroundActionHost(this,api,::notifyUser)
-        setContent { CallringApp(api, destination, requestSequence, refreshSignal, ::requestCapability, ::previewCall, ::pinWidget, ::openApplicationSettings, notice, { if (notice?.id == it) notice = null }, onTestOverlay = ::testOverlay); ForegroundActionDialogs(api) }
+        startupGate = NumberRuleStartupGate(lifecycleScope, api.settings::getNumberRule, api::checkNumber)
+        startupGate.open(UiDestination.fromExternal(
+            savedInstanceState?.getString(STATE_PENDING_TARGET) ?: intent.getStringExtra(EXTRA_TARGET),
+            savedInstanceState?.getString(STATE_PENDING_NUMBER) ?: intent.getStringExtra(EXTRA_NUMBER),
+            savedInstanceState?.getString(STATE_PENDING_PAGE) ?: intent.getStringExtra(EXTRA_PAGE)))
+        setContent {
+            val startup by startupGate.state.collectAsState()
+            val ready = startup.destination
+            if (ready == null) {
+                com.greatwall.callring.ui.designsystem.components.ScreenFrame("加载设置") {
+                    if (startup.loading) androidx.compose.material3.CircularProgressIndicator()
+                    else {
+                        androidx.compose.material3.Text("号码规则加载失败，请重试")
+                        androidx.compose.material3.Button(onClick = startupGate::retry) { androidx.compose.material3.Text("重试") }
+                    }
+                }
+            } else {
+                CallringApp(api, ready, requestSequence, refreshSignal, ::requestCapability, ::previewCall, ::pinWidget, ::openApplicationSettings, notice, { if (notice?.id == it) notice = null }, onTestOverlay = ::testOverlay)
+                ForegroundActionDialogs(api)
+            }
+        }
     }
 
     override fun onResume() {
@@ -59,12 +78,15 @@ class CallringActivity : ComponentActivity() {
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
-        destination = readDestination(intent)
+        startupGate.open(readDestination(intent))
         requestSequence++
     }
 
     override fun onSaveInstanceState(outState: Bundle) {
         outState.putLong(STATE_REQUEST_SEQUENCE, requestSequence)
+        outState.putString(STATE_PENDING_TARGET, intent.getStringExtra(EXTRA_TARGET))
+        outState.putString(STATE_PENDING_NUMBER, intent.getStringExtra(EXTRA_NUMBER))
+        outState.putString(STATE_PENDING_PAGE, intent.getStringExtra(EXTRA_PAGE))
         super.onSaveInstanceState(outState)
     }
 
@@ -82,15 +104,13 @@ class CallringActivity : ComponentActivity() {
         super.onStop()
     }
 
-    private fun readDestination(intent: Intent): UiDestination {
-        val destination = UiDestination.fromExternal(intent.getStringExtra(EXTRA_TARGET), intent.getStringExtra(EXTRA_NUMBER), intent.getStringExtra(EXTRA_PAGE))
-        val api = (application as UiApiOwner).uiApi
-        return when (destination) {
-            is UiDestination.Report -> api.checkNumber(destination.number).let { check -> if (check.validProfileNumber) UiDestination.Report(check.normalized) else UiDestination.Lookup }
-            is UiDestination.EditCaller -> destination.number?.let { raw -> api.checkNumber(raw).let { check -> if (check.validProfileNumber) UiDestination.EditCaller(check.normalized) else UiDestination.EditCaller() } } ?: destination
-            else -> destination
-        }
+    override fun onDestroy() {
+        if (::startupGate.isInitialized) startupGate.close()
+        super.onDestroy()
     }
+
+    private fun readDestination(intent: Intent): UiDestination = UiDestination.fromExternal(
+        intent.getStringExtra(EXTRA_TARGET), intent.getStringExtra(EXTRA_NUMBER), intent.getStringExtra(EXTRA_PAGE))
 
     private fun requestCapability(capability: Capability) = actionHost.requestCapability(capability)
     private fun openApplicationSettings() = actionHost.openApplicationSettings()
@@ -116,6 +136,9 @@ class CallringActivity : ComponentActivity() {
         private const val EXTRA_TARGET = "callring.ui.target"
         private const val EXTRA_NUMBER = "callring.ui.number"
         private const val EXTRA_PAGE = "callring.ui.page"
+        private const val STATE_PENDING_TARGET = "numberRule.pending.target"
+        private const val STATE_PENDING_NUMBER = "numberRule.pending.number"
+        private const val STATE_PENDING_PAGE = "numberRule.pending.page"
         private const val STATE_REQUEST_SEQUENCE = "callring.ui.requestSequence"
         fun intent(context: Context, destination: UiDestination = UiDestination.Home): Intent = Intent(context, CallringActivity::class.java).apply {
             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)

@@ -47,12 +47,35 @@ class CallringActivityTest {
         } finally { controller.pause().stop().destroy() }
     }
 
+    private fun gateOf(activity: CallringActivity): NumberRuleStartupGate =
+        CallringActivity::class.java.getDeclaredField("startupGate").apply { isAccessible = true }.get(activity) as NumberRuleStartupGate
+
     private fun destinationOf(activity: CallringActivity): UiDestination? {
-        val field = CallringActivity::class.java.declaredFields.firstOrNull {
-            it.name.startsWith("destination") && androidx.compose.runtime.MutableState::class.java.isAssignableFrom(it.type)
-        } ?: error("activity destination state field not found")
-        field.isAccessible = true
-        return (field.get(activity) as androidx.compose.runtime.MutableState<*>).value as UiDestination?
+        shadowOf(Looper.getMainLooper()).idle()
+        return gateOf(activity).state.value.destination
+    }
+
+    @Test fun coldNavigationWaitsForRuleAndRetainsRawTargetOnFailure() {
+        val application = RuntimeEnvironment.getApplication() as PermissionRecoveryApplication
+        val pending = kotlinx.coroutines.CompletableDeferred<ApiResult<com.greatwall.callring.contracts.settings.NumberRuleSettings>>()
+        application.uiApi.prepareRule = { pending.await() }
+        val controller = Robolectric.buildActivity(CallringActivity::class.java,
+            CallringActivity.intent(application, UiDestination.Report("100"))).setup()
+        try {
+            shadowOf(Looper.getMainLooper()).idle()
+            assertNull(destinationOf(controller.get()))
+            assertEquals(0, application.uiApi.numberChecks)
+            pending.complete(ApiResult.Failure(com.greatwall.callring.contracts.common.ApiError(
+                com.greatwall.callring.contracts.common.ErrorCode.STORAGE_FAILURE, "storage.failure")))
+            shadowOf(Looper.getMainLooper()).idle()
+            assertEquals(UiDestination.Report("100"), gateOf(controller.get()).state.value.pending)
+            assertNotNull(gateOf(controller.get()).state.value.error)
+            assertEquals(0, application.uiApi.numberChecks)
+            application.uiApi.prepareRule = { ApiResult.Success(com.greatwall.callring.contracts.settings.NumberRuleSettings("3", 5, 0)) }
+            gateOf(controller.get()).retry()
+            assertEquals(UiDestination.Report("100"), destinationOf(controller.get()))
+            assertTrue(application.uiApi.numberChecks > 0)
+        } finally { controller.pause().stop().destroy() }
     }
 
     @Test fun overlayTestWithoutPermissionOpensOverlaySettingsInsteadOfService() {
@@ -108,6 +131,13 @@ class PermissionRecoveryApplication : Application(), UiApiOwner {
 }
 
 class PermissionRecoveryApi : UiFakeApi() {
+    var prepareRule: suspend () -> ApiResult<com.greatwall.callring.contracts.settings.NumberRuleSettings> = {
+        ApiResult.Success(com.greatwall.callring.contracts.settings.NumberRuleSettings("3", 5, 0))
+    }
+    var numberChecks = 0
+    override suspend fun getNumberRule() = prepareRule()
+    override fun checkNumber(raw: String) = super.checkNumber(raw).also { numberChecks++ }
+
     var syncRequests = 0
     override suspend fun requestCallLogSync(): ApiResult<SyncRequestReceipt> {
         syncRequests++
