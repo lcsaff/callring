@@ -1,5 +1,7 @@
 package com.greatwall.callring.application.calling
 
+import com.greatwall.callring.domain.calling.NumberMatcher
+
 import com.greatwall.callring.application.coordination.BusinessRevisionCoordinator
 import com.greatwall.callring.application.ports.store.*
 import com.greatwall.callring.domain.calling.DecisionSnapshot
@@ -14,15 +16,16 @@ internal class DecisionQueryService(
     private val calls: CallingTransactions,
     private val coordinator: BusinessRevisionCoordinator,
     private val snapshots: AtomicReference<DecisionSnapshot?>,
+    private val matcher: NumberMatcher,
 ) {
     fun refresh(): DecisionSnapshot =
         coordinator.guard(null) {
             inputs
-                .readDecisionInputs { DecisionSnapshot.capture(it.decisionInputs()) }
+                .readDecisionInputs { DecisionSnapshot.capture(it.decisionInputs(), matcher) }
                 .also(snapshots::set)
         }
 
-    fun snapshot(): DecisionSnapshot = snapshots.get() ?: error("decision.snapshot.uninitialized")
+    fun snapshot(): DecisionSnapshot = coordinator.guard(null) { snapshots.get() ?: error("decision.snapshot.uninitialized") }
 
     fun statisticsStart(): Long =
         consistent(setOf("statistics")) { calls.readCalling { it.statisticsStart() } }

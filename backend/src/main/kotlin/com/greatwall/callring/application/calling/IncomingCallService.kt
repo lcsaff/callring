@@ -1,5 +1,7 @@
 package com.greatwall.callring.application.calling
 
+import com.greatwall.callring.domain.calling.NumberMatchFact
+
 import com.greatwall.callring.domain.calling.CallCorrelation
 import com.greatwall.callring.domain.calling.WorkClassifier
 import com.greatwall.callring.domain.model.RawCallRecord
@@ -26,13 +28,14 @@ internal class IncomingCallService(
         decision: com.greatwall.callring.contracts.callers.CallDecision,
         account: String?,
         originalFacts: com.greatwall.callring.contracts.callers.ClassificationFact?,
+        numberMatch: NumberMatchFact,
     ): Long =
         committer.commit(
             command,
             {
                 transactions.writeCalling { writer ->
                     val identity = NumberIdentity.parse(number)
-                    if (!identity.matchesRule || !writer.statisticsContains(at))
+                    if (!numberMatch.matched || !writer.statisticsContains(at))
                         return@writeCalling callingChanges(-1L, emptyList(), emptySet())
                     val n = identity.normalized
                     val known = account?.trim()?.takeIf { it.isNotEmpty() }

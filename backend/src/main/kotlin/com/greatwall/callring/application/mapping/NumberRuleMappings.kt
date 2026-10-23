@@ -1,6 +1,6 @@
 package com.greatwall.callring.application.mapping
 
-import com.greatwall.callring.application.calling.NumberRuleSnapshot
+import com.greatwall.callring.domain.calling.NumberRuleSnapshot
 import com.greatwall.callring.contracts.callers.NumberCheck
 import com.greatwall.callring.contracts.settings.NumberRuleSettings
 import com.greatwall.callring.domain.calling.NumberMatcher

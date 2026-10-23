@@ -100,9 +100,9 @@ class CallerServiceTest {
         val p = Profiles()
         val c = BusinessRevisionCoordinator()
         val query =
-            CallerQueryService(p, unusedQueries, c, Dispatchers.Unconfined, Clock.systemUTC()) {
+            CallerQueryService(p, unusedQueries, c, Dispatchers.Unconfined, Clock.systemUTC(), rule = { com.greatwall.callring.domain.calling.NumberRuleSnapshot(com.greatwall.callring.domain.calling.NumberRule.DEFAULT, 0) }, matcher = com.greatwall.callring.domain.calling.PrefixLengthNumberMatcher, runtime = {
                 error("unexpected runtime")
-            }
+            })
         p.checkRead = {
             assertFalse("query must not hold coordinator fence", Thread.holdsLock(c.fence))
         }
@@ -261,9 +261,9 @@ class CallerServiceTest {
         val p = Profiles()
         val c = BusinessRevisionCoordinator()
         val query =
-            CallerQueryService(p, unusedQueries, c, Dispatchers.Unconfined, Clock.systemUTC()) {
+            CallerQueryService(p, unusedQueries, c, Dispatchers.Unconfined, Clock.systemUTC(), rule = { com.greatwall.callring.domain.calling.NumberRuleSnapshot(com.greatwall.callring.domain.calling.NumberRule.DEFAULT, 0) }, matcher = com.greatwall.callring.domain.calling.PrefixLengthNumberMatcher, runtime = {
                 error("runtime")
-            }
+            })
         p.afterRead = { c.publishCore(setOf("quiet"), ChangeImpact(emptyMap())) }
         val result = query.search(CallerSearch("A")).requiredValue()
         assertEquals(1, p.reads)
@@ -276,9 +276,9 @@ class CallerServiceTest {
         val p = Profiles()
         val c = BusinessRevisionCoordinator()
         val query =
-            CallerQueryService(p, unusedQueries, c, Dispatchers.Unconfined, Clock.systemUTC()) {
+            CallerQueryService(p, unusedQueries, c, Dispatchers.Unconfined, Clock.systemUTC(), rule = { com.greatwall.callring.domain.calling.NumberRuleSnapshot(com.greatwall.callring.domain.calling.NumberRule.DEFAULT, 0) }, matcher = com.greatwall.callring.domain.calling.PrefixLengthNumberMatcher, runtime = {
                 error("runtime")
-            }
+            })
         p.afterRead = { c.publishCore(setOf("profiles"), ChangeImpact(emptyMap())) }
         val result = query.search(CallerSearch()) as ApiResult.Failure
         assertEquals("business.changed", result.error.message)

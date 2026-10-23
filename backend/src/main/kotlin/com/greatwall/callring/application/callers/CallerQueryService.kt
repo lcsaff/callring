@@ -1,5 +1,9 @@
 package com.greatwall.callring.application.callers
 
+import com.greatwall.callring.domain.calling.NumberMatcher
+
+import com.greatwall.callring.domain.calling.NumberRuleSnapshot
+
 import com.greatwall.callring.application.coordination.BusinessRevisionCoordinator
 import com.greatwall.callring.application.mapping.frozenList
 import com.greatwall.callring.domain.calling.WorkClassifier
@@ -29,6 +33,8 @@ internal class CallerQueryService(
     dispatcher: CoroutineDispatcher,
     private val clock: Clock,
     private val runtime: () -> RuntimeStatus,
+    private val rule: () -> NumberRuleSnapshot,
+    private val matcher: NumberMatcher,
 ) {
     private val runner = UseCaseRunner(dispatcher)
 
@@ -153,9 +159,11 @@ internal class CallerQueryService(
                 "leaves",
                 "statistics",
                 "quiet",
+                "numberRule",
                 "runtime:capability:CALL_LOG",
             ),
         ) { before ->
+            val ruleSnapshot = rule()
             val status = runtime()
             queries.readCallerOverview { reader ->
                 val p = reader.caller(n)
@@ -211,7 +219,7 @@ internal class CallerQueryService(
                     WorkClassifier.status(history, query.workAtEpochMillis ?: clock.millis())
                         .toContract(),
                     reader.quiet().settings.mode.toContract(),
-                    callerCheck(n),
+                    checkNumber(n, ruleSnapshot, matcher),
                     DataQuality(
                         reader.statisticsHead().open != null,
                         status.capabilities[Capability.CALL_LOG] ?: AccessState.UNKNOWN,

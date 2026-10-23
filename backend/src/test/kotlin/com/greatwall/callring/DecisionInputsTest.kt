@@ -22,7 +22,7 @@ class DecisionInputsTest {
                 whitelist += "30001"
                 intervals += StatisticsInterval(0, null)
             }
-        val snapshot = DecisionSnapshot.capture(state.decisionInputs())
+        val snapshot = DecisionSnapshot.capture(state.decisionInputs(), com.greatwall.callring.domain.calling.PrefixLengthNumberMatcher)
         windows.clear()
         weekly.clear()
         state.schedules.clear()
@@ -54,12 +54,13 @@ class DecisionInputsTest {
         val next =
             DecisionSnapshot.capture(
                 snapshot.inputs.copy(quiet = QuietSettings(QuietMode.OFF, false, emptyMap())),
+                com.greatwall.callring.domain.calling.PrefixLengthNumberMatcher,
             )
         assertEquals(QuietMode.OFF, next.inputs.quiet.mode)
         assertEquals(QuietMode.CUSTOM, snapshot.inputs.quiet.mode)
         assertEquals(snapshot.inputs.schedules, next.inputs.schedules)
         assertEquals(
-            setOf("inputs"),
+            setOf("inputs", "matcher"),
             DecisionSnapshot::class
                 .java
                 .declaredFields

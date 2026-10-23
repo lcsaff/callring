@@ -11,14 +11,16 @@ data class IncomingDecision(
     val overlayEnabled: Boolean,
     val statisticsEnabled: Boolean,
     val classification: ClassificationFact,
+    val numberMatch: NumberMatchFact,
 )
 
 /** Detached and deeply frozen. No live database references and no cached "working now" boolean. */
-class DecisionSnapshot private constructor(val inputs: DecisionInputs) {
-    fun evaluate(number: String, at: Long): IncomingDecision {
+class DecisionSnapshot private constructor(val inputs: DecisionInputs, private val matcher: NumberMatcher) {
+    fun evaluate(number: String, at: Long, initialMatch: NumberMatchFact? = null): IncomingDecision {
         val identity = NumberIdentity.parse(number)
         val normalized = identity.normalized
-        val matched = identity.matchesRule
+        val fact = initialMatch ?: NumberMatchFact(inputs.numberRule.revision, matcher.matches(normalized, inputs.numberRule.rule))
+        val matched = fact.matched
         val white = normalized in inputs.whitelistedNumbers
         val classification = WorkClassifier.classify(inputs, at)
         val quiet = inputs.quiet
@@ -46,11 +48,14 @@ class DecisionSnapshot private constructor(val inputs: DecisionInputs) {
                     at >= it.startMillis && (it.endMillis == null || at < it.endMillis)
                 },
             classification,
+            fact,
         )
     }
 
+    fun rebuild(source: DecisionInputs): DecisionSnapshot = capture(source, matcher)
+
     companion object {
-        fun capture(source: DecisionInputs): DecisionSnapshot =
+        fun capture(source: DecisionInputs, matcher: NumberMatcher): DecisionSnapshot =
             DecisionSnapshot(
                 source.copy(
                     schedules =
@@ -80,6 +85,7 @@ class DecisionSnapshot private constructor(val inputs: DecisionInputs) {
                         ),
                     statisticsIntervals = freeze(source.statisticsIntervals),
                 ),
+                matcher,
             )
 
         private fun <K, V> freezeMap(map: Map<K, V>): Map<K, V> =

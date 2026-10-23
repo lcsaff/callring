@@ -1,5 +1,7 @@
 package com.greatwall.callring.domain.model
 
+import com.greatwall.callring.domain.calling.NumberRuleSnapshot
+
 import com.greatwall.callring.domain.model.LeaveRecord
 import com.greatwall.callring.domain.model.StatisticsInterval
 import java.time.LocalDate
@@ -28,4 +30,5 @@ data class DecisionInputs(
     val quiet: QuietSettings,
     val statisticsIntervals: List<StatisticsInterval>,
     val overlayEnabled: Boolean,
+    val numberRule: NumberRuleSnapshot,
 ) : WorkInputs

@@ -1,5 +1,6 @@
 package com.greatwall.callring
 
+import com.greatwall.callring.application.mapping.toSnapshot
 import com.greatwall.callring.domain.model.AuditRecord
 import com.greatwall.callring.domain.model.CalendarImport
 import com.greatwall.callring.domain.model.LeaveRecord
@@ -64,7 +65,7 @@ internal class MemoryCoreUnitOfWork : CoreUnitOfWork {
                         ReportCallFact(it, it.linkedScreenId?.let(calls::get))
                     }
 
-            override fun decisionInputs() = decision.decisionInputs().copy(whitelistedNumbers = people.filterValues { it.whitelisted }.keys)
+            override fun decisionInputs() = decision.decisionInputs().copy(numberRule = numberRuleSettings.toSnapshot(), whitelistedNumbers = people.filterValues { it.whitelisted }.keys)
 
             override fun statisticsContains(at: Long) =
                 decision.intervals.any {

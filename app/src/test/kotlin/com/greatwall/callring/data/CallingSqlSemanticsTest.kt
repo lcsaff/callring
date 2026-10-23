@@ -29,6 +29,16 @@ import java.time.*
 import kotlinx.coroutines.*
 import org.junit.Assert.*
 import org.junit.Test
+import com.greatwall.callring.application.mapping.requiredValue
+import com.greatwall.callring.contracts.settings.*
+import com.greatwall.callring.bootstrap.*
+import com.greatwall.callring.domain.calling.NumberMatcher
+import com.greatwall.callring.platform.calling.*
+import com.greatwall.callring.platform.runtime.UiNotificationEntryPoints
+import java.util.concurrent.*
+import android.app.Notification
+import android.app.PendingIntent
+import android.content.Intent
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.RuntimeEnvironment
@@ -37,6 +47,72 @@ import org.robolectric.annotation.Config
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [33], manifest = Config.NONE)
 class CallingSqlSemanticsTest {
+    @Test fun backendConfigurationMatcherControlsSqlQueriesIncomingAndImport() = runBlocking {
+        for (accept in listOf(false,true)) {
+            val name="matcher-$accept"
+            val graph = BackendGraph(context,BackendConfiguration(
+                AppearanceSettings(ThemeSelection.PRESET,"default",null,ColorMode.FOLLOW_SYSTEM),
+                databaseName="$name.db",ringPreferencesName="${name}_ring",widgetPreferencesName="${name}_widgets",
+                appearancePreferencesName="${name}_appearance",clock=Clock.fixed(Instant.ofEpochMilli(at),ZoneOffset.UTC),
+                dispatcher=Dispatchers.Unconfined,numberMatcher=NumberMatcher { n,_ -> accept && n.all { it in '0'..'9' } }),
+                object : UiNotificationEntryPoints {
+                    override fun home(requestCode: Int)=PendingIntent.getActivity(context,requestCode,Intent("fixture"),PendingIntent.FLAG_IMMUTABLE)
+                    override fun playback(preview: Boolean,stopAction: PendingIntent)=Notification()
+                },object : IncomingCallUiSink { override fun show(request: IncomingCallUiRequest)=Unit })
+            try {
+                val api=graph.backend
+                api.settings.getNumberRule().requiredValue()
+                api.settings.setStatisticsEnabled(true).requiredValue()
+                for ((i,n) in listOf("31234","812345").withIndex()) {
+                    assertEquals(accept,api.checkNumber(n).matchesRule)
+                    assertEquals(accept,api.callers.getOverview(OverviewQuery(n)).requiredValue().numberCheck.matchesRule)
+                    val assessment=api.refreshDecisionSnapshot().evaluate(n,at)
+                    assertEquals(accept,assessment.matched)
+                    assertEquals(accept,assessment.statisticsEnabled)
+                    assertEquals(accept,api.recordIncoming(n,at+i,CallDecision.NORMAL_RINGING,numberMatch=assessment.numberMatch)>0)
+                    assertEquals(if(accept) setOf(n) else emptySet<String>(),api.importSystemCalls(listOf(provider("log$i",n,at+100+i))))
+                }
+            } finally { graph.close() }
+        }
+    }
+
+    @Test fun pausedIncomingWriterUsesInitialFactAfterRuleSave() = runBlocking {
+        SqliteCoreStorageResource(context,"paused-number-rule.db").use { store ->
+            enabled(store)
+            val api=backend(store)
+            api.refreshDecisionSnapshot()
+            val entered=CountDownLatch(1)
+            val release=CountDownLatch(1)
+            val engine=BackendIncomingCallEngine(api::decisionSnapshot,api::refreshDecisionSnapshot,
+                { n,time,decision,account,original,fact ->
+                    entered.countDown()
+                    check(release.await(5,TimeUnit.SECONDS))
+                    api.recordIncoming(n,time,decision,account,original,fact)
+                },api::updateDecision)
+            val coordinator=IncomingCallCoordinator(engine,object : IncomingCallUiSink {
+                override fun show(request: IncomingCallUiRequest)=Unit
+            }) {}
+            try {
+                val old=coordinator.inspect("old","31234",at,null)
+                assertTrue(entered.await(3,TimeUnit.SECONDS))
+                val base=api.settings.getNumberRule().requiredValue()
+                api.settings.saveNumberRule(SaveNumberRule(base,"8",6)).requiredValue()
+                assertTrue(coordinator.inspectAgain(old).matched)
+                assertEquals(0L,coordinator.inspectAgain(old).numberMatch.revision)
+                release.countDown()
+                assertTrue(old.record.get(3,TimeUnit.SECONDS)>0)
+                val rejected=coordinator.inspect("new-reject","31234",at+1,null)
+                assertFalse(rejected.assessment.matched)
+                assertEquals(-1L,rejected.record.get(3,TimeUnit.SECONDS))
+                val accepted=coordinator.inspect("new-accept","812345",at+2,null)
+                assertTrue(accepted.assessment.matched)
+                assertEquals(1L,accepted.assessment.numberMatch.revision)
+                assertTrue(accepted.record.get(3,TimeUnit.SECONDS)>0)
+                assertEquals(setOf("31234","812345"),calls(store).values.map { it.number }.toSet())
+            } finally { release.countDown();coordinator.close() }
+        }
+    }
+
     private val context
         get() = RuntimeEnvironment.getApplication()
 

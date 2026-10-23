@@ -31,7 +31,7 @@ class NumberRuleSettingsServiceTest {
     }
     @Test fun savesNoopStaleAndRollbackPublishOnlyCommittedRule() = runBlocking {
         val tx = Store(); val c = BusinessRevisionCoordinator(); val state = NumberRuleState(c)
-        val service = NumberRuleSettingsService(tx, c, state, Dispatchers.Unconfined, operationActive = { true })
+        val service = NumberRuleSettingsService(tx, c, state, Dispatchers.Unconfined, operationActive = { true }, afterInstall = {})
         val base = (service.get() as ApiResult.Success).value
         val saved = (service.save(SaveNumberRule(base, "8", 6)) as ApiResult.Success).value
         assertEquals(NumberRuleSettings("8", 6, 1), saved)
@@ -46,13 +46,13 @@ class NumberRuleSettingsServiceTest {
     }
     @Test fun noopColdSaveInstallsDurableSnapshotWithoutPublication() = runBlocking {
         val tx=Store(); val c=BusinessRevisionCoordinator(); val state=NumberRuleState(c)
-        val service=NumberRuleSettingsService(tx,c,state,Dispatchers.Unconfined,operationActive={true})
+        val service=NumberRuleSettingsService(tx,c,state,Dispatchers.Unconfined,operationActive={true},afterInstall={})
         assertTrue(service.save(SaveNumberRule(tx.value,"3",5)) is ApiResult.Success)
         assertEquals("3",state.snapshot().rule.prefix); assertEquals(0L,c.marker()); assertEquals(0,tx.writes)
     }
     @Test fun invalidAndOverflowNeverPublish() = runBlocking {
         val tx = Store(); val c = BusinessRevisionCoordinator(); val state = NumberRuleState(c)
-        val service = NumberRuleSettingsService(tx, c, state, Dispatchers.Unconfined, operationActive = { true })
+        val service = NumberRuleSettingsService(tx, c, state, Dispatchers.Unconfined, operationActive = { true }, afterInstall = {})
         for (value in listOf(SaveNumberRule(tx.value,"８",6), SaveNumberRule(tx.value,"123",2), SaveNumberRule(tx.value,"",31), SaveNumberRule(tx.value.copy(revision=-1),"",1))) {
             assertEquals(ErrorCode.VALIDATION, (service.save(value) as ApiResult.Failure).error.code)
         }
@@ -74,7 +74,7 @@ class NumberRuleSettingsServiceTest {
             }
             override fun <T> writeNumberRule(block: (NumberRuleWriter) -> T): T = error("unexpected")
         }
-        val service = NumberRuleSettingsService(tx,c,state,Dispatchers.IO,operationActive={active.get()})
+        val service = NumberRuleSettingsService(tx,c,state,Dispatchers.IO,operationActive={active.get()},afterInstall={})
         val first = async { service.prepare() }
         withContext(Dispatchers.IO) { check(entered.await(5,java.util.concurrent.TimeUnit.SECONDS)) }
         val second = async { service.prepare() }
@@ -90,7 +90,7 @@ class NumberRuleSettingsServiceTest {
             }
             override fun <T> writeNumberRule(block: (NumberRuleWriter) -> T): T = error("unexpected")
         }
-        val closeService = NumberRuleSettingsService(closeTx,c,closedState,Dispatchers.Unconfined,operationActive={active.get()})
+        val closeService = NumberRuleSettingsService(closeTx,c,closedState,Dispatchers.Unconfined,operationActive={active.get()},afterInstall={})
         assertTrue(closeService.prepare() is ApiResult.Failure); assertFalse(closedState.initialized())
         assertTrue(closeService.prepare() is ApiResult.Failure)
     }
@@ -105,13 +105,13 @@ class NumberRuleSettingsServiceTest {
             }
             override fun <T> writeNumberRule(block: (NumberRuleWriter) -> T): T=error("unexpected")
         }
-        val service=NumberRuleSettingsService(tx,c,state,Dispatchers.Unconfined,operationActive={true})
+        val service=NumberRuleSettingsService(tx,c,state,Dispatchers.Unconfined,operationActive={true},afterInstall={})
         caller=launch(start=CoroutineStart.LAZY) { service.prepare() }; caller.start(); caller.join()
         assertFalse(state.initialized())
     }
     @Test fun cancelledSaveDoesNotTouchStorageOrPublish() = runBlocking {
         val tx=Store(); val c=BusinessRevisionCoordinator(); val state=NumberRuleState(c)
-        val service=NumberRuleSettingsService(tx,c,state,Dispatchers.Unconfined,operationActive={true})
+        val service=NumberRuleSettingsService(tx,c,state,Dispatchers.Unconfined,operationActive={true},afterInstall={})
         val job=launch {
             currentCoroutineContext().cancel()
             try { service.save(SaveNumberRule(tx.value,"8",6)); fail("cancelled save returned") } catch (_: CancellationException) { }
@@ -121,7 +121,35 @@ class NumberRuleSettingsServiceTest {
     @Test fun closedStateCannotLoadAndUnpreparedStateIsExplicit() = runBlocking {
         val tx = Store(); val c = BusinessRevisionCoordinator(); val state = NumberRuleState(c)
         try { state.snapshot(); fail("unprepared") } catch (_: IllegalStateException) { }
-        val service = NumberRuleSettingsService(tx,c,state,Dispatchers.Unconfined,operationActive={ false })
+        val service = NumberRuleSettingsService(tx,c,state,Dispatchers.Unconfined,operationActive={ false },afterInstall={})
         assertTrue(service.get() is ApiResult.Failure); assertEquals(0,tx.reads)
     }
+    @Test fun narrowPreparationCannotInstallAfterOwnerClosesDuringRead() {
+        val coordinator=BusinessRevisionCoordinator()
+        val state=NumberRuleState(coordinator)
+        val entered=java.util.concurrent.CountDownLatch(1)
+        val release=java.util.concurrent.CountDownLatch(1)
+        val active=java.util.concurrent.atomic.AtomicBoolean(true)
+        val transactions=object : NumberRuleTransactions {
+            override fun <T> readNumberRule(block:(NumberRuleReader)->T):T=block(object:NumberRuleReader {
+                override fun numberRule():NumberRuleSettings {
+                    entered.countDown()
+                    check(release.await(5,java.util.concurrent.TimeUnit.SECONDS))
+                    return NumberRuleSettings("8",6,1)
+                }
+            })
+            override fun <T> writeNumberRule(block:(NumberRuleWriter)->T):T=error("read only")
+        }
+        val executor=java.util.concurrent.Executors.newSingleThreadExecutor()
+        try {
+            val preparation=executor.submit { state.prepare(transactions,active::get) }
+            assertTrue(entered.await(3,java.util.concurrent.TimeUnit.SECONDS))
+            active.set(false)
+            release.countDown()
+            try { preparation.get(3,java.util.concurrent.TimeUnit.SECONDS);fail("closed owner installed rule") }
+            catch(e:java.util.concurrent.ExecutionException) { assertTrue(e.cause is com.greatwall.callring.application.ports.BackendFailure) }
+            assertThrows(IllegalStateException::class.java) { state.snapshot() }
+        } finally { release.countDown();executor.shutdownNow();assertTrue(executor.awaitTermination(3,java.util.concurrent.TimeUnit.SECONDS)) }
+    }
+
 }

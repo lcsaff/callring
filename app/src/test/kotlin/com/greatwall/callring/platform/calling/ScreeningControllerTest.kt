@@ -110,7 +110,7 @@ class ScreeningControllerTest {
 
     @Test
     fun quietAndUnmatchedCallsNeverLoadAudioSettings() {
-        for (initial in listOf(assessment(silence = true), assessment(matched = false))) {
+        for (initial in listOf(assessment(silence = true), assessment(matched = false), assessment(matched = false, silence = true))) {
             val rig = Rig()
             rig.calls.initial["session"] = initial
             rig.audio.onRead = { throw AssertionError("audio settings must not be read") }
@@ -401,6 +401,7 @@ class ScreeningControllerTest {
                 true,
                 true,
                 ClassificationFact(false, WorkReason.REST_DAY, null, true, "UTC", 1, "fixture", 0).toDomain(),
+                com.greatwall.callring.domain.calling.NumberMatchFact(0, matched),
             )
     }
 }

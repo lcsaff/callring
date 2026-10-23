@@ -1,5 +1,9 @@
 package com.greatwall.callring.application.calling
 
+import com.greatwall.callring.domain.calling.NumberMatcher
+
+import com.greatwall.callring.domain.calling.NumberRuleSnapshot
+
 import com.greatwall.callring.domain.calling.CallCorrelation
 import com.greatwall.callring.domain.calling.WorkClassifier
 import com.greatwall.callring.domain.model.RawCallRecord
@@ -19,6 +23,8 @@ internal class CallLogImportService(
     coordinator: BusinessRevisionCoordinator,
     private val command: CommandContext? = null,
     private val operationActive: () -> Boolean,
+    private val rule: () -> NumberRuleSnapshot,
+    private val matcher: NumberMatcher,
 ) {
     private val committer = CommandCommitter(coordinator, operationActive)
 
@@ -26,6 +32,7 @@ internal class CallLogImportService(
         committer.commit(
             command,
             {
+                val batchRule = rule()
                 transactions.writeCalling { writer ->
                     val initial =
                         writer
@@ -42,7 +49,7 @@ internal class CallLogImportService(
                     for (record in records) {
                         val identity = NumberIdentity.parse(record.number)
                         if (
-                            !identity.matchesRule ||
+                            !matcher.matches(identity.normalized, batchRule.rule) ||
                                 !statistics.getOrPut(record.startedAtEpochMillis) {
                                     writer.statisticsContains(record.startedAtEpochMillis)
                                 }

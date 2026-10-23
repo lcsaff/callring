@@ -2,6 +2,7 @@ package com.greatwall.callring.platform.calling
 
 import com.greatwall.callring.application.mapping.*
 import com.greatwall.callring.application.recording.policy.*
+import com.greatwall.callring.domain.calling.NumberMatchFact
 import com.greatwall.callring.domain.calling.DecisionSnapshot
 import com.greatwall.callring.domain.model.NumberIdentity
 import com.greatwall.callring.contracts.callers.*
@@ -18,7 +19,7 @@ import java.util.concurrent.TimeUnit
 interface IncomingCallEngine {
     fun normalize(raw: String): String
 
-    fun evaluate(number: String, at: Long): IncomingDecision
+    fun evaluate(number: String, at: Long, initialMatch: NumberMatchFact? = null): IncomingDecision
 
     fun record(
         number: String,
@@ -26,6 +27,7 @@ interface IncomingCallEngine {
         decision: CallDecision,
         account: String?,
         original: ClassificationFact,
+        numberMatch: NumberMatchFact,
     ): Long
 
     fun complete(id: Long, decision: CallDecision)
@@ -34,19 +36,19 @@ interface IncomingCallEngine {
 class BackendIncomingCallEngine(
     private val snapshot: () -> DecisionSnapshot,
     private val refresh: () -> DecisionSnapshot,
-    private val recordCall: (String, Long, CallDecision, String?, ClassificationFact?) -> Long,
+    private val recordCall: (String, Long, CallDecision, String?, ClassificationFact?, NumberMatchFact) -> Long,
     private val completeCall: (Long, CallDecision) -> Unit,
 ) : IncomingCallEngine {
     override fun normalize(raw: String): String = NumberIdentity.parse(raw).normalized
 
-    override fun evaluate(number: String, at: Long): IncomingDecision {
+    override fun evaluate(number: String, at: Long, initialMatch: NumberMatchFact?): IncomingDecision {
         val snapshot =
             try {
                 snapshot()
             } catch (_: IllegalStateException) {
                 refresh()
             }
-        return snapshot.evaluate(number, at)
+        return snapshot.evaluate(number, at, initialMatch)
     }
 
     override fun record(
@@ -55,7 +57,8 @@ class BackendIncomingCallEngine(
         decision: CallDecision,
         account: String?,
         original: ClassificationFact,
-    ): Long = recordCall(number, at, decision, account, original)
+        numberMatch: NumberMatchFact,
+    ): Long = recordCall(number, at, decision, account, original, numberMatch)
 
     override fun complete(id: Long, decision: CallDecision) = completeCall(id, decision)
 }
@@ -131,6 +134,7 @@ class IncomingCallCoordinator(
                                         initial,
                                         account,
                                         assessment.classification.toContract(),
+                                        assessment.numberMatch,
                                     ).also { id ->
                                         try { afterRecorded(id, number, at) } catch (_: Exception) { safeFailure() }
                                         if (id > 0) onStatisticsRecorded?.let { sink -> observe { sink(sessionId, id) } }
@@ -145,7 +149,7 @@ class IncomingCallCoordinator(
     }
 
     override fun inspectAgain(session: IncomingCallSession): IncomingDecision =
-        engine.evaluate(session.number, session.at)
+        engine.evaluate(session.number, session.at, session.assessment.numberMatch)
 
     override fun complete(
         session: IncomingCallSession,

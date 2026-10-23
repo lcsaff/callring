@@ -1,6 +1,6 @@
 package com.greatwall.callring.application.settings
 
-import com.greatwall.callring.application.calling.NumberRuleSnapshot
+import com.greatwall.callring.domain.calling.NumberRuleSnapshot
 import com.greatwall.callring.application.calling.NumberRuleState
 import com.greatwall.callring.application.coordination.*
 import com.greatwall.callring.application.mapping.toSnapshot
@@ -18,6 +18,7 @@ internal class NumberRuleSettingsService(
     dispatcher: CoroutineDispatcher,
     private val command: CommandContext? = null,
     private val operationActive: () -> Boolean,
+    private val afterInstall: (NumberRuleSnapshot) -> Unit,
 ) {
     private val runner = UseCaseRunner(dispatcher)
     private val committer = CommandCommitter(coordinator, operationActive)
@@ -31,6 +32,7 @@ internal class NumberRuleSettingsService(
             context.ensureActive()
             requireOperationActive(operationActive)
             state.install(prepared)
+            afterInstall(prepared)
             value
         }
     }
@@ -45,6 +47,7 @@ internal class NumberRuleSettingsService(
                 context.ensureActive()
                 requireOperationActive(operationActive)
                 state.install(prepared)
+                afterInstall(prepared)
             }
         }
     }
@@ -73,9 +76,9 @@ internal class NumberRuleSettingsService(
                         MutationDelta(result,if (changed) setOf("numberRule") else emptySet(),
                             if (changed) ChangeImpact.wide(setOf(DataDomain.NUMBER_RULES)) else ChangeImpact(emptyMap()))
                     }
-                }) { state.install(checkNotNull(prepared)) }
+                }) { state.install(checkNotNull(prepared)); afterInstall(checkNotNull(prepared)) }
                 // A durable no-op is also a successful preparation, without an invalidation.
-                if (!changed) state.install(checkNotNull(prepared))
+                if (!changed) { state.install(checkNotNull(prepared)); afterInstall(checkNotNull(prepared)) }
                 result
             }
         }

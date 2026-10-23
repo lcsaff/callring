@@ -1,5 +1,7 @@
 package com.greatwall.callring.application.calling
 
+import com.greatwall.callring.domain.calling.NumberRuleSnapshot
+
 import com.greatwall.callring.application.ports.store.WorkHistory
 import com.greatwall.callring.domain.calling.DecisionSnapshot
 import com.greatwall.callring.domain.model.*
@@ -9,8 +11,9 @@ import java.util.concurrent.atomic.AtomicReference
 class DecisionMirror {
     internal val snapshots = AtomicReference<DecisionSnapshot?>(null)
     private fun patch(change: (DecisionInputs) -> DecisionInputs) {
-        snapshots.get()?.let { snapshots.set(DecisionSnapshot.capture(change(it.inputs))) }
+        snapshots.get()?.let { snapshots.set(it.rebuild(change(it.inputs))) }
     }
+    internal fun numberRule(rule: NumberRuleSnapshot) = patch { it.copy(numberRule = rule) }
     internal fun calendar(history: WorkHistory) = patch { it.copy(calendarYears = history.calendarYears,
         holidays = history.holidays, makeupDates = history.makeupDates, overrides = history.overrides) }
     internal fun leaves(history: WorkHistory) = patch { it.copy(leaves = history.leaves, leaveVersion = history.leaveVersion) }

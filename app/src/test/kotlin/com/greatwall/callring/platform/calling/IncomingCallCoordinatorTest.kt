@@ -12,6 +12,11 @@ import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicInteger
 import org.junit.Assert.*
 import org.junit.Test
+import com.greatwall.callring.domain.calling.*
+import com.greatwall.callring.domain.model.DecisionInputs
+import com.greatwall.callring.domain.model.StatisticsInterval
+import com.greatwall.callring.domain.model.QuietSettings
+import com.greatwall.callring.domain.model.QuietMode
 
 class IncomingCallCoordinatorTest {
     @Test fun recordingObservesCallsWhileStatisticsRemainDisabled() {
@@ -56,6 +61,47 @@ class IncomingCallCoordinatorTest {
             assertEquals(listOf(42L to CallDecision.NORMAL_RINGING), engine.completed)
         } finally { engine.release.countDown(); coordinator.close() }
     }
+    @Test fun reinspectionRetainsFirstFactAndRecomputesLatestQuietOverlayAndWhitelist() {
+        for (matched in listOf(true,false)) {
+            val number = if (matched) "31234" else "812345"
+            var inputs = DecisionInputs(emptyList(),emptyMap(),emptyMap(),emptySet(),emptyMap(),emptyMap(),0,
+                emptySet(),QuietSettings(QuietMode.OFF,false,emptyMap()),listOf(StatisticsInterval(0,null)),true,
+                NumberRuleSnapshot(NumberRule.DEFAULT,0))
+            var snapshot = DecisionSnapshot.capture(inputs,PrefixLengthNumberMatcher)
+            val seen = CompletableFuture<NumberMatchFact>()
+            val engine = BackendIncomingCallEngine({ snapshot },{ snapshot },{ _,_,_,_,_,fact -> seen.complete(fact); 1L },{ _,_ -> })
+            val coordinator = IncomingCallCoordinator(engine,object : IncomingCallUiSink {
+                override fun show(request: IncomingCallUiRequest) = Unit
+            }) {}
+            try {
+                val session = coordinator.inspect("retained-$matched",number,1000,null)
+                inputs = inputs.copy(numberRule=NumberRuleSnapshot(NumberRule("8",6),1),
+                    quiet=QuietSettings(QuietMode.NON_WORK,false,emptyMap()))
+                snapshot = snapshot.rebuild(inputs)
+                var again = coordinator.inspectAgain(session)
+                assertEquals(matched,again.matched)
+                assertEquals(matched,again.silence)
+                assertEquals(matched,again.overlayEnabled)
+                assertEquals(matched,again.statisticsEnabled)
+                assertEquals(session.assessment.numberMatch,again.numberMatch)
+                assertEquals(!matched,engine.evaluate(number,1000).matched)
+                inputs = inputs.copy(quiet=QuietSettings(QuietMode.NON_WORK,true,emptyMap()),overlayEnabled=false)
+                snapshot = snapshot.rebuild(inputs)
+                again = coordinator.inspectAgain(session)
+                assertTrue(again.silence)
+                assertFalse(again.overlayEnabled)
+                inputs=inputs.copy(whitelistedNumbers=setOf(number))
+                snapshot=snapshot.rebuild(inputs)
+                again=coordinator.inspectAgain(session)
+                assertTrue(again.whitelisted)
+                assertFalse(again.silence)
+                session.record.get(2,TimeUnit.SECONDS)
+                if (matched) assertEquals(session.assessment.numberMatch,seen.get(2,TimeUnit.SECONDS))
+                else assertFalse(seen.isDone)
+            } finally { coordinator.close() }
+        }
+    }
+
     private val fact = ClassificationFact(false, WorkReason.REST_DAY, null, true, "UTC", 1, "v1", 0)
 
     private inner class Engine(
@@ -69,8 +115,8 @@ class IncomingCallCoordinatorTest {
 
         override fun normalize(raw: String) = raw
 
-        override fun evaluate(number: String, at: Long) =
-            IncomingDecision(true, false, true, true, statisticsEnabled, fact.toDomain())
+        override fun evaluate(number: String, at: Long, initialMatch: com.greatwall.callring.domain.calling.NumberMatchFact?) =
+            IncomingDecision(true, false, true, true, statisticsEnabled, fact.toDomain(), initialMatch ?: com.greatwall.callring.domain.calling.NumberMatchFact(0, true))
 
         override fun record(
             number: String,
@@ -78,6 +124,7 @@ class IncomingCallCoordinatorTest {
             decision: CallDecision,
             account: String?,
             original: ClassificationFact,
+            numberMatch: com.greatwall.callring.domain.calling.NumberMatchFact,
         ): Long {
             writing.countDown()
             check(release.await(5, TimeUnit.SECONDS))

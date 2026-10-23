@@ -211,7 +211,7 @@ class DomainRegressionTest {
                 "３１２３４" to false,
                 "" to false,
             )
-        val snapshot = DecisionSnapshot.capture(state.decisionInputs())
+        val snapshot = DecisionSnapshot.capture(state.decisionInputs(), com.greatwall.callring.domain.calling.PrefixLengthNumberMatcher)
         inputs.forEach { (number, matched) ->
             val result = snapshot.evaluate(number, at("2026-10-14T22:00:00"))
             assertEquals(number, matched, result.matched)
@@ -220,7 +220,7 @@ class DomainRegressionTest {
         }
         state.whitelist += "31234"
         val white =
-            DecisionSnapshot.capture(state.decisionInputs())
+            DecisionSnapshot.capture(state.decisionInputs(), com.greatwall.callring.domain.calling.PrefixLengthNumberMatcher)
                 .evaluate("3\u00a012\u300034", at("2026-10-14T22:00:00"))
         assertTrue(white.whitelisted)
         assertFalse(white.silence)
@@ -473,7 +473,7 @@ class DomainRegressionTest {
             assertEquals(
                 case.toString(),
                 case.silence,
-                DecisionSnapshot.capture(state.decisionInputs())
+                DecisionSnapshot.capture(state.decisionInputs(), com.greatwall.callring.domain.calling.PrefixLengthNumberMatcher)
                     .evaluate(case.number, at(time))
                     .silence,
             )
@@ -486,14 +486,14 @@ class DomainRegressionTest {
         state.quiet =
             QuietSettings(QuietMode.CUSTOM, false, mapOf(3 to listOf(TimeWindow(1320, 120))))
                 .toDomain()
-        val snapshot = DecisionSnapshot.capture(state.decisionInputs())
+        val snapshot = DecisionSnapshot.capture(state.decisionInputs(), com.greatwall.callring.domain.calling.PrefixLengthNumberMatcher)
         assertFalse(snapshot.evaluate("31234", at("2026-10-14T21:59:59")).silence)
         assertTrue(snapshot.evaluate("31234", at("2026-10-14T22:00:00")).silence)
         assertTrue(snapshot.evaluate("31234", at("2026-10-15T01:59:59")).silence)
         assertFalse(snapshot.evaluate("31234", at("2026-10-15T02:00:00")).silence)
         setWeekly(state, mapOf(3 to listOf(TimeWindow(1320, 120))))
         assertFalse(
-            DecisionSnapshot.capture(state.decisionInputs())
+            DecisionSnapshot.capture(state.decisionInputs(), com.greatwall.callring.domain.calling.PrefixLengthNumberMatcher)
                 .evaluate("31234", at("2026-10-14T22:00:00"))
                 .silence,
         )

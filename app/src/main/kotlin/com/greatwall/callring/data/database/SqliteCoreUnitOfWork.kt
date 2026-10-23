@@ -1,5 +1,7 @@
 package com.greatwall.callring.data.database
 
+import com.greatwall.callring.application.mapping.toSnapshot
+
 import com.greatwall.callring.data.codec.WorkConfigCodec
 
 import android.database.sqlite.SQLiteDatabase
@@ -230,6 +232,7 @@ internal class SqliteCoreUnitOfWork(private val db: SQLiteDatabase, private val 
                 quiet().settings,
                 intervals,
                 overlay(),
+                numberRule().toSnapshot(),
             )
         }
 

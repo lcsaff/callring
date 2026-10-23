@@ -1,5 +1,9 @@
 package com.greatwall.callring.application
 
+import com.greatwall.callring.domain.calling.NumberMatchFact
+
+import com.greatwall.callring.domain.calling.NumberMatcher
+
 import com.greatwall.callring.application.ports.platform.AudioController
 import com.greatwall.callring.application.ports.platform.CalendarSource
 import com.greatwall.callring.application.ports.platform.DocumentStore
@@ -54,11 +58,11 @@ class CallringBackend(
     private val recordingsProvider: (CommandContext?) -> RecordingApi,
     private val decisions: com.greatwall.callring.application.calling.DecisionMirror = com.greatwall.callring.application.calling.DecisionMirror(),
     private val numberRuleState: com.greatwall.callring.application.calling.NumberRuleState = com.greatwall.callring.application.calling.NumberRuleState(coordinator),
-    private val numberMatcher: com.greatwall.callring.domain.calling.NumberMatcher = com.greatwall.callring.domain.calling.PrefixLengthNumberMatcher,
+    private val numberMatcher: NumberMatcher = com.greatwall.callring.domain.calling.PrefixLengthNumberMatcher,
     private val commandContext: CommandContext? = null,
     private val runtimeObservations: com.greatwall.callring.application.runtime.RuntimeObservationTracker = com.greatwall.callring.application.runtime.RuntimeObservationTracker(coordinator),
 ) : CallringUiApi {
-    private val numberRuleService = com.greatwall.callring.application.settings.NumberRuleSettingsService(coreTransactions, coordinator, numberRuleState, dispatcher, commandContext, operationActive)
+    private val numberRuleService = com.greatwall.callring.application.settings.NumberRuleSettingsService(coreTransactions, coordinator, numberRuleState, dispatcher, commandContext, operationActive, decisions::numberRule)
     /** Explicit lifecycle preparation for synchronous consumers; never opens storage at construction. */
     suspend fun prepareNumberRule(): ApiResult<Unit> = numberRuleService.prepare()
 
@@ -70,6 +74,8 @@ class CallringBackend(
             dispatcher,
             clock,
             ::runtimeStatus,
+            { numberRuleState.prepare(coreTransactions, operationActive) },
+            numberMatcher,
         )
     private val callerCommands =
         com.greatwall.callring.application.callers.CallerCommandService(
@@ -169,13 +175,15 @@ class CallringBackend(
         com.greatwall.callring.application.calling.CallLogImportService(
             coreTransactions,
             coordinator,
-            commandContext, operationActive = persistenceActive)
+            commandContext, operationActive = persistenceActive,
+            rule = { numberRuleState.prepare(coreTransactions, persistenceActive) }, matcher = numberMatcher)
     private val decisionQueries =
         com.greatwall.callring.application.calling.DecisionQueryService(
             coreTransactions,
             coreTransactions,
             coordinator,
             decisions.snapshots,
+            numberMatcher,
         )
 
     private fun runtimeStatus(): RuntimeStatus = runtimeObservations.observed(completeRuntimeStatus(runtimeProbe.getStatus()))
@@ -248,6 +256,11 @@ class CallringBackend(
 
     fun decisionSnapshot(): DecisionSnapshot = decisionQueries.snapshot()
 
+    private fun captureNumberMatch(number: String): NumberMatchFact = coordinator.guard(null) {
+        val rule = numberRuleState.prepare(coreTransactions, persistenceActive)
+        NumberMatchFact(rule.revision, numberMatcher.matches(com.greatwall.callring.domain.model.NumberIdentity.parse(number).normalized, rule.rule))
+    }
+
     @JvmOverloads
     fun recordIncoming(
         number: String,
@@ -255,7 +268,8 @@ class CallringBackend(
         decision: CallDecision,
         account: String? = null,
         originalFacts: ClassificationFact? = null,
-    ): Long = incomingCalls.record(number, at, decision, account, originalFacts)
+        numberMatch: NumberMatchFact = captureNumberMatch(number),
+    ): Long = incomingCalls.record(number, at, decision, account, originalFacts, numberMatch)
 
     fun updateDecision(id: Long, decision: CallDecision) =
         incomingCalls.updateDecision(id, decision)

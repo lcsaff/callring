@@ -22,3 +22,7 @@ object PrefixLengthNumberMatcher : NumberMatcher {
             normalized.all { it in '0'..'9' } &&
             normalized.startsWith(rule.prefix)
 }
+
+/** Immutable input and first assessment facts carried across one call. */
+data class NumberRuleSnapshot(val rule: NumberRule, val revision: Long)
+data class NumberMatchFact(val revision: Long, val matched: Boolean)
