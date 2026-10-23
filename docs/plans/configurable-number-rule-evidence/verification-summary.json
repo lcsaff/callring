@@ -1,0 +1,173 @@
+{
+  "status": "passed",
+  "commit": "0f32260b3a00c9b69b34efead468e8c59c406b8c",
+  "requested_serial": null,
+  "device": "not_run",
+  "gradle_tasks": {
+    ":contracts:test": "NO-SOURCE",
+    ":backend:test": "EXECUTED",
+    ":ui:testDebugUnitTest": "UP-TO-DATE",
+    ":app:testDebugUnitTest": "EXECUTED",
+    ":ui:checkDebugCompileClasspath": "EXECUTED",
+    ":ui:assembleDebug": "EXECUTED",
+    ":app:assembleDebug": "EXECUTED",
+    ":app:assembleRelease": "EXECUTED",
+    ":app:assembleBackendQa": "EXECUTED",
+    ":ui:assembleDebugAndroidTest": "EXECUTED",
+    ":app:assembleDebugAndroidTest": "EXECUTED",
+    ":ui:lintDebug": "EXECUTED",
+    ":app:lintDebug": "EXECUTED"
+  },
+  "apk_builds": {
+    ":ui:assembleDebug": "EXECUTED",
+    ":app:assembleDebug": "EXECUTED",
+    ":app:assembleRelease": "EXECUTED",
+    ":app:assembleBackendQa": "EXECUTED",
+    ":ui:assembleDebugAndroidTest": "EXECUTED",
+    ":app:assembleDebugAndroidTest": "EXECUTED"
+  },
+  "tests": {
+    "contracts": {
+      "state": "NO-SOURCE",
+      "tests": 0
+    },
+    "backend": {
+      "state": "EXECUTED",
+      "tests": 402,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "xml_sha256": "d04df9cca61e69ecf9611acfca7904d03e3c8dc6a7dbd1a410db5d887b1ef83e"
+    },
+    "ui": {
+      "state": "UP-TO-DATE",
+      "tests": 340,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "xml_sha256": "5d5e68815d57ae61dbf7df7a2b679948d398784965d349a622704df006397a5d"
+    },
+    "app": {
+      "state": "EXECUTED",
+      "tests": 372,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "xml_sha256": "21bac82a684516a6737f04ef375fa26dac139f192a699cd931e09e2390b3749a"
+    }
+  },
+  "lint": {
+    "ui": {
+      "sha256": "688a148d920a3fd87e7e3db27ae1ae63402bb98ebba54eda4fa0d1bae33a5611"
+    },
+    "app": {
+      "sha256": "3e4f603a6a656fcafcb56da2c6f6f71d7b431e2515eef1667121a4ea1b4eb051"
+    }
+  },
+  "commands": [
+    {
+      "argv": [
+        "git",
+        "rev-parse",
+        "HEAD"
+      ],
+      "exit_code": 0,
+      "log": "commit.log",
+      "log_sha256": "2848566c3fd6f1b60a2079cb69280828916b38e59df5bea5f91419a7dba63c0a"
+    },
+    {
+      "argv": [
+        "D:\\Apps\\Pythons\\Python310\\python.exe",
+        "tools/check_architecture.py"
+      ],
+      "exit_code": 0,
+      "log": "python-1.log",
+      "log_sha256": "5b91d91dc7a48609d6c7de1b40ca2989c3cd3f5149113a2c7392c0b7eb8dedd6"
+    },
+    {
+      "argv": [
+        "D:\\Apps\\Pythons\\Python310\\python.exe",
+        "tools/check_backend_boundaries.py"
+      ],
+      "exit_code": 0,
+      "log": "python-2.log",
+      "log_sha256": "77b8382ee99277337f32f22f668af251fb89e28d6bc62e619b6b5382c50d5912"
+    },
+    {
+      "argv": [
+        "D:\\Apps\\Pythons\\Python310\\python.exe",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "tools",
+        "-p",
+        "test_architecture.py"
+      ],
+      "exit_code": 0,
+      "log": "python-3.log",
+      "log_sha256": "171bb5c420d82cb34861d65a2f5d024c47f319afce1cbb652ab3adc7ab2eaf0a"
+    },
+    {
+      "argv": [
+        "D:\\Apps\\Pythons\\Python310\\python.exe",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "tools",
+        "-p",
+        "test_backend_boundaries.py"
+      ],
+      "exit_code": 0,
+      "log": "python-4.log",
+      "log_sha256": "65378dcad145da2497120819bebfc3c46534dce9714ce064b3d809a56654aca2"
+    },
+    {
+      "argv": [
+        "D:\\Apps\\Pythons\\Python310\\python.exe",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "tools",
+        "-p",
+        "test_verification.py"
+      ],
+      "exit_code": 0,
+      "log": "python-5.log",
+      "log_sha256": "e7f882aa84217b824d6fbf04098471aa8cb424100802d02b4436cb59c1b3cfe7"
+    },
+    {
+      "argv": [
+        "C:\\Users\\GreatWall\\.codex\\worktrees\\configurable-number-rule\\callring\\gradlew.bat",
+        "--version"
+      ],
+      "exit_code": 0,
+      "log": "gradle-version.log",
+      "log_sha256": "060ce5282984110030660b8be0f27371f93173e90cadf307518b2621f37f13f9"
+    },
+    {
+      "argv": [
+        "C:\\Users\\GreatWall\\.codex\\worktrees\\configurable-number-rule\\callring\\gradlew.bat",
+        ":contracts:test",
+        ":backend:test",
+        ":ui:testDebugUnitTest",
+        ":app:testDebugUnitTest",
+        ":ui:checkDebugCompileClasspath",
+        ":ui:assembleDebug",
+        ":app:assembleDebug",
+        ":app:assembleRelease",
+        ":app:assembleBackendQa",
+        ":ui:assembleDebugAndroidTest",
+        ":app:assembleDebugAndroidTest",
+        ":ui:lintDebug",
+        ":app:lintDebug",
+        "--console=plain"
+      ],
+      "exit_code": 0,
+      "log": "build.log",
+      "log_sha256": "87218f3d04de68d126f7745e07a7e1c27ce5493273ec964a6e00c8e28367fd6d"
+    }
+  ]
+}

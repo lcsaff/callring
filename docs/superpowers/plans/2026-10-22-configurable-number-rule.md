@@ -8,7 +8,7 @@
 
 **Tech Stack:** Kotlin/JVM、Android、Compose、SQLite、现有 contracts / backend / ui / app 四模块与 AI OperationCatalog / CommandCommitter / QueryService。
 
-**状态：** 2026-10-23 已获实施指令，实施中；仅勾选项有对应完成证据，其余能力尚未验收。计划日期：2026-10-22；2026-10-23 补充实施审查要求。
+**状态：** 2026-10-23 实施及本地统一门通过；设备验收未执行，远端交付状态以最终交付回复为准。计划日期：2026-10-22；2026-10-23 补充实施审查要求。
 
 ---
 
@@ -352,9 +352,9 @@ val acceptAllDigits = NumberMatcher { number, _ ->
 **Files:** tools/check_architecture.py、tools/test_architecture.py；按需 tools/check_backend_boundaries.py、tools/test_backend_boundaries.py；README.md、docs/contracts/current-api.md、docs/contracts/ai-operation-compatibility.json。
 **Tests（实施调整）：** 复用并扩展 NumberRuleConsumerTest、CallingSqlSemanticsTest 和 AssemblyLifetimeTest 的真实装配/主调用链替代策略测试；架构守卫正反例在 tools/test_architecture.py。已有覆盖不再另建重复包装测试类。
 
-- [ ] 在主调用链注入 rejectAll/acceptAllDigits，证明不修改 UI/AI/存储文件即可替换算法；覆盖重建决策快照与绑定命令，防止工厂重新取默认 matcher。
-- [ ] 架构守卫只约束明确边界：domain 无跨层依赖；UI/AI executor 不引用 PrefixLengthNumberMatcher；消费方不得恢复旧 3[0-9]{4} 固定业务规则。必须有违规样例失败、合规样例通过的守卫测试；不做会误伤其它 startsWith 用途的全仓字符串禁令。
-- [ ] 运行规则算法测试和边界守卫，随后运行一次统一完整门：
+- [x] 在主调用链注入 rejectAll/acceptAllDigits，证明不修改 UI/AI/存储文件即可替换算法；覆盖重建决策快照与绑定命令，防止工厂重新取默认 matcher。
+- [x] 架构守卫只约束明确边界：domain 无跨层依赖；UI/AI executor 不引用 PrefixLengthNumberMatcher；消费方不得恢复旧 3[0-9]{4} 固定业务规则。必须有违规样例失败、合规样例通过的守卫测试；不做会误伤其它 startsWith 用途的全仓字符串禁令。
+- [x] 运行规则算法测试和边界守卫，随后运行一次统一完整门：
 ```powershell
 python tools/check_architecture.py
 python tools/check_backend_boundaries.py
@@ -362,24 +362,24 @@ python -m unittest discover -s tools -p test_architecture.py
 python -m unittest discover -s tools -p test_backend_boundaries.py
 python tools/verify_backend.py
 ```
-- [ ] 预期：规则边界与外部协议检查通过，contracts/backend/ui/app JVM、真实 UI 类路径、构建及 lint 按唯一任务表完成；不额外重复同一完整门。
-- [ ] 隔离设备验收：默认匹配、改规则后新来电、来电处理中改规则、AI 保存、重启、旧库升级。没有设备时标记未验证，不能将 JVM 通过写成真实 SIM 验收。
-- [ ] 核对最终 diff，报告生产算法/业务、接口接线、投影、测试及文档的实际文件数。范围变化按原因记录，不能用原估计作为删减验证的理由。
-- [ ] 实施完成后使用 callring-delivery 技能完成版本、提交、合并推送与 CI 核验；是否发包遵循后续用户指令。当前仅规划，不递增版本、不构建 APK。
+- [x] 预期：规则边界与外部协议检查通过，contracts/backend/ui/app JVM、真实 UI 类路径、构建及 lint 按唯一任务表完成；不额外重复同一完整门。
+- [ ] 隔离设备验收（本次 ADB 无设备，未执行）：默认匹配、改规则后新来电、来电处理中改规则、AI 保存、重启、旧库升级。没有设备时标记未验证，不能将 JVM 通过写成真实 SIM 验收。
+- [x] 核对最终 diff，报告生产算法/业务、接口接线、投影、测试及文档的实际文件数。范围变化按原因记录，不能用原估计作为删减验证的理由。
+- [x] 本地统一门、版本与验收证据完成；后续提交、合并推送及 CI 核验使用 callring-delivery 收尾，结果以最终交付回复与 GitHub Actions 为准。本次不发布 GitHub Release。
 
 ## 5. 最终验收标准
 
-- [ ] 默认规则对现有号码结果兼容，旧库无配置不触发写入。
-- [ ] 页面、AI、来电及导入共用唯一算法与配置业务。
-- [ ] 调整配置不需要改代码；重启后保留；非法配置不会发布。
-- [ ] 相同输入/配置/输出契约下替换策略，只修改策略实现与测试，或新增策略时另改唯一装配点。
-- [ ] 冷启动各同步号码检查消费者先等待规则就绪；图构造与同步 checkNumber 无数据库访问，加载失败、重试及关闭行为有验证证据。
-- [ ] 一次来电/一批导入的规则事实稳定，无异步新旧规则混用；同次来电复核以首次匹配事实和最新非规则设置重新计算派生决策。
-- [ ] 导入持锁期间保存等待，导入完成后保存生效，下一批使用新规则；并发测试不在持锁导入放行前等待保存完成。
-- [ ] 取消/并发/重复提交/关闭均符合项目约束；规则修改只触发必要刷新。
-- [ ] AI 能发现、查询、修改及验证规则，旧工具协议兼容，无第二套业务逻辑。
-- [ ] 局部与完整快照一致；所有已有固定匹配入口迁出并删除。
-- [ ] 文档、自动验证、设备未验证项与 CI 状态有据可查。
+- [x] 默认规则对现有号码结果兼容，旧库无配置不触发写入。
+- [x] 页面、AI、来电及导入共用唯一算法与配置业务。
+- [x] 调整配置不需要改代码；重启后保留；非法配置不会发布。
+- [x] 相同输入/配置/输出契约下替换策略，只修改策略实现与测试，或新增策略时另改唯一装配点。
+- [x] 冷启动各同步号码检查消费者先等待规则就绪；图构造与同步 checkNumber 无数据库访问，加载失败、重试及关闭行为有验证证据。
+- [x] 一次来电/一批导入的规则事实稳定，无异步新旧规则混用；同次来电复核以首次匹配事实和最新非规则设置重新计算派生决策。
+- [x] 导入持锁期间保存等待，导入完成后保存生效，下一批使用新规则；并发测试不在持锁导入放行前等待保存完成。
+- [x] 取消/并发/重复提交/关闭均符合项目约束；规则修改只触发必要刷新。
+- [x] AI 能发现、查询、修改及验证规则，旧工具协议兼容，无第二套业务逻辑。
+- [x] 局部与完整快照一致；所有已有固定匹配入口迁出并删除。
+- [x] 文档、自动验证、设备未验证项与 CI 状态有据可查。
 
 ## 6. 计划自审记录
 
@@ -405,5 +405,5 @@ python tools/verify_backend.py
 - Task 4：提交 `2cb1c58`；20 项投影定向测试通过，局部/完整 D10 默认与保存值一致；独立规格与代码质量审查通过，证据工作树 build/task4-evidence。
 - Task 5：提交 `9b64b0d`；10 个 backend 套件 58 项通过；app 装配与 74 工具业务集成用例通过（旧工具数量断言修正后定向复验）。协议差异限定 O01 来源分类/描述与新增 X10/X11，基线摘要同步，证据工作树 build/task5-evidence。
 - Task 6：页面 `8e46132`、冷启动入口 `aa5b893`；完整 UI JVM 测试通过，证据工作树 build/task6-evidence 与 build/task6-full-ui.log。
-- Task 7：统一门与最终交付进行中；设备验收尚未执行（ADB 无连接设备），当前分支不表示设备验收通过。
+- Task 7：`python tools/verify_backend.py` 在 `0f32260` 通过，backend 402、UI 340、app 372 项均零失败；13 项 Gradle 任务及双 lint 通过，contracts 无测试源。摘要见 docs/plans/configurable-number-rule-evidence/verification-summary.json；设备验收未执行（ADB 无连接设备），远端交付状态以最终回复为准。
 - 按用户要求，Task 5 起取消逐任务双轮独立审查，保留实现者自查、必要定向测试与最终统一门。

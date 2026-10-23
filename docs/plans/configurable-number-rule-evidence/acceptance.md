@@ -2,7 +2,7 @@
 
 ## 范围与当前状态
 
-按已批准的 `docs/superpowers/plans/2026-10-22-configurable-number-rule.md` 实施，版本 `0.5.0` / `17`。规则、存储、消费者、AI 和页面已完成定向验证；最终统一门正在收尾。本记录尚不表示最终验收通过。
+按已批准的 `docs/superpowers/plans/2026-10-22-configurable-number-rule.md` 实施，版本 `0.5.0` / `17`。规则、存储、消费者、AI 和页面已完成，最终本地统一门通过；设备验收未执行。
 
 ## 实现与阶段证据
 
@@ -27,4 +27,11 @@
 
 ## 验证与交付
 
-最终统一门、提交推送及该提交 CI：待本轮收尾结果更新。按用户要求减少审核流程，Task5 起使用实现者自查、必要定向测试和最终统一门，不继续逐任务双轮独立审查。
+统一门 `python tools/verify_backend.py` 在提交 `0f32260b3a00c9b69b34efead468e8c59c406b8c` 通过。backend 402、UI 340、app 372 项测试全部零失败/错误/跳过（共 1114 项）；contracts 无测试源。13 项 Gradle 任务、真实 UI 类路径、Debug/Release/backendQa/双 AndroidTest APK 构建及双 lint 通过。UI 测试为 UP-TO-DATE，结果 XML 已由统一门读取并校验。两项 Python 守卫和 53+6+12 项 Python 测试通过。完整摘要见 [verification-summary.json](verification-summary.json)。本地门之后仅更新验收文档；最终提交、推送和该提交 CI 结果以交付回复及 [GitHub Actions](https://github.com/lcsaff/callring/actions/workflows/build.yml) 为准。按用户要求减少审核流程，Task5 起使用实现者自查、必要定向测试和最终统一门，不继续逐任务双轮独立审查。
+
+
+## 实际变更范围
+
+相对已批准计划提交 `35c27f6`，共 111 个文件：算法与业务表现 30、契约与接线 14、查询投影 7、测试 49、守卫与工具 3、文档与证据 7、版本 1。该分类按实际路径逐一归类；存储严格解码、冷启动导航及精确刷新均纳入，而非套用原先文件数估计。
+
+本次不发布 GitHub Release。保留用户原有未提交改动；工作树阶段日志和统一门完整日志另存项目 `build/configurable-number-rule-evidence`。
