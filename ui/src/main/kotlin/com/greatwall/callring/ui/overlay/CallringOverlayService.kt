@@ -21,6 +21,7 @@ class CallringOverlayService : Service() {
     private var lastStartId = 0
     private var windowOwner = 0L
     private val visibility = OverlayVisibility()
+    private val lockScreenLaunch = LockScreenLaunchGate()
     private val changes = object : BroadcastReceiver() {
         override fun onReceive(context: Context, intent: Intent) {
             controller.refreshRuntime()
@@ -63,6 +64,7 @@ class CallringOverlayService : Service() {
     private fun reconcileWindow() {
         val session = controller.sessions.state.value
         if (session == null) {
+            hideLockScreen()
             window.hide()
             if (stopSelfResult(lastStartId)) {
                 started = false
@@ -71,8 +73,8 @@ class CallringOverlayService : Service() {
             return
         }
         if (!Settings.canDrawOverlays(this)) { controller.dismiss(); return }
-        val visible = getSystemService(PowerManager::class.java).isInteractive &&
-            !getSystemService(KeyguardManager::class.java).isKeyguardLocked
+        val visible = getSystemService(PowerManager::class.java).isInteractive
+        val locked = getSystemService(KeyguardManager::class.java).isKeyguardLocked
         val model = controller.models.value?.presentation
         visibility.session(session.request.sessionId)
         val status = model?.runtime?.value?.data
@@ -80,7 +82,19 @@ class CallringOverlayService : Service() {
         val reveal = visibility.visible(visible, model?.runtimeRead?.value ?: 0,
             status?.phoneActivity ?: PhoneActivity.UNKNOWN, session.editing)
         try {
-            if ((session.preview && visible) || (reveal && access == AccessState.GRANTED)) window.show(session.editing) else window.hide()
+            val eligible = !locked || session.preview ||
+                (!session.callEnded && status?.phoneActivity == PhoneActivity.RINGING)
+            val show = eligible && ((session.preview && visible) || (reveal && access == AccessState.GRANTED))
+            if (show && locked) {
+                window.hide()
+                LockScreenOverlayHost.show(controller)
+                if (lockScreenLaunch.launch(session.request.sessionId, LockScreenOverlayHost.resumed, SystemClock.elapsedRealtime())) {
+                    startActivity(LockScreenOverlayActivity.intent(this))
+                }
+            } else {
+                hideLockScreen()
+                if (show) window.show(session.editing) else window.hide()
+            }
         }
         catch (_: RuntimeException) {
             Log.w("CallringOverlay", "System rejected overlay window")
@@ -88,7 +102,13 @@ class CallringOverlayService : Service() {
         }
     }
 
+    private fun hideLockScreen() {
+        LockScreenOverlayHost.hide(controller)
+        lockScreenLaunch.reset()
+    }
+
     override fun onDestroy() {
+        hideLockScreen()
         unregisterReceiver(changes)
         controller.close()
         controller.sessions.dismissOwned(windowOwner)

@@ -41,7 +41,7 @@ fun RuntimeScreen(
                     Text("请先允许“在其他应用上层显示”权限。", style = MaterialTheme.typography.bodySmall)
                     if (Build.MANUFACTURER.equals("Xiaomi", ignoreCase = true) ||
                         Build.BRAND.equals("Redmi", ignoreCase = true) || Build.BRAND.equals("POCO", ignoreCase = true)) {
-                        Text("MIUI / HyperOS：还请在应用权限中检查“后台弹出界面”等限制。标准悬浮窗权限已允许，并不代表后台弹出权限也已允许。", style = MaterialTheme.typography.bodySmall)
+                        Text("MIUI / HyperOS：还请在应用权限中允许“后台弹出界面”和“锁屏显示”（名称可能因系统版本不同）。标准悬浮窗权限已允许，并不代表这两项也已允许。", style = MaterialTheme.typography.bodySmall)
                     }
                 }
                 SettingsCard("应用能力") {
