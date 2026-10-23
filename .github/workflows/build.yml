@@ -84,6 +84,17 @@ jobs:
           set -euo pipefail
           python3 tools/verify_backend.py
 
+      - name: Show verification failure details
+        if: failure()
+        shell: bash
+        run: |
+          for log in app/build/qa/backend-refactor/python-*.log app/build/qa/backend-refactor/build.log; do
+            if [ -f "$log" ]; then
+              echo "Verification log: $log"
+              tail -n 120 "$log"
+            fi
+          done
+
       - name: Release tooling failure-sample self test
         shell: bash
         run: |
