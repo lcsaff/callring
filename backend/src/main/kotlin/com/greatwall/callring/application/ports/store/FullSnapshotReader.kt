@@ -30,6 +30,7 @@ class FullSnapshotFacts(
     val score: ScoreSettings,
     val overlayEnabled: Boolean,
     audits: List<AuditRecord>,
+    val numberRule: com.greatwall.callring.contracts.settings.NumberRuleSettings,
 ) {
     val profiles = frozenMap(profiles)
     val positions = frozenMap(positions)

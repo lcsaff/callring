@@ -5,6 +5,10 @@ import com.greatwall.callring.domain.model.AuditRecord
 import com.greatwall.callring.domain.model.ProfileRecord
 
 import com.greatwall.callring.domain.*
+import com.greatwall.callring.application.conversation.query.projectCoreSnapshot
+import com.greatwall.callring.contracts.ai.*
+import com.greatwall.callring.contracts.settings.*
+import com.greatwall.callring.contracts.runtime.*
 import org.junit.Assert.*
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -15,6 +19,53 @@ import org.robolectric.annotation.Config
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [33], manifest = Config.NONE)
 class CoreSnapshotSourceTest {
+    @Test fun completeAndLocalNumberRuleMatchDefaultsAndSavedRevision() {
+        SqliteCoreStorageResource(RuntimeEnvironment.getApplication(), "complete-rule.db").use { store ->
+            for (rule in listOf(
+                NumberRuleSettings("3", 5, 0),
+                NumberRuleSettings("8", 6, 1))) {
+                if (rule.revision > 0) store.sessions.writeNumberRule { it.saveNumberRule(rule) }
+                val local = store.scoped.get(AiDomain.D10, "current", "default")!!.value["numberRule"]
+                val full = projectCoreSnapshot(
+                    store.fullSnapshot.capture(), 0,
+                    RuntimeStatus(emptyMap(),
+                        Audibility.AUDIBLE,
+                        PhoneActivity.IDLE,
+                        PlaybackStatus(
+                            PlaybackMode.NONE,
+                            PlaybackState.IDLE), false, 0),
+                    AppearanceSettings(
+                        ThemeSelection.PRESET, "default", null,
+                        ColorMode.FOLLOW_SYSTEM),
+                    RingtoneSettings(false,
+                        AudioSource.BUILT_IN, "", 1))
+                val expected = aiObject(
+                    "prefix" to aiString(rule.prefix),
+                    "length" to aiNumber(rule.length),
+                    "revision" to aiNumber(rule.revision))
+                assertEquals(expected, local)
+                assertEquals(expected, (full.getValue("D10") as AiJson.Obj)["numberRule"])
+            }
+        }
+    }
+
+    @Test fun malformedStoredRuleFailsLocalAndCompleteSources() {
+        val context = RuntimeEnvironment.getApplication()
+        val name = "complete-rule-malformed.db"
+        SqliteCoreStorageResource(context, name).close()
+        for (raw in listOf<String?>(null, "bad", "{}", "{version:1,prefix:'8',length:6,revision:1}",
+            """{"version":2,"prefix":"8","length":6,"revision":1}""")) {
+            context.openOrCreateDatabase(name, 0, null).use { db ->
+                db.execSQL("INSERT OR REPLACE INTO settings(key,value) VALUES('number_rule',?)", arrayOf(raw))
+            }
+            SqliteCoreStorageResource(context, name).use { store ->
+                assertThrows(Exception::class.java) { store.scoped.get(AiDomain.D10, "current", "default") }
+                assertThrows(Exception::class.java) { store.scoped.query(QuerySpec(AiDomain.D10), null) }
+                assertThrows(Exception::class.java) { store.fullSnapshot.capture() }
+            }
+        }
+    }
+
     @Test
     fun completeCaptureIncludesAllPagesAndPersistedAuditTail() {
         SqliteCoreStorageResource(RuntimeEnvironment.getApplication(), "complete_source.db").use { store ->

@@ -28,7 +28,7 @@ fun sourceKeys(domain: AiDomain): Set<String> =
         AiDomain.D07 -> setOf("calendar")
         AiDomain.D08 -> setOf("overrides")
         AiDomain.D09 -> setOf("leaves")
-        AiDomain.D10 -> setOf("quiet", "score", "statistics", "overlay", "leaves", "myPosition")
+        AiDomain.D10 -> setOf("numberRule", "quiet", "score", "statistics", "overlay", "leaves", "myPosition")
         AiDomain.D11 ->
             setOf(
                 "appearance:selection",

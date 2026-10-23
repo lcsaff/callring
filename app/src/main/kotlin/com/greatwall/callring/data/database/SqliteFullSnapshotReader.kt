@@ -83,6 +83,7 @@ internal class SqliteFullSnapshotReader(
             reader.score(),
             reader.overlay(),
             audits,
+            reader.numberRule(),
         )
     }
 }

@@ -52,6 +52,11 @@ internal class SqliteScopedReadAdapter(
         if (domain in setOf(AiDomain.D05, AiDomain.D06, AiDomain.D09)) "live_probe"
         else "source_snapshot"
 
+    private val numberRuleReader: com.greatwall.callring.application.ports.store.NumberRuleReader =
+        com.greatwall.callring.data.settings.SqliteSimpleSettings(sql) { write ->
+            check(!write && db.inTransaction()) { "storage.session.closed" }
+        }
+
     private data class Table(
         val sql: String,
         val columns: List<String>,
@@ -372,7 +377,7 @@ internal class SqliteScopedReadAdapter(
                 else listOf(c)
             }
 
-    private fun row(c: Cursor, t: Table): SourceRow {
+    private fun row(c: Cursor, t: Table, domain: AiDomain): SourceRow {
         val refs = linkedMapOf<String, Long>()
         val values =
             t.columns.associateWith { name ->
@@ -392,7 +397,11 @@ internal class SqliteScopedReadAdapter(
             }
         return SourceRow(
             c.getString(c.getColumnIndexOrThrow("entity_key")),
-            AiJson.Obj(values),
+            AiJson.Obj(
+                if (domain == AiDomain.D10)
+                    values + ("numberRule" to safeValue(numberRuleReader.numberRule()))
+                else values,
+            ),
             refs,
         )
     }
@@ -429,7 +438,7 @@ internal class SqliteScopedReadAdapter(
                 .use { c ->
                     buildList {
                         while (c.moveToNext()) {
-                            val r = row(c, t)
+                            val r = row(c, t, spec.domain)
                             add(
                                 if (calls)
                                     r.copy(
@@ -457,7 +466,7 @@ internal class SqliteScopedReadAdapter(
                 "SELECT ${selection(t).joinToString(",")} FROM (${t.sql}) WHERE entity_key=?",
                 arrayOf(normalized),
             )
-            .use { c -> if (c.moveToFirst()) row(c, t) else null }
+            .use { c -> if (c.moveToFirst()) row(c, t, domain) else null }
     }
 
     override fun text(

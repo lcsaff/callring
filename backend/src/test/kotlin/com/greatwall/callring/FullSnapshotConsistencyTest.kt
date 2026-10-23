@@ -16,6 +16,18 @@ import org.junit.Assert.*
 import org.junit.Test
 
 class FullSnapshotConsistencyTest {
+    @Test fun numberRuleUpdatesOnlyItsConfigurationSourceStamp() = runBlocking {
+        val coordinator = BusinessRevisionCoordinator()
+        val api = AiSnapshotService(coordinator,
+            listOf({ _ -> AiDomain.entries.associate { it.name to SnapshotPart(aiObject()) } }), { emptyList() })
+        val before = api.captureComplete().requiredValue().domains.associate { it.id to it.sourceVersion }
+        coordinator.publishCore(setOf("numberRule"), ChangeImpact.wide(setOf(DataDomain.NUMBER_RULES)))
+        val after = api.captureComplete().requiredValue().domains.associate { it.id to it.sourceVersion }
+        assertTrue(after.getValue("D10") > before.getValue("D10"))
+        assertEquals(before["D01"], after["D01"])
+        assertEquals(before["D16"], after["D16"])
+    }
+
     @Test
     fun wholeSnapshotFailureReleasesOnlyItsUnpublishedResourceHandles() = runBlocking {
         for (mode in listOf("changed", "failed", "budget", "success")) {

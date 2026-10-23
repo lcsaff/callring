@@ -30,6 +30,29 @@ import org.robolectric.annotation.Config
 @Config(sdk=[33],manifest=Config.NONE)
 class SqliteScopedReadTest {
 
+    @Test fun configurationExposesSavedRuleWithoutCompleteCapture() = runBlocking {
+        SqliteCoreStorageResource(RuntimeEnvironment.getApplication(), "scoped-number-rule.db").use { store ->
+            val coordinator = BusinessRevisionCoordinator()
+            val source = store.fixtureScopedReads(coordinator)
+            val q = QueryService(listOf(source))
+            val loads = store.completeCaptures.get()
+            val version = source.version(AiDomain.D10)
+            val directoryVersion = source.version(AiDomain.D01)
+            val default = aiObject("prefix" to aiString("3"), "length" to aiNumber(5), "revision" to aiNumber(0))
+            assertEquals(default, q.query(QuerySpec(AiDomain.D10)).requiredValue().items.single()["numberRule"])
+            val saved = com.greatwall.callring.contracts.settings.NumberRuleSettings("8", 6, 1)
+            store.sessions.writeNumberRule { it.saveNumberRule(saved) }
+            coordinator.publishCore(setOf("numberRule"), com.greatwall.callring.application.coordination.ChangeImpact.wide(
+                setOf(com.greatwall.callring.contracts.change.DataDomain.NUMBER_RULES)))
+            assertTrue(source.version(AiDomain.D10) > version)
+            assertEquals(directoryVersion, source.version(AiDomain.D01))
+            val expected = aiObject("prefix" to aiString("8"), "length" to aiNumber(6), "revision" to aiNumber(1))
+            assertEquals(expected, q.query(QuerySpec(AiDomain.D10)).requiredValue().items.single()["numberRule"])
+            assertEquals(expected, source.get(AiDomain.D10, "current", "default")!!.value["numberRule"])
+            assertEquals(loads, store.completeCaptures.get())
+        }
+    }
+
     @Test fun callCursorIgnoresQuietCommitButRejectsChangedCalls()=runBlocking {
         SqliteCoreStorageResource(RuntimeEnvironment.getApplication(),"scoped-dependencies.db").use { store ->
             val fact=ClassificationFact(false,WorkReason.OUTSIDE_WORK_HOURS,null,true,"UTC",1,null,0)

@@ -114,6 +114,7 @@ fun projectCoreSnapshot(
         "D10" to
             safeValue(
                 mapOf(
+                    "numberRule" to s.numberRule,
                     "score" to s.score,
                     "quiet" to s.quiet,
                     "lastQuietMode" to s.lastQuietMode,
