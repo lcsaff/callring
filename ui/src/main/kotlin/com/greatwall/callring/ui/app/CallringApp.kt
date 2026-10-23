@@ -157,9 +157,10 @@ private fun AppScaffold(
                 }
             }
             composable("lookup") {
-                val model: NumberLookupViewModel = uiViewModel { NumberLookupViewModel(api::checkNumber, it) }
+                val model: NumberLookupViewModel = uiViewModel { NumberLookupViewModel(api::checkNumber, it, api.changes) }
                 val text by model.text.collectAsStateWithLifecycle()
-                NumberLookupScreen(text, model.result(), back, model::edit) {
+                val check by model.result.collectAsStateWithLifecycle()
+                NumberLookupScreen(text, check, back, model::edit) {
                     model.checkedNumber()?.let { open(UiDestination.Report(it)) }
                 }
             }

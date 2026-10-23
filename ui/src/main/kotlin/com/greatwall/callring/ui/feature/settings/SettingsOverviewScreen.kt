@@ -12,7 +12,7 @@ import com.greatwall.callring.ui.feature.settings.components.*
 import com.greatwall.callring.ui.state.LoadState
 import com.greatwall.callring.ui.state.MutationState
 
-enum class SettingsPage { QUIET, POSITIONS, MY_POSITION, WORK, CALENDAR, LEAVES, SCORE, RINGTONE, RUNTIME, APPEARANCE, RECORDING, AI, UPDATE }
+enum class SettingsPage { NUMBER_RULE, QUIET, POSITIONS, MY_POSITION, WORK, CALENDAR, LEAVES, SCORE, RINGTONE, RUNTIME, APPEARANCE, RECORDING, AI, UPDATE }
 
 /** QA builds must not offer the in-app update entry (their applicationId cannot match a release). */
 internal fun updateEntryVisible(packageName: String): Boolean = !packageName.endsWith(".backendqa")
@@ -38,6 +38,7 @@ fun SettingsOverviewScreen(
                 { onNavigate(SettingsPage.MY_POSITION) })
         }
         SettingsCard("来电处理") {
+            SettingRow("号码规则", "设置号码前缀和长度", { onNavigate(SettingsPage.NUMBER_RULE) })
             SwitchSettingRow("来电统计", data.statisticsEnabled, onStatistics, "记录并统计来电情况", enabled = !mutation.busy)
             FieldError(mutation, "statisticsEnabled")
             SwitchSettingRow("来电悬浮提示", data.overlayEnabled, onOverlay, "来电时显示号码与处理信息", enabled = !mutation.busy)

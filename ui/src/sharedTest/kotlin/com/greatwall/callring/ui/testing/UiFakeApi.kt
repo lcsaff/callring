@@ -17,8 +17,18 @@ import java.time.LocalDate
 
 /** Deterministic screen fixtures. No business rules or production wiring live in this source set. */
 open class UiFakeApi(private val overlayEnabled: Boolean = false) : CallringUiApi, HomeApi, CallersApi, ReportsApi, SettingsApi, RingtoneApi, RuntimeApi, WidgetBindingsApi, ChangeFeed {
-    override suspend fun getNumberRule(): ApiResult<NumberRuleSettings> = unexpected()
-    override suspend fun saveNumberRule(command: SaveNumberRule): ApiResult<NumberRuleSettings> = unexpected()
+    var numberRule = NumberRuleSettings("3", 5, 0)
+        private set
+    var numberRuleWrites = 0
+        private set
+    override suspend fun getNumberRule(): ApiResult<NumberRuleSettings> = ApiResult.Success(numberRule)
+    override suspend fun saveNumberRule(command: SaveNumberRule): ApiResult<NumberRuleSettings> {
+        if (command.base != numberRule) return ApiResult.Failure(ApiError(ErrorCode.CONFLICT, "规则已更新"))
+        numberRuleWrites++
+        numberRule = NumberRuleSettings(command.prefix, command.length, numberRule.revision + 1)
+        changed(DataDomain.NUMBER_RULES)
+        return ApiResult.Success(numberRule)
+    }
     override suspend fun setQuietEnabled(enabled: Boolean): ApiResult<QuietSettings> = unexpected()
     override suspend fun synchronizeCalendar(year: Int): ApiResult<CalendarInfo> = unexpected()
     override fun commandApi(context: CommandContext): CallringUiApi = this

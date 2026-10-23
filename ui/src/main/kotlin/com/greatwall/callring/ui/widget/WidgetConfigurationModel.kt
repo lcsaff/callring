@@ -1,4 +1,4 @@
-﻿package com.greatwall.callring.ui.widget
+package com.greatwall.callring.ui.widget
 
 import com.greatwall.callring.contracts.common.*
 import com.greatwall.callring.contracts.change.*
@@ -36,6 +36,12 @@ class WidgetConfigurationModel(
     val validation = validationMutable.asStateFlow()
     private var edited = savedState.get<Boolean>("edited") ?: false
 
+    private val ruleLoader = ObservedQuery(scope, api.changes, ChangeSubscription(setOf(DataDomain.NUMBER_RULES)),
+        load = api.settings::getNumberRule)
+    val rule = ruleLoader.state
+    fun retryRule() = ruleLoader.request(force = true)
+    private fun ruleReady() = rule.value.loaded && !rule.value.loading && rule.value.error == null
+
     private val bindingLoader = ObservedQuery(scope, api.changes,
         ChangeSubscription(setOf(DataDomain.WIDGET_BINDINGS), mapOf(DataDomain.WIDGET_BINDINGS to setOf(widgetId.toString()))),
         load = { api.widgets.getBinding(widgetId) }, onSuccess = { if (!edited) selectionMutable.value = it?.number })
@@ -46,7 +52,7 @@ class WidgetConfigurationModel(
     private val appearanceLoader = ObservedQuery(scope, api.changes, ChangeSubscription(setOf(DataDomain.APPEARANCE)),
         load = { api.settings.getAppearance() })
     val appearance = appearanceLoader.state
-    init { bindingLoader.start(scope); resultsLoader.start(scope); appearanceLoader.start(scope) }
+    init { ruleLoader.start(scope); bindingLoader.start(scope); resultsLoader.start(scope); appearanceLoader.start(scope) }
 
     fun changeQuery(text: String) {
         if (mutation.value.busy) return
@@ -59,7 +65,7 @@ class WidgetConfigurationModel(
     }
 
     fun select(number: String) {
-        if (mutation.value.busy) return
+        if (mutation.value.busy || !ruleReady()) return
         edited = true
         val checked = api.checkNumber(number)
         selectionMutable.value = checked.normalized.takeIf { checked.validProfileNumber }
@@ -79,6 +85,7 @@ class WidgetConfigurationModel(
     }
 
     fun save() {
+        if (!ruleReady()) return
         val number = selectedNumber.value ?: return
         if (widgetId <= 0 || !api.checkNumber(number).validProfileNumber) return
         writer.run({ api.widgets.saveBinding(widgetId, number) }) { savedMutable.value = it }

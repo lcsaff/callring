@@ -8,6 +8,7 @@ import com.greatwall.callring.ui.state.*
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.*
 
+/** Owner must prepare the formal number rule before construction; checks are memory-only. */
 class CallerListViewModel(
     search: suspend (CallerSearch) -> ApiResult<Page<CallerProfile>>,
     checkNumber: (String) -> NumberCheck,
@@ -20,11 +21,8 @@ class CallerListViewModel(
     private val mutableQuery = MutableStateFlow(CallerSearch(savedState["text"] ?: "", PageRequest(savedState["page"] ?: 0)))
     val query = mutableQuery.asStateFlow()
 
-    /** Synchronous pure derivation: no extra request, no duplicated rule state in the screen. */
-    val check: StateFlow<NumberCheck?> = mutableQuery
-        .map { search -> search.text.takeIf { it.isNotBlank() }?.let(checkNumberValue) }
-        .stateIn(scope, SharingStarted.Eagerly, checkFor(mutableQuery.value))
-
+    private val checkMutable = MutableStateFlow(checkFor(mutableQuery.value))
+    val check = checkMutable.asStateFlow()
     private val loader = ObservedQuery(scope, changes,
         ChangeSubscription(setOf(DataDomain.CALLERS, DataDomain.POSITIONS)), { query.value },
         { searchRequest(query.value) }, { result ->
@@ -32,7 +30,12 @@ class CallerListViewModel(
             if (query.value.page.pageIndex > lastPage) page(lastPage)
         })
     val state = loader.state
-    init { loader.start(scope) { mutableQuery.value = query.value.copy(page = PageRequest()); savedState["page"] = 0 } }
+    init {
+        loader.start(scope) { mutableQuery.value = query.value.copy(page = PageRequest()); savedState["page"] = 0 }
+        ChangeObserver(changes, ChangeSubscription(setOf(DataDomain.NUMBER_RULES))).start(scope) {
+            checkMutable.value = checkFor(query.value)
+        }
+    }
 
     fun search(text: String) = update(CallerSearch(text))
     fun page(index: Int) = update(query.value.copy(page = PageRequest(index.coerceAtLeast(0))))
@@ -42,6 +45,7 @@ class CallerListViewModel(
 
     private fun update(value: CallerSearch) {
         mutableQuery.value = value
+        checkMutable.value = checkFor(value)
         savedState["text"] = value.text
         savedState["page"] = value.page.pageIndex
         loader.request()

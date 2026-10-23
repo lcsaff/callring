@@ -16,6 +16,19 @@ import com.greatwall.callring.ui.feature.update.AppUpdateViewModel
     onTestOverlay: () -> Unit = {}
 ) {
     when (page) {
+        SettingsPage.NUMBER_RULE -> {
+            val model: NumberRuleViewModel = uiViewModel { NumberRuleViewModel(api, it) }
+            val state by model.state.collectAsStateWithLifecycle()
+            val draft by model.draft.collectAsStateWithLifecycle()
+            val mutation by model.mutation.collectAsStateWithLifecycle()
+            val errors by model.errors.collectAsStateWithLifecycle()
+            val conflict by model.conflict.collectAsStateWithLifecycle()
+            val trial by model.trial.collectAsStateWithLifecycle()
+            val check by model.trialCheck.collectAsStateWithLifecycle()
+            NumberRuleScreen(state, draft, mutation, errors, conflict, trial, check,
+                onBack, model::refresh, model::editPrefix, model::editLength, model::editTrial,
+                { model.editTrial(trial) }, model::save, model::reload)
+        }
         SettingsPage.RECORDING -> RecordingSettingsRoute(api, onBack)
         SettingsPage.AI -> AiSettingsRoute(api, signal, onBack)
         SettingsPage.QUIET -> {

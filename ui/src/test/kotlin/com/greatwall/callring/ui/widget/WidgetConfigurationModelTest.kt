@@ -1,4 +1,4 @@
-﻿package com.greatwall.callring.ui.widget
+package com.greatwall.callring.ui.widget
 
 import com.greatwall.callring.contracts.common.*
 import com.greatwall.callring.contracts.change.*
@@ -133,5 +133,25 @@ class WidgetConfigurationModelTest {
         model.changeQuery("100"); model.selectDirectNumber()
         assertEquals("100", model.selectedNumber.value)
     }
+    @Test fun coldRuleLoadBlocksCheckingAndSavingRetainsInputAndRetries() = runTest {
+        val release = kotlinx.coroutines.CompletableDeferred<Unit>(); var failure = true; var checks = 0; var saves = 0
+        val api = object : UiFakeApi() {
+            override suspend fun getNumberRule(): ApiResult<NumberRuleSettings> {
+                release.await()
+                return if (failure) ApiResult.Failure(ApiError(ErrorCode.STORAGE_FAILURE, "规则损坏")) else super.getNumberRule()
+            }
+            override fun checkNumber(raw: String): NumberCheck { checks++; return NumberCheck(raw, true, true) }
+            override suspend fun getBinding(widgetId: Int): ApiResult<WidgetBinding?> = ApiResult.Success(null)
+            override suspend fun saveBinding(widgetId: Int, number: String): ApiResult<WidgetBinding> { saves++; return ApiResult.Success(WidgetBinding(widgetId, number)) }
+        }
+        val model = WidgetConfigurationModel(9, api, backgroundScope)
+        model.changeQuery("812345"); model.selectDirectNumber(); model.save(); runCurrent()
+        assertEquals(0, checks); assertEquals(0, saves); assertFalse(model.rule.value.loaded)
+        release.complete(Unit); runCurrent()
+        assertNotNull(model.rule.value.error); assertEquals("812345", model.query.value)
+        model.selectDirectNumber(); model.save(); runCurrent(); assertEquals(0, checks)
+        failure = false; model.retryRule(); runCurrent()
+        model.selectDirectNumber(); model.save(); runCurrent()
+        assertEquals("812345", model.savedBinding.value!!.number); assertEquals(1, saves)
+    }
 }
-

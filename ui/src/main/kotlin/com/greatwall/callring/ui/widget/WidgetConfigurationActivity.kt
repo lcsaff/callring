@@ -89,10 +89,13 @@ data class WidgetConfigurationState(
     val bindingError: ApiError? = null,
     val validation: String? = null,
     val mutation: MutationState = MutationState(),
+    val ruleReady: Boolean = true,
+    val ruleError: ApiError? = null,
 )
 
 @Composable
 private fun WidgetConfigurationRoute(model: WidgetConfigurationModel, onCancel: () -> Unit, onSave: () -> Unit) {
+    val rule by model.rule.collectAsStateWithLifecycle()
     val query by model.query.collectAsStateWithLifecycle()
     val selected by model.selectedNumber.collectAsStateWithLifecycle()
     val results by model.results.collectAsStateWithLifecycle()
@@ -102,13 +105,15 @@ private fun WidgetConfigurationRoute(model: WidgetConfigurationModel, onCancel: 
     val cancel = rememberFormBack(onCancel, selected != null && selected != binding.data?.number,
         mutation.copy(busy = mutation.busy || mutation.completed > 0), onSave, selected != null)
     WidgetConfigurationScreen(
-        WidgetConfigurationState(query, selected, results, binding.error, validation, mutation),
+        WidgetConfigurationState(query, selected, results, binding.error, validation, mutation,
+            rule.loaded && !rule.loading && rule.error == null, rule.error),
         onQueryChange = model::changeQuery,
         onUseDirectNumber = model::selectDirectNumber,
         onSelectNumber = model::select,
         onSearch = model::search,
         onCancel = cancel,
         onSave = onSave,
+        onRetryRule = model::retryRule,
     )
 }
 
@@ -122,6 +127,7 @@ fun WidgetConfigurationScreen(
     onSearch: () -> Unit,
     onCancel: () -> Unit,
     onSave: () -> Unit,
+    onRetryRule: () -> Unit = {},
 ) {
     val query = state.query
     val selected = state.selectedNumber
@@ -133,7 +139,7 @@ fun WidgetConfigurationScreen(
         Surface(tonalElevation = 3.dp) {
             Row(Modifier.fillMaxWidth().navigationBarsPadding().padding(16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 OutlinedButton(onClick = onCancel, enabled = !blocked, modifier = Modifier.weight(1f)) { Text("取消") }
-                BrandButton(onClick = onSave, enabled = selected != null && !blocked, modifier = Modifier.weight(1f)) {
+                BrandButton(onClick = onSave, enabled = selected != null && !blocked && state.ruleReady, modifier = Modifier.weight(1f)) {
                     Text(if (mutation.busy) "正在保存…" else "保存")
                 }
             }
@@ -144,6 +150,10 @@ fun WidgetConfigurationScreen(
             item {
                 Text("搜索姓名、号码或部门，也可以直接输入号码。", style = MaterialTheme.typography.bodyMedium)
             }
+            if (!state.ruleReady) item {
+                Text(state.ruleError?.message ?: "正在读取号码规则…")
+                if (state.ruleError != null) TextButton(onClick = onRetryRule) { Text("重试号码规则") }
+            }
             if (state.bindingError != null) item {
                 Text("原绑定读取失败，仍可重新选择号码：${state.bindingError.message}", color = MaterialTheme.colorScheme.error)
             }
@@ -153,7 +163,7 @@ fun WidgetConfigurationScreen(
                     singleLine = true, enabled = !blocked, modifier = Modifier.fillMaxWidth())
             }
             item {
-                OutlinedButton(onClick = onUseDirectNumber, enabled = query.isNotBlank() && !blocked) { Text("使用输入的号码") }
+                OutlinedButton(onClick = onUseDirectNumber, enabled = query.isNotBlank() && !blocked && state.ruleReady) { Text("使用输入的号码") }
                 validation?.let { Text(it, color = MaterialTheme.colorScheme.error) }
             }
             if (selected != null) item {
@@ -169,7 +179,7 @@ fun WidgetConfigurationScreen(
                     headlineContent = { Text(profile.name.ifBlank { profile.number }) },
                     supportingContent = { Text(listOf(profile.number, profile.department, profile.position?.name.orEmpty()).filter(String::isNotBlank).joinToString(" · ")) },
                     trailingContent = { if (selected == profile.number) Text("已选", color = MaterialTheme.colorScheme.primary) },
-                    modifier = Modifier.fillMaxWidth().clickable(enabled = !blocked) { onSelectNumber(profile.number) },
+                    modifier = Modifier.fillMaxWidth().clickable(enabled = !blocked && state.ruleReady) { onSelectNumber(profile.number) },
                 )
             }
             if (!results.loading && results.loaded && results.data?.items.isNullOrEmpty()) item {

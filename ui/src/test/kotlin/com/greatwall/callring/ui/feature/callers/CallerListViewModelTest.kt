@@ -60,4 +60,16 @@ class CallerListViewModelTest {
             savedState = SavedStateHandle(mapOf("text" to "31234")), testScope = backgroundScope)
         assertEquals(NumberCheck("31234", true, false), model.check.value)
     }
+    @Test fun numberRuleInvalidationOnlyRecomputesHintWithoutSearch() = runTest {
+        val feed = TestChangeFeed(); var searches = 0; var matches = false
+        val model = CallerListViewModel(
+            search = { searches++; ApiResult.Success(Page(emptyList(), 0, 50, 0, SnapshotMeta(1, 0))) },
+            checkNumber = { NumberCheck(it, true, matches) }, changes = feed,
+            savedState = SavedStateHandle(mapOf("text" to "812345")), testScope = backgroundScope)
+        runCurrent(); val before = searches
+        matches = true; feed.publish(setOf(DataDomain.NUMBER_RULES)); runCurrent()
+        assertTrue(model.check.value!!.matchesRule)
+        assertEquals(before, searches)
+        assertEquals("812345", model.query.value.text)
+    }
 }
