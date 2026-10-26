@@ -1,14 +1,14 @@
 # 规则来电铃声与来电管理
 
-独立 Android 应用，包名 `com.greatwall.callring`，当前版本 **0.3.8**（`versionCode 11`；版本号由根 `version.properties` 单一来源驱动，标签统一为 `v<versionName>`，如 `v0.3.8`）。规则号码完整匹配 `3[0-9]{4}`，例如 `31234`；接听使用手机原有电话应用。
+独立 Android 来电管理应用，包名 `com.greatwall.callring`。可配置号码前缀和总位数，默认为前缀 `3`、总位数 `5`，例如 `31234`；接听使用手机原有电话应用。
 
 ## 使用
 
-首页、档案、沟通、设置四个入口采用 Kotlin + Compose，宽窄窗口使用相同导航。首页显示当天工作日、休息日或法定节假日，节假日期间显示节日名称，另行显示当前工作状态，并提供请假管理。号码档案、报表和职位列表在档案中管理；配置开关统一放在设置。首次使用请在设置的“运行状态与权限”检查电话状态、通知和来电识别角色。
+应用提供首页、档案、沟通、设置四个入口，宽窄窗口提供相同功能。首页显示当天工作日、休息日或法定节假日，节假日期间显示节日名称，另行显示当前工作状态，并提供请假管理。号码档案、报表和职位列表在档案中管理；配置开关统一放在设置。首次使用请在设置的“运行状态与权限”检查电话状态、通知和来电识别角色。
 
-页面交互统一使用 Material 3 顶部应用栏、日期/区间选择器、表盘与键盘时间选择器和职位下拉菜单。所有工作日共用上班、午休开始、午休结束和下班四个时间点；自定义免打扰时段仍支持逐条编辑和跨午夜。保存结果使用 Snackbar，输入错误就地提示。删除与恢复默认需要确认，未保存表单退出可保存、放弃或继续编辑。窗口大小变化时自动切换底部导航与侧边导航，内容宽度和键盘避让同步适配。
+页面提供日期/区间选择、表盘与键盘时间输入和职位下拉菜单。所有工作日共用上班、午休开始、午休结束和下班四个时间点；自定义免打扰时段仍支持逐条编辑和跨午夜。保存结果使用 Snackbar，输入错误就地提示。删除与恢复默认需要确认，未保存表单退出可保存、放弃或继续编辑。窗口大小变化时自动切换底部导航与侧边导航，内容宽度和键盘避让同步适配。
 
-页面密度已统一收紧：页边距 16dp、常用区块间隔 8dp、设置卡片内边距 12dp，保留 Material 控件默认触摸区域。原有主题色、深浅模式与评分配色规则继续生效。
+页面提供紧凑布局，支持主题色、深浅模式和独立的评分配色。
 
 时区仅在“设置 → 工作时间”中通过下拉列表选择，其它页面按配置时区显示日期时间，不再展示时区标签。日期与时间入口分行显示标签和数值，弹窗支持键盘输入及短窗口滚动。刷新和保存时不再插入顶部进度条，避免内容上下跳动。
 
@@ -26,8 +26,6 @@
 
 主按钮保留选定的原始 RGB，深色模式也使用同一原色。背景、卡片及通用状态容器采用中性色；文字、图标和链接独立适配对比度，黑白自定义按钮补充边框。
 
-此次直接切换至新 UI 与新组件身份；旧桌面组件需要移除后重新添加。应用数据库、原设置和已导入音频继续保留。
-
 ## 工作时间、评分与数据
 
 默认所有工作日统一使用 `09:00–12:00,13:00–18:00`，开始包含、结束不包含，午休和下班后不工作。日历自动识别普通工作日、休息日、法定节假日；补班日按工作日使用同一时间表。请假不改变当天日历类型，只让对应期间不工作。新版编辑器不再提供逐星期、单独补班时段及指定日期调整；保存时统一后续工作时间，历史时间表和原始来电决策保留兼容。
@@ -40,7 +38,7 @@
 
 悬浮窗与组件默认采用最近 30 天滚动评分。报表支持今天、近 7/30 天、自定义日期、分类筛选和分页，展示分类依据、通话结果及时长，区分未知与实际 0 秒；可通过系统文档选择器导出 CSV。系统通话记录与筛选事件仅在唯一匹配时关联，不确定记录保留待核对状态。
 
-号码、档案、设置与明细存于应用私有数据库，禁止云备份/设备迁移。节假日同步下载公开数据；录音与自动分析默认关闭，启用自动分析或主动点击分析后，会将对应录音发送到配置的转写服务，将转写发送到配置的分析服务。主动使用“沟通”会发送消息及按任务查询的业务文字，范围见下节。报表仅在用户主动导出时写出。完整数据语义见 [业务 API 契约 v1](docs/plans/UI业务API契约_v1.md)。
+号码、档案、设置与明细保存在应用私有数据库，应用已禁用云备份与设备迁移。节假日同步只下载公开数据；录音与自动分析默认关闭，启用自动分析或主动分析后，会将录音发送到配置的转写服务，将转写发送到配置的分析服务。主动使用“沟通”会发送消息及按任务查询的业务文字，范围见下节。报表仅在主动导出时写出。
 
 ## 可配置号码规则
 
@@ -60,9 +58,9 @@ AI 外观查询和工具发现提供完整内置主题目录，与外观页面�
 
 上下文客户端默认预算为 **49152**，输出预留 **4096**；context 可设8192–1048576，output 可设1024–16384且小于context。估算计入实际完整UTF-8请求、当次启用的schema、历史、输出和安全余量，另设8MiB请求和1MiB回复上限。来源分页每页最多200项、128KiB，长文本分块读取；显式完整快照另有20000条数据及目录500节点/4层等限制，不作为普通查询的全集读取方式。每轮最多16次模型请求、64个工作量单位，源查询也计入工作量。49152是客户端限制，不承诺服务模型具备同等容量；服务端拒绝不会静默重试。旧配置缺失预算时使用新默认，已有显式32768等数值不会被升级覆盖。
 
-密钥通过本地表单保留、替换或清除，不进入聊天及保存的界面状态。连接测试使用固定测试内容并可能计费。会话及任务账本仅保留在当前进程；停止或新对话不会撤销已经保存的业务修改，进程退出后聊天和任务续办不恢复。分析连接变化会停止当前请求并清理旧匹配历史。历史验收见 [AI 沟通验收](docs/plans/AI沟通验收.md)，按需读取和真实模型样本见 [整改验收](docs/plans/AI沟通整改验收.md)，当前目录见 [内部契约](docs/contracts/current-api.md)。
+密钥通过本地表单保留、替换或清除，不进入聊天及保存的界面状态。连接测试使用固定测试内容并可能计费。会话及任务账本仅保留在当前进程；停止或新对话不会撤销已经保存的业务修改，进程退出后聊天和任务续办不恢复。分析连接变化会停止当前请求并清理旧匹配历史。
 
-开发与跨项目复用见 [可复用 AI 接入规范](docs/AI接入规范.md)，包含现有架构、优化优先级、CLI/MCP 待实现设计及其它项目的复现步骤。当前没有正式业务 CLI 或 MCP 服务。
+当前没有正式业务 CLI 或 MCP 服务。
 
 首次配置时，先填写所选连接的地址和模型，再打开“本地编辑密钥”，填写密钥并保存；该连接草稿与密钥在同一次校验和事务中保存，取消不写入。沟通的服务标签显示下一次发送目标，发送仍会核对本次界面已显示的连接；变更后不会自动向未告知的目标发送。带工具的模型文字标为未经验证，实际操作以本地回执为准。删除、采纳与测试确认会显示本地读取的具体目标，目标变更会使旧确认失效。目录安全视图包含真实显示名和访问状态；无法查询时明确未知，不暴露目录 URI 或完整路径。
 
@@ -84,7 +82,7 @@ AI 外观查询和工具发现提供完整内置主题目录，与外观页面�
 
 归档保存转写、自述姓名/单位/职位、原文依据、模型推测、1–3 句话摘要及待办。身份推测不等于真实身份核验；确认后可将自述姓名和单位写入档案，职位和白名单不自动修改。AI 失败不影响原有来电筛选、铃声、统计与报表。
 
-自动测试验证本地业务、协议与界面；未使用真实付费 API。隔离设备补验结果与限制见[设备复验记录](docs/plans/layer-boundaries-evidence/device-fix-review.md)。系统录音目录适配、真实 SIM 双向采集、听筒/免提/蓝牙与锁屏后台采集仍需专项实测，不能据此宣称两条录音路径均已通过验收。
+真实 SIM 双向采集、听筒/免提/蓝牙效果与锁屏后台采集尚未完整验证。已有锁屏设备样本使用固定音频和模拟 AI，不能代表真实通话到真实 AI 的完整效果。
 
 ## 权限与后台边界
 
@@ -101,53 +99,10 @@ AI 外观查询和工具发现提供完整内置主题目录，与外观页面�
 
 规则铃声准备保留 1.8 秒期限和失败放行；接听、挂断、权限撤销或看门狗结束服务。系统已接受静音响应后，若播放进程被杀，接口无法重新打开原系统铃声。
 
-## 架构与构建
+## 安装与已知限制
 
-模块依赖为 `contracts ← backend`、`contracts ← ui`，`app` 组合三者。`contracts` 保存公共数据与能力契约；纯 JVM `backend/application` 编排业务、`backend/domain` 保存独立算法；`ui/feature` 与 `ui/state` 负责 Compose/MVVM，`ui/designsystem` 只消费视觉参数。`app/bootstrap` 唯一装配，`bridge` 转换 UI 偏好，`data` 持有数据库/偏好/文件资源，`platform` 适配 Android 能力，`entrypoint/runtime|jobs|recording|calling` 拥有系统事件与生命周期工作流。
+安装包通过 GitHub Release 分发。v0.2 的发行密钥已丢失，后续新包无法直接覆盖该版本；相同发行证书的0.3.0及后续版本之间可覆盖升级。旧桌面组件需要移除后重新添加，应用数据和已导入音频保留。
 
-根包 RuntimeReceiver、CalendarSyncJobService、SyncJobService、RecordingJobService、CallCaptureService、RingPlaybackService 保留系统注册身份和真正资源接线，工作流各自唯一进入 controller。既有 ScreeningController/IncomingCallController 保持 platform/calling 唯一实现。`CallringApplication` 创建单个业务图，UI 注入正式 `CallringUiApi`，Fake 只在测试源集。普通 Screen 接收状态与回调；阻塞工作由 API 实现调度。完整路径见[分层整理文件归属清单](docs/superpowers/specs/2026-10-20-layer-boundaries-file-map.md)，后续开发遵守[项目开发约束](PROJECT.md#后续开发约束)。分层验收见[最终报告](docs/plans/layer-boundaries-evidence/acceptance.md)，设备补验与缺口见[设备复验记录](docs/plans/layer-boundaries-evidence/device-fix-review.md)。
+亮屏锁屏卡片需要系统允许悬浮窗；小米/HyperOS 还需在应用权限中允许“后台弹出界面”和“锁屏显示”（名称依系统版本）。应用不会在息屏时主动点亮屏幕。首次开机解锁前无法访问应用存储。
 
-工具链：**JDK 17、Gradle 8.13、AGP 8.13.2、Kotlin/Compose compiler plugin 2.3.21、Compose BOM 2025.12.01**。Java/Kotlin JVM 目标为 1.8；minSdk 29、compileSdk 36、targetSdk 33、Build Tools 36.0.0。通过 `local.properties` 或 `ANDROID_HOME` / `ANDROID_SDK_ROOT` 配置 SDK；JDK 使用当前环境的 `JAVA_HOME`。
-
-版本只在根 `version.properties`（`versionCode`/`versionName`）维护：根 `build.gradle` 校验后注入 `app/build.gradle`，发布工具读同一文件，标签统一为 `v<versionName>`，当前值直接读取该文件。改版本请用 `python tools/release/version_tool.py set --code N --name X.Y.Z --published-max M`，脚本会拒绝 `0.3`、`v0.3.0`、非递增 versionCode 等输入。
-
-统一验证入口（无设备参数时只执行构建与静态/JVM 检查）：
-
-```powershell
-python tools/verify_backend.py
-# 使用同一完整门，设备选项保留 UI 专用测试包与 app-ops 恢复：
-python tools/verify_ui.py
-```
-
-两个入口共享 `tools/verify_common.py` 的唯一任务表：两架构守卫及各自 unittest、验证工具故障 unittest、`:contracts:test`、backend/UI/app JVM、解析后 UI debugCompileClasspath、UI/app Debug、app Release/backendQa、UI/app AndroidTest APK 和双 lint。contracts 无测试源码时单列 NO-SOURCE；三个业务模块必须存在已执行且无失败的测试。本轮命令和精确任务行确认后才读取匹配的执行/缓存 XML。
-
-Windows 保留工作树路径并调用 `gradlew.bat`；Linux/CI 使用 PATH 中已安装的 Gradle 8.13。每次启动即覆盖本轮 summary，失败和超时同样写命令、退出码、设备请求与清理结果。backend 入口证据在 `app/build/qa/backend-refactor/`，UI 入口在 `ui/build/qa/`。Debug/Release APK 分别在 `app/build/outputs/apk/debug/app-debug.apk` 与 `app/build/outputs/apk/release/app-release.apk`。
-
-签名：`app/build.gradle` 的 `signingConfigs.release` 优先读取被 gitignore 的根 `signing.properties`（`storeFile`/`storePassword`/`keyAlias`/`keyPassword`），文件缺失时回退本机 Android debug keystore。**当前发行身份是本机 debug 证书**（证书 SHA-256 `5a901cad…24b4`）；v0.2 正式包的发行密钥已丢失，任何构建都无法覆盖 v0.2 安装。覆盖升级要求同包名、同签名且 versionCode 递增。`backendQa` 变体沿用 debug 签名并带 `.backendqa` / `-backend-qa` 后缀，不得作为正式包发布。
-
-本地发布校验（生成元数据并四者互校，不上传）：
-
-```powershell
-.\gradlew.bat :app:assembleRelease
-python tools/release/generate_release_metadata.py --apk app/build/outputs/apk/release/app-release.apk --out-dir dist
-python tools/release/verify_release.py --release-dir dist --tag v0.3.0 --published-max 2 `
-    --expected-cert-sha256 5a901cad57f5590483f362e4752ca8f4a56197340b71d2632ded0195bf8a24b4 --check-alignment
-python tools/release/selftest.py
-```
-
-`.github/workflows/release.yml` 是手动触发的失败即停发布流水线：签名 Secrets（`KEYSTORE_BASE64`、`KEYSTORE_PASSWORD`、`KEY_ALIAS`、`KEY_PASSWORD`）缺失时在构建前失败；默认 `publish=false` 只构建与校验，不创建或上传 Release。`.github/workflows/build.yml` 在 push/PR 上运行统一验证与发布工具自检（仓库只含 `gradlew.bat`，CI 通过 Gradle 8.13 直接执行）。
-
-## 隔离设备验证
-
-先手动唤醒并解锁设备，确认 ADB 在线：
-
-```powershell
-python tools/verify_ui.py --device ADB_SERIAL
-python tools/verify_backend.py --device ADB_SERIAL
-```
-
-UI 脚本核对元数据与 APK 包名，只安装 `com.greatwall.callring.ui.test`，使用 `UiTestRunner` 执行 `com.greatwall.callring.ui` 下的测试；不会覆盖生产包或 `com.greatwall.callring.backendqa`。它等待安装安全扫描完成，临时允许测试包悬浮窗权限，并在 MIUI/HyperOS 临时允许测试包 app-op `10021`，最后恢复原模式。设备命令有超时，退出时仅停止 UI 测试包；不更改锁屏超时、不自动解锁、不清除应用数据。Backend QA 使用独立的 `com.greatwall.callring.backendqa` 包，按其脚本维护的测试范围运行。
-
-2026-10-23 的[锁屏来电与录音链路验收](docs/plans/锁屏来电与录音链路验收.md)另有专用自动化：实际锁屏卡片及固定音频解码/模拟 AI/持久化通过；显式选择 `com.greatwall.callring.ui.lockeddevice.LockScreenOverlayDeviceTest` 才会锁屏，普通 UI 扫描排除该类。小米设备还临时允许测试包锁屏显示权限 `10020` 并恢复，未改主包权限。真实通话采集和真实网络 AI 未测。
-
-构建、单元测试和隔离设备测试不能替代真实来电验收。当前迁移验证依据与未完成项目统一记录在 [UI 重构验收](docs/plans/UI重构_验收.md)：实际悬浮窗显示、重挂载、编辑草稿和桌面双组件已有隔离实机证据；系统锁屏新增证据见上述专项记录，键盘遮挡、真实 SIM 与拨号器竞争、30 分钟息屏及重启后恢复仍需现场验收。旧实现的历史验证记录不作为新 UI 的最终通过依据。
+真实SIM来电与系统拨号器竞争、无干扰长时间待机、授权条件下重启后的通话监听及完整应用内下载/校验/安装更新链路尚未完整验证。已有同证书覆盖升级、组件与部分锁屏设备验证，不代表这些场景全部通过。

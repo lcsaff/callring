@@ -1,67 +1,100 @@
 # callring（规则来电铃声）
 
-## 项目名称
-- callring
+## 项目与文档职责
 
-## 项目目的
-- 按来电号码规则播放自定义铃声的独立 Android 应用原型。
+独立 Android 来电管理应用，按号码规则播放自定义铃声，并提供档案、统计、免打扰、悬浮窗、组件、录音及 AI 沟通。状态 incubating，2026-10-14 从 android-funs 拆分；默认工具 codex。
 
-## 当前状态
-- incubating
-- 2026-10-14 从 android-funs 拆分为独立项目。
-
-## 默认工具
-- codex
-
-## 关键路径
-- 项目根目录：`D:/Users/GreatWall/projects/callring`（用户指定位置）
-- 发现入口：`D:/Users/GreatWall/workspace/projects/projects.json`
-- Android 应用：`app/`，包名 `com.greatwall.callring`
-- 使用与验证说明：`README.md`
-- 设计与验证：`docs/plans/规则来电铃声_设计与验证.md`
-- 设备测试、音频生成与发布校验：`tools/`
+- 根目录：`D:/Users/GreatWall/projects/callring`；发现入口：`D:/Users/GreatWall/workspace/projects/projects.json`。
+- Android 包名：`com.greatwall.callring`；应用入口及资源在 `app/`。
+- AGENTS.md 为规则入口；本文件集中维护全部项目规则、契约约定、验证与交付要求；README.md 仅说明功能、使用和用户可见限制。
+- 有用的设计结论与验收摘要就地更新本文件；规则与规范不再拆分至其他文档，验收摘要不依赖外置说明。机器基线、测试、原始日志和产物保留各自用途，历史设计与过程通过 Git 追溯。
 
 ## 模块与职责
-- `contracts`：纯 JVM 公共数据与能力契约；不依赖其他模块。
-- `backend`：纯 JVM 的 `application` 业务编排、窄 ports 与 `domain` 算法；只依赖 contracts。
-- `ui`：依赖 contracts 的 Compose `feature` / `state`、纯参数 `designsystem`、悬浮窗与组件。
-- `app`：`bootstrap` 唯一装配、`bridge` UI 偏好与通知接线、`data` SQLite/偏好/文件、`platform` Android 能力适配、`entrypoint` 系统事件与生命周期编排。
-- 根包六系统组件保留 Manifest、Job、PendingIntent 的原身份，资源由壳提供；runtime/jobs/recording/calling controller 各有唯一工作流。ScreeningController/IncomingCallController 继续使用 platform/calling 的既有唯一实现。
-- [分层整理文件归属清单](docs/superpowers/specs/2026-10-20-layer-boundaries-file-map.md)记录该次整理的 main 文件归属；后续新增/拆分文件按上述职责放置。分层自动验收见[最终报告](docs/plans/layer-boundaries-evidence/acceptance.md)，后续隔离设备补验与剩余缺口见[设备复验记录](docs/plans/layer-boundaries-evidence/device-fix-review.md)。
+
+| 模块 | 职责与依赖 |
+| --- | --- |
+| `contracts` | 纯 JVM 公共 DTO、命令、查询、回执、变更订阅与能力契约；不依赖其他模块，不包含存储、网络、平台适配、凭据和业务策略。 |
+| `backend` | 只依赖 contracts；`application` 负责业务编排、窄 ports、查询投影及 AI 执行，`domain` 保存独立算法且不依赖 application/contracts/Android/UI。 |
+| `ui` | 只依赖 contracts，包括 sharedTest/AndroidTest；`feature` / `state` 负责 Compose/MVVM，`designsystem` 只消费视觉参数，悬浮窗和组件复用正式 API。 |
+| `app` | 组合上述模块；`bootstrap` 唯一装配，`bridge` 转换 UI 偏好与通知，`data` 持有 SQLite/偏好/文件及编码器，`platform` 适配 Android 能力，`entrypoint` 拥有系统事件和生命周期工作流。 |
+
+`CallringApplication` 创建唯一业务图；主题偏好解释归 app/bridge，业务组件与表单状态归 ui/feature，纯视觉组件归 designsystem。六个根系统组件 RuntimeReceiver、CalendarSyncJobService、SyncJobService、RecordingJobService、CallCaptureService、RingPlaybackService 保留原 Manifest、Job、PendingIntent 身份与真实资源接线，工作流分别进入 RuntimeEventController、CalendarSyncJobController、CallLogSyncJobController、RecordingJobController、CaptureServiceController、PlaybackServiceController。ScreeningController / IncomingCallController 保持 platform/calling 的唯一实现。
 
 ## 后续开发约束
 
-开工前明确：功能归属、复用入口、数据与订阅影响、验收方法；按需求范围实施。
+开工前明确功能归属、复用入口、数据与订阅影响和验收方法，按需求范围实施。
 
-1. **单向依赖**：项目模块依赖为 app 组合 ui/backend/contracts，ui 与 backend 仅依赖 contracts；domain 不依赖 application/contracts/Android/UI。公共契约放 contracts，业务放 backend，表现放 ui，装配、存储、平台适配与系统流程放 app；业务服务只接明确窄端口。
-2. **业务唯一实现**：页面、AI、后台任务共用正式业务命令和查询；校验、事务与失效发布在统一业务入口负责。Screen 和系统组件壳不复制业务规则，工具执行器不另写一套业务。
-3. **局部访问与精准刷新**：普通操作按需读写，不恢复全状态装载/差异保存；完整快照显式隔离，历史批更正明确必要范围。提交成功后通过唯一累计失效协议发布实际领域/实体；同时验证有关更新和无关查询增量为零。
-4. **生命周期与并发**：明确资源创建/关闭、任务取消和写入排空顺序；已终止的资源所有者不得再初始化/重开资源，取消或过期请求不得回写/发布，已接收写入按约定排空后释放资源。保持锁顺序，网络请求不跨数据库事务，重试不得重复已提交操作。
-5. **迁移删除与数据兼容**：最后消费者迁出即删除旧入口、转发、别名、缺能力默认和双实现。保留唯一必要的数据编码解释器；数据库变更有升级迁移，系统组件身份及外部协议变更显式评审，不以清库/重装替代兼容验证。
-6. **AI 扩展完整约束**：新工具使用具名 OperationId 和唯一目录，明确参数、读写、作用域、确认及回执策略；写入按策略确认和读回验证，覆盖取消、重试、重复提交。外部协议兼容基线仅随审查后的协议变更更新，不为通过测试直接重生成。
-7. **按风险验证与防回流**：规则测结果边界，存储测事务/旧数据/并发，刷新测真实 loader 次数，系统入口补隔离设备验证。新增依赖规则同步守卫正反例；真实来电/待机/重启/权限/升级单列实测，不用编译或单测冒充，明确未验证项。
-8. **同步文档与交付**：版本以 version.properties 为唯一来源，进度以最新验收证据为准，变更同步职责/协议/验证文档。代码收尾运行下述统一验证，纯文档核对内容与链接；按范围提交、合并 main、推送并确认该提交 CI。保留用户改动和验证证据，按需发包；纯文档不递增版本。
+1. **单向依赖与窄能力**：遵守上述模块边界，业务服务只接明确窄端口，不接万能 Graph/Context/完整 API；全部 source sets 与真实编译类路径纳入守卫，测试 Fake 只在测试源集。
+2. **业务唯一实现**：页面、AI、后台任务共用正式命令和查询；校验、事务、提交和失效发布归统一业务入口。Screen、系统壳、工具执行器不复制业务规则；算法变更验证实际消费者。
+3. **局部访问与一致性**：普通操作按需读写，不恢复全状态装载/差异保存；完整快照显式隔离。聚合查询的 SQLite 数据来自同一读取事务，独立偏好和系统观察注明采样边界。更新仅写目标实际变化列，保留原始事实、未改编码、唯一约束和自增序列。
+4. **精准刷新**：提交成功后通过唯一累计失效协议发布实际领域/实体；无变化不推进版本。订阅覆盖 DTO 的真实依赖、全局变化、时间/权限和恢复；同时验证有关更新及无关 loader 增量为零，不能用全局广播掩盖缺订阅。
+5. **生命周期与并发**：先封口、取消可取消任务、排空已接收写入，再关闭资源；已终止 owner 不得重新初始化或开库。取消/过期请求不得继续写入或发布，迟到结果用 generation/版本隔离；取消等待不等于撤销已提交操作。保持锁顺序，网络不跨数据库事务，资源租期覆盖完整访问。
+6. **迁移与兼容**：最后消费者迁出即删除旧入口、转发、别名、缺能力默认和双实现；保留唯一必要的数据编码解释器。数据库变更有升级迁移，不以清库/重装代替兼容验证。系统组件身份、外部协议和持久格式变更显式评审；内部签名变更同步迁移全部消费者。
+7. **按风险验证**：规则测结果边界，存储测事务/旧数据/并发，刷新测真实 loader，系统入口补隔离设备验证。新增守卫同步违规与合规样例；缓存、编译、单测、模拟服务和真机结果分别记录，不互相替代。
+8. **同步文档与交付**：变更同步本文件的职责、协议、验收摘要及 README 中的产品说明；保留用户改动和证据，按范围提交、合并 main、推送并确认该提交 CI。纯文档不递增版本，按需发包。
 
-## 启动注意事项
-- 在本项目根目录运行 Gradle；不依赖 android-funs。
-- JDK 17、Gradle 8.13、AGP 8.13.2、Kotlin 2.3.21、Compose BOM 2025.12.01；minSdk 29、compileSdk 36、targetSdk 33、Build Tools 36.0.0。
-- SDK 通过 `ANDROID_HOME` / `ANDROID_SDK_ROOT` 或本地 `local.properties` 的 `sdk.dir` 配置。
-- 版本号由根 `version.properties`（`versionCode`/`versionName`）单一驱动：根 `build.gradle` 读取并注入 `app/build.gradle`，发布工具读同一文件，发布标签为 `v<versionName>`。
-- 统一构建与验证入口：`python tools/verify_backend.py`；`python tools/verify_ui.py` 使用同一完整任务表并保留 UI 专用设备流程。唯一清单与证据约定见 `tools/verify_common.py` 和 README。
-- Debug APK：`app/build/outputs/apk/debug/app-debug.apk`；Release APK：`app/build/outputs/apk/release/app-release.apk`。
-- Release 签名优先读取被 gitignore 的根 `signing.properties`（`storeFile`/`storePassword`/`keyAlias`/`keyPassword`），缺失时回退本机 Android debug keystore；私钥与口令不入库。
-- 发布校验脚本在 `tools/release/`（版本校验、`update.json`/`SHA256SUMS.txt` 同源生成、失败即停的发布一致性校验与失败样例自检）；CI 定义在 `.github/workflows/`（`release.yml` 签名 Secrets 缺失即失败，默认只构建校验不上传）。
+## 接口、存储与兼容约定
 
-## 已知限制
-- 真实 SIM 来电、长时间待机、重启后行为尚待验证，详见 README。
-- 当前发行身份是本机 debug 证书（证书 SHA-256 `5a901cad…24b4`）；v0.2 正式包的发行密钥已丢失，任何新构建都无法覆盖 v0.2 安装，覆盖升级只在同 debug 证书的 0.3.0 及后续版本之间成立。
-- 应用内更新链路（下载/校验/安装）、真实下载与真机覆盖升级尚未验收：等 debug.keystore 备份与隔离测试设备后再执行，不能凭 Debug 构建或单测通过宣称更新链路通过。
+- 当前接口以 `contracts/src/main/kotlin/com/greatwall/callring/contracts/` 的生产声明为准，统一入口为 `CallringUiApi`；不维护第二份 Kotlin 声明或历史包别名。
+- suspend API 可从主线程调用，实现自行调度阻塞工作；返回不可变快照，UI 草稿与基线分离。取消按 CancellationException 传播，不包装成保存失败；业务错误用稳定错误码，UI 负责文案和格式。
+- UI 不接数据库、Cursor、Context、Activity、Intent 或全局静态业务入口；平台交互通过契约与宿主完成。保存成功表示持久化及约定的历史更正已提交，通知不依赖页面是否存活。
+- `ChangeFeed.snapshots()` 是唯一累计协议；实体选择按域声明且不能为空，未选实体表示全域，epoch/incarnation 变化使所有选中 token 失效；禁止旧通知桥和第二 loader。
+- 保留数据库表列语义、JSON 字段与版本、枚举/ID、归档引用、凭据和缺省行为；未传、null、空值以及密钥 Keep/Replace/Clear 不混同。历史更正按事件当时的排班/时区处理，保留原始分类与决策，覆盖跨午夜、跨年、夏令时和回滚。
+- UI 统一 Compose/MVVM 与 Material 3 交互；草稿、取消、错误和成功反馈保持一致，系统字体缩放、窄屏/键盘与窗口恢复需覆盖。主色和深浅模式独立，主按钮保留原始RGB，评分语义色不被主题覆盖；显示回退不写回偏好。
+- 当前规则为前缀与总位数配置，默认 3/5；生产 matcher 统一注入，页面、AI、号码检查及系统流程共用。冲突按持久版本检查，同次来电保留首次匹配事实、同批导入用同一规则；保存不删除或重算旧记录。同步号码检查前先等待规则加载，恢复/关闭时不接受旧结果。
+- 内部契约机器基线为 `tools/baselines/current-contracts.json`，包含审查后的声明摘要与内部签名变更标识；外部 AI 协议基线为 `docs/contracts/ai-operation-compatibility.json`。变更经评审后精准更新，不为通过测试直接重生成；两者是机器校验数据，不是另一套规范文档。
 
-## 统一验证与隔离设备
+## AI 接入约定
+
+- 模型负责理解与选工具，本地程序独立负责权限、参数、版本、事务、执行与核验；业务文字、转写、摘要及工具结果均视为不可信数据，不能授予权限。
+- `OperationCatalog` 是唯一目录；所有操作声明稳定 OperationId、工具名、Schema、读写及绑定、作用域、确认和回执策略，启动拒绝缺声明或重复。当前 83 项（50 写、33 非写），身份/分派不用 ordinal、数字编号或展示顺序。`ToolRegistry.definitions` 为唯一发现入口，完整协议以冻结 JSON 与生产目录为准。
+- 普通聊天不读业务数据；业务任务按需发现、分页、详情、全集聚合或码点分块。来源版本、游标、完整性和访问状态必须明确，EMPTY/PARTIAL/NOT_CONFIGURED/DENIED/UNAVAILABLE 不混同；当前页不冒充全集。外部 D01–D21 与 UI 失效域不是同一概念。
+- 不向模型、日志、回执或保存的 UI 状态泄露密钥、私有路径和可调用 URI；文件只给短期句柄，使用前复核授权。凭据仅经本地表单修改，连接变化取消旧请求并核对页面已显示的目标。
+- 写入依次校验 Schema、计划/依赖、权威目标及作用域版本、授权、提交前复核、正式业务事务、变更发布和读回。当前写操作要求前台宿主；删除、文件、权限、角色和密钥等按目录等待本地交互，一次性票据绑定目标/版本/期限，旋转或宿主恢复不得重复启动。
+- 批次允许部分提交，逐项保留原始任务数量与回执；同执行 ID 改参拒绝，等价效果去重。VERIFIED 才计已核验完成；COMMITTED_UNVERIFIED 只补核验，UNKNOWN 先核对，QUEUED/LAUNCHED/PENDING 不宣称已完成；已提交步骤不因取消、读回失败或网络错误重放。
+- 只修复明确允许且未开始步骤的参数错误（每步最多2次、每轮4次）；不修改目标/任务数量，不绕过确认。请求限制和完整性保护不能靠省略数据、减少数量或扩大权限规避。
+- 默认 context=49152、output=4096；按实际 UTF-8 请求、Schema、历史、输出及安全余量计量，不等同精确 Token 数或模型容量。请求8MiB、回复1MiB，每轮最多16次模型请求/64工作量单位，工具批次最多32调用、档案批处理最多64子调用；旧显式配置保留。
+- OpenAI/Anthropic 兼容适配保持 HTTPS 基础路径及代理前缀，仅追加端点，不自动补 `/v1`；转写只走兼容 audio/transcriptions。FAST/思考回放等兼容性以具体模型证据为准，不由协议名称推定。
+- 当前 QWEN_FAST 限 OPENAI + qwen3.8-flash；不匹配返回 ai.profile_invalid，保留原配置并提示改 AUTO/STANDARD。STANDARD 不支持非空 reasoning_content 回放，不能推定 DeepSeek 思考模式或所有模型可用。
+- 录音处理独立于聊天；上传、分段转写/分析、保存和重试遵循持久状态与 generation。网络不跨事务，删除阻止迟到回写，已有全文可复用；分段中间结果尚未持久化，失败可能重复调用片段。
+- 正式业务 CLI、MCP、通用 SDK、流式文本及跨进程聊天账本尚未实现。后续扩展须共用目录、授权、执行和回执内核；无人交互时明确拒绝。跨进程写入先补持久执行 ID/主体/参数摘要、提交核对与恢复去重，不承诺跨系统 exactly-once。优化先测同任务/数据/模型配置，不删除读回或用全量加载换速度。
+
+## 构建与统一验证
+
+在项目根目录运行，不依赖 android-funs。工具链为 JDK17、Gradle8.13、AGP8.13.2、Kotlin2.3.21、Compose BOM2025.12.01；Java/Kotlin JVM目标1.8，minSdk29、compileSdk36、targetSdk33、Build Tools36.0.0。SDK 由 ANDROID_HOME / ANDROID_SDK_ROOT 或 local.properties 的 sdk.dir 配置；JDK 由 JAVA_HOME 配置。
+
 ```powershell
 python tools/verify_backend.py
-# 可选，实际设备序号由执行时确认：
+# 同一完整门，保留 UI 专用设备流程：
+python tools/verify_ui.py
+# 可选：执行时确认真实序号，先手动唤醒解锁并确认 ADB 在线。
 python tools/verify_backend.py --device ADB_SERIAL
 python tools/verify_ui.py --device ADB_SERIAL
 ```
-统一门包含两 Python 守卫与三组 unittest、contracts/backend/UI/app JVM、真实 UI 类路径、Debug/Release/backendQa/双 AndroidTest APK 和双 lint；CI 使用同一无设备入口。backendQa 与 UI 测试包隔离校验和 finally 清理只作用于各自包。设备结果不可由编译/单测替代；T14 审查与 T15 设备验收状态由对应证据记录。
+
+- 唯一任务表在 `tools/verify_common.py`：两架构守卫及三组 Python unittest、contracts/backend/UI/app JVM、真实 UI 类路径、Debug/Release/backendQa/双 AndroidTest APK 和双 lint。代码收尾运行统一门；仅文档核对内容、链接与差异，涉及守卫调整时补对应正反例。
+- Windows 保留实际工作树路径并调用 gradlew.bat；Linux/CI 使用 PATH 中的 Gradle8.13。每次运行先覆盖本轮 summary，失败/超时也写 argv、退出码、精确任务状态和 cleanup；区分 EXECUTED、UP-TO-DATE、FROM-CACHE、NO-SOURCE，不能用旧 XML 冒充本轮执行。
+- 后端证据在 `app/build/qa/backend-refactor/`，UI 在 `ui/build/qa/`；保留匹配提交的日志、JUnit/lint、APK及摘要。contracts 无测试源码可单列 NO-SOURCE，业务模块不得以零测试或跳过冒充通过。
+- 设备仅安装各自隔离包 `com.greatwall.callring.backendqa` / `com.greatwall.callring.ui.test`；核对 APK 包名和 metadata，临时权限及 app-ops 在 finally 恢复，只停止对应测试包，不清数据、不覆盖生产安装、不改主包角色或锁屏超时、不自动解锁。
+- 普通 UI 测试排除 lockeddevice；锁屏专项须显式选择 `com.greatwall.callring.ui.lockeddevice.LockScreenOverlayDeviceTest`，小米测试包按需临时允许10020/10021并恢复。录音专项为 `com.greatwall.callring.LockedRecordingPipelineDeviceTest`。
+- 真实模型及连接测试可能计费，付费执行需明确授权。`tools/verify_ai_device.py` 是验证工具，不是通用业务 CLI，不能为补历史诊断重复新增业务数据；私人截图和日志不入库或发布。
+
+## 版本与交付
+
+- 根 `version.properties` 是唯一版本来源；versionName 为 MAJOR.MINOR.PATCH，标签为 vMAJOR.MINOR.PATCH。根 Gradle 注入 app，发布工具读取同一文件；不在说明中维护另一份当前版本号。
+- 版本修改使用 `python tools/release/version_tool.py set --code N --name X.Y.Z --published-max M`。修复/小改/内部重构升 PATCH，完整新能力升 MINOR 并清 PATCH；稳定验收后进1.0，之后不兼容升 MAJOR，0.x 不兼容升 MINOR 并说明迁移影响。versionCode 为已发行最高值加1，且高于目标安装；一个 Release 按最大影响定版本。纯文档/测试/开发工具/中间检查点不升版本，已分发版本不覆盖重用。
+- 收尾审查最终差异，按范围提交并合入 main，推送 GitHub 后确认同一提交远端 CI；清理已合并开发分支，保留工作树数据。失败保留成果与日志，修复复验；外部阻塞如实说明。
+- Debug/Release APK 位于 `app/build/outputs/apk/debug/app-debug.apk` / `app/build/outputs/apk/release/app-release.apk`。Release 优先读取 gitignored signing.properties，缺失回退本机 debug keystore；私钥和口令不入库。当前证书 SHA-256 为 `5a901cad57f5590483f362e4752ca8f4a56197340b71d2632ded0195bf8a24b4`；v0.2 密钥已丢失，新包不能覆盖它，同包名/同签名/versionCode递增才可覆盖升级，backendQa 不作正式发行。
+- 按需发包：最终源码、版本、标签和验证证据对应同一提交；运行 Release 构建、lint、签名/包信息/对齐与摘要校验，使用 `tools/release/generate_release_metadata.py`、`verify_release.py`、`selftest.py` 及 `check_workflows.py`。上传 APK、update.json、SHA256SUMS.txt 至 GitHub Release，核对附件及 Latest。
+- `.github/workflows/build.yml` 在 push/PR 运行统一门及发布工具自检；release.yml 手动触发、默认 publish=false，签名 Secrets 缺失即失败。本地验证不等于已上传或发布。
+
+## 已有验收摘要与剩余缺口
+
+以下均为历史验证范围，不代表后续代码自动通过；当次交付以对应提交的新证据为准，原始机器证据仍在构建目录及既有归档中。
+
+- **分层（2026-10-21，0.3.9/12）**：提交 `911369c82b657f0c224e6070ccd3005a8ac36c50` 的分层、局部读写、事务、累计刷新、唯一具名目录、窄依赖、生命周期与完整自动门通过；历史1036项JVM含缓存结果。旧全状态入口、双通知、数字业务分派和迁移转发已删除。
+- **设备补验（0.3.10/13）**：后端31/UI83项通过，修复SQL实际列更新、白名单镜像和测试装配；同证书0.3.8/11→0.3.10/13覆盖升级、冷启动双宿主组件及重启后组件/Job恢复有实测。重启后相关电话权限被拒，不能推定通话监听恢复；约30分钟后台观察有用户短暂操作，仅算持续及恢复验证，不算无干扰待机。
+- **真实AI历史样本（2026-10-19，`346e896`）**：qwen3.8-flash下闲聊零业务读取、一次新增10条合成档案及LIGHT→DARK通过，持久化读回保留；不代表当前版本/全部模型兼容。原运行缺逐步receipt ID、Schema/history数量及完整时序，不能补造，也未为补诊断重新付费执行。后续主题目录共享与空白聊天项修复通过自动门，未新增真机模型验证。
+- **锁屏与录音（2026-10-23，候选0.4.2/16）**：完整门JVM1051项通过；隔离真机模拟响铃锁屏卡片1项、固定音频解码→模拟AI→SQLite全文重开读回1项、后端31项通过。未启动麦克风、未用真实网络AI、未验证JobScheduler自动唤起，普通UI整套当轮未跑；主安装未改。
+- **可配置号码规则（2026-10-23，0.5.0/17）**：实现提交 `aa5b893` 后，规则/存储/消费者/AI/页面及冷启动加载屏障已接入，最终本地统一门通过；该功能设备验收未执行。
+- **仍未完整验收**：真实SIM来电及拨号器竞争、双方录音及听筒/蓝牙效果、锁屏真实通话到真实AI全链路、权限授权条件下重启监听、无干扰长待机、真实系统交互逐项确认、完整网络下载/摘要/安装更新链路。公开APK下载曾超时并取消；已有同证书覆盖升级证据不等于应用内更新通过。首次开机解锁前不支持存储访问。

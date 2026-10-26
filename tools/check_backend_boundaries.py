@@ -124,16 +124,21 @@ def check():
                 errors.append(f"{path.relative_to(ROOT)}: forbidden business dependency {pattern}")
         if has_presentation_literal(path, text):
             errors.append(f"{path.relative_to(ROOT)}: localized presentation text in JVM backend")
-    # The v1 snapshot is historical. Current source is reviewed against the T03 inventory.
+    # Keep the reviewed machine baseline independent of prose documentation.
     contract_root = ROOT / "contracts/src/main/kotlin/com/greatwall/callring/contracts"
     files = {p.relative_to(contract_root).as_posix(): p.read_text(encoding="utf-8") for p in contract_root.rglob("*.kt")}
-    current = ROOT / "docs/contracts/current-api.md"
-    document = current.read_text(encoding="utf-8") if current.exists() else ""
-    inventory = re.search(r"<!-- contract-inventory -->\s*```json\n(.*?)\n```", document, re.S)
-    if not inventory or not compatible_inventory(files, inventory.group(1)):
-        errors.append("Current contracts differ from reviewed docs/contracts/current-api.md inventory")
+    current = ROOT / "tools/baselines/current-contracts.json"
+    try:
+        baseline = json.loads(current.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        baseline = {}
+    if not isinstance(baseline, dict):
+        baseline = {}
+    inventory = json.dumps(baseline.get("contracts", {}), ensure_ascii=False, indent=2)
+    if not compatible_inventory(files, inventory):
+        errors.append("Current contracts differ from reviewed tools/baselines/current-contracts.json inventory")
     for approved in ("RecordingApi.getSettings/saveSettings/testConnection", "RecordingApi.setSystemFolder", "AiConnectionView.copyToAnalysisProfile", "CallringUiApi abstract capabilities", "ConversationBudget.validate"):
-        if approved not in document: errors.append("Missing approved internal signature change: " + approved)
+        if approved not in baseline.get("approvedInternalSignatureChanges", []): errors.append("Missing approved internal signature change: " + approved)
     golden = ROOT / "docs/contracts/ai-operation-compatibility.json"
     if not golden.exists() or hashlib.sha256(golden.read_text(encoding="utf-8").encode("utf-8")).hexdigest() != "7c069c03765a0a09a27bb9ac4b67c9d13a05e25f0540688ab52f2eaeb6a3536d":
         errors.append("AI operation compatibility golden changed; preserve the reviewed external schema")
