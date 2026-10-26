@@ -7,7 +7,7 @@
 - 根目录：`D:/Users/GreatWall/projects/callring`；发现入口：`D:/Users/GreatWall/workspace/projects/projects.json`。
 - Android 包名：`com.greatwall.callring`；应用入口及资源在 `app/`。
 - AGENTS.md 为规则入口；本文件集中维护全部项目规则、契约约定、验证与交付要求；README.md 仅说明功能、使用和用户可见限制。
-- 有用的设计结论与验收摘要就地更新本文件；规则与规范不再拆分至其他文档，验收摘要不依赖外置说明。机器基线、测试、原始日志和产物保留各自用途，历史设计与过程通过 Git 追溯。
+- 有用的设计结论与验收摘要就地更新本文件，不引用其他文档作为当前规则入口。原有文档保留作历史参考，不因清理引用而删除。机器基线、测试、原始日志和产物保留各自用途。
 
 ## 模块与职责
 
