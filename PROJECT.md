@@ -83,10 +83,19 @@ python tools/verify_ui.py --device ADB_SERIAL
 
 - 根 `version.properties` 是唯一版本来源；versionName 为 MAJOR.MINOR.PATCH，标签为 vMAJOR.MINOR.PATCH。根 Gradle 注入 app，发布工具读取同一文件；不在说明中维护另一份当前版本号。
 - 版本修改使用 `python tools/release/version_tool.py set --code N --name X.Y.Z --published-max M`。修复/小改/内部重构升 PATCH，完整新能力升 MINOR 并清 PATCH；稳定验收后进1.0，之后不兼容升 MAJOR，0.x 不兼容升 MINOR 并说明迁移影响。versionCode 为已发行最高值加1，且高于目标安装；一个 Release 按最大影响定版本。纯文档/测试/开发工具/中间检查点不升版本，已分发版本不覆盖重用。
-- 收尾审查最终差异，按范围提交并合入 main，推送 GitHub 后确认同一提交远端 CI；清理已合并开发分支，保留工作树数据。失败保留成果与日志，修复复验；外部阻塞如实说明。
 - Debug/Release APK 位于 `app/build/outputs/apk/debug/app-debug.apk` / `app/build/outputs/apk/release/app-release.apk`。Release 优先读取 gitignored signing.properties，缺失回退本机 debug keystore；私钥和口令不入库。当前证书 SHA-256 为 `5a901cad57f5590483f362e4752ca8f4a56197340b71d2632ded0195bf8a24b4`；v0.2 密钥已丢失，新包不能覆盖它，同包名/同签名/versionCode递增才可覆盖升级，backendQa 不作正式发行。
-- 按需发包：最终源码、版本、标签和验证证据对应同一提交；运行 Release 构建、lint、签名/包信息/对齐与摘要校验，使用 `tools/release/generate_release_metadata.py`、`verify_release.py`、`selftest.py` 及 `check_workflows.py`。上传 APK、update.json、SHA256SUMS.txt 至 GitHub Release，核对附件及 Latest。
 - `.github/workflows/build.yml` 在 push/PR 运行统一门及发布工具自检；release.yml 手动触发、默认 publish=false，签名 Secrets 缺失即失败。本地验证不等于已上传或发布。
+
+### AI 收尾流程（按序执行）
+
+1. **定范围**：检查 `git status`，只处理本次文件，保留用户改动，同步文档并审查差异。默认提交、合入 main、推送 GitHub；用户要求打包/发版时再发布 Release。复用已有 GitHub CLI 与登录，检查 `gh auth status`。
+2. **定版本并提交**：需发版时先查询已发布及已分发版本，按上述规则更新 `version.properties`，准备发布说明；按本次文件提交，记录源码 SHA。纯文档不升版本、不发 Release。
+3. **验证最终源码**：代码运行 `python tools/verify_backend.py`，按风险补设备验证，记录未测项；纯文档只核对内容、链接及 `git diff --check`。同一 SHA 已有完整有效证据时复用，不重复构建；源码变更后重新验证。
+4. **准备发行附件（仅发版）**：使用既有证书构建 Release；运行 `tools/release/check_workflows.py`、`tools/release/selftest.py`。用 `tools/release/generate_release_metadata.py --apk APK --out-dir STAGE` 生成独立目录内的 `callring-VERSION.apk`、`update.json`、`SHA256SUMS.txt`；用 `tools/release/verify_release.py --release-dir STAGE --tag vVERSION --published-max M --expected-cert-sha256 CERT --check-alignment` 校验版本、包名、签名、对齐、大小及摘要。VERSION 为本次版本，M 为已发行最高 versionCode，STAGE 为独立产物目录，CERT 为上述证书；APK 必须来自已验证 SHA。
+5. **合并并推送**：获取远端 main，合入 main 并核对最终 SHA；快进且 SHA 未变时复用证据，SHA 改变则回到步骤3及适用的步骤4。推送 `origin/main`，确认该 SHA 的远端 CI 成功，不用其他提交的绿灯代替；清理已合并开发分支，保留工作树数据。
+6. **发布并读回（仅发版）**：将 `vVERSION` 标签绑定已验证 SHA 并推送；创建 draft Release 并记录 ID，上传三个附件，核对远端名称、大小及 SHA-256 与本地一致，再发布并设为 Latest。读回 `/releases/latest`、标签及附件确认成功，交付版本、提交、CI、Release 和 APK 链接。签名 Secrets 齐全可用 release.yml；否则走本地校验后上传，不绕过校验或更换证书。
+
+任一步失败即停止后续发布，保留产物和日志；网络结果未知时先读回再重试，不重复创建 Release、不覆盖已分发版本。外部阻塞如实说明，不把“已构建/已上传/草稿”报告成“已发布”。
 
 ## 已有验收摘要与剩余缺口
 
