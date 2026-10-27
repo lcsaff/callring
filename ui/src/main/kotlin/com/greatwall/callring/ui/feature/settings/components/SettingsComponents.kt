@@ -30,7 +30,7 @@ internal fun <T> SettingsLayout(
         Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             if (!state.loaded && state.data == null && !state.loading && state.error == null) LoadingContent()
             LoadFeedback(state, onRetry)
-            MutationFeedback(mutation)
+            MutationFeedback(mutation, showSuccess = false)
             state.data?.let { content(it) }
             Spacer(Modifier.height(8.dp))
         }
