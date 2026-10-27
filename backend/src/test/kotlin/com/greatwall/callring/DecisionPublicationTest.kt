@@ -96,7 +96,7 @@ class DecisionPublicationTest {
         try {
             val committing=executor.submit { coordinator.guard {
                 snapshots.set(old.rebuild(old.inputs.copy(numberRule=com.greatwall.callring.domain.calling.NumberRuleSnapshot(
-                    com.greatwall.callring.domain.calling.NumberRule("8",6),1))))
+                    listOf(com.greatwall.callring.domain.calling.NumberRule("8",6)),1))))
                 published.countDown()
                 check(release.await(5,TimeUnit.SECONDS))
             } }

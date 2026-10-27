@@ -482,7 +482,7 @@ class ToolBusinessIntegrationTest {
         OperationId.SETTINGS_DELETE_DATE_OVERRIDE -> """{"date":"2026-10-19"}"""
         OperationId.SETTINGS_SAVE_LEAVE -> """{"id":1,"note":"changed note"}"""
         OperationId.SETTINGS_DELETE_LEAVE -> """{"id":1}"""
-        OperationId.SETTINGS_SAVE_NUMBER_RULE -> """{"base":{"prefix":"3","length":5,"revision":0},"prefix":"8","length":6}"""
+        OperationId.SETTINGS_SAVE_NUMBER_RULE -> """{"base":{"rules":[{"prefix":"3","length":5}],"revision":0},"rules":[{"prefix":"8","length":6}]}"""
         OperationId.SETTINGS_GET_NUMBER_RULE -> """{}"""
         OperationId.SETTINGS_SAVE_SCORE_SETTINGS -> """{"repeatMinutes":15}"""
         OperationId.SETTINGS_SAVE_APPEARANCE -> """{"colorMode":"DARK"}"""

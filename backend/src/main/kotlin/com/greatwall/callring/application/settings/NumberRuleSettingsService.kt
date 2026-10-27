@@ -27,7 +27,7 @@ internal class NumberRuleSettingsService(
         synchronized(coordinator.fence) {
             context.ensureActive()
             requireOperationActive(operationActive)
-            val value = transactions.readNumberRule { it.numberRule() }
+            val value = transactions.readNumberRule { it.numberRule().detached() }
             val prepared = value.toSnapshot()
             context.ensureActive()
             requireOperationActive(operationActive)
@@ -53,24 +53,29 @@ internal class NumberRuleSettingsService(
     }
     suspend fun save(value: SaveNumberRule): ApiResult<NumberRuleSettings> {
         currentCoroutineContext().ensureActive()
-        fun validate(prefix: String, length: Int, revision: Long, path: String) {
-            if (prefix.any { it !in '0'..'9' }) settingFailure(ErrorCode.VALIDATION,"number_rule.prefix",path+"prefix")
-            if (length !in 1..30) settingFailure(ErrorCode.VALIDATION,"number_rule.length",path+"length")
-            if (prefix.length > length) settingFailure(ErrorCode.VALIDATION,"number_rule.prefix_length",path+"prefix")
-            if (revision < 0) settingFailure(ErrorCode.VALIDATION,"number_rule.revision",path+"revision")
+        val base = value.base.detached()
+        val desired = freeze(value.rules)
+        fun validate(rules: List<NumberRuleEntry>, path: String) {
+            rules.forEachIndexed { index, rule ->
+                val row = "${path}rules[$index]."
+                if (rule.prefix.any { it !in '0'..'9' }) settingFailure(ErrorCode.VALIDATION,"number_rule.prefix",row+"prefix")
+                if (rule.length !in 1..30) settingFailure(ErrorCode.VALIDATION,"number_rule.length",row+"length")
+                if (rule.prefix.length > rule.length) settingFailure(ErrorCode.VALIDATION,"number_rule.prefix_length",row+"prefix")
+            }
         }
         return runner.write {
-            validate(value.base.prefix,value.base.length,value.base.revision,"base.")
-            validate(value.prefix,value.length,0,"")
+            if (base.revision < 0) settingFailure(ErrorCode.VALIDATION,"number_rule.revision","base.revision")
+            validate(base.rules,"base.")
+            validate(desired,"")
             var prepared: NumberRuleSnapshot? = null
             var changed = false
             synchronized(coordinator.fence) {
                 val result = committer.commit(command, {
                     transactions.writeNumberRule { writer ->
-                        val current = writer.numberRule()
-                        if (current != value.base) settingFailure(ErrorCode.CONFLICT,"number_rule.changed","numberRule")
-                        changed = current.prefix != value.prefix || current.length != value.length
-                        val result = if (changed) NumberRuleSettings(value.prefix,value.length,Math.addExact(current.revision,1)) else current
+                        val current = writer.numberRule().detached()
+                        if (current != base) settingFailure(ErrorCode.CONFLICT,"number_rule.changed","numberRule")
+                        changed = current.rules != desired
+                        val result = if (changed) NumberRuleSettings(desired,Math.addExact(current.revision,1)) else current
                         prepared = result.toSnapshot()
                         if (changed) writer.saveNumberRule(result)
                         MutationDelta(result,if (changed) setOf("numberRule") else emptySet(),
@@ -83,4 +88,7 @@ internal class NumberRuleSettingsService(
             }
         }
     }
+    private fun NumberRuleSettings.detached(): NumberRuleSettings = copy(rules = freeze(rules))
+    private fun freeze(rules: List<NumberRuleEntry>): List<NumberRuleEntry> =
+        java.util.Collections.unmodifiableList(ArrayList(rules))
 }

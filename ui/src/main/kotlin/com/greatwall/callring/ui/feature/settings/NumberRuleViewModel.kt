@@ -9,18 +9,17 @@ import com.greatwall.callring.ui.state.*
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.*
 
-/** Text drafts are saved separately from their exact loaded revision; refresh never rebases an edit. */
-data class NumberRuleDraft(val prefix: String, val length: String)
+/** IDs belong to the editable rows, independently of their current positions. */
+data class NumberRuleDraft(val id: Long, val prefix: String, val length: String)
 
 class NumberRuleViewModel(
     private val api: CallringUiApi,
     private val savedState: SavedStateHandle,
     testScope: CoroutineScope? = null,
 ) : UiViewModel(testScope) {
-    private var base: NumberRuleSettings? = savedState.get<Long>("rule.base.revision")?.let {
-        NumberRuleSettings(savedState["rule.base.prefix"] ?: "", savedState["rule.base.length"] ?: 5, it)
-    }
-    private val draftMutable = MutableStateFlow(savedState.get<String>("rule.prefix")?.let { NumberRuleDraft(it, savedState["rule.length"] ?: "") })
+    private var nextId = savedState.get<Long>("rule.nextId") ?: 1L
+    private var base: NumberRuleSettings? = restoreBase()
+    private val draftMutable = MutableStateFlow(restoreDraft())
     val draft = draftMutable.asStateFlow()
     private val errorsMutable = MutableStateFlow(emptyMap<String, String>())
     val errors = errorsMutable.asStateFlow()
@@ -36,10 +35,14 @@ class NumberRuleViewModel(
     private val loader = ObservedQuery(scope, api.changes, ChangeSubscription(setOf(DataDomain.NUMBER_RULES)),
         load = api.settings::getNumberRule, onSuccess = { latest ->
             val old = base
-            val dirty = draft.value != null && draft.value != old?.asDraft()
+            val dirty = draft.value != null && !draft.value!!.represents(old)
             if (discardOnLoad || !dirty) {
-                base = latest; draftMutable.value = latest.asDraft(); conflictMutable.value = false
-                discardOnLoad = false; errorsMutable.value = emptyMap(); persist()
+                base = latest
+                draftMutable.value = latest.asDraft(draft.value)
+                conflictMutable.value = false
+                discardOnLoad = false
+                errorsMutable.value = validate(draft.value!!)
+                persist()
             } else conflictMutable.value = latest != old
             updateTrial()
         })
@@ -47,13 +50,19 @@ class NumberRuleViewModel(
     init { loader.start(scope) }
     fun refresh() { loader.request(force = true) }
     fun reload() { if (!mutation.value.busy) { discardOnLoad = true; loader.request(force = true) } }
-    fun editPrefix(value: String) = edit { it.copy(prefix = value) }
-    fun editLength(value: String) = edit { it.copy(length = value) }
-    private fun edit(change: (NumberRuleDraft) -> NumberRuleDraft) {
+    fun editPrefix(id: Long, value: String) = edit { rows -> rows.map { if (it.id == id) it.copy(prefix = value) else it } }
+    fun editLength(id: Long, value: String) = edit { rows -> rows.map { if (it.id == id) it.copy(length = value) else it } }
+    fun addRule() = edit { it + NumberRuleDraft(nextId++, "", "") }
+    fun removeRule(id: Long) = edit { rows -> rows.filterNot { it.id == id } }
+    private fun edit(change: (List<NumberRuleDraft>) -> List<NumberRuleDraft>) {
         if (mutation.value.busy) return
         draft.value?.let { draftMutable.value = change(it); errorsMutable.value = validate(draft.value!!); persist() }
     }
-    fun editTrial(value: String) { trialMutable.value = value; savedState["rule.trial"] = value; if (state.value.loaded) updateTrial() }
+    fun editTrial(value: String) {
+        trialMutable.value = value
+        savedState["rule.trial"] = value
+        if (state.value.loaded && state.value.error == null) updateTrial()
+    }
     private fun updateTrial() { trialCheckMutable.value = api.checkNumber(trial.value) }
     fun save() {
         val snapshot = base ?: return
@@ -61,19 +70,61 @@ class NumberRuleViewModel(
         if (!state.value.loaded || state.value.error != null || mutation.value.busy) return
         errorsMutable.value = validate(value)
         if (errors.value.isNotEmpty()) return
-        writer.run({ api.settings.saveNumberRule(SaveNumberRule(snapshot, value.prefix, value.length.toInt())) }, "规则已保存") { saved ->
-            base = saved; draftMutable.value = saved.asDraft(); conflictMutable.value = false; persist(); updateTrial()
+        val rules = value.map { NumberRuleEntry(it.prefix, it.length.toInt()) }
+        writer.run({ api.settings.saveNumberRule(SaveNumberRule(snapshot, rules)) }, "规则已保存") { saved ->
+            base = saved
+            draftMutable.value = saved.asDraft(value)
+            conflictMutable.value = false
+            errorsMutable.value = emptyMap()
+            persist()
+            updateTrial()
         }
     }
-    private fun validate(value: NumberRuleDraft): Map<String, String> = buildMap {
-        val length = value.length.takeIf { it.isNotEmpty() && it.all { c -> c in '0'..'9' } }?.toIntOrNull()
-        if (length == null || length !in 1..30) put("length", "号码长度须为 1–30 的整数")
-        if (value.prefix.any { it !in '0'..'9' }) put("prefix", "前缀只能包含数字 0–9")
-        else if (length != null && value.prefix.length > length) put("prefix", "前缀不能长于号码长度")
+    private fun validate(value: List<NumberRuleDraft>): Map<String, String> = buildMap {
+        value.forEachIndexed { index, row ->
+            val length = row.length.takeIf { it.isNotEmpty() && it.all { c -> c in '0'..'9' } }?.toIntOrNull()
+            if (length == null || length !in 1..30) put("rules[$index].length", "号码长度须为 1–30 的整数")
+            if (row.prefix.any { it !in '0'..'9' }) put("rules[$index].prefix", "前缀只能包含数字 0–9")
+            else if (length != null && row.prefix.length > length) put("rules[$index].prefix", "前缀不能长于号码长度")
+        }
     }
-    private fun NumberRuleSettings.asDraft() = NumberRuleDraft(prefix, length.toString())
+    private fun List<NumberRuleDraft>.represents(settings: NumberRuleSettings?) = settings != null &&
+        map { it.prefix to it.length } == settings.rules.map { it.prefix to it.length.toString() }
+    private fun NumberRuleSettings.asDraft(previous: List<NumberRuleDraft>? = null): List<NumberRuleDraft> =
+        if (previous?.represents(this) == true) previous else rules.map { NumberRuleDraft(nextId++, it.prefix, it.length.toString()) }
+    private fun restoreBase(): NumberRuleSettings? {
+        val revision = savedState.get<Long>("rule.base.revision") ?: return null
+        val prefixes = savedState.get<ArrayList<String>>("rule.base.prefixes")
+        val lengths = savedState.get<ArrayList<Int>>("rule.base.lengths")
+        if (prefixes != null && lengths != null && prefixes.size == lengths.size) {
+            return NumberRuleSettings(prefixes.indices.map { NumberRuleEntry(prefixes[it], lengths[it]) }, revision)
+        }
+        val prefix = savedState.get<String>("rule.base.prefix") ?: return null
+        val length = savedState.get<Int>("rule.base.length") ?: return null
+        return NumberRuleSettings(listOf(NumberRuleEntry(prefix, length)), revision)
+    }
+    private fun restoreDraft(): List<NumberRuleDraft>? {
+        val prefixes = savedState.get<ArrayList<String>>("rule.prefixes")
+        val lengths = savedState.get<ArrayList<String>>("rule.lengths")
+        val ids = savedState.get<ArrayList<Long>>("rule.ids")
+        if (prefixes != null && lengths != null && ids != null && prefixes.size == lengths.size && prefixes.size == ids.size) {
+            nextId = maxOf(nextId, (ids.maxOrNull() ?: 0L) + 1)
+            return prefixes.indices.map { NumberRuleDraft(ids[it], prefixes[it], lengths[it]) }
+        }
+        return savedState.get<String>("rule.prefix")?.let { listOf(NumberRuleDraft(nextId++, it, savedState["rule.length"] ?: "")) }
+    }
     private fun persist() {
-        savedState["rule.prefix"] = draft.value?.prefix; savedState["rule.length"] = draft.value?.length
-        base?.let { savedState["rule.base.prefix"] = it.prefix; savedState["rule.base.length"] = it.length; savedState["rule.base.revision"] = it.revision }
+        draft.value?.let { rows ->
+            savedState["rule.prefixes"] = ArrayList(rows.map { it.prefix })
+            savedState["rule.lengths"] = ArrayList(rows.map { it.length })
+            savedState["rule.ids"] = ArrayList(rows.map { it.id })
+        }
+        savedState["rule.nextId"] = nextId
+        base?.let {
+            savedState["rule.base.prefixes"] = ArrayList(it.rules.map { row -> row.prefix })
+            savedState["rule.base.lengths"] = ArrayList(it.rules.map { row -> row.length })
+            savedState["rule.base.revision"] = it.revision
+        }
+        listOf("rule.prefix", "rule.length", "rule.base.prefix", "rule.base.length").forEach { savedState.remove<Any>(it) }
     }
 }

@@ -38,7 +38,7 @@ class CallringBackendTest {
     @Test fun configuredRuleIsSharedByCommandBindings() = runBlocking {
         val base = api.settings.getNumberRule().value()
         val bound = api.commandApi(com.greatwall.callring.contracts.command.CommandContext("rule",api.coordinator.capture(),0) { true })
-        bound.settings.saveNumberRule(SaveNumberRule(base,"8",6)).value()
+        bound.settings.saveNumberRule(SaveNumberRule(base, listOf(com.greatwall.callring.contracts.settings.NumberRuleEntry("8", 6)))).value()
         assertTrue(api.checkNumber("812345").matchesRule)
         assertTrue(bound.checkNumber("812345").matchesRule)
         assertFalse(api.checkNumber("31234").matchesRule)

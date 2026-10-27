@@ -16,6 +16,7 @@ import com.greatwall.callring.contracts.common.*
 import com.greatwall.callring.contracts.report.*
 import com.greatwall.callring.contracts.recording.*
 import com.greatwall.callring.contracts.settings.SaveNumberRule
+import com.greatwall.callring.contracts.settings.NumberRuleEntry
 import com.greatwall.callring.ui.testing.UiFakeApi
 import com.greatwall.callring.ui.testing.FixtureRecordingApi
 import com.greatwall.callring.ui.feature.callers.CallerListViewModel
@@ -151,7 +152,7 @@ class RefreshIsolationTest {
         runCurrent()
         assertEquals(listOf(1, 1, 1), listOf(reportLoads, recordingLoads, personSearchLoads))
         val previousReport = report.state.value.data; val previousRecordings = recordings.state.value.data
-        api.saveNumberRule(SaveNumberRule(api.numberRule, "8", 6)); runCurrent()
+        api.saveNumberRule(SaveNumberRule(api.numberRule, listOf(NumberRuleEntry("8", 6)))); runCurrent()
         assertEquals(listOf(1, 1, 1), listOf(reportLoads, recordingLoads, personSearchLoads))
         assertEquals(previousReport, report.state.value.data); assertEquals(previousRecordings, recordings.state.value.data)
         assertEquals("测试", people.query.value.text)

@@ -14,15 +14,15 @@ import org.junit.Test
 
 class CoreSnapshotProjectionTest {
     @Test fun numberRuleSettingsHaveExactSafeProjection() {
-        val saved = com.greatwall.callring.contracts.settings.NumberRuleSettings("8", 6, 17)
-        assertEquals(aiObject("prefix" to aiString("8"), "length" to aiNumber(6), "revision" to aiNumber(17)),
+        val saved = com.greatwall.callring.contracts.settings.NumberRuleSettings(listOf(com.greatwall.callring.contracts.settings.NumberRuleEntry("8",6)),17)
+        assertEquals(aiObject("rules" to AiJson.Arr(listOf(aiObject("prefix" to aiString("8"), "length" to aiNumber(6)))), "revision" to aiNumber(17)),
             com.greatwall.callring.application.conversation.query.safeValue(saved))
     }
 
     @Test fun fullConfigurationExposesCapturedRuleRevision() = runBlocking {
         val fixture = ConversationFixtures()
-        fixture.core.numberRuleSettings = com.greatwall.callring.contracts.settings.NumberRuleSettings("8", 6, 1)
-        assertEquals(aiObject("prefix" to aiString("8"), "length" to aiNumber(6), "revision" to aiNumber(1)),
+        fixture.core.numberRuleSettings = com.greatwall.callring.contracts.settings.NumberRuleSettings(listOf(com.greatwall.callring.contracts.settings.NumberRuleEntry("8",6)),1)
+        assertEquals(aiObject("rules" to AiJson.Arr(listOf(aiObject("prefix" to aiString("8"), "length" to aiNumber(6)))), "revision" to aiNumber(1)),
             (snapshot(fixture).getValue("D10") as AiJson.Obj)["numberRule"])
     }
 

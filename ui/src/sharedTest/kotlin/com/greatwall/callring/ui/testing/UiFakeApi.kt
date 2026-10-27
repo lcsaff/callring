@@ -17,7 +17,7 @@ import java.time.LocalDate
 
 /** Deterministic screen fixtures. No business rules or production wiring live in this source set. */
 open class UiFakeApi(private val overlayEnabled: Boolean = false) : CallringUiApi, HomeApi, CallersApi, ReportsApi, SettingsApi, RingtoneApi, RuntimeApi, WidgetBindingsApi, ChangeFeed {
-    var numberRule = NumberRuleSettings("3", 5, 0)
+    var numberRule = NumberRuleSettings(listOf(com.greatwall.callring.contracts.settings.NumberRuleEntry("3", 5)), 0)
         private set
     var numberRuleWrites = 0
         private set
@@ -25,7 +25,7 @@ open class UiFakeApi(private val overlayEnabled: Boolean = false) : CallringUiAp
     override suspend fun saveNumberRule(command: SaveNumberRule): ApiResult<NumberRuleSettings> {
         if (command.base != numberRule) return ApiResult.Failure(ApiError(ErrorCode.CONFLICT, "规则已更新"))
         numberRuleWrites++
-        numberRule = NumberRuleSettings(command.prefix, command.length, numberRule.revision + 1)
+        numberRule = NumberRuleSettings(command.rules, numberRule.revision + 1)
         changed(DataDomain.NUMBER_RULES)
         return ApiResult.Success(numberRule)
     }

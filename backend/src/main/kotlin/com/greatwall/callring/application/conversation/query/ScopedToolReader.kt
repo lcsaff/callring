@@ -1,5 +1,6 @@
 package com.greatwall.callring.application.conversation.query
 
+import com.greatwall.callring.application.conversation.execution.numberRuleSettings
 import com.greatwall.callring.application.conversation.execution.exactInt
 import com.greatwall.callring.application.conversation.execution.json
 import com.greatwall.callring.application.conversation.execution.l
@@ -24,7 +25,7 @@ class ScopedToolReader(private val q:QueryService,private val numberMatcher:com.
         if(operation !in setOf(OperationId.ROOT_CHECK_NUMBER,OperationId.SETTINGS_GET_NUMBER_RULE))return SourceToolResult(read(operation,a))
         val observed=q.get(AiDomain.D10,"configuration").requiredValue()
         val rule=observed.value.obj("numberRule")
-        val settings=com.greatwall.callring.contracts.settings.NumberRuleSettings(rule.s("prefix"),rule.l("length").exactInt(),rule.l("revision"))
+        val settings=rule.numberRuleSettings()
         val value=if(operation==OperationId.ROOT_CHECK_NUMBER) safeValue(com.greatwall.callring.application.mapping.checkNumber(a.s("raw"),settings.toSnapshot(),numberMatcher)) else safeValue(settings)
         return SourceToolResult(value,AiJson.Arr(listOf(aiObject("value" to observed.value,"stamp" to observed.stamp.json()))))
     }

@@ -27,7 +27,7 @@ import com.greatwall.callring.ui.feature.update.AppUpdateViewModel
             val check by model.trialCheck.collectAsStateWithLifecycle()
             NumberRuleScreen(state, draft, mutation, errors, conflict, trial, check,
                 onBack, model::refresh, model::editPrefix, model::editLength, model::editTrial,
-                { model.editTrial(trial) }, model::save, model::reload)
+                { model.editTrial(trial) }, model::save, model::reload, model::addRule, model::removeRule)
         }
         SettingsPage.RECORDING -> RecordingSettingsRoute(api, onBack)
         SettingsPage.AI -> AiSettingsRoute(api, signal, onBack)

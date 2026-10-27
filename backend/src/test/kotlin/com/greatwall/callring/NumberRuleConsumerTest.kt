@@ -18,6 +18,8 @@ class NumberRuleConsumerTest {
         for (accept in listOf(false, true)) {
             val f = ConversationFixtures(NumberMatcher { n, _ -> accept && n.all { it in '0'..'9' } })
             f.backend.settings.setStatisticsEnabled(true).requiredValue()
+            val base = f.backend.settings.getNumberRule().requiredValue()
+            f.backend.settings.saveNumberRule(SaveNumberRule(base,listOf(NumberRuleEntry("3",5),NumberRuleEntry("08",6)))).requiredValue()
             for ((index, number) in listOf("31234", "812345").withIndex()) {
                 assertEquals(accept, f.backend.checkNumber(number).matchesRule)
                 assertEquals(accept, f.backend.callers.getOverview(OverviewQuery(number)).requiredValue().numberCheck.matchesRule)
@@ -39,7 +41,7 @@ class NumberRuleConsumerTest {
             val first = f.backend.refreshDecisionSnapshot().evaluate(number, f.now)
             assertEquals(originalMatched, first.matched)
             val base = f.backend.settings.getNumberRule().requiredValue()
-            f.backend.settings.saveNumberRule(SaveNumberRule(base,"8",6)).requiredValue()
+            f.backend.settings.saveNumberRule(SaveNumberRule(base, listOf(com.greatwall.callring.contracts.settings.NumberRuleEntry("8", 6)))).requiredValue()
             val latest = f.backend.decisionSnapshot()
             assertEquals(1L, latest.inputs.numberRule.revision)
             assertEquals(!originalMatched, latest.evaluate(number,f.now).matched)
@@ -72,7 +74,7 @@ class NumberRuleConsumerTest {
         f.backend.refreshDecisionSnapshot()
         val base = f.backend.settings.getNumberRule().requiredValue()
         val bound = f.backend.commandApi(CommandContext("bound-rule",f.coordinator.capture(),0) { true })
-        bound.settings.saveNumberRule(SaveNumberRule(base,"8",6)).requiredValue()
+        bound.settings.saveNumberRule(SaveNumberRule(base, listOf(com.greatwall.callring.contracts.settings.NumberRuleEntry("8", 6)))).requiredValue()
         f.backend.settings.setOverlayEnabled(true).requiredValue()
         assertFalse(f.backend.decisionSnapshot().evaluate("812345",f.now).matched)
         assertFalse(f.backend.refreshDecisionSnapshot().evaluate("812345",f.now).matched)
@@ -106,7 +108,7 @@ class NumberRuleConsumerTest {
             val importing = executor.submit<Set<String>> { f.backend.importSystemCalls(batch("old")) }
             assertTrue(entered.await(3,TimeUnit.SECONDS))
             val saving = executor.submit { saveStarted.countDown(); runBlocking {
-                f.backend.settings.saveNumberRule(SaveNumberRule(base,"8",6)).requiredValue()
+                f.backend.settings.saveNumberRule(SaveNumberRule(base, listOf(com.greatwall.callring.contracts.settings.NumberRuleEntry("8", 6)))).requiredValue()
             } }
             assertTrue(saveStarted.await(3,TimeUnit.SECONDS))
             try { saving.get(150,TimeUnit.MILLISECONDS); fail("save bypassed import fence") }
@@ -123,4 +125,25 @@ class NumberRuleConsumerTest {
         }
     }
 
+    @Test fun overlappingRulesExecuteOnceAndEmptyRulesDisableNewMatches() = runBlocking {
+        val f = ConversationFixtures()
+        f.backend.settings.setStatisticsEnabled(true).requiredValue()
+        val base = f.backend.settings.getNumberRule().requiredValue()
+        val saved = f.backend.settings.saveNumberRule(SaveNumberRule(base,listOf(NumberRuleEntry("3",5),NumberRuleEntry("31",5),NumberRuleEntry("08",6)))).requiredValue()
+        assertTrue(f.backend.checkNumber("081234").matchesRule)
+        assertTrue(f.backend.callers.getOverview(OverviewQuery("081234")).requiredValue().numberCheck.matchesRule)
+        val fact = f.backend.refreshDecisionSnapshot().evaluate("31234",f.now).numberMatch
+        assertTrue(f.backend.recordIncoming("31234",f.now,CallDecision.NORMAL_RINGING,numberMatch=fact)>0)
+        assertEquals(1,f.core.calls.size)
+        assertEquals(setOf("081234"),f.backend.importSystemCalls(listOf(SystemCallRecord("multi","081234",f.now+100,3,com.greatwall.callring.domain.model.CallResult.ANSWERED))))
+        assertEquals(2,f.core.calls.size)
+        f.backend.settings.saveNumberRule(SaveNumberRule(saved,emptyList())).requiredValue()
+        assertFalse(f.backend.checkNumber("31234").matchesRule)
+        assertFalse(f.backend.callers.getOverview(OverviewQuery("081234")).requiredValue().numberCheck.matchesRule)
+        assertFalse(f.backend.decisionSnapshot().evaluate("31234",f.now+200).matched)
+        assertTrue(f.backend.decisionSnapshot().evaluate("31234",f.now,fact).matched)
+        assertEquals(-1L,f.backend.recordIncoming("31234",f.now+200,CallDecision.NORMAL_RINGING))
+        assertEquals(emptySet<String>(),f.backend.importSystemCalls(listOf(SystemCallRecord("empty","081234",f.now+300,3,com.greatwall.callring.domain.model.CallResult.ANSWERED))))
+        assertEquals(2,f.core.calls.size)
+    }
 }

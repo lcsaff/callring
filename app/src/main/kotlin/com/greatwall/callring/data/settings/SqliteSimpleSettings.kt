@@ -31,7 +31,7 @@ internal class SqliteSimpleSettings(private val sql: SqlAccess, private val chec
     }
     override fun numberRule(): com.greatwall.callring.contracts.settings.NumberRuleSettings {
         val values = settings("number_rule")
-        return if (!values.containsKey("number_rule")) com.greatwall.callring.contracts.settings.NumberRuleSettings("3",5,0)
+        return if (!values.containsKey("number_rule")) com.greatwall.callring.contracts.settings.NumberRuleSettings(listOf(com.greatwall.callring.contracts.settings.NumberRuleEntry("3",5)),0)
         else com.greatwall.callring.data.codec.NumberRuleCodec.decode(values["number_rule"])
     }
     override fun saveNumberRule(value: com.greatwall.callring.contracts.settings.NumberRuleSettings) {

@@ -39,11 +39,11 @@ class AssemblyLifetimeTest {
             assertEquals(setOf("normalized","validProfileNumber","matchesRule"),root.value.let{it as AiJson.Obj}.fields.keys)
             assertTrue(root.verificationEvidence.encode().contains("\"domain\":\"D10\""))
             val marker=graph.coordinator.marker();val measurements=probe.snapshot()
-            val cancelled=executor.execute(ConversationToolCall("cancel","settings_saveNumberRule",aiObject("base" to aiObject("prefix" to aiString("3"),"length" to aiNumber(5),"revision" to aiNumber(0)),"prefix" to aiString("8"),"length" to aiNumber(6))),context.copy(command=CommandContext("cancel",graph.coordinator.capture(),1){false}))
+            val cancelled=executor.execute(ConversationToolCall("cancel","settings_saveNumberRule",aiObject("base" to aiObject("rules" to AiJson.Arr(listOf(aiObject("prefix" to aiString("3"),"length" to aiNumber(5)))),"revision" to aiNumber(0)),"rules" to AiJson.Arr(listOf(aiObject("prefix" to aiString("8"),"length" to aiNumber(6)))))),context.copy(command=CommandContext("cancel",graph.coordinator.capture(),1){false}))
             assertEquals(ToolStatus.FAILED,cancelled.status);assertEquals("ai.cancelled",cancelled.error?.message)
             assertEquals("cancelled executor must not touch SQL",measurements,probe.snapshot())
             assertEquals(marker,graph.coordinator.marker())
-            assertEquals(NumberRuleSettings("3",5,0),graph.api.settings.getNumberRule().requiredValue())
+            assertEquals(NumberRuleSettings(listOf(com.greatwall.callring.contracts.settings.NumberRuleEntry("3", 5)), 0),graph.api.settings.getNumberRule().requiredValue())
         }
     }
 
@@ -59,7 +59,7 @@ class AssemblyLifetimeTest {
         assertTrue(file.exists())
         assertTrue(api.checkNumber("31234").matchesRule)
         val bound = api.commandApi(CommandContext("rule-lifetime",graph.coordinator.capture(),0) { true })
-        assertEquals(NumberRuleSettings("8",6,1),bound.settings.saveNumberRule(SaveNumberRule(base,"8",6)).requiredValue())
+        assertEquals(NumberRuleSettings(listOf(com.greatwall.callring.contracts.settings.NumberRuleEntry("8", 6)), 1),bound.settings.saveNumberRule(SaveNumberRule(base, listOf(com.greatwall.callring.contracts.settings.NumberRuleEntry("8", 6)))).requiredValue())
         assertTrue(api.checkNumber("812345").matchesRule)
         assertFalse(api.checkNumber("31234").matchesRule)
         graph.close()

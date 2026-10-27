@@ -17,41 +17,41 @@ class NumberRuleViewModelTest {
         val api = UiFakeApi()
         val model = NumberRuleViewModel(api, SavedStateHandle(), backgroundScope)
         runCurrent()
-        model.editPrefix(""); model.editLength("6")
-        assertEquals(NumberRuleSettings("3", 5, 0), api.numberRule)
+        model.editPrefix(model.draft.value!!.first().id, ""); model.editLength(model.draft.value!!.first().id, "6")
+        assertEquals(NumberRuleSettings(listOf(com.greatwall.callring.contracts.settings.NumberRuleEntry("3", 5)), 0), api.numberRule)
         model.save(); runCurrent()
-        assertEquals(NumberRuleSettings("", 6, 1), api.numberRule)
-        assertEquals(NumberRuleDraft("", "6"), model.draft.value)
+        assertEquals(NumberRuleSettings(listOf(com.greatwall.callring.contracts.settings.NumberRuleEntry("", 6)), 1), api.numberRule)
+        assertEquals(("" to "6"), model.draft.value!!.single().let { it.prefix to it.length })
         assertFalse(model.conflict.value)
     }
 
     @Test fun invalidFieldsNeverWriteAndEmptyPrefixIsValid() = runTest {
         val api = UiFakeApi(); val model = NumberRuleViewModel(api, SavedStateHandle(), backgroundScope)
         runCurrent()
-        listOf("０", "a", "1 ").forEach { prefix -> model.editPrefix(prefix); model.save(); runCurrent(); assertNotNull(model.errors.value["prefix"]) }
-        model.editPrefix("")
-        listOf("0", "31", "-1", "", "２", "1.5").forEach { length -> model.editLength(length); model.save(); runCurrent(); assertNotNull(model.errors.value["length"]) }
-        model.editPrefix("123"); model.editLength("2"); model.save(); runCurrent()
-        assertNotNull(model.errors.value["prefix"])
+        listOf("０", "a", "1 ").forEach { prefix -> model.editPrefix(model.draft.value!!.first().id, prefix); model.save(); runCurrent(); assertNotNull(model.errors.value["rules[0].prefix"]) }
+        model.editPrefix(model.draft.value!!.first().id, "")
+        listOf("0", "31", "-1", "", "２", "1.5").forEach { length -> model.editLength(model.draft.value!!.first().id, length); model.save(); runCurrent(); assertNotNull(model.errors.value["rules[0].length"]) }
+        model.editPrefix(model.draft.value!!.first().id, "123"); model.editLength(model.draft.value!!.first().id, "2"); model.save(); runCurrent()
+        assertNotNull(model.errors.value["rules[0].prefix"])
         assertEquals(0, api.numberRuleWrites)
-        model.editPrefix(""); model.editLength("1"); model.save(); runCurrent()
+        model.editPrefix(model.draft.value!!.first().id, ""); model.editLength(model.draft.value!!.first().id, "1"); model.save(); runCurrent()
         assertEquals(1, api.numberRuleWrites)
     }
 
     @Test fun cleanExternalUpdateRefreshesButDirtyUpdateKeepsOriginalBaseAndInput() = runTest {
         val api = UiFakeApi(); val model = NumberRuleViewModel(api, SavedStateHandle(), backgroundScope)
         runCurrent()
-        api.saveNumberRule(SaveNumberRule(api.numberRule, "8", 6)); runCurrent()
-        assertEquals(NumberRuleDraft("8", "6"), model.draft.value)
-        model.editPrefix("9")
-        api.saveNumberRule(SaveNumberRule(api.numberRule, "7", 7)); runCurrent()
+        api.saveNumberRule(SaveNumberRule(api.numberRule, listOf(NumberRuleEntry("8", 6)))); runCurrent()
+        assertEquals(("8" to "6"), model.draft.value!!.single().let { it.prefix to it.length })
+        model.editPrefix(model.draft.value!!.first().id, "9")
+        api.saveNumberRule(SaveNumberRule(api.numberRule, listOf(NumberRuleEntry("7", 7)))); runCurrent()
         assertTrue(model.conflict.value)
-        assertEquals(NumberRuleDraft("9", "6"), model.draft.value)
+        assertEquals(("9" to "6"), model.draft.value!!.single().let { it.prefix to it.length })
         model.save(); runCurrent()
         assertEquals(ErrorCode.CONFLICT, model.mutation.value.error?.code)
-        assertEquals(NumberRuleDraft("9", "6"), model.draft.value)
+        assertEquals(("9" to "6"), model.draft.value!!.single().let { it.prefix to it.length })
         model.reload(); runCurrent()
-        assertEquals(NumberRuleDraft("7", "7"), model.draft.value)
+        assertEquals(("7" to "7"), model.draft.value!!.single().let { it.prefix to it.length })
         assertFalse(model.conflict.value)
     }
 
@@ -74,11 +74,62 @@ class NumberRuleViewModelTest {
 
     @Test fun restoredDraftRetainsStaleBaseUntilExplicitReload() = runTest {
         val api = UiFakeApi(); val handle = SavedStateHandle()
-        val first = NumberRuleViewModel(api, handle, backgroundScope); runCurrent(); first.editPrefix("9")
-        api.saveNumberRule(SaveNumberRule(api.numberRule, "8", 6)); runCurrent()
+        val first = NumberRuleViewModel(api, handle, backgroundScope); runCurrent(); first.editPrefix(first.draft.value!!.first().id, "9")
+        api.saveNumberRule(SaveNumberRule(api.numberRule, listOf(NumberRuleEntry("8", 6)))); runCurrent()
         val restored = NumberRuleViewModel(api, SavedStateHandle(handle.keys().associateWith { handle.get<Any?>(it) }), backgroundScope)
         runCurrent(); assertTrue(restored.conflict.value)
         restored.save(); runCurrent(); assertEquals(ErrorCode.CONFLICT, restored.mutation.value.error?.code)
-        assertEquals("9", restored.draft.value!!.prefix)
+        assertEquals("9", restored.draft.value!!.single().prefix)
     }
+    @Test fun listEditsPreserveRowIdentityAndAllowSavingEmptyList() = runTest {
+        val api = UiFakeApi(); val model = NumberRuleViewModel(api, SavedStateHandle(), backgroundScope)
+        runCurrent()
+        val old = model.draft.value!!.single().id
+        model.addRule()
+        val row = model.draft.value!!.last()
+        assertEquals("", row.prefix); assertEquals("", row.length)
+        model.save(); runCurrent(); assertEquals(0, api.numberRuleWrites)
+        assertNotNull(model.errors.value["rules[1].length"])
+        model.editPrefix(row.id, "010"); model.editLength(row.id, "11")
+        model.removeRule(old)
+        assertEquals(row.id, model.draft.value!!.single().id)
+        assertEquals("010", model.draft.value!!.single().prefix)
+        model.save(); runCurrent(); assertEquals(listOf(NumberRuleEntry("010", 11)), api.numberRule.rules)
+        model.removeRule(row.id); model.save(); runCurrent()
+        assertTrue(api.numberRule.rules.isEmpty()); assertEquals(2, api.numberRuleWrites)
+    }
+
+    @Test fun restoredMultiRowDraftAndBaseAreSavedAsPlatformValues() = runTest {
+        val api = UiFakeApi(); val handle = SavedStateHandle()
+        val first = NumberRuleViewModel(api, handle, backgroundScope); runCurrent()
+        first.addRule(); val id = first.draft.value!!.last().id
+        first.editPrefix(id, "138"); first.editLength(id, "11")
+        api.saveNumberRule(SaveNumberRule(api.numberRule, emptyList())); runCurrent()
+        val restored = NumberRuleViewModel(api, SavedStateHandle(handle.keys().associateWith { handle.get<Any?>(it) }), backgroundScope)
+        runCurrent(); assertEquals(first.draft.value, restored.draft.value); assertTrue(restored.conflict.value)
+        restored.save(); runCurrent(); assertEquals(ErrorCode.CONFLICT, restored.mutation.value.error?.code)
+        restored.reload(); runCurrent(); assertTrue(restored.draft.value!!.isEmpty())
+    }
+
+    @Test fun trialUsesSavedRulesAndReactsToEmptyGroup() = runTest {
+        val api = object : UiFakeApi() {
+            override fun checkNumber(raw: String) = NumberCheck(raw, true, numberRule.rules.any { raw.startsWith(it.prefix) && raw.length == it.length })
+        }
+        val model = NumberRuleViewModel(api, SavedStateHandle(), backgroundScope); runCurrent()
+        model.editTrial("31234"); assertTrue(model.trialCheck.value!!.matchesRule)
+        model.editPrefix(model.draft.value!!.single().id, "8")
+        assertTrue(model.trialCheck.value!!.matchesRule)
+        api.saveNumberRule(SaveNumberRule(api.numberRule, emptyList())); runCurrent()
+        assertFalse(model.trialCheck.value!!.matchesRule); assertTrue(model.conflict.value)
+    }
+
+    @Test fun oldSingleRowSavedDraftMigratesWithoutLosingEditsOrBase() = runTest {
+        val api = UiFakeApi()
+        val handle = SavedStateHandle(mapOf("rule.prefix" to "010", "rule.length" to "11",
+            "rule.base.prefix" to "3", "rule.base.length" to 5, "rule.base.revision" to 0L))
+        val model = NumberRuleViewModel(api, handle, backgroundScope); runCurrent()
+        assertEquals("010", model.draft.value!!.single().prefix)
+        model.save(); runCurrent(); assertEquals(listOf(NumberRuleEntry("010", 11)), api.numberRule.rules)
+    }
+
 }

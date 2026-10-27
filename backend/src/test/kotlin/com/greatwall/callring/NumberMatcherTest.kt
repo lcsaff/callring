@@ -67,4 +67,24 @@ class NumberMatcherTest {
     fun prefixLongerThanLengthIsRejected() {
         assertThrows(IllegalArgumentException::class.java) { NumberRule("123", 2) }
     }
+    @Test fun snapshotsMatchAnyRuleAndEmptyMatchesNothing() {
+        val snapshot = com.greatwall.callring.domain.calling.NumberRuleSnapshot(
+            listOf(NumberRule("3", 5), NumberRule("08", 6)), 7)
+        assertTrue(snapshot.matches("31234", matcher))
+        assertTrue(snapshot.matches("081234", matcher))
+        assertFalse(snapshot.matches("812345", matcher))
+        assertFalse(com.greatwall.callring.domain.calling.NumberRuleSnapshot(emptyList(), 8).matches("31234", matcher))
+    }
+
+    @Test fun snapshotDetachesRuleListAndStopsAtFirstMatchingRule() {
+        val rules = mutableListOf(NumberRule("3", 5), NumberRule("31", 5))
+        val snapshot = com.greatwall.callring.domain.calling.NumberRuleSnapshot(rules, 1)
+        rules.clear()
+        var calls = 0
+        assertTrue(snapshot.matches("31234", NumberMatcher { n, rule -> calls++; matcher.matches(n, rule) }))
+        assertEquals(1, calls)
+        assertEquals(2, snapshot.rules.size)
+        assertThrows(UnsupportedOperationException::class.java) { (snapshot.rules as MutableList<*>).clear() }
+    }
+
 }

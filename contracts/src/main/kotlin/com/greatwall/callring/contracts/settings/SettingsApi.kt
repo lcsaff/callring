@@ -185,5 +185,6 @@ data class RingtoneSettings(
     val previewSeconds: Int
 )
 
-data class NumberRuleSettings(val prefix: String, val length: Int, val revision: Long)
-data class SaveNumberRule(val base: NumberRuleSettings, val prefix: String, val length: Int)
+data class NumberRuleEntry(val prefix: String, val length: Int)
+data class NumberRuleSettings(val rules: List<NumberRuleEntry>, val revision: Long)
+data class SaveNumberRule(val base: NumberRuleSettings, val rules: List<NumberRuleEntry>)

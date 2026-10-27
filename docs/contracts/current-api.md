@@ -292,7 +292,7 @@ T10c removes only missing-capability method bodies: `UiEditsApi`'s seven edits, 
     ]
   },
   "settings/SettingsApi.kt": {
-    "sha256": "6082117a40273fb5d4c04df6169a4e3198263c761b52e723eeaee09fc4a2c2c1",
+    "sha256": "b695c49bdd91015b86d49622c1a1c15d556bc75f9dc4edf863e2f2283be8bc47",
     "declarations": [
       "SettingsApi",
       "RingtoneApi",
@@ -320,6 +320,7 @@ T10c removes only missing-capability method bodies: `UiEditsApi`'s seven edits, 
       "SettingsSummary",
       "AudioSource",
       "RingtoneSettings",
+      "NumberRuleEntry",
       "NumberRuleSettings",
       "SaveNumberRule"
     ]

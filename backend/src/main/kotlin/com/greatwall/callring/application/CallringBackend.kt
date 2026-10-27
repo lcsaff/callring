@@ -258,7 +258,7 @@ class CallringBackend(
 
     private fun captureNumberMatch(number: String): NumberMatchFact = coordinator.guard(null) {
         val rule = numberRuleState.prepare(coreTransactions, persistenceActive)
-        NumberMatchFact(rule.revision, numberMatcher.matches(com.greatwall.callring.domain.model.NumberIdentity.parse(number).normalized, rule.rule))
+        NumberMatchFact(rule.revision, rule.matches(com.greatwall.callring.domain.model.NumberIdentity.parse(number).normalized, numberMatcher))
     }
 
     @JvmOverloads

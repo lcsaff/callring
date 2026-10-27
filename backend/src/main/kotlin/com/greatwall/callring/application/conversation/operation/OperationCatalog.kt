@@ -805,7 +805,7 @@ private object OperationSchemas {
         OperationDefinition(
             id = OperationId.SETTINGS_GET_NUMBER_RULE, name = "settings_getNumberRule", operationCode = "X10", legacyIndex = 82, displayOrder = 82,
             schema = commandShape(false),
-            description = "读取当前号码规则prefix、length及revision；现有记录保持不变，后续同步可能导入历史通话。",
+            description = "读取完整号码规则rules列表（每项prefix、length）及revision；任一规则匹配即命中，空列表不匹配；现有记录保持不变，后续同步可能导入历史通话。",
             runtimeDefaults = "No optional business arguments; reads stamped D10 configuration numberRule. dependsOn omitted: [].",
             write = false, sharedApi = "settings.getNumberRule", receiptPolicy = ReceiptPolicy.SOURCE_READ,
             confirmation = ConfirmationPolicy.NO_SEPARATE_CONFIRM, execution = ExecutionStrategy.SOURCE,
@@ -813,9 +813,9 @@ private object OperationSchemas {
         ),
         OperationDefinition(
             id = OperationId.SETTINGS_SAVE_NUMBER_RULE, name = "settings_saveNumberRule", operationCode = "X11", legacyIndex = 83, displayOrder = 83,
-            schema = commandShape(true, "base" to shape("prefix" to string, "length" to integer, "revision" to integer), "prefix" to string, "length" to integer),
-            description = "基于完整base保存号码规则prefix、length，过期revision返回冲突；现有记录保持不变，后续同步可能导入历史通话。",
-            runtimeDefaults = "base, prefix and length required. Cancelled commands do not write; failures require corrected arguments/base. Committed saves are read back and never replayed on verification retry or repeated submission in the same task. dependsOn omitted: []; write taskId omitted: auto-plan only when batch has exactly one write.",
+            schema = commandShape(true, "base" to shape("rules" to array(shape("prefix" to string, "length" to integer)), "revision" to integer), "rules" to array(shape("prefix" to string, "length" to integer))),
+            description = "先读取完整base，再整体保存rules列表以添加、修改、删除规则；空列表清空并停止匹配，任一规则匹配即命中，过期revision返回冲突；现有记录保持不变，后续同步可能导入历史通话。",
+            runtimeDefaults = "base (rules and revision) and full rules array required; [] explicitly clears all rules. Cancelled commands do not write; failures require corrected arguments/base. Committed saves are read back and never replayed on verification retry or repeated submission in the same task. dependsOn omitted: []; write taskId omitted: auto-plan only when batch has exactly one write.",
             write = true, sharedApi = "settings.saveNumberRule", receiptPolicy = ReceiptPolicy.PERSISTED_READBACK,
             confirmation = ConfirmationPolicy.NO_SEPARATE_CONFIRM, execution = ExecutionStrategy.DIRECT_WRITE,
             scope = ScopeStrategy.DIRECT, verification = VerificationStrategy.DIRECT, readSource = null,

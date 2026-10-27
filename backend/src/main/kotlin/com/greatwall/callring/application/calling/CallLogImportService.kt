@@ -49,7 +49,7 @@ internal class CallLogImportService(
                     for (record in records) {
                         val identity = NumberIdentity.parse(record.number)
                         if (
-                            !matcher.matches(identity.normalized, batchRule.rule) ||
+                            !batchRule.matches(identity.normalized, matcher) ||
                                 !statistics.getOrPut(record.startedAtEpochMillis) {
                                     writer.statisticsContains(record.startedAtEpochMillis)
                                 }
