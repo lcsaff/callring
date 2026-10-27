@@ -53,7 +53,7 @@ private fun UpdateStatusBody(
     }
     when (status.phase) {
         UpdatePhase.IDLE -> {
-            Text("尚未检查更新。检查只会读取发布信息，不会在后台自动进行。")
+            Text("启动 App 时会自动检查更新，也可在此手动检查。检查只读取发布信息，下载和安装需手动确认。")
             PrimaryUpdateAction("检查更新", onCheck)
         }
         UpdatePhase.CHECKING -> {

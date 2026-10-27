@@ -8,6 +8,10 @@ import com.greatwall.callring.contracts.runtime.UpdatePhase
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.async
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicInteger
 import java.io.File
 import java.io.InputStream
 import org.junit.After
@@ -111,6 +115,52 @@ class AndroidAppUpdateTest {
         assertEquals(UpdatePhase.UPDATE_AVAILABLE, api.check().ok().phase)
         assertEquals(3, transport.requests.size)
         assertEquals("etag-1", transport.requests[2].requestHeader("If-None-Match"))
+    }
+
+    @Test fun lateStartupCheckCannotOverwriteNewerManualCheck() = runBlocking {
+        val entered = CountDownLatch(1)
+        val finish = CountDownLatch(1)
+        val calls = AtomicInteger()
+        val transport = FakeTransport { connection ->
+            when {
+                connection.url.toString() == RELEASES_API_URL && calls.incrementAndGet() == 1 -> {
+                    entered.countDown()
+                    check(finish.await(10, TimeUnit.SECONDS))
+                    FakeResponse(503)
+                }
+                connection.url.toString() == RELEASES_API_URL -> FakeResponse(200, release.toByteArray())
+                else -> FakeResponse(200, manifest.toByteArray())
+            }
+        }
+        newApi(transport).use { api ->
+            val startup = async(Dispatchers.Default) { api.check().ok() }
+            try {
+                assertTrue(entered.await(10, TimeUnit.SECONDS))
+                assertEquals(UpdatePhase.UPDATE_AVAILABLE, api.check().ok().phase)
+            } finally { finish.countDown() }
+            assertEquals(UpdatePhase.UPDATE_AVAILABLE, startup.await().phase)
+            assertEquals(UpdatePhase.UPDATE_AVAILABLE, api.status().ok().phase)
+        }
+    }
+
+    @Test fun lateCheckCannotDiscardVerifiedDownload() = runBlocking {
+        val entered = CountDownLatch(1)
+        val finish = CountDownLatch(1)
+        val transport = FakeTransport {
+            entered.countDown()
+            check(finish.await(10, TimeUnit.SECONDS))
+            FakeResponse(503)
+        }
+        newApi(transport).use { api ->
+            val startup = async(Dispatchers.Default) { api.check().ok() }
+            try {
+                assertTrue(entered.await(10, TimeUnit.SECONDS))
+                seedVerifiedFile()
+            } finally { finish.countDown() }
+            assertEquals(UpdatePhase.VERIFIED, startup.await().phase)
+            assertEquals(UpdatePhase.VERIFIED, api.status().ok().phase)
+            assertTrue(File(dir, "callring-0.4.0.apk").isFile)
+        }
     }
 
     @Test fun checkWithoutCachedMetadataDoesNotSendEtag() = runBlocking {

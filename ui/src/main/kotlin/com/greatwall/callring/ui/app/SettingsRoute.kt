@@ -13,7 +13,7 @@ import com.greatwall.callring.ui.feature.update.AppUpdateViewModel
 @Composable internal fun SettingsRoute(
     page: SettingsPage, api: CallringUiApi, summaryModel: SettingsSummaryViewModel, appearanceModel: AppearanceViewModel,
     signal: Long, onBack: () -> Unit, onCapability: (Capability) -> Unit, onAppSettings: () -> Unit,
-    onTestOverlay: () -> Unit = {}
+    onTestOverlay: () -> Unit = {}, startupUpdateFinished: Boolean = false,
 ) {
     when (page) {
         SettingsPage.NUMBER_RULE -> {
@@ -108,7 +108,7 @@ import com.greatwall.callring.ui.feature.update.AppUpdateViewModel
             val model: AppUpdateViewModel = uiViewModel { AppUpdateViewModel(api.update) }
             val state by model.state.collectAsStateWithLifecycle()
             val mutation by model.mutation.collectAsStateWithLifecycle()
-            LaunchedEffect(model) { model.refresh() }
+            LaunchedEffect(model, startupUpdateFinished) { model.refresh() }
             AppUpdateScreen(state, mutation, onBack, model::refresh,
                 model::check, model::download, model::cancel, model::install)
         }

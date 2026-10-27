@@ -26,6 +26,8 @@ import com.greatwall.callring.ui.feature.callers.*
 import com.greatwall.callring.ui.feature.home.*
 import com.greatwall.callring.ui.feature.report.*
 import com.greatwall.callring.ui.feature.settings.*
+import com.greatwall.callring.ui.feature.update.StartupUpdateViewModel
+import com.greatwall.callring.ui.designsystem.components.ConfirmationDialog
 import androidx.compose.material3.adaptive.currentWindowAdaptiveInfo
 import androidx.compose.material3.adaptive.navigationsuite.*
 import androidx.compose.material.icons.Icons
@@ -53,6 +55,9 @@ private val BottomBarContentHeight = 44.dp
     val settings: SettingsSummaryViewModel = uiViewModel("application-settings") { SettingsSummaryViewModel(api) }
     val appearanceModel: AppearanceViewModel = uiViewModel("application-appearance") { AppearanceViewModel(api, it) }
     val navigationState: UiNavigationState = uiViewModel("application-navigation") { UiNavigationState(it) }
+    val startupUpdate: StartupUpdateViewModel = uiViewModel("application-startup-update") { StartupUpdateViewModel(api.update) }
+    val updateRelease by startupUpdate.release.collectAsStateWithLifecycle()
+    val startupUpdateFinished by startupUpdate.finished.collectAsStateWithLifecycle()
     val appearance by appearanceModel.draft.collectAsStateWithLifecycle()
     val appearanceState by appearanceModel.state.collectAsStateWithLifecycle()
     CallringTheme((appearance ?: appearanceState.data ?: DefaultAppearance).rememberAppearanceThemeSpec(androidx.compose.foundation.isSystemInDarkTheme())) {
@@ -60,6 +65,17 @@ private val BottomBarContentHeight = 44.dp
         val navigation = rememberNavController()
         val entry by navigation.currentBackStackEntryAsState()
         val route = entry?.destination?.route
+        updateRelease?.let { release ->
+            ConfirmationDialog(
+                title = "发现新版本", message = "新版本 ${release.versionName} 已可用，是否前往更新界面？",
+                confirmLabel = "确定", dismissLabel = "关闭",
+                onConfirm = {
+                    startupUpdate.dismiss()
+                    navigation.navigate(UiDestination.Setting(SettingsPage.UPDATE).route) { launchSingleTop = true }
+                },
+                onDismiss = startupUpdate::dismiss,
+            )
+        }
         val tabs = listOf(UiDestination.Home to "首页", UiDestination.Callers to "档案", UiDestination.Conversation to "沟通", UiDestination.Settings to "设置")
         LaunchedEffect(requestSequence) {
             navigation.currentBackStackEntryFlow.first()
@@ -93,7 +109,7 @@ private val BottomBarContentHeight = 44.dp
                     },
                 ) {
                     AppScaffold(api, settings, appearanceModel, navigation, refreshSignal, feedbackHost, {},
-                        onCapability, onAppSettings, onTestOverlay)
+                        onCapability, onAppSettings, onTestOverlay, startupUpdateFinished)
                 }
             } else {
                 AppScaffold(api, settings, appearanceModel, navigation, refreshSignal, feedbackHost,
@@ -101,7 +117,8 @@ private val BottomBarContentHeight = 44.dp
                         // 键盘弹出时隐藏常驻栏，只让输入区随键盘上移。
                         if (isTabRoute && !imeVisible) CallringBottomBar(tabs, route) { destination -> selectTab(navigation, destination) }
                     },
-                    onCapability = onCapability, onAppSettings = onAppSettings, onTestOverlay = onTestOverlay)
+                    onCapability = onCapability, onAppSettings = onAppSettings, onTestOverlay = onTestOverlay,
+                    startupUpdateFinished = startupUpdateFinished)
             }
         }
     }
@@ -119,6 +136,7 @@ private fun AppScaffold(
     onCapability: (Capability) -> Unit,
     onAppSettings: () -> Unit,
     onTestOverlay: () -> Unit,
+    startupUpdateFinished: Boolean,
 ) {
     fun open(destination: UiDestination) { navigation.navigate(destination.route) { launchSingleTop = true } }
     val back: () -> Unit = { navigation.popBackStack() }
@@ -214,7 +232,7 @@ private fun AppScaffold(
             }
             SettingsPage.entries.forEach { page -> composable(UiDestination.Setting(page).route) {
                 SettingsRoute(page, api, settings, appearanceModel, refreshSignal, back, onCapability, onAppSettings,
-                    onTestOverlay = onTestOverlay)
+                    onTestOverlay = onTestOverlay, startupUpdateFinished = startupUpdateFinished)
             } }
         }
     }

@@ -51,6 +51,7 @@ internal class AndroidAppUpdate(
     @Volatile private var downloadJob: Job? = null
     @Volatile private var cancelRequested = false
     @Volatile private var activeConnection: HttpURLConnection? = null
+    private var checkGeneration = 0L
 
     override suspend fun status(): ApiResult<UpdateStatus> = attempt { synchronized(lock) { statusInternal() } }
 
@@ -66,10 +67,13 @@ internal class AndroidAppUpdate(
                 statusInternal()
             }
         } else {
-            val previous = synchronized(lock) { decodeUpdateState(persistence.read()) }
-            val outcome = withContext(io) { fetchCheck(previous) }
+            val (generation, previous) = synchronized(lock) { ++checkGeneration to persistence.read() }
+            val outcome = withContext(io) { fetchCheck(decodeUpdateState(previous)) }
             synchronized(lock) {
-                persistence.write(encodeUpdateState(outcome))
+                // A newer check or download/install transition owns the state now.
+                if (generation == checkGeneration && persistence.read() == previous) {
+                    persistence.write(encodeUpdateState(outcome))
+                }
                 statusInternal()
             }
         }

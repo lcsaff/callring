@@ -13,13 +13,13 @@ import androidx.compose.ui.focus.FocusDirection
 @Composable
 fun ConfirmationDialog(
     title: String, message: String, confirmLabel: String,
-    onConfirm: () -> Unit, onDismiss: () -> Unit, busy: Boolean = false,
+    onConfirm: () -> Unit, onDismiss: () -> Unit, busy: Boolean = false, dismissLabel: String = "取消",
 ) {
     AlertDialog(
         onDismissRequest = { if (!busy) onDismiss() },
         title = { Text(title) }, text = { Text(message) },
         confirmButton = { TextButton(onClick = { if (!busy) onConfirm() }, enabled = !busy) { Text(confirmLabel) } },
-        dismissButton = { TextButton(onClick = onDismiss, enabled = !busy) { Text("取消") } },
+        dismissButton = { TextButton(onClick = onDismiss, enabled = !busy) { Text(dismissLabel) } },
     )
 }
 
