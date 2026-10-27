@@ -62,6 +62,7 @@ import com.greatwall.callring.application.ports.*
 import com.greatwall.callring.data.database.SqliteCoreStorageResource
 import com.greatwall.callring.domain.*
 import com.greatwall.callring.platform.*
+import com.greatwall.callring.platform.update.*
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.*
 import org.junit.Assert.*
@@ -98,6 +99,13 @@ class ToolBusinessIntegrationTest {
         val preferences = AndroidPreferences(context.getSharedPreferences("${namespace}_appearance",0),context.getSharedPreferences("${namespace}_widgets",0),AppearanceSettings(ThemeSelection.PRESET,"default",null,ColorMode.FOLLOW_SYSTEM))
         val client = Client()
         val calls = ConcurrentLinkedQueue<String>()
+        private val updateApk = byteArrayOf(1, 2, 3)
+        private val updateHttp = successfulUpdateTransport(releaseJson(apkSize = 3), manifestJson(updateApk), updateApk)
+        private val updates = AndroidAppUpdate(context,
+            build = { UpdateBuildInfo(AppVersionInfo("0.3.0", 3), CALLRING_PACKAGE, true, 33) },
+            directory = { File(context.cacheDir, "${namespace}_update") },
+            persistence = MemoryUpdatePersistence(), openConnection = updateHttp,
+            installer = FakeInstaller())
         val backend = CallringBackend(preferences,docs,object : RuntimeProbe {
             override fun getStatus() = RuntimeStatus(Capability.values().associateWith { AccessState.GRANTED },Audibility.AUDIBLE,PhoneActivity.IDLE,PlaybackStatus(PlaybackMode.NONE,PlaybackState.IDLE),true,now)
             override fun getDiagnostics() = listOf(DiagnosticEntry(now,null,"fixture"))
@@ -141,6 +149,7 @@ class ToolBusinessIntegrationTest {
                 override val home = spy(HomeApi::class.java,"home",base.home)
                 override val widgets = spy(WidgetBindingsApi::class.java,"widgets",base.widgets)
                 override val runtime = spy(RuntimeApi::class.java,"runtime",base.runtime)
+                override val update = spy(AppUpdateApi::class.java,"update",updates)
                 override val recordings = spy(RecordingApi::class.java,"recordings",command?.let(this@Fixture.runtime.service::bound) ?: this@Fixture.runtime.service)
                 override val aiSettings = spy(AiSettingsApi::class.java,"ai",command?.let(this@Fixture.runtime.aiSettings::bound) ?: this@Fixture.runtime.aiSettings)
                 override fun commandApi(context: CommandContext) = api(context)
@@ -167,7 +176,7 @@ class ToolBusinessIntegrationTest {
             foreground.attachHost()
             calls.clear()
         }
-        override fun close() { foreground.invalidate(); runtime.close(); audio.close(); diagnostics.close(); store.close() }
+        override fun close() { updates.close(); foreground.invalidate(); runtime.close(); audio.close(); diagnostics.close(); store.close() }
     }
     private fun provider() {
         val audio = File(context.cacheDir,"tool-source.wav").apply { writeBytes(ByteArray(128)) }
@@ -280,7 +289,7 @@ class ToolBusinessIntegrationTest {
             }finally{service.close()}
         }
     }
-    @Test fun all74BusinessToolsInvokeProductionApisAndInvalidSchemaNeverMutates() = runBlocking {
+    @Test fun allBusinessToolsInvokeProductionApisAndInvalidSchemaNeverMutates() = runBlocking {
         provider()
         val registry = ToolRegistry(OperationCatalog(OperationCatalog.defaultDefinitions().shuffled(kotlin.random.Random(1202))))
         val covered = mutableSetOf<OperationId>()
@@ -377,7 +386,7 @@ class ToolBusinessIntegrationTest {
             println("TOOL_PROOF ${definition.id} ${definition.name} status=${receipt.status} api=$expected invalid=FAILED")
             host.cancelAndJoin()
         }
-        assertEquals(74,covered.size)
+        assertEquals(76,covered.size)
     }
     @Test fun allExtensionsExecuteThroughShuffledCatalogAndCompositeChildReadback()=runBlocking {
         provider()
