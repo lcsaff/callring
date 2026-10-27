@@ -9,6 +9,9 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.async
+import kotlinx.coroutines.asCoroutineDispatcher
+import kotlinx.coroutines.withContext
+import java.util.concurrent.Executors
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicInteger
@@ -48,6 +51,7 @@ class AndroidAppUpdateTest {
         inspector: ApkInspector = ApkInspector { matchingInspection },
         certificate: InstalledCertificateReader = InstalledCertificateReader { "cert-current" },
         installer: FakeInstaller = FakeInstaller(),
+        io: kotlinx.coroutines.CoroutineDispatcher = Dispatchers.IO,
     ) = AndroidAppUpdate(
         context = RuntimeEnvironment.getApplication(),
         build = { UpdateBuildInfo(current, CALLRING_PACKAGE, updatable, 33) },
@@ -58,7 +62,7 @@ class AndroidAppUpdateTest {
         installedCertificate = certificate,
         installer = installer,
         clock = { 1_000L },
-        io = Dispatchers.IO,
+        io = io,
     )
 
     private fun <T> ApiResult<T>.ok(): T = (this as ApiResult.Success).value
@@ -253,6 +257,204 @@ class AndroidAppUpdateTest {
         assertTrue(dir.listFiles().orEmpty().isEmpty())
     }
 
+    private fun seedPartial(bytes: ByteArray, phase: UpdatePhase = UpdatePhase.DOWNLOADING) {
+        seedVerifiedFile()
+        File(dir, "callring-0.4.0.apk").delete()
+        File(dir, "callring-0.4.0.apk.part").writeBytes(bytes)
+        val state = decodeUpdateState(persistence.read())!!
+        persistence.write(encodeUpdateState(state.copy(phase = phase, verified = false, downloadedBytes = bytes.size.toLong())))
+    }
+
+    @Test fun networkInterruptionRetainsActualBytesAndRetryUsesRange() = runBlocking {
+        var attempts = 0
+        val cut = 90_000
+        val transport = FakeTransport { connection ->
+            when {
+                connection.url.toString() == RELEASES_API_URL -> FakeResponse(200, release.toByteArray())
+                connection.url.toString().endsWith(UPDATE_MANIFEST_ASSET) -> FakeResponse(200, manifest.toByteArray())
+                ++attempts == 1 -> FakeResponse(200, streamFactory = {
+                    object : InputStream() {
+                        var offset = 0
+                        override fun read(): Int = error("buffered reads required")
+                        override fun read(buffer: ByteArray, off: Int, len: Int): Int {
+                            if (offset >= cut) throw java.io.IOException("connection lost")
+                            val n = minOf(len, cut - offset)
+                            apk.copyInto(buffer, off, offset, offset + n); offset += n
+                            return n
+                        }
+                    }
+                })
+                else -> {
+                    assertEquals("bytes=$cut-", connection.requestHeader("Range"))
+                    FakeResponse(206, apk.copyOfRange(cut, apk.size), mapOf("Content-Range" to "bytes $cut-${apk.lastIndex}/${apk.size}"))
+                }
+            }
+        }
+        newApi(transport).use { api ->
+            api.check().ok(); api.download().ok()
+            val interrupted = awaitPhase(api, UpdatePhase.VERIFY_FAILED)
+            assertEquals(cut.toLong(), interrupted.downloadedBytes)
+            assertEquals(cut.toLong(), File(dir, "callring-0.4.0.apk.part").length())
+            api.download().ok()
+            awaitPhase(api, UpdatePhase.VERIFIED)
+            assertArrayEquals(apk, File(dir, "callring-0.4.0.apk").readBytes())
+        }
+    }
+
+    @Test fun restartRecoversPartialBytesAndServerIgnoringRangeRestartsCleanly() = runBlocking {
+        seedPartial(apk.copyOfRange(0, 12345))
+        val transport = FakeTransport { connection ->
+            assertEquals("bytes=12345-", connection.requestHeader("Range"))
+            assertEquals("identity", connection.requestHeader("Accept-Encoding"))
+            FakeResponse(200, apk)
+        }
+        newApi(transport).use { api ->
+            val recovered = api.status().ok()
+            assertEquals(UpdatePhase.UPDATE_AVAILABLE, recovered.phase)
+            assertEquals(12345L, recovered.downloadedBytes)
+            assertTrue(transport.requests.isEmpty())
+            api.download().ok(); awaitPhase(api, UpdatePhase.VERIFIED)
+            assertArrayEquals(apk, File(dir, "callring-0.4.0.apk").readBytes())
+        }
+    }
+
+    @Test fun malformedRangeNeverAppendsBytesToPartialFile() = runBlocking {
+        seedPartial(apk.copyOfRange(0, 100))
+        newApi(FakeTransport { FakeResponse(206, apk.copyOfRange(100, apk.size),
+            mapOf("Content-Range" to "bytes 99-${apk.lastIndex}/${apk.size}")) }).use { api ->
+            api.download().ok(); awaitPhase(api, UpdatePhase.VERIFY_FAILED)
+            assertArrayEquals(apk.copyOfRange(0, 100), File(dir, "callring-0.4.0.apk.part").readBytes())
+            assertFalse(File(dir, "callring-0.4.0.apk").exists())
+        }
+    }
+
+    @Test fun rangeNotSatisfiableRetriesOnceFromZero() = runBlocking {
+        seedPartial(apk.copyOfRange(0, 100))
+        var calls = 0
+        newApi(FakeTransport { connection ->
+            if (++calls == 1) FakeResponse(416) else {
+                assertNull(connection.requestHeader("Range"))
+                FakeResponse(200, apk)
+            }
+        }).use { api ->
+            api.download().ok(); awaitPhase(api, UpdatePhase.VERIFIED)
+            assertEquals(2, calls)
+        }
+    }
+
+    @Test fun completedPartialIsVerifiedWithoutNetworkAndCorruptPrefixIsRejected() = runBlocking {
+        seedPartial(apk.copyOf().also { it[0] = (it[0] + 1).toByte() })
+        newApi(FakeTransport { error("complete partial needs no network") }).use { api ->
+            api.download().ok()
+            val failed = awaitPhase(api, UpdatePhase.VERIFY_FAILED)
+            assertEquals(UpdateReasons.VERIFY_FAILED, failed.failureReason)
+            assertTrue(dir.listFiles().orEmpty().isEmpty())
+        }
+    }
+
+    @Test fun checkingSameReleasePreservesPartialButChangedDigestDiscardsIt() = runBlocking {
+        seedPartial(apk.copyOfRange(0, 12345), UpdatePhase.VERIFY_FAILED)
+        var changed = false
+        val transport = FakeTransport { connection ->
+            if (connection.url.toString() == RELEASES_API_URL) FakeResponse(200, release.toByteArray())
+            else FakeResponse(200, manifestJson(apk, shaOverride = if (changed) "0".repeat(64) else sha256Hex(apk)).toByteArray())
+        }
+        newApi(transport).use { api ->
+            assertEquals(12345L, api.check().ok().downloadedBytes)
+            assertEquals(12345L, File(dir, "callring-0.4.0.apk.part").length())
+            changed = true
+            assertEquals(0L, api.check().ok().downloadedBytes)
+            assertTrue(dir.listFiles().orEmpty().isEmpty())
+        }
+    }
+
+    @Test fun failedMetadataCheckKeepsResumableReleaseAndBytes() = runBlocking {
+        seedPartial(apk.copyOfRange(0, 12345), UpdatePhase.VERIFY_FAILED)
+        newApi(FakeTransport { FakeResponse(503) }).use { api ->
+            val failed = api.check().ok()
+            assertEquals(UpdatePhase.VERIFY_FAILED, failed.phase)
+            assertEquals(12345L, failed.downloadedBytes)
+            assertNotNull(failed.latest)
+            assertTrue(File(dir, "callring-0.4.0.apk.part").isFile)
+        }
+    }
+
+    @Test fun closePreservesPartialAndPreventsLatePublication() = runBlocking {
+        seedPartial(apk.copyOfRange(0, 100))
+        val entered = CountDownLatch(1)
+        val finish = CountDownLatch(1)
+        val drained = CountDownLatch(1)
+        val transport = FakeTransport {
+            FakeResponse(206, headers = mapOf("Content-Range" to "bytes 100-${apk.lastIndex}/${apk.size}"), streamFactory = {
+                object : InputStream() {
+                    override fun read(): Int = error("buffered reads required")
+                    override fun read(buffer: ByteArray, off: Int, len: Int): Int {
+                        entered.countDown()
+                        check(finish.await(10, TimeUnit.SECONDS))
+                        apk.copyInto(buffer, off, 100, 101)
+                        return 1
+                    }
+                    override fun close() { drained.countDown() }
+                }
+            })
+        }
+        val api = newApi(transport)
+        try {
+            api.download().ok()
+            assertTrue(entered.await(10, TimeUnit.SECONDS))
+            val before = persistence.read()
+            api.close()
+            finish.countDown()
+            assertTrue(drained.await(10, TimeUnit.SECONDS))
+            assertEquals(before, persistence.read())
+            assertEquals(100L, File(dir, "callring-0.4.0.apk.part").length())
+            assertTrue(api.status() is ApiResult.Failure)
+            newApi(FakeTransport { FakeResponse(200, apk) }).use { restarted ->
+                restarted.download().ok(); awaitPhase(restarted, UpdatePhase.VERIFIED)
+            }
+            Unit
+        } finally { finish.countDown(); api.close() }
+    }
+
+    @Test fun restartDuringVerificationRecoversCompleteFileForLocalVerification() = runBlocking {
+        for (phase in listOf(UpdatePhase.DOWNLOADING, UpdatePhase.VERIFYING)) {
+            seedVerifiedFile()
+            val previous = decodeUpdateState(persistence.read())!!
+            persistence.write(encodeUpdateState(previous.copy(phase = phase, verified = false)))
+            val transport = FakeTransport { error("complete file must not be downloaded twice") }
+            newApi(transport).use { api ->
+                assertEquals(apk.size.toLong(), api.status().ok().downloadedBytes)
+                api.download().ok(); awaitPhase(api, UpdatePhase.VERIFIED)
+                assertTrue(transport.requests.isEmpty())
+            }
+        }
+    }
+
+    @Test fun closedOwnerCannotDeleteAFileVerifiedByItsReplacement() = runBlocking {
+        seedPartial(apk.copyOfRange(0, 100))
+        val entered = CountDownLatch(1)
+        val finish = CountDownLatch(1)
+        Executors.newSingleThreadExecutor().asCoroutineDispatcher().use { io ->
+            val old = newApi(FakeTransport {
+                entered.countDown()
+                check(finish.await(10, TimeUnit.SECONDS))
+                throw java.io.IOException("late network failure")
+            }, io = io)
+            try {
+                old.download().ok()
+                assertTrue(entered.await(10, TimeUnit.SECONDS))
+                old.close()
+                newApi(FakeTransport { FakeResponse(200, apk) }).use { replacement ->
+                    replacement.download().ok(); awaitPhase(replacement, UpdatePhase.VERIFIED)
+                    finish.countDown()
+                    withContext(io) { /* drain the old worker before checking the replacement's file */ }
+                    assertEquals(UpdatePhase.VERIFIED, replacement.status().ok().phase)
+                    assertArrayEquals(apk, File(dir, "callring-0.4.0.apk").readBytes())
+                }
+            } finally { finish.countDown(); old.close() }
+        }
+    }
+
     @Test fun cancelStopsTheRunningDownloadAndDeletesThePartialFile() = runBlocking {
         val slow = object : InputStream() {
             private var index = 0
@@ -312,6 +514,7 @@ class AndroidAppUpdateTest {
         assertEquals(UpdatePhase.VERIFY_FAILED, status.phase)
         assertEquals(0, installer.launches)
         assertFalse(File(dir, "callring-0.4.0.apk").exists())
+        assertEquals(0L, status.downloadedBytes)
     }
 
     @Test fun installWithoutPermissionRequestsPermissionInsteadOfLaunching() = runBlocking {

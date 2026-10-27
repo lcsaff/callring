@@ -13,7 +13,6 @@ import java.io.File
 import java.io.IOException
 import java.net.HttpURLConnection
 import java.net.URL
-import java.security.MessageDigest
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
@@ -24,6 +23,8 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
 
 /**
  * 应用内更新的平台实现：GitHub 检查（UA + ETag/304）、流式下载、SHA-256/签名校验、
@@ -52,6 +53,7 @@ internal class AndroidAppUpdate(
     @Volatile private var cancelRequested = false
     @Volatile private var activeConnection: HttpURLConnection? = null
     private var checkGeneration = 0L
+    @Volatile private var closed = false
 
     override suspend fun status(): ApiResult<UpdateStatus> = attempt { synchronized(lock) { statusInternal() } }
 
@@ -67,12 +69,27 @@ internal class AndroidAppUpdate(
                 statusInternal()
             }
         } else {
-            val (generation, previous) = synchronized(lock) { ++checkGeneration to persistence.read() }
+            val (generation, previous) = synchronized(lock) {
+                val status = statusInternal()
+                if (status.phase in setOf(UpdatePhase.DOWNLOADING, UpdatePhase.VERIFYING, UpdatePhase.VERIFIED,
+                        UpdatePhase.INSTALL_PERMISSION_REQUIRED, UpdatePhase.INSTALL_PENDING_VERIFY)) return@attempt status
+                ++checkGeneration to persistence.read()
+            }
             val outcome = withContext(io) { fetchCheck(decodeUpdateState(previous)) }
             synchronized(lock) {
                 // A newer check or download/install transition owns the state now.
-                if (generation == checkGeneration && persistence.read() == previous) {
-                    persistence.write(encodeUpdateState(outcome))
+                if (!closed && generation == checkGeneration && persistence.read() == previous) {
+                    val old = decodeUpdateState(previous)
+                    val same = old?.latest?.let { a -> outcome.latest?.let { b -> sameDownload(a, b) } } == true
+                    val bytes = old?.let(::partialBytes) ?: 0L
+                    val saved = when {
+                        bytes > 0 && outcome.phase == UpdatePhase.CHECK_FAILED -> outcome.copy(
+                            phase = UpdatePhase.VERIFY_FAILED, latest = old?.latest, fileName = old?.fileName,
+                            downloadedBytes = bytes, totalBytes = old?.latest?.sizeBytes)
+                        same && bytes > 0 -> outcome.copy(fileName = old.fileName, downloadedBytes = bytes, totalBytes = old.latest.sizeBytes)
+                        else -> { directory()?.let(::deleteUpdateFiles); outcome }
+                    }
+                    persistence.write(encodeUpdateState(saved))
                 }
                 statusInternal()
             }
@@ -80,9 +97,11 @@ internal class AndroidAppUpdate(
     }
 
     override suspend fun download(): ApiResult<UpdateStatus> = attempt {
-        val plan = synchronized(lock) { prepareDownload() }
-        if (plan != null) launchDownload(plan)
-        synchronized(lock) { statusInternal() }
+        synchronized(lock) {
+            val plan = prepareDownload()
+            if (plan != null) launchDownload(plan)
+            statusInternal()
+        }
     }
 
     override suspend fun cancel(): ApiResult<UpdateStatus> = attempt {
@@ -91,8 +110,10 @@ internal class AndroidAppUpdate(
         val job = downloadJob
         if (job != null) withTimeoutOrNull(5_000) { job.cancel(); job.join() }
         synchronized(lock) {
-            downloadJob = null
-            directory()?.let(::deleteUpdateFiles)
+            if (job?.isCompleted != false) {
+                downloadJob = null
+                directory()?.let(::deleteUpdateFiles)
+            }
             val current = decodeUpdateState(persistence.read()) ?: PersistedUpdateState()
             val latest = current.latest
             persistence.write(encodeUpdateState(current.copy(
@@ -142,7 +163,7 @@ internal class AndroidAppUpdate(
     }
 
     override fun close() {
-        cancelRequested = true
+        synchronized(lock) { closed = true; checkGeneration++ }
         runCatching { activeConnection?.disconnect() }
         downloadJob?.cancel()
         scope.cancel()
@@ -155,13 +176,12 @@ internal class AndroidAppUpdate(
         val directory: File,
     )
 
-    private class UpdateFailure(val reason: String, val detail: String) : Exception(detail)
     private class UpdateApiException(val key: String) : Exception(key)
 
     private fun prepareDownload(): DownloadPlan? {
         val status = statusInternal()
         val latest = status.latest ?: return null
-        if (downloadJob?.isActive == true) return null
+        if (downloadJob?.isCompleted == false) return null
         if (status.phase == UpdatePhase.VERIFIED || status.phase == UpdatePhase.INSTALL_PENDING_VERIFY) return null
         if (status.phase !in setOf(UpdatePhase.UPDATE_AVAILABLE, UpdatePhase.VERIFY_FAILED)) return null
         val directory = directory() ?: run {
@@ -172,7 +192,6 @@ internal class AndroidAppUpdate(
             )))
             return null
         }
-        deleteUpdateFiles(directory)
         if (!directory.isDirectory && !directory.mkdirs()) {
             persistence.write(encodeUpdateState(currentState().copy(
                 phase = UpdatePhase.VERIFY_FAILED,
@@ -182,13 +201,15 @@ internal class AndroidAppUpdate(
             return null
         }
         cancelRequested = false
-        val part = File(directory, latest.assetName + ".part")
+        val part = confinedFile(directory, latest.assetName + ".part") ?: return null
         val target = confinedFile(directory, latest.assetName) ?: return null
+        if (currentState().fileName != latest.assetName || part.length() > latest.sizeBytes) part.delete()
+        target.delete()
         persistence.write(encodeUpdateState(currentState().copy(
             phase = UpdatePhase.DOWNLOADING,
             failureReason = null,
             detail = null,
-            downloadedBytes = 0,
+            downloadedBytes = part.length(),
             totalBytes = latest.sizeBytes,
             fileName = target.name,
             verified = false,
@@ -202,24 +223,35 @@ internal class AndroidAppUpdate(
                 downloadToPart(plan)
                 persist(phase = UpdatePhase.VERIFYING)
                 val failure = verifyUpdateFile(plan.target, plan.latest, build().packageName, build().deviceSdk, apkInspector, installedCertificate)
-                if (failure != null) {
-                    plan.target.delete()
-                    persist(phase = UpdatePhase.VERIFY_FAILED, reason = failure, detail = "install_verification")
-                } else {
-                    persist(phase = UpdatePhase.VERIFIED, reason = null, detail = null, verified = true)
+                currentCoroutineContext().ensureActive()
+                synchronized(lock) {
+                    if (closed || cancelRequested) throw CancellationException("update.cancelled")
+                    if (failure != null) {
+                        plan.target.delete()
+                        persist(phase = UpdatePhase.VERIFY_FAILED, reason = failure, detail = "install_verification")
+                    } else {
+                        persist(phase = UpdatePhase.VERIFIED, reason = null, detail = null, verified = true)
+                    }
                 }
             } catch (_: CancellationException) {
-                plan.part.delete()
-                plan.target.delete()
+                synchronized(lock) {
+                    if (!closed && cancelRequested) { plan.part.delete(); plan.target.delete() }
+                }
                 throw CancellationException("update.cancelled")
-            } catch (failure: UpdateFailure) {
-                plan.part.delete()
-                plan.target.delete()
-                persist(phase = UpdatePhase.VERIFY_FAILED, reason = failure.reason, detail = failure.detail)
+            } catch (failure: UpdateDownloadFailure) {
+                synchronized(lock) {
+                    if (closed) return@launch
+                    if (failure.discardPartial || cancelRequested) plan.part.delete()
+                    plan.target.delete()
+                    persistDownloadFailure(plan, failure.reason, failure.detail)
+                }
             } catch (_: Exception) {
-                plan.part.delete()
-                plan.target.delete()
-                persist(phase = UpdatePhase.VERIFY_FAILED, reason = UpdateReasons.DOWNLOAD_FAILED, detail = "unexpected")
+                synchronized(lock) {
+                    if (closed) return@launch
+                    if (cancelRequested) plan.part.delete()
+                    plan.target.delete()
+                    persistDownloadFailure(plan, UpdateReasons.DOWNLOAD_FAILED, "interrupted")
+                }
             } finally {
                 activeConnection = null
             }
@@ -227,51 +259,48 @@ internal class AndroidAppUpdate(
     }
 
     private suspend fun downloadToPart(plan: DownloadPlan) {
-        val http = openConnection(URL(plan.latest.downloadUrl))
-        activeConnection = http
-        try {
-            http.instanceFollowRedirects = true
-            http.connectTimeout = NETWORK_CONNECT_TIMEOUT_MS
-            http.readTimeout = downloadReadTimeoutMs
-            http.requestMethod = "GET"
-            http.setRequestProperty("User-Agent", UPDATE_USER_AGENT_PREFIX + build().current.versionName)
-            http.setRequestProperty("Accept", "application/vnd.android.package-archive")
-            val status = http.responseCode
-            if (status !in 200..299) throw UpdateFailure(UpdateReasons.DOWNLOAD_FAILED, "http_$status")
-            val declared = http.contentLengthLong.takeIf { it > 0 }
-            val digest = MessageDigest.getInstance("SHA-256")
-            var downloaded = 0L
-            var lastPublished = 0L
-            plan.part.outputStream().use { output ->
-                http.inputStream.use { input ->
-                    val buffer = ByteArray(64 * 1024)
-                    while (true) {
-                        if (cancelRequested) throw CancellationException("update.cancelled")
-                        val count = input.read(buffer)
-                        if (count < 0) break
-                        if (downloaded + count > plan.latest.sizeBytes) {
-                            throw UpdateFailure(UpdateReasons.DOWNLOAD_FAILED, "size_overflow")
-                        }
-                        output.write(buffer, 0, count)
-                        digest.update(buffer, 0, count)
-                        downloaded += count
-                        if (downloaded - lastPublished >= 256 * 1024) {
-                            lastPublished = downloaded
-                            synchronized(lock) { persistProgress(downloaded, declared ?: plan.latest.sizeBytes) }
-                        }
-                    }
+        downloadUpdatePart(plan.latest, plan.part,
+            UPDATE_USER_AGENT_PREFIX + build().current.versionName, downloadReadTimeoutMs, openConnection,
+            connectionChanged = { connection -> synchronized(lock) {
+                if (connection != null && (closed || cancelRequested)) {
+                    connection.disconnect()
+                    throw CancellationException("update.cancelled")
                 }
-            }
-            synchronized(lock) { persistProgress(downloaded, declared ?: plan.latest.sizeBytes) }
-            if (downloaded != plan.latest.sizeBytes) throw UpdateFailure(UpdateReasons.DOWNLOAD_FAILED, "size_mismatch")
-            val actual = digest.digest().joinToString("") { "%02x".format(it.toInt() and 0xff) }
-            if (!actual.equals(plan.latest.sha256, ignoreCase = true)) throw UpdateFailure(UpdateReasons.VERIFY_FAILED, "sha256_mismatch")
-            if (plan.target.exists() && !plan.target.delete()) throw UpdateFailure(UpdateReasons.DOWNLOAD_FAILED, "replace_failed")
-            if (!plan.part.renameTo(plan.target)) throw UpdateFailure(UpdateReasons.DOWNLOAD_FAILED, "rename_failed")
-        } finally {
-            runCatching { http.disconnect() }
-            activeConnection = null
+                activeConnection = connection
+            } },
+            progress = { bytes -> synchronized(lock) {
+                if (!closed && !cancelRequested) persistProgress(bytes, plan.latest.sizeBytes)
+            } },
+            commitFile = { synchronized(lock) {
+                if (closed || cancelRequested) throw CancellationException("update.cancelled")
+                if (plan.target.exists() && !plan.target.delete()) throw IOException("replace_failed")
+                if (!plan.part.renameTo(plan.target)) throw IOException("rename_failed")
+            } })
+        currentCoroutineContext().ensureActive()
+    }
+
+    private fun persistDownloadFailure(plan: DownloadPlan, reason: String, detail: String) {
+        synchronized(lock) {
+            if (closed || cancelRequested) return
+            if (plan.part.length() == 0L) plan.part.delete()
+            val bytes = plan.part.length()
+            persistence.write(encodeUpdateState(currentState().copy(
+                phase = UpdatePhase.VERIFY_FAILED, failureReason = reason, detail = detail,
+                downloadedBytes = bytes, totalBytes = plan.latest.sizeBytes,
+                fileName = plan.target.name.takeIf { bytes > 0 }, verified = false,
+            )))
         }
+    }
+
+    private fun sameDownload(a: AppReleaseInfo, b: AppReleaseInfo): Boolean =
+        a.versionCode == b.versionCode && a.assetName == b.assetName && a.sizeBytes == b.sizeBytes &&
+            a.sha256.equals(b.sha256, ignoreCase = true)
+
+    private fun partialBytes(state: PersistedUpdateState): Long {
+        val latest = state.latest ?: return 0
+        if (state.fileName != latest.assetName) return 0
+        val part = directory()?.let { confinedFile(it, latest.assetName + ".part") } ?: return 0
+        return if (part.isFile && part.length() in 1..latest.sizeBytes) part.length() else 0
     }
 
     private fun fetchCheck(previous: PersistedUpdateState?): PersistedUpdateState {
@@ -324,6 +353,7 @@ internal class AndroidAppUpdate(
     }
 
     private fun statusInternal(): UpdateStatus {
+        check(!closed) { "update.closed" }
         val info = build()
         var state = decodeUpdateState(persistence.read()) ?: PersistedUpdateState()
         val latest = state.latest
@@ -336,18 +366,33 @@ internal class AndroidAppUpdate(
             }
             return statusFrom(state, info)
         }
-        if (downloadJob?.isActive != true && (state.phase == UpdatePhase.DOWNLOADING || state.phase == UpdatePhase.VERIFYING)) {
-            directory()?.let(::deleteUpdateFiles)
+        if (downloadJob?.isCompleted != false && (state.phase == UpdatePhase.DOWNLOADING || state.phase == UpdatePhase.VERIFYING)) {
+            if (latest != null && state.fileName == latest.assetName) {
+                directory()?.let { dir ->
+                    val target = confinedFile(dir, latest.assetName)
+                    val part = confinedFile(dir, latest.assetName + ".part")
+                    if (target?.isFile == true && target.length() == latest.sizeBytes && part != null && !part.exists()) target.renameTo(part)
+                }
+            }
+            val bytes = partialBytes(state)
             state = if (latest != null) state.copy(
                 phase = UpdatePhase.UPDATE_AVAILABLE,
                 failureReason = UpdateReasons.DOWNLOAD_FAILED,
                 detail = "interrupted",
-                downloadedBytes = 0,
+                downloadedBytes = bytes,
                 totalBytes = latest.sizeBytes,
-                fileName = null,
+                fileName = latest.assetName.takeIf { bytes > 0 },
                 verified = false,
             ) else state.copy(phase = UpdatePhase.CHECK_FAILED, failureReason = UpdateReasons.CHECK_FAILED, downloadedBytes = 0, fileName = null)
             persistence.write(encodeUpdateState(state))
+        }
+        if (downloadJob?.isCompleted != false && state.phase in setOf(UpdatePhase.UPDATE_AVAILABLE, UpdatePhase.VERIFY_FAILED)) {
+            val bytes = partialBytes(state)
+            val fileName = latest?.assetName?.takeIf { bytes > 0 }
+            if (bytes != state.downloadedBytes || fileName != state.fileName) {
+                state = state.copy(downloadedBytes = bytes, fileName = fileName, verified = false)
+                persistence.write(encodeUpdateState(state))
+            }
         }
         if (state.phase == UpdatePhase.VERIFIED) {
             val directory = directory()
@@ -386,6 +431,7 @@ internal class AndroidAppUpdate(
         verified: Boolean = false,
     ) {
         synchronized(lock) {
+            if (closed || cancelRequested) return
             val current = currentState()
             persistence.write(encodeUpdateState(current.copy(
                 phase = phase,
@@ -431,6 +477,7 @@ internal class AndroidAppUpdate(
     }
 
     private suspend fun attempt(block: suspend () -> UpdateStatus): ApiResult<UpdateStatus> = try {
+        check(!closed) { "update.closed" }
         ApiResult.Success(block())
     } catch (cancelled: CancellationException) {
         throw cancelled

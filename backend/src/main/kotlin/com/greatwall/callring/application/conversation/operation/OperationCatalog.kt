@@ -35,6 +35,7 @@ class OperationCatalog(definitions:List<OperationDefinition> = defaultDefinition
                     ExecutionStrategy.COMPUTATION -> ReadStrategy.PURE_COMPUTATION to ReceiptPolicy.COMPUTATION
                     ExecutionStrategy.CATALOG -> ReadStrategy.CATALOG to ReceiptPolicy.CATALOG_READ
                     ExecutionStrategy.PLAN -> ReadStrategy.IN_MEMORY_PLAN to ReceiptPolicy.IN_MEMORY_PLAN
+                    ExecutionStrategy.PLATFORM_READ -> ReadStrategy.PLATFORM_OBSERVATION to ReceiptPolicy.PLATFORM_OBSERVATION
                     else -> throw IllegalArgumentException("operation.invalid_read_execution:${d.id}")
                 }
                 require(d.readSource == expected.first && d.receiptPolicy == expected.second && d.confirmation != null && d.scope == null && d.verification == null) { "operation.missing_read_source:${d.id}" }
@@ -819,6 +820,24 @@ private object OperationSchemas {
             write = true, sharedApi = "settings.saveNumberRule", receiptPolicy = ReceiptPolicy.PERSISTED_READBACK,
             confirmation = ConfirmationPolicy.NO_SEPARATE_CONFIRM, execution = ExecutionStrategy.DIRECT_WRITE,
             scope = ScopeStrategy.DIRECT, verification = VerificationStrategy.DIRECT, readSource = null,
+        ),
+        OperationDefinition(
+            id = OperationId.UPDATE_STATUS, name = "update_status", operationCode = "X12", legacyIndex = 84, displayOrder = 84,
+            schema = commandShape(false),
+            description = "读取应用更新状态、当前版本、最新版本及下载进度；不触发检查、下载或安装，不返回下载地址和私有诊断。",
+            runtimeDefaults = "No optional business arguments; observes AppUpdateApi.status without business snapshot reads or change versions. dependsOn omitted: [].",
+            write = false, sharedApi = "update.status", receiptPolicy = ReceiptPolicy.PLATFORM_OBSERVATION,
+            confirmation = ConfirmationPolicy.NO_SEPARATE_CONFIRM, execution = ExecutionStrategy.PLATFORM_READ,
+            scope = null, verification = null, readSource = ReadStrategy.PLATFORM_OBSERVATION,
+        ),
+        OperationDefinition(
+            id = OperationId.UPDATE_CHECK, name = "update_check", operationCode = "X13", legacyIndex = 85, displayOrder = 85,
+            schema = commandShape(false),
+            description = "主动检查应用最新发布版本并返回更新状态；仅刷新发布信息，不下载、取消下载或启动安装，不返回下载地址和私有诊断。",
+            runtimeDefaults = "No optional business arguments; refreshes release metadata through AppUpdateApi.check without downloads, installation, business snapshot reads or change versions. dependsOn omitted: [].",
+            write = false, sharedApi = "update.check", receiptPolicy = ReceiptPolicy.PLATFORM_OBSERVATION,
+            confirmation = ConfirmationPolicy.NO_SEPARATE_CONFIRM, execution = ExecutionStrategy.PLATFORM_READ,
+            scope = null, verification = null, readSource = ReadStrategy.PLATFORM_OBSERVATION,
         ),
     )
 }

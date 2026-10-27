@@ -64,7 +64,10 @@ private fun UpdateStatusBody(
             Text("当前已是最新版本，无需更新。")
             PrimaryUpdateAction("重新检查", onCheck)
         }
-        UpdatePhase.UPDATE_AVAILABLE -> PrimaryUpdateAction("下载更新", onDownload)
+        UpdatePhase.UPDATE_AVAILABLE -> {
+            if (status.downloadedBytes > 0) DownloadProgress(status)
+            PrimaryUpdateAction(if (status.downloadedBytes > 0) "继续下载" else "下载更新", onDownload)
+        }
         UpdatePhase.UNSUPPORTED_DEVICE -> Text(updateMessage(status.failureReason ?: "update.unsupported_device"))
         UpdatePhase.NO_INSTALLABLE -> {
             Text("该版本尚未提供可安装更新。")
@@ -89,7 +92,8 @@ private fun UpdateStatusBody(
         }
         UpdatePhase.VERIFY_FAILED -> {
             Text(updateMessage(status.failureReason ?: "update.verify_failed"), color = MaterialTheme.colorScheme.error)
-            PrimaryUpdateAction("重新下载", onDownload)
+            if (status.downloadedBytes > 0) DownloadProgress(status)
+            PrimaryUpdateAction(if (status.downloadedBytes > 0) "继续下载" else "重新下载", onDownload)
         }
         UpdatePhase.INSTALL_PERMISSION_REQUIRED -> {
             Text("需要允许“安装未知应用”后继续。")

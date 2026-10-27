@@ -22,6 +22,12 @@ import java.time.LocalDate
 fun safeValue(v: Any?): AiJson {
     fun obj(vararg fields: Pair<String, Any?>) = AiJson.Obj(fields.associate { it.first to safeValue(it.second) })
     return when (v) {
+        is UpdateStatus -> obj("current" to v.current,"phase" to v.phase,"latest" to v.latest,
+            "downloadedBytes" to v.downloadedBytes,"totalBytes" to v.totalBytes,
+            "failureReason" to v.failureReason,"checkedAtEpochMillis" to v.checkedAtEpochMillis)
+        is AppVersionInfo -> obj("versionName" to v.versionName,"versionCode" to v.versionCode)
+        is AppReleaseInfo -> obj("versionName" to v.versionName,"versionCode" to v.versionCode,
+            "publishedAtEpochMillis" to v.publishedAtEpochMillis,"notes" to v.notes,"sizeBytes" to v.sizeBytes)
         is com.greatwall.callring.domain.model.WorkScheduleSettings -> safeValue(v.toContract())
         is com.greatwall.callring.domain.model.CalendarYear -> safeValue(v.toContract())
         is com.greatwall.callring.domain.model.DateOverride -> safeValue(v.toContract())

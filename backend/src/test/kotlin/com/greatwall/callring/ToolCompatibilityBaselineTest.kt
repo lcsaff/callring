@@ -19,9 +19,9 @@ class ToolCompatibilityBaselineTest {
     @Test fun allDiscoverableOperationsMatchCompatibilityBaseline() {
         val registry = ToolRegistry()
         val definitions = registry.definitions
-        assertEquals(83, definitions.size)
-        assertEquals(83, definitions.map { it.name }.toSet().size)
-        assertEquals((1..72).map { "O%02d".format(it) } + (1..11).map { "X%02d".format(it) }, definitions.map { it.operationCode })
+        assertEquals(85, definitions.size)
+        assertEquals(85, definitions.map { it.name }.toSet().size)
+        assertEquals((1..72).map { "O%02d".format(it) } + (1..13).map { "X%02d".format(it) }, definitions.map { it.operationCode })
         val operations = definitions.map { d ->
             aiObject(
                 "toolName" to aiString(d.name), "operationCode" to aiString(d.operationCode),

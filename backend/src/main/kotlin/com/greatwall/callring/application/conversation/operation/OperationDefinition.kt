@@ -2,9 +2,9 @@ package com.greatwall.callring.application.conversation.operation
 
 import com.greatwall.callring.contracts.ai.AiJson
 
-enum class ExecutionStrategy { SOURCE, COMPUTATION, CATALOG, PLAN, DIRECT_WRITE, PROFILE_BATCH }
+enum class ExecutionStrategy { SOURCE, COMPUTATION, CATALOG, PLAN, DIRECT_WRITE, PROFILE_BATCH, PLATFORM_READ }
 enum class ScopeStrategy { DIRECT, PROFILE_CHILDREN }
-enum class ReadStrategy { SOURCE, PURE_COMPUTATION, CATALOG, IN_MEMORY_PLAN }
+enum class ReadStrategy { SOURCE, PURE_COMPUTATION, CATALOG, IN_MEMORY_PLAN, PLATFORM_OBSERVATION }
 enum class VerificationStrategy { DIRECT, CHILD_PERSISTED_READBACK }
 enum class ConfirmationPolicy { NO_SEPARATE_CONFIRM, AUTHORITATIVE_TARGET_CONFIRM, LOCAL_CREDENTIAL_EDITOR, LOCAL_CONNECTION_COPY_CONFIRM, AUTHORITATIVE_TARGET_DOUBLE_CONFIRM }
 

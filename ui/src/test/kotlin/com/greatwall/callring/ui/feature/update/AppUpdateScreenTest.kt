@@ -26,7 +26,7 @@ class AppUpdateScreenTest {
     private val release = AppReleaseInfo("0.4.0", 4, 0L, "修复若干问题", "callring-0.4.0.apk",
         12_000_000L, "sha", "https://example.com/apk")
     private fun status(phase: UpdatePhase, failure: String? = null) =
-        UpdateStatus(current, phase, latest = release, downloadedBytes = 3_000_000L, totalBytes = 12_000_000L,
+        UpdateStatus(current, phase, latest = release, downloadedBytes = if (phase == UpdatePhase.DOWNLOADING) 3_000_000L else 0L, totalBytes = 12_000_000L,
             failureReason = failure)
 
     @Test fun everyPhaseExposesExactlyOnePrimaryActionOrNone() {
@@ -95,6 +95,17 @@ class AppUpdateScreenTest {
         } }
         compose.onNodeWithText("已下载 2.9 MB / 11.4 MB").assertExists()
         compose.onNodeWithText("取消下载").assertExists()
+    }
+
+    @Test fun interruptedDownloadShowsSavedProgressAndContinueAction() {
+        val page = mutableStateOf(status(UpdatePhase.UPDATE_AVAILABLE).copy(downloadedBytes = 3_000_000L))
+        compose.setContent { CallringTheme(DefaultAppearance.rememberAppearanceThemeSpec(androidx.compose.foundation.isSystemInDarkTheme())) {
+            AppUpdateScreen(LoadState(page.value, loaded = true), MutationState(), {}, {}, {}, {}, {}, {})
+        } }
+        compose.onNodeWithText("继续下载").assertExists()
+        compose.onNodeWithText("已下载 2.9 MB / 11.4 MB").assertExists()
+        compose.runOnIdle { page.value = page.value.copy(phase = UpdatePhase.VERIFY_FAILED, failureReason = "update.download_failed") }
+        compose.onNodeWithText("继续下载").assertExists()
     }
 
     @Test fun checkAndVerificationFailuresKeepRetryActionsAndReasons() {

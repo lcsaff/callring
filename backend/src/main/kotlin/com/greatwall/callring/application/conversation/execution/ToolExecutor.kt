@@ -51,6 +51,15 @@ class ToolExecutor(
                 val result=ScopedToolReader(queries,numberMatcher,registry.catalog).readWithEvidence(definition.id,call.arguments)
                 return ToolReceipt(scope.command.operationId,call.id,ToolStatus.READ,result.value,verificationEvidence=result.evidence)
             }
+            if(definition.execution==ExecutionStrategy.PLATFORM_READ) {
+                val update=api().update
+                val value=when(definition.id) {
+                    OperationId.UPDATE_STATUS -> update.status().requiredValue()
+                    OperationId.UPDATE_CHECK -> update.check().requiredValue()
+                    else -> error("ai.unknown_tool")
+                }
+                return ToolReceipt(scope.command.operationId,call.id,ToolStatus.READ,safeValue(value))
+            }
             if (definition.write) {
                 require(foreground.hasHost) { "action.foreground_required" }
                 coordinator.guard(scope.command) {}
