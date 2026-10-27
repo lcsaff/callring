@@ -10,6 +10,6 @@
 - [x] AndroidAudioController：枚举偏好解析及回退、资源绑定、原子保存；restore 默认恢复 MELODY。新增四个 WAV 与可复现生成工具。
 - [x] SessionGate 去除试听超时；PlaybackServiceController STOP_PREVIEW 仅终止试听，补控制器测试。
 - [x] RingtoneViewModel 串行试听/停止及离开时封口；SettingsRoute LifecycleStartEffect；RingtoneScreen 单选与持续试听说明。补 VM 迟到请求与 Compose 生命周期测试。
-- [ ] 同步 PROJECT.md、README.md，运行 python tools/verify_backend.py 与 git diff --check。自审后提交、合入 main、推送，核对同 SHA CI；有设备则补隔离验证。
+- [x] 同步 PROJECT.md、README.md，运行 python tools/verify_backend.py 与 git diff --check。自审后提交、合入 main、推送，核对同 SHA CI；有设备则补隔离验证。
 
-定向验证：SessionGate 的持续试听断言先红后绿；新增空闲停止服务测试先红后绿。资源/持久化/失败回滚/过期导入、ViewModel 迟到启动、Compose 选项及生命周期定向验证通过。Compose disposal 断言等待重组后检查，不使用无 UI 状态等待代替空闲屏障。完整门、推送与 CI 待执行。
+定向验证：SessionGate 的持续试听断言先红后绿；新增空闲停止服务测试先红后绿。资源/持久化/失败回滚/过期导入、ViewModel 迟到启动、Compose 选项及生命周期定向验证通过。Compose disposal 断言等待重组后检查，不使用无 UI 状态等待代替空闲屏障。完整门在合并源码 22c63b559f709c84034b80bfc4b7c1bee658e903 通过：417/366/394 项 JVM，13 项 Gradle 任务及双 lint。未连接设备。提交推送与远端 CI 读回由交付流程执行。
