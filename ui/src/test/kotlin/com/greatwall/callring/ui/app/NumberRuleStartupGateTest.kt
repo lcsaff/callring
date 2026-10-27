@@ -20,7 +20,7 @@ class NumberRuleStartupGateTest {
             assertEquals(target, gate.state.value.pending)
             assertNull(gate.state.value.destination)
             assertEquals(0, checks)
-            ready.complete(ApiResult.Success(NumberRuleSettings("8", 6, 1))); runCurrent()
+            ready.complete(ApiResult.Success(NumberRuleSettings(listOf(com.greatwall.callring.contracts.settings.NumberRuleEntry("8", 6)), 1))); runCurrent()
             assertEquals(1, checks)
             assertEquals(if (target is UiDestination.Report) UiDestination.Report("812345") else UiDestination.EditCaller("812345"), gate.state.value.destination)
             gate.close()
@@ -31,7 +31,7 @@ class NumberRuleStartupGateTest {
         var attempt = 0; var checks = 0
         val gate = NumberRuleStartupGate(this, {
             if (++attempt == 1) ApiResult.Failure(ApiError(ErrorCode.STORAGE_FAILURE, "storage.failure"))
-            else ApiResult.Success(NumberRuleSettings("8", 6, 1))
+            else ApiResult.Success(NumberRuleSettings(listOf(com.greatwall.callring.contracts.settings.NumberRuleEntry("8", 6)), 1))
         }, { checks++; NumberCheck("812345", true, true) })
         val raw = UiDestination.Report("8-12345")
         gate.open(raw); runCurrent()
@@ -50,12 +50,12 @@ class NumberRuleStartupGateTest {
         var reads = 0; var checks = 0
         val gate = NumberRuleStartupGate(this, {
             if (++reads == 1) withContext(NonCancellable) { blocked.await() }
-            else ApiResult.Success(NumberRuleSettings("8", 6, 1))
+            else ApiResult.Success(NumberRuleSettings(listOf(com.greatwall.callring.contracts.settings.NumberRuleEntry("8", 6)), 1))
         }, { checks++; NumberCheck(it, true, true) })
         gate.open(UiDestination.Report("31234")); runCurrent()
         gate.open(UiDestination.Lookup); runCurrent()
         assertEquals(UiDestination.Lookup, gate.state.value.destination)
-        blocked.complete(ApiResult.Success(NumberRuleSettings("3", 5, 0))); runCurrent()
+        blocked.complete(ApiResult.Success(NumberRuleSettings(listOf(com.greatwall.callring.contracts.settings.NumberRuleEntry("3", 5)), 0))); runCurrent()
         assertEquals(UiDestination.Lookup, gate.state.value.destination)
         assertEquals(0, checks)
         gate.close()
@@ -71,7 +71,7 @@ class NumberRuleStartupGateTest {
         gate.open(UiDestination.EditCaller("812345")); runCurrent()
         val before = gate.state.value
         gate.close()
-        blocked.complete(ApiResult.Success(NumberRuleSettings("8", 6, 1))); runCurrent()
+        blocked.complete(ApiResult.Success(NumberRuleSettings(listOf(com.greatwall.callring.contracts.settings.NumberRuleEntry("8", 6)), 1))); runCurrent()
         assertEquals(before, gate.state.value)
         assertEquals(0, checks)
     }

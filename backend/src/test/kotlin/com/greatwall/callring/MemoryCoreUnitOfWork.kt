@@ -16,7 +16,7 @@ import com.greatwall.callring.domain.model.*
 
 /** Deterministic in-memory implementation of the same narrow session ports. */
 internal class MemoryCoreUnitOfWork : CoreUnitOfWork {
-    var numberRuleSettings = com.greatwall.callring.contracts.settings.NumberRuleSettings("3", 5, 0)
+    var numberRuleSettings = com.greatwall.callring.contracts.settings.NumberRuleSettings(listOf(com.greatwall.callring.contracts.settings.NumberRuleEntry("3", 5)), 0)
     val decision = DecisionFixture()
     val people = linkedMapOf<String, ProfileRecord>()
     val roles = linkedMapOf<Long, PositionRecord>()

@@ -66,7 +66,7 @@ class IncomingCallCoordinatorTest {
             val number = if (matched) "31234" else "812345"
             var inputs = DecisionInputs(emptyList(),emptyMap(),emptyMap(),emptySet(),emptyMap(),emptyMap(),0,
                 emptySet(),QuietSettings(QuietMode.OFF,false,emptyMap()),listOf(StatisticsInterval(0,null)),true,
-                NumberRuleSnapshot(NumberRule.DEFAULT,0))
+                NumberRuleSnapshot(listOf(NumberRule.DEFAULT),0))
             var snapshot = DecisionSnapshot.capture(inputs,PrefixLengthNumberMatcher)
             val seen = CompletableFuture<NumberMatchFact>()
             val engine = BackendIncomingCallEngine({ snapshot },{ snapshot },{ _,_,_,_,_,fact -> seen.complete(fact); 1L },{ _,_ -> })
@@ -75,7 +75,7 @@ class IncomingCallCoordinatorTest {
             }) {}
             try {
                 val session = coordinator.inspect("retained-$matched",number,1000,null)
-                inputs = inputs.copy(numberRule=NumberRuleSnapshot(NumberRule("8",6),1),
+                inputs = inputs.copy(numberRule=NumberRuleSnapshot(listOf(NumberRule("8",6)),1),
                     quiet=QuietSettings(QuietMode.NON_WORK,false,emptyMap()))
                 snapshot = snapshot.rebuild(inputs)
                 var again = coordinator.inspectAgain(session)

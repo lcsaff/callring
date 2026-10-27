@@ -24,5 +24,17 @@ object PrefixLengthNumberMatcher : NumberMatcher {
 }
 
 /** Immutable input and first assessment facts carried across one call. */
-data class NumberRuleSnapshot(val rule: NumberRule, val revision: Long)
+class NumberRuleSnapshot(rules: List<NumberRule>, val revision: Long) {
+    val rules: List<NumberRule> = java.util.Collections.unmodifiableList(ArrayList(rules))
+
+    init { require(revision >= 0) }
+
+    fun matches(normalized: String, matcher: NumberMatcher): Boolean =
+        rules.any { matcher.matches(normalized, it) }
+
+    override fun equals(other: Any?): Boolean =
+        other is NumberRuleSnapshot && rules == other.rules && revision == other.revision
+    override fun hashCode(): Int = 31 * rules.hashCode() + revision.hashCode()
+    override fun toString(): String = "NumberRuleSnapshot(rules=$rules, revision=$revision)"
+}
 data class NumberMatchFact(val revision: Long, val matched: Boolean)

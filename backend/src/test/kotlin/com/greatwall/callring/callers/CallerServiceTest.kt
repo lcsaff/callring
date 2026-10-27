@@ -100,7 +100,7 @@ class CallerServiceTest {
         val p = Profiles()
         val c = BusinessRevisionCoordinator()
         val query =
-            CallerQueryService(p, unusedQueries, c, Dispatchers.Unconfined, Clock.systemUTC(), rule = { com.greatwall.callring.domain.calling.NumberRuleSnapshot(com.greatwall.callring.domain.calling.NumberRule.DEFAULT, 0) }, matcher = com.greatwall.callring.domain.calling.PrefixLengthNumberMatcher, runtime = {
+            CallerQueryService(p, unusedQueries, c, Dispatchers.Unconfined, Clock.systemUTC(), rule = { com.greatwall.callring.domain.calling.NumberRuleSnapshot(listOf(com.greatwall.callring.domain.calling.NumberRule.DEFAULT), 0) }, matcher = com.greatwall.callring.domain.calling.PrefixLengthNumberMatcher, runtime = {
                 error("unexpected runtime")
             })
         p.checkRead = {
@@ -261,7 +261,7 @@ class CallerServiceTest {
         val p = Profiles()
         val c = BusinessRevisionCoordinator()
         val query =
-            CallerQueryService(p, unusedQueries, c, Dispatchers.Unconfined, Clock.systemUTC(), rule = { com.greatwall.callring.domain.calling.NumberRuleSnapshot(com.greatwall.callring.domain.calling.NumberRule.DEFAULT, 0) }, matcher = com.greatwall.callring.domain.calling.PrefixLengthNumberMatcher, runtime = {
+            CallerQueryService(p, unusedQueries, c, Dispatchers.Unconfined, Clock.systemUTC(), rule = { com.greatwall.callring.domain.calling.NumberRuleSnapshot(listOf(com.greatwall.callring.domain.calling.NumberRule.DEFAULT), 0) }, matcher = com.greatwall.callring.domain.calling.PrefixLengthNumberMatcher, runtime = {
                 error("runtime")
             })
         p.afterRead = { c.publishCore(setOf("quiet"), ChangeImpact(emptyMap())) }
@@ -276,7 +276,7 @@ class CallerServiceTest {
         val p = Profiles()
         val c = BusinessRevisionCoordinator()
         val query =
-            CallerQueryService(p, unusedQueries, c, Dispatchers.Unconfined, Clock.systemUTC(), rule = { com.greatwall.callring.domain.calling.NumberRuleSnapshot(com.greatwall.callring.domain.calling.NumberRule.DEFAULT, 0) }, matcher = com.greatwall.callring.domain.calling.PrefixLengthNumberMatcher, runtime = {
+            CallerQueryService(p, unusedQueries, c, Dispatchers.Unconfined, Clock.systemUTC(), rule = { com.greatwall.callring.domain.calling.NumberRuleSnapshot(listOf(com.greatwall.callring.domain.calling.NumberRule.DEFAULT), 0) }, matcher = com.greatwall.callring.domain.calling.PrefixLengthNumberMatcher, runtime = {
                 error("runtime")
             })
         p.afterRead = { c.publishCore(setOf("profiles"), ChangeImpact(emptyMap())) }

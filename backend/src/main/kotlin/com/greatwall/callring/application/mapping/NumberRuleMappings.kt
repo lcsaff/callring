@@ -9,9 +9,9 @@ import com.greatwall.callring.domain.model.NumberIdentity
 
 fun NumberRuleSettings.toSnapshot(): NumberRuleSnapshot {
     require(revision >= 0)
-    return NumberRuleSnapshot(NumberRule(prefix, length), revision)
+    return NumberRuleSnapshot(rules.map { NumberRule(it.prefix, it.length) }, revision)
 }
 fun checkNumber(raw: String, snapshot: NumberRuleSnapshot, matcher: NumberMatcher): NumberCheck {
     val identity = NumberIdentity.parse(raw)
-    return NumberCheck(identity.normalized, identity.validProfileNumber, matcher.matches(identity.normalized, snapshot.rule))
+    return NumberCheck(identity.normalized, identity.validProfileNumber, snapshot.matches(identity.normalized, matcher))
 }

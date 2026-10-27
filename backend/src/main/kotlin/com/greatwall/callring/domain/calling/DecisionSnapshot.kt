@@ -19,7 +19,7 @@ class DecisionSnapshot private constructor(val inputs: DecisionInputs, private v
     fun evaluate(number: String, at: Long, initialMatch: NumberMatchFact? = null): IncomingDecision {
         val identity = NumberIdentity.parse(number)
         val normalized = identity.normalized
-        val fact = initialMatch ?: NumberMatchFact(inputs.numberRule.revision, matcher.matches(normalized, inputs.numberRule.rule))
+        val fact = initialMatch ?: NumberMatchFact(inputs.numberRule.revision, inputs.numberRule.matches(normalized, matcher))
         val matched = fact.matched
         val white = normalized in inputs.whitelistedNumbers
         val classification = WorkClassifier.classify(inputs, at)

@@ -27,9 +27,9 @@ class NumberRuleToolTest {
         assertEquals(ReceiptPolicy.PERSISTED_READBACK,save.receiptPolicy)
         assertEquals(ConfirmationPolicy.NO_SEPARATE_CONFIRM,save.confirmation)
         val registry=ToolRegistry(catalog)
-        val good=ConversationToolCall("save",save.name,aiObject("base" to aiObject("prefix" to aiString("3"),"length" to aiNumber(5),"revision" to aiNumber(0)),"prefix" to aiString("8"),"length" to aiNumber(6)))
+        val good=ConversationToolCall("save",save.name,aiObject("base" to safeValue(NumberRuleSettings(listOf(NumberRuleEntry("3",5)),0)),"rules" to safeValue(listOf(NumberRuleEntry("8",6),NumberRuleEntry("001",7)))))
         registry.validate(good)
-        for(field in listOf("base","prefix","length")) assertTrue(runCatching{registry.validate(good.copy(arguments=AiJson.Obj(good.arguments.fields-field)))}.isFailure)
+        for(field in listOf("base","rules")) assertTrue(runCatching{registry.validate(good.copy(arguments=AiJson.Obj(good.arguments.fields-field)))}.isFailure)
         assertTrue(runCatching{registry.validate(good.copy(arguments=AiJson.Obj(good.arguments.fields+("regex" to aiString(".*")))))}.isFailure)
         assertEquals(ExecutionStrategy.SOURCE,catalog[OperationId.ROOT_CHECK_NUMBER].execution)
     }
@@ -51,13 +51,13 @@ class NumberRuleToolTest {
         val foreground=ForegroundActionService(checkCommand={_,_->true}).also{it.attachHost()}
         val executor=ToolExecutor({f.backend},f.coordinator,foreground,ForegroundResourceRegistry(),queries=q,numberMatcher=matcher,documentWriteVerified={false})
         val engine=ToolBatchEngine({f.backend},executor,q,f.coordinator,"session","turn",1,{active})
-        fun save(id:String="save",base:NumberRuleSettings=NumberRuleSettings("3",5,0),prefix:String="8",length:Int=6)=ConversationToolCall(id,"settings_saveNumberRule",aiObject("base" to safeValue(base),"prefix" to aiString(prefix),"length" to aiNumber(length)))
+        fun save(id:String="save",base:NumberRuleSettings=NumberRuleSettings(listOf(NumberRuleEntry("3",5)),0),prefix:String="8",length:Int=6,rules:List<NumberRuleEntry> = listOf(NumberRuleEntry(prefix,length)))=ConversationToolCall(id,"settings_saveNumberRule",aiObject("base" to safeValue(base),"rules" to safeValue(rules)))
         suspend fun execute(call:ConversationToolCall)=engine.execute(listOf(call)).single()
     }
     @Test fun rootUsesObservedRuleAndInjectedMatcherWithOneRealStampedRead()=runBlocking {
         var seen:NumberRule?=null
         val t=Fixture(NumberMatcher { number,rule->seen=rule;number=="91234"&&rule.prefix=="9" })
-        t.overrideRule=NumberRuleSettings("9",5,4)
+        t.overrideRule=NumberRuleSettings(listOf(NumberRuleEntry("9",5)),4)
         val call=ConversationToolCall("root","root_checkNumber",aiObject("raw" to aiString("9 1234")))
         val r=t.execute(call)
         assertEquals(setOf("normalized","validProfileNumber","matchesRule"),(r.value as AiJson.Obj).fields.keys)
@@ -69,15 +69,15 @@ class NumberRuleToolTest {
         assertEquals(observed.stamp.json(),evidence["stamp"])
         assertEquals(0L,t.q.snapshotObservations()[AiDomain.D10 to "configuration"])
     }
-    @Test fun getReturnsFormalThreeFieldsAndPageRuleChangeConflicts()=runBlocking {
+    @Test fun getReturnsFullRuleListAndPageRuleChangeConflicts()=runBlocking {
         val t=Fixture()
         val read=t.execute(ConversationToolCall("read","settings_getNumberRule",aiObject()))
-        assertEquals(safeValue(NumberRuleSettings("3",5,0)),read.value)
-        t.f.backend.settings.saveNumberRule(SaveNumberRule(NumberRuleSettings("3",5,0),"7",5)).requiredValue()
+        assertEquals(safeValue(NumberRuleSettings(listOf(NumberRuleEntry("3",5)),0)),read.value)
+        t.f.backend.settings.saveNumberRule(SaveNumberRule(NumberRuleSettings(listOf(NumberRuleEntry("3",5)),0),listOf(NumberRuleEntry("7",5)))).requiredValue()
         val result=t.execute(t.save())
         assertEquals(ToolStatus.FAILED,result.status)
         assertEquals(ErrorCode.CONFLICT,result.error?.code)
-        assertEquals(NumberRuleSettings("7",5,1),t.f.core.numberRuleSettings)
+        assertEquals(NumberRuleSettings(listOf(NumberRuleEntry("7",5)),1),t.f.core.numberRuleSettings)
     }
     @Test fun rootObservationAlsoProtectsSaveButAppearanceDoesNotConflict()=runBlocking {
         val t=Fixture()
@@ -85,18 +85,18 @@ class NumberRuleToolTest {
         t.f.backend.settings.saveAppearance(t.f.appearance.copy(colorMode=ColorMode.DARK)).requiredValue()
         val r=t.execute(t.save())
         assertEquals(VerificationStatus.VERIFIED,r.verification)
-        assertEquals(NumberRuleSettings("8",6,1),t.f.core.numberRuleSettings)
+        assertEquals(NumberRuleSettings(listOf(NumberRuleEntry("8",6)),1),t.f.core.numberRuleSettings)
         val marker=t.f.coordinator.marker()
         val repeated=t.execute(t.save("repeated"))
         assertEquals(VerificationStatus.VERIFIED,repeated.verification)
         assertEquals(marker,t.f.coordinator.marker())
     }
     @Test fun durableMismatchStaysCommittedAndRetryDoesNotWriteAgain()=runBlocking {
-        val t=Fixture();t.overrideRule=NumberRuleSettings("8",6,99)
+        val t=Fixture();t.overrideRule=NumberRuleSettings(listOf(NumberRuleEntry("8",6)),99)
         val r=t.execute(t.save())
         assertEquals(ToolStatus.COMMITTED,r.status)
         assertEquals(VerificationStatus.COMMITTED_UNVERIFIED,r.verification)
-        assertEquals(NumberRuleSettings("8",6,1),t.f.core.numberRuleSettings)
+        assertEquals(NumberRuleSettings(listOf(NumberRuleEntry("8",6)),1),t.f.core.numberRuleSettings)
         val marker=t.f.coordinator.marker()
         t.overrideRule=null
         val repeated=t.execute(t.save("again"))
@@ -111,12 +111,12 @@ class NumberRuleToolTest {
         val command=CommandContext("cancel",t.f.coordinator.capture(),1){false}
         val cancelled=t.executor.execute(t.save(),ToolExecutionContext("session","turn",1,command))
         assertEquals(ToolStatus.FAILED,cancelled.status);assertEquals("ai.cancelled",cancelled.error?.message)
-        assertEquals(NumberRuleSettings("3",5,0),t.f.core.numberRuleSettings)
+        assertEquals(NumberRuleSettings(listOf(NumberRuleEntry("3",5)),0),t.f.core.numberRuleSettings)
         assertEquals(marker,t.f.coordinator.marker())
         t.f.core.failCommit=true
         val failed=t.execute(t.save("failure"))
         assertEquals(ToolStatus.FAILED,failed.status)
-        assertEquals(NumberRuleSettings("3",5,0),t.f.core.numberRuleSettings)
+        assertEquals(NumberRuleSettings(listOf(NumberRuleEntry("3",5)),0),t.f.core.numberRuleSettings)
         assertEquals(marker,t.f.coordinator.marker())
         t.f.core.failCommit=false
         val repeated=t.execute(t.save("same-failed"))
@@ -134,8 +134,59 @@ class NumberRuleToolTest {
     @Test fun rootObservationRejectsInterveningRulePageSave()=runBlocking {
         val t=Fixture()
         t.execute(ConversationToolCall("root","root_checkNumber",aiObject("raw" to aiString("31234"))))
-        t.f.backend.settings.saveNumberRule(SaveNumberRule(NumberRuleSettings("3",5,0),"7",5)).requiredValue()
+        t.f.backend.settings.saveNumberRule(SaveNumberRule(NumberRuleSettings(listOf(NumberRuleEntry("3",5)),0),listOf(NumberRuleEntry("7",5)))).requiredValue()
         assertEquals(ErrorCode.CONFLICT,t.execute(t.save()).error?.code)
-        assertEquals(NumberRuleSettings("7",5,1),t.f.core.numberRuleSettings)
+        assertEquals(NumberRuleSettings(listOf(NumberRuleEntry("7",5)),1),t.f.core.numberRuleSettings)
     }
+    @Test fun fullListSaveCanAddRemoveMiddleRowAndClear()=runBlocking {
+        val t=Fixture()
+        var base=t.f.backend.settings.getNumberRule().requiredValue()
+        val entries=listOf(NumberRuleEntry("12",6),NumberRuleEntry("001",7),NumberRuleEntry("9",5))
+        for ((i,rules) in listOf(entries,entries.filterIndexed { index,_->index!=1 },emptyList()).withIndex()) {
+            val engine=ToolBatchEngine({t.f.backend},t.executor,t.q,t.f.coordinator,"session","edit-$i",1,{true})
+            val r=engine.execute(listOf(t.save("edit-$i",base=base,rules=rules))).single()
+            assertEquals(VerificationStatus.VERIFIED,r.verification)
+            base=NumberRuleSettings(rules,base.revision+1)
+            assertEquals(base,t.f.core.numberRuleSettings)
+        }
+    }
+    @Test fun rootMatchesAnyEntryAndEmptyListNeverMatches()=runBlocking {
+        val t=Fixture()
+        for ((rules,raw,expected) in listOf(
+            Triple(listOf(NumberRuleEntry("12",6),NumberRuleEntry("001",7)),"001 2345",true),
+            Triple(listOf(NumberRuleEntry("12",6),NumberRuleEntry("001",7)),"129999",true),
+            Triple(emptyList(),"31234",false))) {
+            t.overrideRule=NumberRuleSettings(rules,8)
+            val r=t.execute(ConversationToolCall("root-$raw","root_checkNumber",aiObject("raw" to aiString(raw))))
+            val v=r.value as AiJson.Obj
+            assertEquals(setOf("normalized","validProfileNumber","matchesRule"),v.fields.keys)
+            assertEquals(aiBool(expected),v["matchesRule"])
+            assertEquals(VerificationStatus.NOT_REQUIRED,r.verification)
+            val observed=t.q.get(AiDomain.D10,"configuration").requiredValue()
+            val evidence=(r.verificationEvidence as AiJson.Arr).values.single() as AiJson.Obj
+            assertEquals(observed.stamp.json(),evidence["stamp"])
+            assertEquals(observed.value,evidence["value"])
+        }
+    }
+    @Test fun persistedListMismatchCannotVerifyEvenWithCorrectRevision()=runBlocking {
+        val t=Fixture()
+        t.overrideRule=NumberRuleSettings(listOf(NumberRuleEntry("8",6),NumberRuleEntry("001",7)),1)
+        val r=t.execute(t.save())
+        assertEquals(ToolStatus.COMMITTED,r.status)
+        assertEquals(VerificationStatus.COMMITTED_UNVERIFIED,r.verification)
+    }
+    @Test fun arraySchemaRejectsLegacyScalarsAndInvalidRowsButAllowsClear() {
+        val registry=ToolRegistry();val t=Fixture()
+        registry.validate(t.save(rules=emptyList()))
+        val valid=t.save()
+        val invalid=listOf(
+            AiJson.Obj(valid.arguments.fields+("prefix" to aiString("8"))),
+            AiJson.Obj(valid.arguments.fields+("rules" to AiJson.Null)),
+            AiJson.Obj(valid.arguments.fields+("base" to aiObject("revision" to aiNumber(0)))),
+            AiJson.Obj(valid.arguments.fields+("base" to aiObject("rules" to AiJson.Arr(emptyList())))),
+            AiJson.Obj(valid.arguments.fields+("rules" to AiJson.Arr(listOf(aiObject("prefix" to aiString("8")))))),
+            AiJson.Obj(valid.arguments.fields+("rules" to AiJson.Arr(listOf(aiObject("prefix" to aiString("8"),"length" to aiNumber(6),"regex" to aiString(".*")))))))
+        invalid.forEach { assertTrue(runCatching { registry.validate(valid.copy(arguments=it)) }.isFailure) }
+    }
+
 }

@@ -22,8 +22,8 @@ class CoreSnapshotSourceTest {
     @Test fun completeAndLocalNumberRuleMatchDefaultsAndSavedRevision() {
         SqliteCoreStorageResource(RuntimeEnvironment.getApplication(), "complete-rule.db").use { store ->
             for (rule in listOf(
-                NumberRuleSettings("3", 5, 0),
-                NumberRuleSettings("8", 6, 1))) {
+                NumberRuleSettings(listOf(NumberRuleEntry("3",5)),0),
+                NumberRuleSettings(listOf(NumberRuleEntry("8",6),NumberRuleEntry("001",7)),1), NumberRuleSettings(emptyList(),2))) {
                 if (rule.revision > 0) store.sessions.writeNumberRule { it.saveNumberRule(rule) }
                 val local = store.scoped.get(AiDomain.D10, "current", "default")!!.value["numberRule"]
                 val full = projectCoreSnapshot(
@@ -40,8 +40,7 @@ class CoreSnapshotSourceTest {
                     RingtoneSettings(false,
                         AudioSource.BUILT_IN, "", 1))
                 val expected = aiObject(
-                    "prefix" to aiString(rule.prefix),
-                    "length" to aiNumber(rule.length),
+                    "rules" to AiJson.Arr(rule.rules.map { aiObject("prefix" to aiString(it.prefix), "length" to aiNumber(it.length)) }),
                     "revision" to aiNumber(rule.revision))
                 assertEquals(expected, local)
                 assertEquals(expected, (full.getValue("D10") as AiJson.Obj)["numberRule"])

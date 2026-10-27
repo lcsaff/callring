@@ -135,7 +135,7 @@ def check():
     for approved in ("RecordingApi.getSettings/saveSettings/testConnection", "RecordingApi.setSystemFolder", "AiConnectionView.copyToAnalysisProfile", "CallringUiApi abstract capabilities", "ConversationBudget.validate"):
         if approved not in document: errors.append("Missing approved internal signature change: " + approved)
     golden = ROOT / "docs/contracts/ai-operation-compatibility.json"
-    if not golden.exists() or hashlib.sha256(golden.read_text(encoding="utf-8").encode("utf-8")).hexdigest() != "72dc313e9d2b340e467a5bf5aea955b96830f6b1dc618bf9727e15b13262910b":
+    if not golden.exists() or hashlib.sha256(golden.read_text(encoding="utf-8").encode("utf-8")).hexdigest() != "872a9ab3dbffa7a5c13a9bdce42033d6940063d0ca91a9e5a94c1142d4cdd838":
         errors.append("AI operation compatibility golden changed; preserve the reviewed external schema")
     compatibility_test = ROOT / "backend/src/test/kotlin/com/greatwall/callring/ToolCompatibilityBaselineTest.kt"
     if not compatibility_test.exists() or 'ai-operation-compatibility.json' not in compatibility_test.read_text(encoding="utf-8"):

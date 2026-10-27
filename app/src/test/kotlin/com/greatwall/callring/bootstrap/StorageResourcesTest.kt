@@ -46,7 +46,7 @@ class StorageResourcesTest {
                 ScoreSettings(5, 2, 10, 30),
                 false,
                 emptyList(),
-                com.greatwall.callring.contracts.settings.NumberRuleSettings("3", 5, 0),
+                com.greatwall.callring.contracts.settings.NumberRuleSettings(listOf(com.greatwall.callring.contracts.settings.NumberRuleEntry("3", 5)), 0),
             )
         }
 

@@ -98,8 +98,8 @@ class ToolExecutor(
             val a = call.arguments
             val value: Any? = when (definition.id) {
                 OperationId.SETTINGS_SAVE_NUMBER_RULE -> {
-                    val base=a.obj("base").let { NumberRuleSettings(it.s("prefix"),it.l("length").exactInt(),it.l("revision")) }
-                    val saved=bound.settings.saveNumberRule(SaveNumberRule(base,a.s("prefix"),a.l("length").exactInt())).requiredValue()
+                    val base=a.obj("base").numberRuleSettings()
+                    val saved=bound.settings.saveNumberRule(SaveNumberRule(base,a.numberRuleEntries())).requiredValue()
                     noOp=saved==base
                     saved
                 }
@@ -236,6 +236,11 @@ internal fun AiJson.Obj.optL(key: String) = if(get(key) == AiJson.Null) null els
 internal fun AiJson.Obj.optB(key: String) = if(get(key) == AiJson.Null) null else b(key)
 internal fun AiJson.Obj.obj(key: String) = get(key) as? AiJson.Obj ?: throw IllegalArgumentException()
 internal fun AiJson.Obj.optObj(key: String) = get(key) as? AiJson.Obj
+internal fun AiJson.Obj.numberRuleEntries(): List<NumberRuleEntry> = (get("rules") as AiJson.Arr).values.map {
+    val entry=it as AiJson.Obj
+    NumberRuleEntry(entry.s("prefix"),entry.l("length").exactInt())
+}
+internal fun AiJson.Obj.numberRuleSettings()=NumberRuleSettings(numberRuleEntries(),l("revision"))
 internal fun Long.exactInt(): Int { require(this in Int.MIN_VALUE..Int.MAX_VALUE); return toInt() }
 private fun AiJson.Obj.range(): DateRange = obj("range").let { DateRange(LocalDate.parse(it.s("startDate")), LocalDate.parse(it.s("endDateInclusive")), it.optS("zoneId")) }
 private fun AiJson.Obj.windows(key: String): List<TimeWindow> = (get(key) as AiJson.Arr).values.map { val item = it as AiJson.Obj; TimeWindow(item.l("startMinute").exactInt(), item.l("endMinute").exactInt()) }

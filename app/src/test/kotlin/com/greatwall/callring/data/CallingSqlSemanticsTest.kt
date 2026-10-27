@@ -61,7 +61,8 @@ class CallingSqlSemanticsTest {
                 },object : IncomingCallUiSink { override fun show(request: IncomingCallUiRequest)=Unit })
             try {
                 val api=graph.backend
-                api.settings.getNumberRule().requiredValue()
+                val base=api.settings.getNumberRule().requiredValue()
+                api.settings.saveNumberRule(SaveNumberRule(base,listOf(NumberRuleEntry("3",5),NumberRuleEntry("08",6)))).requiredValue()
                 api.settings.setStatisticsEnabled(true).requiredValue()
                 for ((i,n) in listOf("31234","812345").withIndex()) {
                     assertEquals(accept,api.checkNumber(n).matchesRule)
@@ -96,7 +97,7 @@ class CallingSqlSemanticsTest {
                 val old=coordinator.inspect("old","31234",at,null)
                 assertTrue(entered.await(3,TimeUnit.SECONDS))
                 val base=api.settings.getNumberRule().requiredValue()
-                api.settings.saveNumberRule(SaveNumberRule(base,"8",6)).requiredValue()
+                api.settings.saveNumberRule(SaveNumberRule(base, listOf(com.greatwall.callring.contracts.settings.NumberRuleEntry("8", 6)))).requiredValue()
                 assertTrue(coordinator.inspectAgain(old).matched)
                 assertEquals(0L,coordinator.inspectAgain(old).numberMatch.revision)
                 release.countDown()

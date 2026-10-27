@@ -55,9 +55,9 @@ class ReceiptVerifier(private val q:QueryService,private val catalog:OperationCa
                 OperationId.SETTINGS_SAVE_NUMBER_RULE -> {
                     val actual=get(AiDomain.D10,"configuration")["numberRule"] as? AiJson.Obj
                     val base=a.obj("base")
-                    val unchanged=a["prefix"]==base["prefix"]&&sameValue(a["length"],base["length"])
+                    val unchanged=sameValue(a["rules"],base["rules"])
                     val revision=if(unchanged)base.l("revision") else Math.addExact(base.l("revision"),1)
-                    actual!=null&&sameValue(actual["prefix"],a["prefix"])&&sameValue(actual["length"],a["length"])&&sameValue(actual["revision"],aiNumber(revision))&&sameValue(actual["revision"],receiptObject()["revision"])
+                    actual!=null&&sameValue(actual["rules"],a["rules"])&&sameValue(actual["rules"],receiptObject()["rules"])&&sameValue(actual["revision"],aiNumber(revision))&&sameValue(actual["revision"],receiptObject()["revision"])
                 }
                 OperationId.SETTINGS_SET_STATISTICS_ENABLED ->sameValue(get(AiDomain.D10,"configuration")["statisticsEnabled"],a["enabled"])
                 OperationId.SETTINGS_SET_OVERLAY_ENABLED ->sameValue(get(AiDomain.D10,"configuration")["overlay"],a["enabled"])

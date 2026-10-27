@@ -71,7 +71,7 @@ class CallringActivityTest {
             assertEquals(UiDestination.Report("100"), gateOf(controller.get()).state.value.pending)
             assertNotNull(gateOf(controller.get()).state.value.error)
             assertEquals(0, application.uiApi.numberChecks)
-            application.uiApi.prepareRule = { ApiResult.Success(com.greatwall.callring.contracts.settings.NumberRuleSettings("3", 5, 0)) }
+            application.uiApi.prepareRule = { ApiResult.Success(com.greatwall.callring.contracts.settings.NumberRuleSettings(listOf(com.greatwall.callring.contracts.settings.NumberRuleEntry("3", 5)), 0)) }
             gateOf(controller.get()).retry()
             assertEquals(UiDestination.Report("100"), destinationOf(controller.get()))
             assertTrue(application.uiApi.numberChecks > 0)
@@ -132,7 +132,7 @@ class PermissionRecoveryApplication : Application(), UiApiOwner {
 
 class PermissionRecoveryApi : UiFakeApi() {
     var prepareRule: suspend () -> ApiResult<com.greatwall.callring.contracts.settings.NumberRuleSettings> = {
-        ApiResult.Success(com.greatwall.callring.contracts.settings.NumberRuleSettings("3", 5, 0))
+        ApiResult.Success(com.greatwall.callring.contracts.settings.NumberRuleSettings(listOf(com.greatwall.callring.contracts.settings.NumberRuleEntry("3", 5)), 0))
     }
     var numberChecks = 0
     override suspend fun getNumberRule() = prepareRule()
