@@ -47,7 +47,6 @@ data class CredentialDraft(val slot: AiSlot, val base: AiSettingsView, val conne
                 Text("清除后仍须通过完整配置校验；启用自动分析时必须保留两个有效连接。")
             }
             error?.let { Text(aiErrorText(it), color = MaterialTheme.colorScheme.error) }
-            if(busy) LinearProgressIndicator(Modifier.fillMaxWidth())
         }
     }, confirmButton = { TextButton(enabled = !busy && base != null && recording != null && (choice != 1 || key.isNotBlank()), onClick = {
         val aiBase = base ?: return@TextButton; val recBase = recording ?: return@TextButton

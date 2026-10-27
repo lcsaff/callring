@@ -19,8 +19,8 @@ import com.greatwall.callring.ui.state.*
     onFolder: () -> Unit, onMicrophone: () -> Unit) {
     ScreenFrame("录音设置", onBack) {
         Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            RecordingFeedback(state.error, mutation)
-            if (state.loading) LinearProgressIndicator(Modifier.fillMaxWidth())
+            (mutation.error ?: state.error)?.let { Text(recordingMessage(it.message), color = MaterialTheme.colorScheme.error) }
+            if (state.loading && state.data == null) LoadingContent()
             if (state.data == null && !state.loading) TextButton(onClick = onRefresh) { Text("加载设置") }
             state.data?.let { value ->
                 SwitchSettingRow("启用录音归档", value.recordingEnabled, onEnabled, summary = "录音与来电统计独立开关")

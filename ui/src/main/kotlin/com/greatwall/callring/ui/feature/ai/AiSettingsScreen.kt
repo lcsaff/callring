@@ -14,6 +14,7 @@ import androidx.compose.ui.unit.dp
 import com.greatwall.callring.contracts.common.*
 import com.greatwall.callring.contracts.ai.*
 import com.greatwall.callring.ui.designsystem.components.ScreenFrame
+import com.greatwall.callring.ui.designsystem.components.LoadingContent
 import com.greatwall.callring.ui.designsystem.components.SwitchSettingRow
 import com.greatwall.callring.ui.feature.recording.recordingMessage
 import com.greatwall.callring.ui.state.LoadState
@@ -39,7 +40,7 @@ fun AiSettingsScreen(
         Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             (mutation.error ?: state.error)?.let { Text(aiErrorText(it), color = MaterialTheme.colorScheme.error) }
             mutation.message?.let { Text(it) }
-            if (state.loading) LinearProgressIndicator(Modifier.fillMaxWidth())
+            if (state.loading && state.data == null) LoadingContent()
             if (state.data == null) {
                 if (!state.loading && state.error == null) TextButton(onClick = onRetry) { Text("加载设置") }
             }

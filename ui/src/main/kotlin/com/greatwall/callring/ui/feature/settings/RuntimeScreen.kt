@@ -27,9 +27,9 @@ fun RuntimeScreen(
 ) {
     ScreenFrame("运行状态与权限", onBack) {
         Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            if (state.loading || (!state.loaded && state.error == null)) LoadingContent()
+            if (state.data == null && (state.loading || (!state.loaded && state.error == null))) LoadingContent()
             state.error?.let { ApiErrorNotice(it, onCapability); TextButton(onRetry) { Text("重试") } }
-            MutationFeedback(mutation, onCapability)
+            MutationFeedback(mutation, onCapability, showSuccess = false)
             state.data?.let { data ->
                 val status = data.status
                 SettingsCard("悬浮窗检查") {
