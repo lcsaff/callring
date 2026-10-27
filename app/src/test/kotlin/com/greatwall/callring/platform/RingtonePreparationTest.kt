@@ -38,6 +38,80 @@ class RingtonePreparationTest {
     private fun status() = RuntimeStatus(Capability.entries.associateWith { AccessState.GRANTED }, Audibility.AUDIBLE,
         PhoneActivity.IDLE, PlaybackStatus(PlaybackMode.NONE, PlaybackState.IDLE), true, 0)
 
+    @Test fun builtInSelectionSurvivesReopenAndOnlyChangesRingtoneVersion() = runBlocking {
+        val context = RuntimeEnvironment.getApplication()
+        val preferences = MemoryPreferences()
+        val directory = File(context.cacheDir, "ring-catalog-${System.nanoTime()}")
+        val coordinator = BusinessRevisionCoordinator()
+        val documents = Documents()
+        AndroidAudioController(context, preferences, { directory }, documents).use { audio ->
+            assertEquals(BuiltInRingtone.MELODY, audio.getSettings().builtInRingtone)
+            assertNull(audio.getSettings().previewSeconds)
+            val service = RingtoneService(audio, ::status, coordinator, Dispatchers.IO, operationActive = { true })
+            BuiltInRingtone.entries.forEachIndexed { index, choice ->
+                val saved = service.restoreBuiltIn(choice).ok()
+                assertEquals(choice, saved.builtInRingtone)
+                service.restoreBuiltIn(choice).ok()
+                assertEquals(index.toLong(), coordinator.marker())
+                AndroidAudioController(context, preferences, { directory }, documents).use { reopened ->
+                    assertEquals(saved, reopened.getSettings())
+                }
+            }
+            assertEquals(0L, coordinator.capture().values.getValue("core"))
+            service.restoreBuiltIn().ok()
+            assertEquals(BuiltInRingtone.MELODY, audio.getSettings().builtInRingtone)
+        }
+    }
+
+    @Test fun selectingBuiltInInvalidatesPreparedImportAndPreservesImportedFile() = runBlocking {
+        ShadowMediaPlayer.setMediaInfoProvider { ShadowMediaPlayer.MediaInfo(1000, 0) }
+        val context = RuntimeEnvironment.getApplication()
+        val preferences = MemoryPreferences()
+        val directory = File(context.cacheDir, "ring-select-${System.nanoTime()}")
+        val documents = Documents()
+        AndroidAudioController(context, preferences, { directory }, documents).use { audio ->
+            audio.prepareAudio(DocumentRef("initial")) {}.use { it.commit {} }
+            audio.prepareAudio(DocumentRef("older")) {}.use { prepared ->
+                audio.restoreBuiltIn(BuiltInRingtone.CHIME)
+                assertThrows(BackendFailure::class.java) { prepared.commit {} }
+            }
+            assertEquals(AudioSource.BUILT_IN, audio.getSettings().source)
+            assertEquals(BuiltInRingtone.CHIME, audio.getSettings().builtInRingtone)
+            assertEquals("initial", File(directory, "selected_audio").readText())
+        }
+    }
+
+    @Test fun legacyAndUnknownPreferencesFallbackWithoutRewritingAndFailedSaveKeepsSelection() = runBlocking {
+        val context = RuntimeEnvironment.getApplication()
+        val preferences = MemoryPreferences()
+        preferences.edit().putString("built_in_ringtone", "future_unknown").commit()
+        val directory = File(context.cacheDir, "ring-fallback-${System.nanoTime()}")
+        val coordinator = BusinessRevisionCoordinator()
+        AndroidAudioController(context, preferences, { directory }, Documents()).use { audio ->
+            assertEquals(BuiltInRingtone.MELODY, audio.getSettings().builtInRingtone)
+            assertEquals("future_unknown", preferences.getString("built_in_ringtone", null))
+            val service = RingtoneService(audio, ::status, coordinator, Dispatchers.IO, operationActive = { true })
+            preferences.failNext = true
+            assertTrue(service.restoreBuiltIn(BuiltInRingtone.GENTLE) is ApiResult.Failure)
+            assertEquals(BuiltInRingtone.MELODY, audio.getSettings().builtInRingtone)
+            assertEquals(0L, coordinator.marker())
+        }
+    }
+
+    @Test fun everyBuiltInChoiceBindsADistinctPackagedWaveResource() {
+        val context = RuntimeEnvironment.getApplication()
+        val resources = BuiltInRingtone.entries.map { com.greatwall.callring.platform.audio.builtInResource(it) }
+        assertEquals(5, resources.toSet().size)
+        resources.forEach { resource ->
+            context.resources.openRawResource(resource).use { input ->
+                val header = ByteArray(12)
+                assertEquals(12, input.read(header))
+                assertEquals("RIFF", String(header, 0, 4, Charsets.US_ASCII))
+                assertEquals("WAVE", String(header, 8, 4, Charsets.US_ASCII))
+            }
+        }
+    }
+
     @Test fun realPreparedFileMetadataRollbackAndSameLabelReplacementPublishExactlyOnce() = runBlocking {
         ShadowMediaPlayer.setMediaInfoProvider { ShadowMediaPlayer.MediaInfo(1000, 0) }
         val context = RuntimeEnvironment.getApplication()

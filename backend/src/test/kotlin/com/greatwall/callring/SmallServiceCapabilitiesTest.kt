@@ -109,8 +109,9 @@ class SmallServiceCapabilitiesTest {
                 override fun close() { closes++ }
             }
         }
-        override fun restoreBuiltIn() = current.copy(source = AudioSource.BUILT_IN).also { current = it }
+        override fun restoreBuiltIn(ringtone: com.greatwall.callring.contracts.settings.BuiltInRingtone) = current.copy(source = AudioSource.BUILT_IN, builtInRingtone = ringtone).also { current = it }
         override fun startPreview() {}
+        override fun stopPreview() {}
         override fun stopPlayback() { stops++ }
     }
 

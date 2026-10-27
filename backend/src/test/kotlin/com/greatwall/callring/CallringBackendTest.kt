@@ -170,10 +170,11 @@ class CallringBackendTest {
             }
         }
 
-        override fun restoreBuiltIn() = current
+        override fun restoreBuiltIn(ringtone: com.greatwall.callring.contracts.settings.BuiltInRingtone) = current
 
         override fun startPreview() {}
 
+        override fun stopPreview() {}
         override fun stopPlayback() {
             stops++
             if (stopRestricted)

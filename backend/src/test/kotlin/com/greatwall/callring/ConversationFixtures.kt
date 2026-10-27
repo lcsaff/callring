@@ -65,8 +65,9 @@ class ConversationFixtures(numberMatcher: com.greatwall.callring.domain.calling.
                     override fun close() {}
                 }
             }
-            override fun restoreBuiltIn() = ringtone.copy(source = AudioSource.BUILT_IN).also { ringtone = it }
+            override fun restoreBuiltIn(ringtone: com.greatwall.callring.contracts.settings.BuiltInRingtone) = this@ConversationFixtures.ringtone.copy(source = AudioSource.BUILT_IN, builtInRingtone = ringtone).also { this@ConversationFixtures.ringtone = it }
             override fun startPreview() = Unit
+            override fun stopPreview() {}
             override fun stopPlayback() = Unit
         },
         object : SyncScheduler { override fun requestSync(atEpochMillis: Long) = SyncRequestReceipt(SyncRequestState.QUEUED, atEpochMillis) },

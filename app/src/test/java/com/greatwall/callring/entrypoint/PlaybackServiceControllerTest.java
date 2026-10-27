@@ -16,7 +16,7 @@ public class PlaybackServiceControllerTest {
         public void release() { releases++; }
     }
     static class Rig {
-        long now; boolean ringing, active, focusGranted=true; Runnable focusLoss; int sync, clears;
+        long now; boolean ringing, active, focusGranted=true; Runnable focusLoss; int sync, clears, serviceStops;
         List<Integer> ready=new ArrayList<>(); List<Runnable> worker=new ArrayList<>();
         List<Runnable> posted=new ArrayList<>(); Map<Long,Runnable> delayed=new HashMap<>();
         List<Media> media=new ArrayList<>();
@@ -29,7 +29,7 @@ public class PlaybackServiceControllerTest {
             }, worker::add, ()->{ Media m=new Media();media.add(m);return m; },
             ()->true, ()->true, ()->true, ()->new PlaybackServiceController.Observation(ringing,active),
             (mode,state)->{}, ()->clears++, event->{}, preview->{},
-            ()->new PlaybackServiceController.Lease() { public void acquire() {} public void release() {} }, loss->{focusLoss=loss;return focusGranted;}, ()->{}, ()->sync++, ()->{}, ()->{}, ()->{});
+            ()->new PlaybackServiceController.Lease() { public void acquire() {} public void release() {} }, loss->{focusLoss=loss;return focusGranted;}, ()->{}, ()->sync++, ()->{}, ()->serviceStops++, ()->{});
     }
     @Test public void wrongCancelAndDuplicateStartPreserveAttemptAndReadinessIsOnce() {
         Rig r=new Rig();r.controller.command(PREPARE,"a",r.ready::add);
@@ -69,6 +69,30 @@ public class PlaybackServiceControllerTest {
         r.posted.remove(0).run();r.delayed.get(150L).run();assertEquals(1,r.media.get(0).starts);
         r.active=true;r.delayed.get(150L).run();assertEquals(1,r.sync);assertEquals(1,r.clears);
     }
+    @Test public void stoppingPreviewWithoutAnAttemptStopsTheIdleService() {
+        Rig r=new Rig();r.controller.command(STOP_PREVIEW,null,null);
+        assertEquals(1,r.serviceStops);assertEquals(0,r.clears);assertEquals(0,r.sync);
+    }
+    @Test public void stopPreviewNeverInterruptsPreparedOrPlayingCall() {
+        Rig r=new Rig();r.ringing=true;r.controller.command(PREPARE,"call",r.ready::add);
+        r.controller.command(STOP_PREVIEW,null,null);
+        assertEquals(0,r.clears);
+        r.media.get(0).prepared.run();assertTrue(r.controller.commitPrepared("call"));
+        r.posted.remove(0).run();r.controller.command(STOP_PREVIEW,null,null);
+        assertEquals(0,r.clears);assertEquals(1,r.media.get(0).starts);
+    }
+    @Test public void stopPreviewCancelsPreparationAndLongRunningPreview() {
+        for (boolean preparing : new boolean[]{true,false}) {
+            Rig r=new Rig();r.controller.command(PREVIEW,"preview",r.ready::add);
+            if (!preparing) {
+                r.media.get(0).prepared.run();r.posted.remove(0).run();
+                r.now=3600000;r.delayed.get(150L).run();assertEquals(0,r.clears);
+            }
+            r.controller.command(STOP_PREVIEW,null,null);
+            r.media.get(0).prepared.run();assertEquals(1,r.clears);assertEquals(0,r.sync);
+        }
+    }
+
     @Test public void previewFocusDenialAndLossFinishWithoutCallSync() {
         for (boolean granted : new boolean[]{false,true}) {
             Rig r=new Rig();r.focusGranted=granted;r.controller.command(PREVIEW,"a",r.ready::add);

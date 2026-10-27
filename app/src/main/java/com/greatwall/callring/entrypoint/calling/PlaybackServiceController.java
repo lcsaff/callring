@@ -11,7 +11,7 @@ import java.util.function.*;
 
 /** Owns one playback attempt. Android resources are supplied by the registered service. */
 public final class PlaybackServiceController {
-    public enum Command { PREPARE, CANCEL, PREVIEW, STOP, UNKNOWN }
+    public enum Command { PREPARE, CANCEL, PREVIEW, STOP, STOP_PREVIEW, UNKNOWN }
     public interface Scheduler {
         void post(Runnable task);
         void later(Runnable task, long millis);
@@ -69,6 +69,11 @@ public final class PlaybackServiceController {
     }
 
     public void command(Command action, String requestToken, Consumer<Integer> requestReady) {
+        if (Command.STOP_PREVIEW == action) {
+            if (token == null) stopSelf.run();
+            else if (preview) finish();
+            return;
+        }
         if (Command.STOP == action) { finish(); return; }
         if (Command.CANCEL == action) {
             if (token == null) { stopSelf.run(); return; }

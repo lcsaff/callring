@@ -12,7 +12,7 @@ public final class SessionGate {
     public boolean owns(String token) { return this.token.equals(token); }
     public int update(boolean ringing, boolean active, long now) {
         long elapsed = now - started;
-        if (active || elapsed >= (preview ? 8000 : 90000)) return STOP;
+        if (active || (!preview && elapsed >= 90000)) return STOP;
         if (preview) return ringing ? STOP : PLAY;
         if (ringing) { sawRinging = true; return PLAY; }
         return sawRinging || elapsed >= 4000 ? STOP : WAIT;

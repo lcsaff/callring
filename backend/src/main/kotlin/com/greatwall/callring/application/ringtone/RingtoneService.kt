@@ -60,11 +60,11 @@ class RingtoneService(
             }
         }
     }
-    override suspend fun restoreBuiltIn() = runner.write { requireOperationActive(operationActive);
+    override suspend fun restoreBuiltIn(ringtone: BuiltInRingtone) = runner.write { requireOperationActive(operationActive);
         val saved = coordinator.guard(command) {
             requireOperationActive(operationActive)
             val before = audio.getSettings()
-            val result = audio.restoreBuiltIn()
+            val result = audio.restoreBuiltIn(ringtone)
             if (before != result) publish()
             coordinator.record(command)
             result
@@ -80,6 +80,7 @@ class RingtoneService(
         launchPlayback(audio::startPreview)
     }
     override suspend fun stopPlayback() = runner.io { requireOperationActive(operationActive); launchPlayback(audio::stopPlayback) }
+    override suspend fun stopPreview() = runner.io { requireOperationActive(operationActive); launchPlayback(audio::stopPreview) }
     private fun launchPlayback(launch: () -> Unit) {
         coordinator.guard(command) {
             requireOperationActive(operationActive)

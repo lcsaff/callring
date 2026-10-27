@@ -31,6 +31,56 @@ import java.util.Locale
 abstract class SettingsScreenCases {
     @get:Rule val compose = createComposeRule()
 
+    @Test fun ringtoneOptionsUseStableChoiceAndKeepImportedSelectionUntilClicked() {
+        val state = mutableStateOf(LoadState(RingtoneSettings(false, AudioSource.IMPORTED, "我的音频", null), loaded = true))
+        val selections = mutableListOf<BuiltInRingtone>()
+        compose.setContent { CallringTheme(DefaultAppearance.rememberAppearanceThemeSpec(androidx.compose.foundation.isSystemInDarkTheme())) {
+            RingtoneScreen(state.value, MutationState(), {}, {}, {}, {}, { choice ->
+                selections += choice
+                state.value = LoadState(state.value.data!!.copy(source = AudioSource.BUILT_IN, builtInRingtone = choice), loaded = true)
+            }, {}, {})
+        } }
+        compose.onNodeWithText("我的音频").assertExists()
+        compose.onAllNodes(isSelectable()).assertCountEquals(5)
+        compose.onAllNodes(isSelected()).assertCountEquals(0)
+        compose.onNodeWithText("清脆铃音").performScrollTo().performClick()
+        compose.runOnIdle { assertEquals(listOf(BuiltInRingtone.CHIME), selections) }
+        compose.onAllNodes(isSelected()).assertCountEquals(1)
+        compose.onNodeWithText("试听铃声").performScrollTo().assertIsDisplayed()
+        compose.onAllNodes(hasText("试听时长", substring = true)).assertCountEquals(0)
+    }
+
+    @Test fun ringtoneLifecycleStopsOnBackgroundAndRemovalWithoutResuming() {
+        val owner = object : androidx.lifecycle.LifecycleOwner {
+            val registry = androidx.lifecycle.LifecycleRegistry(this)
+            override val lifecycle: androidx.lifecycle.Lifecycle get() = registry
+        }
+        val visible = mutableStateOf(true)
+        var playing = false; var starts = 0; var stops = 0
+        val api = object : com.greatwall.callring.ui.testing.UiFakeApi() {
+            override suspend fun startPreview(): ApiResult<Unit> { playing = true; starts++; return ApiResult.Success(Unit) }
+            override suspend fun stopPreview(): ApiResult<Unit> { playing = false; stops++; return ApiResult.Success(Unit) }
+            override suspend fun stopPlayback(): ApiResult<Unit> = error("real call must not be stopped")
+        }
+        lateinit var model: RingtoneViewModel
+        compose.runOnIdle { owner.registry.currentState = androidx.lifecycle.Lifecycle.State.RESUMED }
+        compose.setContent {
+            androidx.compose.runtime.CompositionLocalProvider(androidx.lifecycle.compose.LocalLifecycleOwner provides owner) {
+                model = androidx.compose.runtime.remember { RingtoneViewModel(api) }
+                if (visible.value) RingtonePreviewLifecycle(model)
+            }
+        }
+        compose.runOnIdle { model.preview() }; compose.waitUntil { playing }
+        compose.runOnIdle { owner.registry.currentState = androidx.lifecycle.Lifecycle.State.CREATED }
+        compose.waitUntil { !playing && stops == 1 }
+        compose.runOnIdle { owner.registry.currentState = androidx.lifecycle.Lifecycle.State.RESUMED }
+        compose.runOnIdle { assertEquals(1, starts); assertTrue(!playing); model.preview() }
+        compose.waitUntil { playing }
+        compose.runOnIdle { visible.value = false }
+        compose.waitForIdle()
+        compose.runOnIdle { assertTrue("playing=$playing starts=$starts stops=$stops", !playing); assertEquals(2, stops) }
+    }
+
     @Test fun homeDoesNotExposeSettingsRecentCallsOrWidgetActions() {
         val fact = ClassificationFact(false, WorkReason.REST_DAY, null, true, "Asia/Shanghai", 1, "v1", 1)
         val runtime = RuntimeStatus(Capability.entries.associateWith { AccessState.DENIED }, Audibility.SILENT,
