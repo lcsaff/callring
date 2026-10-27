@@ -13,6 +13,37 @@ import org.junit.Test
 
 @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
 class NumberRuleViewModelTest {
+    @Test fun typingDuringSaveRetainsLatestDraftAndUsesCommittedRevision() = runTest {
+        val release = CompletableDeferred<Unit>()
+        val api = object : UiFakeApi() {
+            override suspend fun saveNumberRule(command: SaveNumberRule): ApiResult<NumberRuleSettings> {
+                release.await()
+                return super.saveNumberRule(command)
+            }
+        }
+        val model = NumberRuleViewModel(api, SavedStateHandle(), backgroundScope)
+        runCurrent(); val id = model.draft.value!!.single().id
+        model.editPrefix(id, "01"); advanceTimeBy(501); runCurrent()
+        assertTrue(model.mutation.value.busy)
+        model.editPrefix(id, "010"); advanceTimeBy(501); runCurrent()
+        assertEquals("010", model.draft.value!!.single().prefix)
+        release.complete(Unit); runCurrent(); advanceTimeBy(501); runCurrent()
+        assertEquals(listOf(NumberRuleEntry("010", 5)), api.numberRule.rules)
+        assertEquals(2, api.numberRuleWrites)
+        assertFalse(model.conflict.value)
+    }
+    @Test fun pausedEditsAutoSaveAndBlankLengthDefaultsToFive() = runTest {
+        val api = UiFakeApi(); val model = NumberRuleViewModel(api, SavedStateHandle(), backgroundScope)
+        runCurrent(); val id = model.draft.value!!.single().id
+        model.editLength(id, ""); model.editPrefix(id, "01"); model.editPrefix(id, "010")
+        runCurrent(); assertEquals(0, api.numberRuleWrites)
+        advanceTimeBy(501); runCurrent()
+        assertEquals(listOf(NumberRuleEntry("010", 5)), api.numberRule.rules)
+        assertEquals(1, api.numberRuleWrites)
+        assertEquals(id, model.draft.value!!.single().id)
+        model.removeRule(id); advanceTimeBy(501); runCurrent()
+        assertTrue(api.numberRule.rules.isEmpty())
+    }
     @Test fun explicitSaveUsesLoadedBaseAndCommitsBothFields() = runTest {
         val api = UiFakeApi()
         val model = NumberRuleViewModel(api, SavedStateHandle(), backgroundScope)
@@ -30,7 +61,7 @@ class NumberRuleViewModelTest {
         runCurrent()
         listOf("０", "a", "1 ").forEach { prefix -> model.editPrefix(model.draft.value!!.first().id, prefix); model.save(); runCurrent(); assertNotNull(model.errors.value["rules[0].prefix"]) }
         model.editPrefix(model.draft.value!!.first().id, "")
-        listOf("0", "31", "-1", "", "２", "1.5").forEach { length -> model.editLength(model.draft.value!!.first().id, length); model.save(); runCurrent(); assertNotNull(model.errors.value["rules[0].length"]) }
+        listOf("0", "31", "-1", "２", "1.5").forEach { length -> model.editLength(model.draft.value!!.first().id, length); model.save(); runCurrent(); assertNotNull(model.errors.value["rules[0].length"]) }
         model.editPrefix(model.draft.value!!.first().id, "123"); model.editLength(model.draft.value!!.first().id, "2"); model.save(); runCurrent()
         assertNotNull(model.errors.value["rules[0].prefix"])
         assertEquals(0, api.numberRuleWrites)
@@ -53,6 +84,9 @@ class NumberRuleViewModelTest {
         model.reload(); runCurrent()
         assertEquals(("7" to "7"), model.draft.value!!.single().let { it.prefix to it.length })
         assertFalse(model.conflict.value)
+        model.editPrefix(model.draft.value!!.single().id, "010")
+        advanceTimeBy(501); runCurrent()
+        assertEquals(listOf(NumberRuleEntry("010", 7)), api.numberRule.rules)
     }
 
     @Test fun failedLoadRetainsTrialAndRetryPreparesBeforeChecking() = runTest {
@@ -88,8 +122,7 @@ class NumberRuleViewModelTest {
         model.addRule()
         val row = model.draft.value!!.last()
         assertEquals("", row.prefix); assertEquals("", row.length)
-        model.save(); runCurrent(); assertEquals(0, api.numberRuleWrites)
-        assertNotNull(model.errors.value["rules[1].length"])
+        assertTrue(model.errors.value.isEmpty())
         model.editPrefix(row.id, "010"); model.editLength(row.id, "11")
         model.removeRule(old)
         assertEquals(row.id, model.draft.value!!.single().id)
