@@ -2,6 +2,7 @@ package com.greatwall.callring.application.ports.platform
 
 import com.greatwall.callring.contracts.common.DocumentRef
 import com.greatwall.callring.contracts.settings.RingtoneSettings
+import com.greatwall.callring.contracts.settings.BuiltInRingtone
 
 /**
  * Import/restore concurrency must use invocation generations to invalidate stale imports. Import
@@ -18,7 +19,8 @@ interface AudioController {
     fun getSettings(): RingtoneSettings
     fun setEnabled(enabled: Boolean): RingtoneSettings
     fun prepareAudio(source: DocumentRef, checkCancellation: () -> Unit): PreparedRingtoneImport
-    fun restoreBuiltIn(): RingtoneSettings
+    fun restoreBuiltIn(ringtone: BuiltInRingtone = BuiltInRingtone.MELODY): RingtoneSettings
     fun startPreview()
     fun stopPlayback()
+    fun stopPreview()
 }

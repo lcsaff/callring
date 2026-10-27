@@ -96,7 +96,8 @@ import com.greatwall.callring.ui.feature.update.AppUpdateViewModel
             val state by model.state.collectAsStateWithLifecycle()
             val mutation by model.mutation.collectAsStateWithLifecycle()
             val import = rememberImportPicker(arrayOf("audio/*"), model::import)
-            RingtoneScreen(state, mutation, onBack, model::refresh, model::enabled, import, model::restore, model::preview, model::stop)
+            RingtonePreviewLifecycle(model)
+            RingtoneScreen(state, mutation, onBack, model::refresh, model::enabled, import, model::select, model::preview, model::stop)
         }
         SettingsPage.RUNTIME -> {
             val model: RuntimeViewModel = uiViewModel { RuntimeViewModel(api) }

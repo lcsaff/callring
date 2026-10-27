@@ -30,6 +30,10 @@ These are repository-internal changes approved by the layer-boundaries specifica
 - `ConversationBudget.validate` is a backend extension. Connection/configuration validation, compatibility normalization, profile resolution, ThinkingPolicyResolver/ThinkingPolicy/ThinkingParameter/ThinkingContract/blockReason are backend policy. Only the public mode/support/profile/protocol enums cross the contracts boundary.
 - Source/query `.json()` projection helpers reside in backend application conversation code; immutable source-query value models remain contracts.
 
+## Built-in ringtone selection (2026-10-27)
+
+Reviewed internal change: `RingtoneApi.restoreBuiltIn(ringtone: BuiltInRingtone = MELODY)` and the matching platform port select one of MELODY/CHIME/GENTLE/CLASSIC/DIGITAL. Existing AI restore operation still calls the default and its schema is unchanged. `RingtoneSettings.builtInRingtone` identifies the built-in choice; `previewSeconds` is nullable and null explicitly means continuous preview. Safe source projections include both fields, with no paths or callable URIs. `RingtoneApi.stopPreview()` and the mandatory port stop only preview, preserving real calls. All production and test consumers migrate together. The old preference keys and imported files retain their meanings; a new optional enum preference defaults to the existing melody without rewriting unknown values.
+
 ## Compatibility and verification
 
 The 83-tool compatibility test remains `backend/ToolCompatibilityBaselineTest`: it compares all tool names and complete schemas plus O/X identifiers against the reviewed `ai-operation-compatibility.json`. Contract package movement does not change external AI or persisted formats, Android component FQCNs, or product behavior. `check_backend_boundaries.py` additionally pins the existing AI golden digest and verifies the current contract inventory below. Hashes cover normalized source with quoted wire strings preserved; adding/removing files, signature/default changes, or code changes require updating this reviewed inventory.
@@ -292,7 +296,7 @@ T10c removes only missing-capability method bodies: `UiEditsApi`'s seven edits, 
     ]
   },
   "settings/SettingsApi.kt": {
-    "sha256": "b695c49bdd91015b86d49622c1a1c15d556bc75f9dc4edf863e2f2283be8bc47",
+    "sha256": "6294471763b7b9c760dae6e78d681da769c24c0b32a1e8a9e1a6725cde72ad2e",
     "declarations": [
       "SettingsApi",
       "RingtoneApi",
@@ -318,6 +322,7 @@ T10c removes only missing-capability method bodies: `UiEditsApi`'s seven edits, 
       "ColorMode",
       "AppearanceSettings",
       "SettingsSummary",
+      "BuiltInRingtone",
       "AudioSource",
       "RingtoneSettings",
       "NumberRuleEntry",

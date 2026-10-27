@@ -87,7 +87,7 @@ fun safeValue(v: Any?): AiJson {
         is SettingsSummary -> obj("statisticsEnabled" to v.statisticsEnabled,"overlayEnabled" to v.overlayEnabled,"quietMode" to v.quietMode,"myPosition" to v.myPosition,"workZoneId" to v.workZoneId,"score" to v.score,"appearance" to v.appearance,"meta" to v.meta)
         is RuntimeStatus -> obj("capabilities" to v.capabilities,"audibility" to v.audibility,"phoneActivity" to v.phoneActivity,"playback" to v.playback,"pinWidgetSupported" to v.pinWidgetSupported,"checkedAtEpochMillis" to v.checkedAtEpochMillis)
         is PlaybackStatus -> obj("mode" to v.mode,"state" to v.state)
-        is RingtoneSettings -> obj("enabled" to v.enabled,"source" to v.source,"displayName" to v.displayName,"previewSeconds" to v.previewSeconds)
+        is RingtoneSettings -> obj("enabled" to v.enabled,"source" to v.source,"displayName" to v.displayName,"previewSeconds" to v.previewSeconds,"builtInRingtone" to v.builtInRingtone)
         is HomeData -> obj("ringtone" to v.ringtone,"runtime" to v.runtime,"currentWork" to v.currentWork,"latestCall" to v.latestCall,"statisticsEnabled" to v.statisticsEnabled,"overlayEnabled" to v.overlayEnabled,"quietMode" to v.quietMode,"meta" to v.meta)
         is DiagnosticEntry -> obj("occurredAtEpochMillis" to v.occurredAtEpochMillis,"legacyTimeText" to v.legacyTimeText,"message" to v.message)
         is SyncRequestReceipt -> obj("state" to v.state,"requestedAtEpochMillis" to v.requestedAtEpochMillis)

@@ -27,7 +27,7 @@ import com.greatwall.callring.entrypoint.calling.PlaybackServiceController;
 
 /** Registered Android resource and command adapter for the playback controller. */
 public class RingPlaybackService extends Service {
-    public static final String PREPARE="prepare", CANCEL="cancel", PREVIEW="preview", STOP="stop";
+    public static final String PREPARE="prepare", CANCEL="cancel", PREVIEW="preview", STOP="stop", STOP_PREVIEW="stop_preview";
     private static RingPlaybackService current;
     private final Handler handler=new Handler(Looper.getMainLooper());
     private final ExecutorService mediaWorker=Executors.newSingleThreadExecutor();
@@ -111,6 +111,7 @@ public class RingPlaybackService extends Service {
         if (PREPARE.equals(action)) return PlaybackServiceController.Command.PREPARE;
         if (PREVIEW.equals(action)) return PlaybackServiceController.Command.PREVIEW;
         if (CANCEL.equals(action)) return PlaybackServiceController.Command.CANCEL;
+        if (STOP_PREVIEW.equals(action)) return PlaybackServiceController.Command.STOP_PREVIEW;
         if (STOP.equals(action)) return PlaybackServiceController.Command.STOP;
         return PlaybackServiceController.Command.UNKNOWN;
     }

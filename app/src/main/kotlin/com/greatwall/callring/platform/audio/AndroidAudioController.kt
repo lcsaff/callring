@@ -45,12 +45,14 @@ class AndroidAudioController(
 
     private fun readAndPublishSettings(): RingtoneSettings {
         val custom = preferences.getBoolean("custom", false)
+        val builtIn = selectedBuiltIn()
         return RingtoneSettings(
                 preferences.getBoolean("enabled", false),
                 if (custom) AudioSource.IMPORTED else AudioSource.BUILT_IN,
                 if (custom) preferences.getString("audio_display_name", null) ?: "audio.imported"
-                else "audio.built_in",
-                8,
+                else "audio.built_in.${builtIn.name.lowercase(java.util.Locale.ROOT)}",
+                null,
+                builtIn,
             )
             .also { settingsSnapshot = it }
     }
@@ -123,13 +125,13 @@ class AndroidAudioController(
         }
     }
 
-    override fun restoreBuiltIn(): RingtoneSettings {
+    override fun restoreBuiltIn(ringtone: BuiltInRingtone): RingtoneSettings {
         checkOpen()
         lateinit var settings: RingtoneSettings
         generation.invalidate {
             synchronized(preferences) {
-                if (preferences.getBoolean("custom", false)) {
-                    updatePreferences(preferences, mapOf("custom" to false, "audio_display_name" to null))
+                if (preferences.getBoolean("custom", false) || selectedBuiltIn() != ringtone) {
+                    updatePreferences(preferences, mapOf("custom" to false, "audio_display_name" to null, "built_in_ringtone" to ringtone.name))
                 }
                 settings = readAndPublishSettings()
             }
@@ -145,6 +147,13 @@ class AndroidAudioController(
                     .setAction("preview")
                     .putExtra("token", UUID.randomUUID().toString())
             )
+        }
+    }
+
+    override fun stopPreview() {
+        checkOpen()
+        dispatchPlaybackCommand {
+            context.startService(Intent(context, RingPlaybackService::class.java).setAction(RingPlaybackService.STOP_PREVIEW))
         }
     }
 
@@ -165,7 +174,7 @@ class AndroidAudioController(
             if (preferences.getBoolean("custom", false))
                 player.setDataSource(files.selected.absolutePath)
             else
-                context.resources.openRawResourceFd(R.raw.short_melody).use { descriptor ->
+                context.resources.openRawResourceFd(builtInResource(selectedBuiltIn())).use { descriptor ->
                     player.setDataSource(
                         descriptor.fileDescriptor,
                         descriptor.startOffset,
@@ -174,6 +183,10 @@ class AndroidAudioController(
                 }
         }
     }
+
+    private fun selectedBuiltIn(): BuiltInRingtone =
+        BuiltInRingtone.entries.firstOrNull { it.name == preferences.getString("built_in_ringtone", null) }
+            ?: BuiltInRingtone.MELODY
 
     private fun displayName(source: DocumentRef): String {
         // Metadata is optional; failure to read a provider label must not discard validated audio.
@@ -211,3 +224,11 @@ internal fun sanitizeAudioName(value: String): String =
         .filter { !it.isISOControl() }
         .take(160)
         .ifBlank { "audio.imported" }
+
+internal fun builtInResource(ringtone: BuiltInRingtone): Int = when (ringtone) {
+    BuiltInRingtone.MELODY -> R.raw.short_melody
+    BuiltInRingtone.CHIME -> R.raw.ring_chime
+    BuiltInRingtone.GENTLE -> R.raw.ring_gentle
+    BuiltInRingtone.CLASSIC -> R.raw.ring_classic
+    BuiltInRingtone.DIGITAL -> R.raw.ring_digital
+}

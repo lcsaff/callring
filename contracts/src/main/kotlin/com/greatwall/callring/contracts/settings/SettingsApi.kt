@@ -47,9 +47,11 @@ interface RingtoneApi {
     suspend fun getSettings(): ApiResult<RingtoneSettings>
     suspend fun setEnabled(enabled: Boolean): ApiResult<RingtoneSettings>
     suspend fun importAudio(source: DocumentRef): ApiResult<RingtoneSettings>
-    suspend fun restoreBuiltIn(): ApiResult<RingtoneSettings>
+    suspend fun restoreBuiltIn(ringtone: BuiltInRingtone = BuiltInRingtone.MELODY): ApiResult<RingtoneSettings>
     suspend fun startPreview(): ApiResult<Unit>
     suspend fun stopPlayback(): ApiResult<Unit>
+    /** Stops preview only; never interrupts a real call. */
+    suspend fun stopPreview(): ApiResult<Unit>
 }
 
 data class PositionOption(
@@ -176,13 +178,17 @@ data class SettingsSummary(
     val meta: SnapshotMeta
 )
 
+enum class BuiltInRingtone { MELODY, CHIME, GENTLE, CLASSIC, DIGITAL }
+
 enum class AudioSource { BUILT_IN, IMPORTED }
 
 data class RingtoneSettings(
     val enabled: Boolean,
     val source: AudioSource,
     val displayName: String,
-    val previewSeconds: Int
+    /** null means preview loops until explicitly stopped or its owner leaves. */
+    val previewSeconds: Int?,
+    val builtInRingtone: BuiltInRingtone = BuiltInRingtone.MELODY
 )
 
 data class NumberRuleEntry(val prefix: String, val length: Int)

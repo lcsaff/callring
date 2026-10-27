@@ -22,10 +22,11 @@ public class SessionGateTest {
         assertEquals(SessionGate.STOP, new SessionGate("a", false, 0).update(false, false, 4000));
         assertEquals(SessionGate.STOP, new SessionGate("a", false, 0).update(true, false, 90000));
     }
-    @Test public void previewIsShortAndYieldsToCalls() {
+    @Test public void previewContinuesUntilStoppedAndYieldsToCalls() {
         SessionGate preview = new SessionGate("a", true, 0);
         assertEquals(SessionGate.PLAY, preview.update(false, false, 100));
-        assertEquals(SessionGate.STOP, preview.update(false, false, 8000));
+        assertEquals(SessionGate.PLAY, preview.update(false, false, 8000));
+        assertEquals(SessionGate.PLAY, preview.update(false, false, 3600000));
         assertEquals(SessionGate.STOP, new SessionGate("b", true, 0).update(true, false, 100));
         assertEquals(SessionGate.STOP, new SessionGate("b", true, 0).update(false, true, 100));
     }
