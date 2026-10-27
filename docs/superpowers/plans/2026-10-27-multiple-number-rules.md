@@ -40,10 +40,12 @@ Files: NumberRuleViewModel.kt、NumberRuleScreen.kt、SettingsRoute.kt、UiFakeA
 - [x] 定向 UI 测试通过后由最终统一门覆盖完整 UI，不重复安排审查轮次。
 
 ### 4. 集成与交付
-- [ ] PROJECT.md 同步多条配置、AI 协议及迁移/验收摘要；README 更新用户说明。
-- [ ] 更新审查后的契约声明摘要；运行 python tools/verify_backend.py，保留精确任务状态/日志和未测设备项。
+- [x] PROJECT.md 同步多条配置、AI 协议及迁移/验收摘要；README 更新用户说明。
+- [x] 更新审查后的契约声明摘要；运行 python tools/verify_backend.py，保留精确任务状态/日志和未测设备项。
 - [ ] 按 PROJECT.md 确定版本、提交、合并 main、推送并确认该提交 CI。当前请求未要求发布新 Release。
 
 ## 实施进度
 
 定向红测确认旧接口缺少列表能力；完成实现后 targeted-3.log 通过：backend 47、UI 39、app 60 项，均零失败/错误/跳过。证据位于工作树 build/multiple-rules-evidence，完整统一门与最终交付状态在收尾更新。当前未进行设备/真实模型测试。
+
+完整统一门通过，源码 `1178a613d5b7cfc51e0158dbc46ce8e57bf61597`，backend/UI/app JVM 412/359/377 项均零失败、错误与跳过，13 项 Gradle 任务、构建及双 lint 通过。设备 not_run（ADB 无在线设备）。之后仅更新验收说明，推送和同提交 CI 状态以最终交付回复为准。
