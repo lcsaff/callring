@@ -9,9 +9,12 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.launch
 
+/** UI-only draft: survives page/host recreation, never persisted across process restarts. */
+private val processConversationInput = MutableStateFlow("")
+
 class ConversationViewModel(private val api: CallringUiApi, testScope: CoroutineScope? = null) : UiViewModel(testScope) {
     val state = api.conversation.state
-    val input = MutableStateFlow("")
+    val input = processConversationInput
     val localError = MutableStateFlow<ApiError?>(null)
     val destination = MutableStateFlow<AiConnectionView?>(null)
     /** Only an actual exchange proves connectivity. Passive observers never call a provider. */
@@ -50,18 +53,20 @@ class ConversationViewModel(private val api: CallringUiApi, testScope: Coroutine
 
     fun send(disclosed: AiConnectionView?) {
         val text = input.value
-        request(disclosed) { api.conversation.sendTo(state.value.sessionId, text, it) }
+        request(disclosed, onSuccess = { input.compareAndSet(text, "") }) {
+            api.conversation.sendTo(state.value.sessionId, text, it)
+        }
     }
 
     fun continueTask(taskId: String, disclosed: AiConnectionView?) =
         request(disclosed) { api.conversation.continueTask(state.value.sessionId, taskId, it) }
 
-    private fun request(disclosed: AiConnectionView?, operation: suspend (AiConnectionView) -> ApiResult<Unit>) {
+    private fun request(disclosed: AiConnectionView?, onSuccess: () -> Unit = {}, operation: suspend (AiConnectionView) -> ApiResult<Unit>) {
         disclosed ?: return
         scope.launch {
             requestTarget = disclosed to settingsRevision
             when (val result = operation(disclosed)) {
-                is ApiResult.Success -> { input.value = ""; localError.value = null }
+                is ApiResult.Success -> { onSuccess(); localError.value = null }
                 is ApiResult.Failure -> { requestTarget = null; connected.value = false; localError.value = result.error }
             }
         }
