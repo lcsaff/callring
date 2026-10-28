@@ -84,6 +84,7 @@ class AndroidRecordingStore(context: Context, namespace: String,
             db.execSQL("CREATE TABLE recording_statistics_links (statistics_id INTEGER PRIMARY KEY, session_id TEXT NOT NULL)")
         }
     }
+    init { helper.setWriteAheadLoggingEnabled(true) }
     @Volatile private var closed = false
     private fun ensureOpen() { check(!closed) { "recording.closed" } }
     private val writableDatabase: SQLiteDatabase get() { ensureOpen(); return helper.writableDatabase }

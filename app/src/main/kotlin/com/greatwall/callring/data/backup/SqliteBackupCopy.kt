@@ -9,32 +9,34 @@ internal object SqliteBackupCopy {
     private val derived = setOf("archive_projection", "archive_text_fields", "archive_text_chunks", "archive_index_progress", "archive_raw_chunks", "archive_parse_progress")
     private data class Schema(val type: String, val name: String, val sql: String)
 
-    fun copy(source: File, destination: File, check: () -> Unit) {
+    fun copy(source: File, destination: File, configureDestination: (SQLiteDatabase) -> Unit = {},
+        check: () -> Unit) {
         require(!destination.exists())
         check()
-        SQLiteDatabase.openDatabase(source.absolutePath, null, SQLiteDatabase.OPEN_READWRITE).use { input ->
-            val schema = schema(input)
-            SQLiteDatabase.openOrCreateDatabase(destination, null).use { output ->
-                schema.filter { it.type == "table" && it.name != "sqlite_sequence" }.forEach { check(); output.execSQL(it.sql) }
-                output.version = input.version
-            }
-            // Each INSERT SELECT uses an SQLite read snapshot and a destination-only write.
-            // The caller holds no business lock and rejects the whole stage if its coordinator
-            // marker changes between the initial and final guarded sample.
-            input.execSQL("ATTACH DATABASE ? AS backup_stage", arrayOf(destination.absolutePath))
+        // A read-only metadata handle cannot reconfigure the live owner's journal mode.
+        val (schema, version) = SQLiteDatabase.openDatabase(source.absolutePath, null, SQLiteDatabase.OPEN_READONLY).use {
+            schema(it) to it.version
+        }
+        SQLiteDatabase.openOrCreateDatabase(destination, null).use { output ->
+            schema.filter { it.type == "table" && it.name != "sqlite_sequence" }.forEach { check(); output.execSQL(it.sql) }
+            output.version = version
+            // Android disables WAL on the connection's main database when ATTACH executes.
+            // Keep that main database private; the attached live source remains in WAL mode.
+            output.execSQL("ATTACH DATABASE ? AS backup_source", arrayOf(source.absolutePath))
             try {
+                configureDestination(output)
+                // Each statement has a source read snapshot and a destination-only write.
+                // The caller rejects the stage if the guarded source marker has changed.
                 schema.filter { it.type == "table" && it.name !in derived && it.name != "sqlite_sequence" }.forEach {
                     check()
-                    input.execSQL("INSERT INTO backup_stage.${quote(it.name)} SELECT * FROM main.${quote(it.name)}")
+                    output.execSQL("INSERT INTO main.${quote(it.name)} SELECT * FROM backup_source.${quote(it.name)}")
                 }
                 if (schema.any { it.name == "sqlite_sequence" }) {
-                    input.execSQL("DELETE FROM backup_stage.sqlite_sequence")
-                    input.execSQL("INSERT INTO backup_stage.sqlite_sequence SELECT * FROM main.sqlite_sequence")
+                    output.execSQL("DELETE FROM main.sqlite_sequence")
+                    output.execSQL("INSERT INTO main.sqlite_sequence SELECT * FROM backup_source.sqlite_sequence")
                 }
-            } finally { input.execSQL("DETACH DATABASE backup_stage") }
-            SQLiteDatabase.openDatabase(destination.absolutePath, null, SQLiteDatabase.OPEN_READWRITE).use { output ->
-                schema.filter { it.type != "table" }.forEach { check(); output.execSQL(it.sql) }
-            }
+            } finally { output.execSQL("DETACH DATABASE backup_source") }
+            schema.filter { it.type != "table" }.forEach { check(); output.execSQL(it.sql) }
         }
         validate(destination, source)
     }

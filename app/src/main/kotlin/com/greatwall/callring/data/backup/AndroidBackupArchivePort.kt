@@ -57,8 +57,8 @@ internal class AndroidBackupArchivePort(
             val revision = graph.coordinator.guard { graph.coordinator.marker() }
             val check = { checkCancellation(); checkIdle(); requireSpace(stage, 16L * 1024 * 1024) }
             check()
-            SqliteBackupCopy.copy(sourceCore, File(stage, "core.db"), check)
-            SqliteBackupCopy.copy(sourceRecording, File(stage, "recording.db"), check)
+            SqliteBackupCopy.copy(sourceCore, File(stage, "core.db"), check = check)
+            SqliteBackupCopy.copy(sourceRecording, File(stage, "recording.db"), check = check)
             val settings = graph.recordings.store.settings().let { it.copy(
                 automaticAnalysis = false, systemFolder = null,
                 analysis = it.analysis.copy(apiKey = ""), transcription = it.transcription.copy(apiKey = ""),
