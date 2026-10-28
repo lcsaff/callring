@@ -201,7 +201,7 @@ class ToolBusinessIntegrationTest {
         ShadowMediaPlayer.setMediaInfoProvider { ShadowMediaPlayer.MediaInfo(1000,0) }
     }
 
-    @Test fun adoptionThroughProductionSourcesAndBatchEngineHandlesNativeIdsTextRefsAndPreservedFields()=runBlocking {
+    @Test fun adoptionPreservesNativeIdsAndFields()=runBlocking {
         provider()
         val cases=listOf("short","blank-name","blank-department","long-unicode","legacy-unindexed","linked-positive","statistics-off","mismatch","generation-change","unrelated-change","deleted","changed-native-after-disclosure","changed-linked-after-disclosure")
         for((offset,kind) in cases.withIndex())Fixture("identity-$offset").use{f->
@@ -289,7 +289,7 @@ class ToolBusinessIntegrationTest {
             }finally{service.close()}
         }
     }
-    @Test fun allBusinessToolsInvokeProductionApisAndInvalidSchemaNeverMutates() = runBlocking {
+    @Test fun toolsUseProductionApisAndRejectBadSchema() = runBlocking {
         provider()
         val registry = ToolRegistry(OperationCatalog(OperationCatalog.defaultDefinitions().shuffled(kotlin.random.Random(1202))))
         val covered = mutableSetOf<OperationId>()

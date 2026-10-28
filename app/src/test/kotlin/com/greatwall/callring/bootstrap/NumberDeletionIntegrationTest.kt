@@ -128,7 +128,7 @@ class NumberDeletionIntegrationTest {
             assertEquals("keep", graph.api.callers.getEditor("31234").requiredValue().draft.name)
         } finally { graph.close() }
     }
-    @Test fun guiDeletionRejectsForeignChangesBetweenArchiveAndCoreWithoutReplayingSuccess() = runBlocking {
+    @Test fun guiDeleteRejectsForeignChanges() = runBlocking {
         for (kind in listOf("archive", "profile", "call", "binding")) {
             val graph = graph("gui_delete_foreign_$kind")
             try {
