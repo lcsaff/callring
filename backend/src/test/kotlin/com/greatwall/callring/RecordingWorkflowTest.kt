@@ -38,6 +38,8 @@ class RecordingWorkflowTest {
         val worker = Thread { owned.processPending() }.apply { start() }
         assertTrue(entered.await(2, TimeUnit.SECONDS))
         val before = store.get(1)
+        owned.seal()
+        owned.cancelProcessing()
         val closer = Thread { owned.close() }.apply { start() }
         try {
             assertTrue(cancelled.await(2, TimeUnit.SECONDS))

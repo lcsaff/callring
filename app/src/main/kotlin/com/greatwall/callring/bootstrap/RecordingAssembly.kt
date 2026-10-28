@@ -87,7 +87,7 @@ class RecordingAssembly(
             (if (workflowDelegate.isInitialized()) workflowDelegate.value else null) to
                 (if (clientDelegate.isInitialized()) clientDelegate.value else null)
         }
-        resources.first?.cancelProcessing(); resources.second?.cancel()
+        resources.first?.seal(); resources.first?.cancelProcessing(); resources.second?.cancel()
     }
     override fun close() {
         val resources = synchronized(lifetime) {

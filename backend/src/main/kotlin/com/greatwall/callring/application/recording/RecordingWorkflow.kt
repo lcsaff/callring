@@ -77,8 +77,9 @@ class RecordingWorkflow(
     }
 
     /** Atomic admission seal followed by cancellation and drain; no resource/business lock is held. */
+    fun seal() { synchronized(activityFence) { closed = true } }
     fun close() {
-        synchronized(activityFence) { closed = true }
+        seal()
         cancelProcessing()
         var interrupted = false
         synchronized(activityFence) {

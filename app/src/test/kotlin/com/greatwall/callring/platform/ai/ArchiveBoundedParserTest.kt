@@ -41,7 +41,7 @@ class ArchiveBoundedParserTest {
             assertTrue(page.complete);assertEquals(2L,page.matchedTotal);assertEquals(2,page.rows.size)
         }
         SQLiteDatabase.openDatabase(path.path,null,SQLiteDatabase.OPEN_READONLY).use{db->
-            assertEquals(4,db.version);assertEquals(second,DatabaseUtils.stringForQuery(db,"SELECT payload FROM archives WHERE call_id=2",null))
+            assertEquals(5,db.version);assertEquals(second,DatabaseUtils.stringForQuery(db,"SELECT payload FROM archives WHERE call_id=2",null))
             assertEquals(RecordingJson.archive(first).toString(),DatabaseUtils.stringForQuery(db,"SELECT payload FROM archives WHERE call_id=1",null))
             assertEquals(0L,count(db,"archive_raw_chunks"));assertEquals(0L,count(db,"archive_parse_progress"))
         }
