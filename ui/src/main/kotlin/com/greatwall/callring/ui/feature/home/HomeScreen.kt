@@ -9,6 +9,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import com.greatwall.callring.contracts.callers.*
+import com.greatwall.callring.contracts.runtime.CoreReadiness
 import com.greatwall.callring.ui.designsystem.components.ScreenFrame
 import com.greatwall.callring.ui.feature.shared.LoadFeedback
 import com.greatwall.callring.ui.state.LoadState
@@ -21,6 +22,7 @@ import java.util.Locale
 fun HomeScreen(
     state: LoadState<HomeData>, onRetry: () -> Unit, onLeaves: () -> Unit,
     quietCard: @Composable () -> Unit = {},
+    onSetup: () -> Unit = {},
 ) {
     ScreenFrame("首页", compactTitle = true) {
         Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -52,6 +54,18 @@ fun HomeScreen(
                     }
                 }
                 quietCard()
+                if (data.runtime.coreReadiness != CoreReadiness.READY) {
+                    Row(Modifier.fillMaxWidth().testTag("home-readiness"),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+                        Text(when (data.runtime.coreReadiness) {
+                            CoreReadiness.MISSING -> "核心来电条件尚未就绪"
+                            CoreReadiness.UNAVAILABLE -> "系统不支持部分核心来电能力"
+                            else -> "核心来电条件待确认"
+                        }, modifier = Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium)
+                        TextButton(onSetup) { Text("检查配置") }
+                    }
+                }
                 Card(onClick = onLeaves, modifier = Modifier.fillMaxWidth().testTag("home-leaves"),
                     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow)) {
                     Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {

@@ -12,13 +12,16 @@ class CaptureServiceControllerTest {
     private class Rig {
         val events = mutableListOf<String>(); val queue = mutableListOf<Runnable>()
         var failPrepare = false; var failStop = false; var failAttach = false
+        var lowSpace=false
+        var failureReason: String?=null
         val controller = CaptureServiceController(
             { foreground -> events += "plan:$foreground"; CapturePlan(RecordingCall(1, "100", 1, null), false) },
             { object : CaptureServiceController.Results {
                 override fun attach(call: RecordingCall, audio: AudioReference) { events += "attach"; if (failAttach) error("attach") }
-                override fun failure(call: RecordingCall) { events += "failure" }
+                override fun failure(call: RecordingCall, reason: String) { events += "failure"; failureReason=reason }
             } },
-            { object : CaptureServiceController.Target {
+            { if(lowSpace) throw java.io.IOException("storage.insufficient_space")
+                object : CaptureServiceController.Target {
                 override val reference = AudioReference("owned.m4a")
                 override fun delete() { events += "delete" }
             } },
@@ -35,6 +38,12 @@ class CaptureServiceControllerTest {
     @Test fun destroyBeforeQueuedStartPreventsPreparationAndQueuesCleanupBeforeShutdown() {
         val rig = Rig(); rig.controller.start(false); rig.controller.destroy(); rig.drain()
         assertEquals(listOf("foreground", "shutdown"), rig.events)
+    }
+    @Test fun lowSpaceRefusesCaptureBeforeMediaAndReportsSpecificReason() {
+        val rig=Rig(); rig.lowSpace=true; rig.controller.start(false); rig.drain()
+        assertEquals("recording.insufficient_space",rig.failureReason)
+        assertFalse("prepare" in rig.events)
+        assertFalse("start" in rig.events)
     }
     @Test fun successfulStopReleasesBeforeAttachingAndDuplicateStartDoesNotForegroundAgain() {
         val rig = Rig(); rig.controller.start(false); rig.drain(); rig.controller.start(false)

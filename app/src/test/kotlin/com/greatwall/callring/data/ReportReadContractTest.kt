@@ -96,7 +96,7 @@ class ReportReadContractTest {
                     Notification.Builder(context, "synthetic").build()
             }
         val graph =
-            BackendGraph(
+            BackendGraph(com.greatwall.callring.bootstrap.BackupGraphOwner { _, _ -> throw AssertionError("Unexpected fixture restore") },
                 context,
                 config,
                 notifications,

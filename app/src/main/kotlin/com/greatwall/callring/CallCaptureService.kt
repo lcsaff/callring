@@ -23,18 +23,21 @@ import java.util.concurrent.Executors
 /** Experimental microphone capture is explicit and never represented as verified two-way audio. */
 class CallCaptureService : Service() {
     private val worker = Executors.newSingleThreadExecutor()
+    private val captureActivity = com.greatwall.callring.entrypoint.recording.CaptureServiceActivity()
+    private val graph by lazy { BackendProvider.from(this).backendGraph }
     private val controller by lazy {
         CaptureServiceController(
-            { foreground -> capturePlan(this, foreground) },
-            { val service = BackendProvider.from(this).backendGraph.recordings.service
+            { foreground -> capturePlan(this, foreground, graph) },
+            { val service = graph.recordings.service
                 object : CaptureServiceController.Results {
                     override fun attach(call: RecordingCall, audio: AudioReference) { service.attachCapture(call, audio) }
-                    override fun failure(call: RecordingCall) { service.captureFailure(call, "recording.capture_restricted") }
+                    override fun failure(call: RecordingCall, reason: String) { service.captureFailure(call, reason) }
                 }
             },
             {
-                val directory = BackendProvider.from(this).backendGraph.recordings.directory
+                val directory = graph.recordings.directory
                 check(directory.isDirectory || directory.mkdirs())
+                com.greatwall.callring.platform.storage.StorageSpaceGuard.requireWritable(directory)
                 val file = File(directory, UUID.randomUUID().toString() + ".m4a")
                 object : CaptureServiceController.Target {
                     override val reference = AudioReference(file.absolutePath)
@@ -58,9 +61,10 @@ class CallCaptureService : Service() {
                     override fun stop() = recorder.stop()
                     override fun release() = recorder.release()
                 }
-            }, ::foreground, ::stopSelf, worker, worker::shutdown,
+            }, ::foreground, ::stopSelf, worker, { captureActivity.shutdown(worker) },
         )
     }
+    override fun onCreate() { super.onCreate(); captureActivity.started() }
     override fun onBind(intent: Intent?): IBinder? = null
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         controller.start(intent?.action == STOP)
@@ -78,20 +82,20 @@ class CallCaptureService : Service() {
     }
     override fun onDestroy() { controller.destroy(); super.onDestroy() }
     companion object {
-        private const val CHANNEL = "call_capture"
+private const val CHANNEL = "call_capture"
         private const val NOTIFICATION = 73141
         private const val STOP = "com.greatwall.callring.STOP_CAPTURE"
-        private fun capturePlan(context: Context, foreground: Boolean): CapturePlan? {
-            val service = BackendProvider.from(context).backendGraph.recordings.service
+        private fun capturePlan(context: Context, foreground: Boolean, graph: com.greatwall.callring.bootstrap.BackendGraph): CapturePlan? {
+            val service = graph.recordings.service
             return service.capturePlan(
                 context.checkSelfPermission("android.permission.CAPTURE_AUDIO_OUTPUT") == PackageManager.PERMISSION_GRANTED,
                 context.checkSelfPermission(Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED, foreground)
         }
-        fun phoneState(context: Context, active: Boolean) {
-            CaptureServiceController.phoneState(active, { capturePlan(context, true) },
+        fun phoneState(context: Context, active: Boolean, graph: com.greatwall.callring.bootstrap.BackendGraph) {
+            CaptureServiceController.phoneState(active, { capturePlan(context, true, graph) },
                 { context.startForegroundService(Intent(context, CallCaptureService::class.java)) },
                 { context.stopService(Intent(context, CallCaptureService::class.java)) },
-                { BackendProvider.from(context).backendGraph.recordings.service.captureFailure(it, "recording.capture_restricted") })
+                { graph.recordings.service.captureFailure(it, "recording.capture_restricted") })
         }
     }
 }

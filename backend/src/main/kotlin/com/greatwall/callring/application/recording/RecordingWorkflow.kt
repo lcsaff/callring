@@ -23,13 +23,23 @@ class RecordingWorkflow(
     private val now: () -> Long = System::currentTimeMillis,
 ) {
     private val running = ConcurrentHashMap.newKeySet<Long>()
+    private val activityFence = Object()
+    @Volatile private var closed = false
     private val cancelledOperations = ConcurrentHashMap<Long, AtomicBoolean>()
     private val activeClients = ConcurrentHashMap<Long, AiClient>()
     private val versions = AtomicLong(System.currentTimeMillis() * 1000)
+    fun isRunning(callId: Long): Boolean = callId in running
+    /** Cleanup holds this only for local deletion. Candidate admission never retains it for IO. */
+    fun <T> withIdle(callId: Long, block: () -> T): T = synchronized(activityFence) {
+        check(!closed) { "recording.closed" }
+        check(callId !in running) { "recording.busy" }
+        block()
+    }
     fun activityObservation() = RecordingActivityObservation(running.size.toLong(), activeClients.size.toLong(), cancelledOperations.values.count{it.get()}.toLong())
     private fun version(previous: Long = 0): Long = versions.updateAndGet { maxOf(it + 1, previous + 1) }
 
     fun attach(callId: Long, number: String, startedAt: Long, path: String, source: RecordingSource, duration: Long, command: CommandContext?, playbackStopped: Boolean): CallArchive {
+        check(!closed) { "recording.closed" }
         require(callId != 0L && number.isNotBlank() && duration > 0) { "recording.invalid_attachment" }
         val previousGeneration = store.generation(callId)
         cancelledOperations[callId]?.set(true)
@@ -44,6 +54,7 @@ class RecordingWorkflow(
     }
 
     fun retry(callId: Long, command: CommandContext?) {
+        check(!closed) { "recording.closed" }
         check(callId !in running) { "recording.busy" }
         val value = requireNotNull(store.get(callId)) { "recording.not_found" }
         require(value.audioPath != null) { "recording.missing_audio" }
@@ -54,7 +65,8 @@ class RecordingWorkflow(
             status = ArchiveStatus.QUEUED, attempts = 0, nextAttemptAt = 0, error = null, manualAnalysis = true), command, false)) { "recording.changed" }
     }
 
-    fun delete(callId: Long, command: CommandContext?, playbackStopped: Boolean): CallArchive? {
+    fun delete(callId: Long, command: CommandContext?, playbackStopped: Boolean): Boolean {
+        check(!closed) { "recording.closed" }
         cancelledOperations[callId]?.set(true)
         activeClients[callId]?.cancel()
         return commands.delete(callId, command, playbackStopped)
@@ -64,20 +76,32 @@ class RecordingWorkflow(
         activeClients.values.forEach { it.cancel() }
     }
 
-    fun nextRunAt(): Long? = store.earliestPendingAt { false }
+    /** Atomic admission seal followed by cancellation and drain; no resource/business lock is held. */
+    fun close() {
+        synchronized(activityFence) { closed = true }
+        cancelProcessing()
+        var interrupted = false
+        synchronized(activityFence) {
+            while (running.isNotEmpty()) try { activityFence.wait() } catch (_: InterruptedException) { interrupted = true }
+        }
+        if (interrupted) Thread.currentThread().interrupt()
+    }
+
+    fun nextRunAt(): Long? { check(!closed) { "recording.closed" }; return store.earliestPendingAt { closed } }
 
     /** Candidate pages are consumed before network work; no storage cursor spans an AI request. */
     fun processPending(cancelled: () -> Boolean = { false }) {
         val cutoff = now()
         var after: Long? = null
-        while (!cancelled()) {
-            val candidates = store.dueCandidates(cutoff, after, 64, cancelled)
+        while (!cancelled() && !closed) {
+            val candidates = store.dueCandidates(cutoff, after, 64) { cancelled() || closed }
             if (candidates.isEmpty()) return
             for (item in candidates) {
-                if (cancelled()) return
+                if (cancelled() || closed) return
                 after = item.callId
-                if (running.add(item.callId)) try { process(item, cancelled) } finally {
-                    cancelledOperations.remove(item.callId); activeClients.remove(item.callId); running.remove(item.callId)
+                if (synchronized(activityFence) { !closed && running.add(item.callId) }) try { process(item, cancelled) } finally {
+                    cancelledOperations.remove(item.callId); activeClients.remove(item.callId)
+                    synchronized(activityFence) { running.remove(item.callId); activityFence.notifyAll() }
                 }
             }
         }
@@ -89,10 +113,11 @@ class RecordingWorkflow(
         val config = store.settings()
         val cancellation = AtomicBoolean(false)
         cancelledOperations[current.callId] = cancellation
-        val isCancelled = { cancelled() || cancellation.get() }
+        val isCancelled = { closed || cancelled() || cancellation.get() }
         val operation = client.operation(isCancelled)
         activeClients[current.callId] = operation
         fun update(value: CallArchive): Boolean {
+            if (closed) return false
             val next = value.copy(generation = version(current.generation))
             if (!commands.compareAndSet(current.callId, current.generation, next, null, false)) return false
             current = next; return true

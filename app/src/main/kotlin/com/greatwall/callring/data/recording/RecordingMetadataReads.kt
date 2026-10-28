@@ -69,6 +69,24 @@ internal class RecordingMetadataReads(private val db: SQLiteDatabase, private va
         }
     }
     private data class Minimal(val metadata: RecordingArchiveMetadata, val audio: String?)
+    /** Audio is encoded before transcript; stop at its scalar, never materialize or scan the body. */
+    fun ownedAudio(id: Long): com.greatwall.callring.application.ports.recording.AudioReference? = read {
+        val generation = db.rawQuery("SELECT generation FROM archives WHERE call_id=?", arrayOf(id.toString())).use {
+            if (it.moveToFirst()) it.getLong(0) else null
+        } ?: return@read null
+        JsonReader(InputStreamReader(PayloadInput(id, generation), Charsets.UTF_8)).use { reader ->
+            reader.beginObject()
+            while (reader.hasNext()) {
+                active()
+                if (reader.nextName() == "audio") {
+                    return@read if (reader.peek() == JsonToken.NULL) null
+                    else com.greatwall.callring.application.ports.recording.AudioReference(reader.nextString())
+                }
+                reader.skipValue()
+            }
+            null
+        }
+    }
     private fun payload(id: Long, generation: Long): Minimal {
         counters.add("payloadMetadataRows")
         var encodedId: Long? = null; var encodedGeneration: Long? = null

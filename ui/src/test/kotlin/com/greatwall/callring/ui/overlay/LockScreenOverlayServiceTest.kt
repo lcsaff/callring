@@ -20,8 +20,10 @@ import org.robolectric.shadows.ShadowSettings
 class LockScreenTestApplication : Application(), UiOverlayOwner {
     override val overlaySessions = OverlaySessions()
     override val uiApi = object : UiFakeApi(true) {
+
         override suspend fun getStatus() = ApiResult.Success(super.getStatus().value.copy(phoneActivity = PhoneActivity.RINGING))
     }
+    override val availableUiApi = kotlinx.coroutines.flow.MutableStateFlow<com.greatwall.callring.contracts.CallringUiApi?>(uiApi)
     override suspend fun reobservePlatform() = Unit
 }
 

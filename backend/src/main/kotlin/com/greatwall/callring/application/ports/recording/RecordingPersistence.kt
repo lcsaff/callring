@@ -13,7 +13,7 @@ interface RecordingArchiveState {
 /** Raw persistence: no authorization, business delta, publication, or command recording. */
 interface RecordingArchiveMutations {
     fun compareAndSet(callId: Long, expectedGeneration: Long?, value: CallArchive): Boolean
-    fun delete(callId: Long): CallArchive?
+    fun delete(callId: Long): Boolean
 }
 
 /** The state machine reads only its target, configuration, and bounded work queue. */

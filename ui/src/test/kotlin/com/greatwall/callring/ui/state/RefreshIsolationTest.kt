@@ -1,5 +1,6 @@
 package com.greatwall.callring.ui.state
 
+import com.greatwall.callring.ui.testing.*
 import com.greatwall.callring.ui.testing.TestChangeFeed
 import com.greatwall.callring.contracts.common.ApiResult
 import com.greatwall.callring.contracts.change.ChangeFeed
@@ -139,8 +140,8 @@ class RefreshIsolationTest {
                 personSearchLoads++; return super.search(query)
             }
             override val recordings = object : RecordingApi by FixtureRecordingApi {
-                override suspend fun listArchives(): ApiResult<List<CallArchive>> {
-                    recordingLoads++; return ApiResult.Success(emptyList())
+                override suspend fun queryArchives(query: ArchiveListQuery): ApiResult<ArchiveListPage> {
+                    recordingLoads++; return ApiResult.Success(archivePageForTest())
                 }
             }
         }

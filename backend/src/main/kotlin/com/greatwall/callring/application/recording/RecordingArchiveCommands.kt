@@ -29,10 +29,10 @@ class RecordingArchiveCommands(
         true
     }
 
-    fun delete(callId: Long, command: CommandContext?, playbackStopped: Boolean): CallArchive? = coordinator.guard(command) {
+    fun delete(callId: Long, command: CommandContext?, playbackStopped: Boolean): Boolean = coordinator.guard(command) {
         val deleted = state.isDeleted(callId)
         val previous = mutations.delete(callId)
-        if (!deleted || previous != null) publish(callId, playbackStopped)
+        if (!deleted || previous) publish(callId, playbackStopped)
         else if (playbackStopped) coordinator.publishRuntime(setOf("runtime:recordingPlayback"))
         coordinator.record(command)
         previous

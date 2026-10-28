@@ -79,7 +79,7 @@ internal class BackendApiFixture(private val base: Context) : Closeable {
             ringPreferences,
         )
     val ui = FixtureUi(base, id)
-    var graph = BackendGraph(context, configuration, ui, ui)
+    var graph = BackendGraph(com.greatwall.callring.bootstrap.BackupGraphOwner { _, _ -> throw AssertionError("Unexpected fixture restore") }, context, configuration, ui, ui)
         private set
 
     val databaseFile
@@ -96,7 +96,7 @@ internal class BackendApiFixture(private val base: Context) : Closeable {
 
     fun reopen(configuration: BackendConfiguration = this.configuration) {
         graph.close()
-        graph = BackendGraph(context, configuration, ui, ui)
+        graph = BackendGraph(com.greatwall.callring.bootstrap.BackupGraphOwner { _, _ -> throw AssertionError("Unexpected fixture restore") }, context, configuration, ui, ui)
     }
 
     fun rawFacts(): List<List<String?>> =

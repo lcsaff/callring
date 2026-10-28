@@ -18,11 +18,12 @@ class CalendarSyncJobService : JobService() {
     private val runs = JobRuns<JobParameters>()
 
     override fun onStartJob(params: JobParameters): Boolean {
+        val graph = try { BackendProvider.from(this).backendGraph } catch (_: IllegalStateException) { return false }
         val run = runs.start(params.jobId, params)
         lifetime.launch {
             try {
                 withContext(Dispatchers.IO) {
-                    val graph = BackendProvider.from(this@CalendarSyncJobService).backendGraph
+                    if (!graph.acceptsOperations()) return@withContext
                     val cache = getSharedPreferences("${graph.configuration.databaseName}.calendar_sync", Context.MODE_PRIVATE)
                     CalendarSyncJobController(
                         { graph.configuration.clock },
@@ -30,12 +31,15 @@ class CalendarSyncJobService : JobService() {
                         object : CalendarSyncJobController.Attempts {
                             override fun read(year: Int) = CalendarSyncJobController.Attempt(
                                 cache.getLong("attempt.$year", 0), cache.getBoolean("success.$year", false))
-                            override fun begin(year: Int, now: Long) = cache.edit().putLong("attempt.$year", now)
-                                .putBoolean("success.$year", false).commit()
-                            override fun finish(year: Int, success: Boolean) { cache.edit().putBoolean("success.$year", success).commit() }
+                            override fun begin(year: Int, now: Long) = graph.coordinator.guard {
+                                check(graph.acceptsOperations()) { "backend.closed" }
+                                cache.edit().putLong("attempt.$year", now)
+                                .putBoolean("success.$year", false).commit() }
+                            override fun finish(year: Int, success: Boolean) { graph.coordinator.guard {
+                                check(graph.acceptsOperations()) { "backend.closed" }; cache.edit().putBoolean("success.$year", success).commit() } }
                         },
                         { graph.api.settings.synchronizeCalendar(it) is ApiResult.Success },
-                    ).run { run.stopped.get() }
+                    ).run { run.stopped.get() || !graph.acceptsOperations() }
                 }
             } catch (cancelled: CancellationException) { throw cancelled }
             catch (_: Exception) { /* Cached data remains usable; the periodic job retries later. */ }

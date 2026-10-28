@@ -27,7 +27,7 @@ class RuleScreeningService : CallScreeningService() {
                 return ScreeningCancellation { handler.removeCallbacks(task) }
             }
         }
-    private val playback =
+    private fun playback(graph: com.greatwall.callring.bootstrap.BackendGraph) =
         object : ScreeningPlayback {
             override fun readEnabled() = graph.audio.getSettings().enabled
 
@@ -62,7 +62,8 @@ class RuleScreeningService : CallScreeningService() {
         val account =
             details.accountHandle?.let { "${it.componentName.flattenToString()}|${it.id}" }
         try {
-            ScreeningController(scheduler, playback, graph.incomingCalls).begin(
+            val owner = graph
+            ScreeningController(scheduler, playback(owner), owner.incomingCalls).begin(
                 number,
                 at,
                 account,
@@ -71,7 +72,7 @@ class RuleScreeningService : CallScreeningService() {
             ) { silence ->
                 respond(details, silence)
                 try {
-                    graph.diagnostics.enqueue(DiagnosticEvent.CALL_SCREENED)
+                    owner.diagnostics.enqueue(DiagnosticEvent.CALL_SCREENED)
                 } catch (_: Exception) {}
             }
         } catch (_: Exception) {

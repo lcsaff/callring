@@ -17,6 +17,9 @@ enum class AccessState { GRANTED, DENIED, NOT_REQUIRED, UNAVAILABLE, UNKNOWN }
 
 enum class Audibility { AUDIBLE, SILENT, VIBRATE, SYSTEM_DND, ZERO_VOLUME, UNKNOWN }
 
+/** Observed prerequisites only; READY does not guarantee real calls or background reliability. */
+enum class CoreReadiness { READY, MISSING, UNAVAILABLE, UNKNOWN }
+
 enum class PhoneActivity { IDLE, RINGING, ACTIVE, UNKNOWN }
 
 enum class PlaybackMode { NONE, PREVIEW, RINGTONE }
@@ -34,7 +37,9 @@ data class RuntimeStatus(
     val phoneActivity: PhoneActivity,
     val playback: PlaybackStatus,
     val pinWidgetSupported: Boolean,
-    val checkedAtEpochMillis: Long
+    val checkedAtEpochMillis: Long,
+    /** Raw platform samples and older fixtures remain unknown until backend projection. */
+    val coreReadiness: CoreReadiness = CoreReadiness.UNKNOWN
 )
 
 data class DiagnosticEntry(

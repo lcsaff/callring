@@ -13,10 +13,13 @@ import com.greatwall.callring.ui.feature.recording.*
 import com.greatwall.callring.ui.feature.ai.ScopedRecordingSettingsViewModel
 
 @Composable internal fun RecordingArchivesRoute(api: CallringUiApi, signal: Long, onBack: () -> Unit,
-    onArchive: (CallArchive) -> Unit) {
+    onArchive: (ArchiveListItem) -> Unit) {
     val model: RecordingArchivesViewModel = uiViewModel { RecordingArchivesViewModel(api.recordings, changes = api.changes) }
     val state by model.state.collectAsStateWithLifecycle()
-    RecordingArchivesScreen(state, onBack, model::refresh, onArchive)
+    val paging by model.paging.collectAsStateWithLifecycle()
+    val timeZone: RecordingTimeZoneViewModel = uiViewModel { RecordingTimeZoneViewModel(api.settings, api.changes) }
+    val zone by timeZone.state.collectAsStateWithLifecycle()
+    RecordingArchivesScreen(state, onBack, model::refresh, onArchive, zone, timeZone::refresh, paging, model::more)
 }
 
 @Composable internal fun RecordingSettingsRoute(api: CallringUiApi, onBack: () -> Unit) {
@@ -45,9 +48,11 @@ import com.greatwall.callring.ui.feature.ai.ScopedRecordingSettingsViewModel
     val state by model.state.collectAsStateWithLifecycle()
     val files by model.files.collectAsStateWithLifecycle()
     val mutation by model.mutation.collectAsStateWithLifecycle()
+    val timeZone: RecordingTimeZoneViewModel = uiViewModel { RecordingTimeZoneViewModel(api.settings, api.changes) }
+    val zone by timeZone.state.collectAsStateWithLifecycle()
     val picker = rememberImportPicker(arrayOf("audio/*")) { model.import(it) }
     DisposableEffect(model) { onDispose { model.stopForExit() } }
     ArchiveScreen(state, files, mutation, onBack, model::refresh, picker, model::listSystem,
         { model.import(DocumentRef(it.uri), RecordingSource.SYSTEM) }, model::retry, model::delete, model::play, model::stop,
-        model::adoptIdentity, onEdit)
+        model::adoptIdentity, onEdit, zone, timeZone::refresh)
 }

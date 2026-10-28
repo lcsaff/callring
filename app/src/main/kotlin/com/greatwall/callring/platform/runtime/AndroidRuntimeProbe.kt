@@ -131,6 +131,7 @@ class AndroidRuntimeProbe(
             playback.snapshot(),
             pin,
             clock.millis(),
+            coreReadiness = CoreReadiness.UNKNOWN,
         )
     }
 

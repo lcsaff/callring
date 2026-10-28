@@ -22,6 +22,7 @@ import java.io.Closeable
 
 /** Total assembly and lifetime only; construction does not open persistence or media. */
 class BackendGraph(
+    private val backupOwner: BackupGraphOwner,
     context: Context,
     val configuration: BackendConfiguration,
     notifications: UiNotificationEntryPoints,
@@ -30,6 +31,7 @@ class BackendGraph(
     val coordinator = com.greatwall.callring.application.coordination.BusinessRevisionCoordinator()
     private val application = context.applicationContext
     private val lifetime = Any()
+    private val backupAccess = com.greatwall.callring.platform.ownership.OwnedFileAccess()
     private val recoveryLifetime = Any()
     @Volatile private var closed = false
     @Volatile private var persistenceClosed = false
@@ -40,7 +42,7 @@ class BackendGraph(
         SqliteCoreStorageResource(application, configuration.databaseName, configuration.sqlAccessProbe)
     }
     private val core: CoreAssembly = CoreAssembly(application, configuration, coordinator, store, ui,
-        ::ensureOpen, { !closed }, { !persistenceClosed }, { recordings }, { conversation }, { update })
+        ::ensureOpen, { !closed }, { !persistenceClosed }, { recordings }, { conversation }, { update }, { backup }, { storage })
     private val conversation: ConversationAssembly = ConversationAssembly(application, configuration, core,
         { recordings }, ui, { api }, ::ensureOpen, lifetime)
     internal val fullSnapshotReader: com.greatwall.callring.application.ports.store.FullSnapshotReader get() = store
@@ -69,6 +71,14 @@ class BackendGraph(
     ) + store.narrowAccessCounts()
     private val updateDelegate = lazy { ensureOpen(); com.greatwall.callring.platform.update.AndroidAppUpdate(application) }
     val update: AppUpdateApi get() = synchronized(lifetime) { ensureOpen(); updateDelegate.value }
+    private val backupDelegate = lazy { ensureOpen(); com.greatwall.callring.application.backup.BackupService(
+        com.greatwall.callring.data.backup.AndroidBackupArchivePort(application, this, configuration, backupOwner), configuration.dispatcher, { !closed }) }
+    val backup get() = synchronized(lifetime) { ensureOpen(); backupDelegate.value }
+    private val storageDelegate = lazy { ensureOpen(); com.greatwall.callring.application.storage.StorageManagementService(
+        recordings.service, com.greatwall.callring.platform.storage.AndroidStorageInventory(application, recordings.directory), operationActive = { !closed }) }
+    val storage get() = synchronized(lifetime) { ensureOpen(); storageDelegate.value }
+    internal fun acquireBackupReadLease(): java.io.Closeable { ensureOpen(); return backupAccess.acquire() }
+    internal fun prepareBackupStorage() { ensureOpen(); store.prepareBackupStorage(); recordings.store.archiveStamp() }
     val api: CallringUiApi get() = backend
     suspend fun reobservePlatform() = kotlinx.coroutines.withContext(configuration.dispatcher) {
         ensureOpen()
@@ -87,10 +97,11 @@ class BackendGraph(
             { callWorkLease.acquire() },
             { id, number, at, account -> recording.service.observeIncoming(id, number, at, account) },
             { id, call -> recording.service.linkStatistics(id, call) }, recordingSession, configuration.clock,
-            { com.greatwall.callring.CallCaptureService.phoneState(application, true) },
+            { com.greatwall.callring.CallCaptureService.phoneState(application, true, this) },
             recovery::recover, { diagnostics.enqueue(DiagnosticEvent.CALL_RECORD_FAILED) }).coordinator
     }
     val incomingCalls: IncomingCallCoordinator get() = synchronized(lifetime) { ensureOpen(); incomingDelegate.value }
+    fun acceptsOperations(): Boolean = !closed
     private fun ensureOpen() { check(!closed) { "backend.closed" } }
     override fun close() {
         val incoming = synchronized(recoveryLifetime) {
@@ -100,11 +111,15 @@ class BackendGraph(
                 if (incomingDelegate.isInitialized()) incomingDelegate.value else null
             }
         }
+        backupAccess.seal()
+        if (recordingDelegate.isInitialized()) recordingDelegate.value.cancelPendingWork()
+        synchronized(coordinator.fence) { /* drain guarded preference commits after sealing */ }
         try {
             try { conversation.close() }
             finally { if (updateDelegate.isInitialized()) updateDelegate.value.close() }
         } finally {
             try { incoming?.close() } finally {
+                backupAccess.close()
                 persistenceClosed = true
                 try { core.close() } finally {
                     try { if (recordingDelegate.isInitialized()) recordingDelegate.value.close() }

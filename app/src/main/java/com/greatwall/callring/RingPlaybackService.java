@@ -28,7 +28,8 @@ import com.greatwall.callring.entrypoint.calling.PlaybackServiceController;
 /** Registered Android resource and command adapter for the playback controller. */
 public class RingPlaybackService extends Service {
     public static final String PREPARE="prepare", CANCEL="cancel", PREVIEW="preview", STOP="stop", STOP_PREVIEW="stop_preview";
-    private static RingPlaybackService current;
+    private static volatile RingPlaybackService current;
+    private volatile com.greatwall.callring.platform.audio.AndroidAudioController audioOwner;
     private final Handler handler=new Handler(Looper.getMainLooper());
     private final ExecutorService mediaWorker=Executors.newSingleThreadExecutor();
     private AudioFocusRequest focus;
@@ -68,10 +69,21 @@ public class RingPlaybackService extends Service {
 
     private final class AndroidMedia implements PlaybackServiceController.Media {
         private final MediaPlayer player;
+        private final java.io.Closeable lease;
         AndroidMedia() {
-            attributes=new AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_NOTIFICATION_RINGTONE)
-                .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION).build();
-            player=new MediaPlayer();
+            com.greatwall.callring.platform.audio.AndroidAudioController audio=graph().getAudio();
+            audioOwner=audio;
+            lease=audio.acquirePlaybackLease();
+            MediaPlayer created;
+            try {
+                attributes=new AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_NOTIFICATION_RINGTONE)
+                    .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION).build();
+                created=new MediaPlayer();
+            } catch (RuntimeException | Error failure) {
+                try { lease.close(); } catch (IOException cleanup) { failure.addSuppressed(cleanup); }
+                throw failure;
+            }
+            player=created;
         }
         public void initialize(Runnable prepared,Runnable error) {
             player.setAudioAttributes(attributes);
@@ -83,9 +95,10 @@ public class RingPlaybackService extends Service {
         public void configureSource() throws IOException { graph().getAudio().configureDataSource(player); }
         public void prepareAsync() { player.prepareAsync(); }
         public void start() { player.start(); }
-        public void release() { player.release(); }
+        public void release() { try { player.release(); } finally { try { lease.close(); } catch (IOException impossible) { throw new IllegalStateException(impossible); } } }
     }
-    private BackendGraph graph() { return BackendProvider.from(this).getBackendGraph(); }
+    private BackendGraph ownerGraph;
+    private BackendGraph graph() { if (ownerGraph==null) throw new IllegalStateException("backend.closed"); return ownerGraph; }
     public static void command(Context c, String action, String token) {
         try { c.startService(new Intent(c, RingPlaybackService.class).setAction(action).putExtra("token", token)); }
         catch (RuntimeException e) { /* Best-effort cancellation. */ }
@@ -96,13 +109,21 @@ public class RingPlaybackService extends Service {
     }
     public static void stop(Context c) { command(c, STOP, null); }
 
+    public static void stopOwnedPlayback(com.greatwall.callring.platform.audio.AndroidAudioController owner) {
+        RingPlaybackService service=current;
+        if (service==null || service.audioOwner!=owner) return;
+        Runnable stop=() -> service.controller.command(PlaybackServiceController.Command.STOP,null,null);
+        if (Looper.myLooper()==service.handler.getLooper()) stop.run();
+        else service.handler.post(stop);
+    }
     public static boolean commitPrepared(String token) {
         RingPlaybackService service=current;
         return service!=null && service.controller.commitPrepared(token);
     }
-    @Override public void onCreate() { super.onCreate();current=this; }
+    @Override public void onCreate() { super.onCreate();current=this;
+        try { ownerGraph=BackendProvider.from(this).getBackendGraph(); } catch (IllegalStateException restoring) { stopSelf(); } }
     @Override public int onStartCommand(Intent intent,int flags,int startId) {
-        if (intent==null) { stopSelf();return START_NOT_STICKY; }
+        if (ownerGraph==null || intent==null) { stopSelf();return START_NOT_STICKY; }
         ResultReceiver ready=(PREPARE.equals(intent.getAction()) || PREVIEW.equals(intent.getAction())) ? intent.getParcelableExtra("ready") : null;
         controller.command(decode(intent.getAction()),intent.getStringExtra("token"),ready==null?null:code -> ready.send(code,null));
         return START_NOT_STICKY;

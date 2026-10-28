@@ -47,7 +47,7 @@ class WidgetConfigurationActivity : ComponentActivity() {
         setResult(Activity.RESULT_CANCELED)
         if (!ownsWidget(widgetId)) { finish(); return }
         enableEdgeToEdge()
-        val api = (application as UiApiOwner).uiApi
+        val api = (application as UiApiOwner).availableUiApi.value ?: run { finish(); return }
         setContent {
             val model: WidgetConfigurationModel = uiViewModel("widget-$widgetId") { WidgetConfigurationModel(widgetId, api, savedState = it) }
             val appearance by model.appearance.collectAsStateWithLifecycle()

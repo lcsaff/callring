@@ -14,25 +14,30 @@ import java.util.concurrent.Executors
 
 class SyncJobService : JobService() {
     private val handler = Handler(Looper.getMainLooper())
-    private val controller by lazy {
+    private var controller: CallLogSyncJobController<JobParameters>? = null
+    private var owner: com.greatwall.callring.bootstrap.BackendGraph? = null
+    private fun controller(graph: com.greatwall.callring.bootstrap.BackendGraph) =
         CallLogSyncJobController<JobParameters>(
-            { BackendProvider.from(this).backendGraph.backend.statisticsStart() },
-            { since, until, stopped -> BackendProvider.from(this).backendGraph.callLogSource.read(since, until, stopped) },
-            { BackendProvider.from(this).backendGraph.backend.importSystemCalls(it) },
-            { BackendProvider.from(this).backendGraph.backend.hasRecentPending(it) },
+            { graph.backend.statisticsStart() },
+            { since, until, stopped -> graph.callLogSource.read(since, until) { stopped() || !graph.acceptsOperations() } },
+            { graph.backend.importSystemCalls(it) },
+            { graph.backend.hasRecentPending(it) },
             { permitted(this) },
-            { BackendProvider.from(this).backendGraph.syncScheduler.cancelObserver() },
-            { BackendProvider.from(this).backendGraph.syncScheduler.rearmObserver() },
-            { val graph = BackendProvider.from(this).backendGraph; graph.syncScheduler.requestSync(graph.configuration.clock.millis()) },
-            { BackendProvider.from(this).backendGraph.configuration.clock.millis() },
-            { BackendProvider.from(this).backendGraph.diagnostics.add(DiagnosticEvent.CALL_SYNC_FAILED) },
+            { graph.syncScheduler.cancelObserver() },
+            { graph.syncScheduler.rearmObserver() },
+            { graph.syncScheduler.requestSync(graph.configuration.clock.millis()) },
+            { graph.configuration.clock.millis() },
+            { graph.diagnostics.add(DiagnosticEvent.CALL_SYNC_FAILED) },
             worker, { handler.post(it) }, { params, retry -> jobFinished(params, retry) },
         )
+    override fun onStartJob(params: JobParameters): Boolean {
+        val graph = try { BackendProvider.from(this).backendGraph } catch (_: IllegalStateException) { return false }
+        if (owner !== graph) { controller?.close(); owner = graph; controller = controller(graph) }
+        controller!!.start(params.jobId, params)
+        return true
     }
-    override fun onStartJob(params: JobParameters): Boolean { controller.start(params.jobId, params); return true }
-    override fun onStopJob(params: JobParameters): Boolean = controller.stop(params.jobId)
-    override fun onDestroy() { controller.close(); super.onDestroy() }
-
+    override fun onStopJob(params: JobParameters): Boolean = controller?.stop(params.jobId) ?: permitted(this)
+    override fun onDestroy() { controller?.close(); super.onDestroy() }
     companion object {
         private val worker = Executors.newSingleThreadExecutor()
 

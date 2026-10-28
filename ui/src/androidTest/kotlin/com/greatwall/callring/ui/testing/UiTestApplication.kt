@@ -24,6 +24,7 @@ class UiTestApplication : Application(), UiOverlayOwner {
     private val lifetime = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
     override val overlaySessions = OverlaySessions()
     override val uiApi = UiDeviceFixture()
+    override val availableUiApi = kotlinx.coroutines.flow.MutableStateFlow<com.greatwall.callring.contracts.CallringUiApi?>(uiApi)
     override suspend fun reobservePlatform() { uiApi.runtime.getStatus() }
     override fun onCreate() {
         super.onCreate()

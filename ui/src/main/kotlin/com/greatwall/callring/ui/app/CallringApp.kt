@@ -26,6 +26,7 @@ import com.greatwall.callring.ui.feature.callers.*
 import com.greatwall.callring.ui.feature.home.*
 import com.greatwall.callring.ui.feature.report.*
 import com.greatwall.callring.ui.feature.settings.*
+import com.greatwall.callring.ui.feature.setup.*
 import com.greatwall.callring.ui.feature.update.StartupUpdateViewModel
 import com.greatwall.callring.ui.designsystem.components.ConfirmationDialog
 import androidx.compose.material3.adaptive.currentWindowAdaptiveInfo
@@ -153,12 +154,20 @@ private fun AppScaffold(
                 TimeRefresh(model.timeRefresh, refreshSignal, state.data?.currentWork?.nextBoundaryEpochMillis, 60_000, model::refresh)
                 HomeScreen(state, model::refresh, { open(UiDestination.Leaves) }, quietCard = {
                     HomeQuietCard(quietState, quietMutation, quiet::refresh, quiet::setEnabled, quiet::openEditor)
-                })
+                }, onSetup = { open(UiDestination.Setup) })
                 val saved = quietState.data
                 val draft = quietDraft
                 if (quietOpen && saved != null && draft != null) {
                     HomeQuietDialog(saved, draft, quietMutation, quiet::edit, quiet::save, quiet::closeEditor)
                 }
+            }
+            composable(UiDestination.Setup.route) {
+                val model: SetupViewModel = uiViewModel { SetupViewModel(api) }
+                val state by model.state.collectAsStateWithLifecycle()
+                TimeRefresh(model.timeRefresh, refreshSignal, intervalMillis = 60_000, refresh = model::refresh)
+                SetupScreen(state, back, model::refresh, onCapability, onAppSettings,
+                    { open(UiDestination.Setting(SettingsPage.RECORDING)) },
+                    { open(UiDestination.Setting(SettingsPage.RUNTIME)) })
             }
             composable("callers") {
                 val model: CallerListViewModel = uiViewModel { CallerListViewModel(api.callers::search, api::checkNumber, api.changes, it) }
@@ -232,7 +241,8 @@ private fun AppScaffold(
             }
             SettingsPage.entries.forEach { page -> composable(UiDestination.Setting(page).route) {
                 SettingsRoute(page, api, settings, appearanceModel, refreshSignal, back, onCapability, onAppSettings,
-                    onTestOverlay = onTestOverlay, startupUpdateFinished = startupUpdateFinished)
+                    onTestOverlay = onTestOverlay, startupUpdateFinished = startupUpdateFinished,
+                    onSetup = { open(UiDestination.Setup) })
             } }
         }
     }

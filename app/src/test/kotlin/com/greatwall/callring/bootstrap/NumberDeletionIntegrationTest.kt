@@ -246,7 +246,7 @@ class NumberDeletionIntegrationTest {
             override fun home(requestCode: Int) = PendingIntent.getActivity(context, requestCode, Intent("fixture"), PendingIntent.FLAG_IMMUTABLE)
             override fun playback(preview: Boolean, stopAction: PendingIntent) = Notification()
         }
-        return BackendGraph(context, configuration, notifications, object : IncomingCallUiSink {
+        return BackendGraph(com.greatwall.callring.bootstrap.BackupGraphOwner { _, _ -> throw AssertionError("Unexpected fixture restore") }, context, configuration, notifications, object : IncomingCallUiSink {
             override fun show(request: IncomingCallUiRequest) = Unit
         })
     }
@@ -266,7 +266,7 @@ class NumberDeletionIntegrationTest {
             graph.api.commandApi(context).numberDeletion.delete(DeleteNumberCommand("31234", 0, 1, 2)).requiredValue()
             assertFalse(graph.api.callers.numberDataImpact("31234").requiredValue().profileExists)
             assertTrue(graph.api.widgets.listBindings().requiredValue().stored.isEmpty())
-            assertTrue(graph.api.recordings.listArchives().requiredValue().isEmpty())
+            assertTrue(graph.api.recordings.queryArchives().requiredValue().items.isEmpty())
             assertFalse(audio.exists())
         } finally { graph.close() }
     }
@@ -276,7 +276,7 @@ class NumberDeletionIntegrationTest {
         try {
             graph.recordings.registrations.registerIncoming("session", "31234", 1, null, null)
             graph.api.numberDeletion.delete(DeleteNumberCommand("31234", 0, 1, 0)).requiredValue()
-            assertTrue(graph.api.recordings.listArchives().requiredValue().isEmpty())
+            assertTrue(graph.api.recordings.queryArchives().requiredValue().items.isEmpty())
         } finally { graph.close() }
     }
 

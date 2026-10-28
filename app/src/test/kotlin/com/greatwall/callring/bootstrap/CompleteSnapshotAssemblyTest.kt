@@ -42,7 +42,7 @@ class CompleteSnapshotAssemblyTest {
             override fun home(requestCode: Int) = PendingIntent.getActivity(context, requestCode, Intent("fixture"), PendingIntent.FLAG_IMMUTABLE)
             override fun playback(preview: Boolean, stopAction: PendingIntent) = Notification()
         }
-        BackendGraph(context, configuration, notifications, object : IncomingCallUiSink { override fun show(request: IncomingCallUiRequest) = Unit }).use { graph ->
+        BackendGraph(com.greatwall.callring.bootstrap.BackupGraphOwner { _, _ -> throw AssertionError("Unexpected fixture restore") }, context, configuration, notifications, object : IncomingCallUiSink { override fun show(request: IncomingCallUiRequest) = Unit }).use { graph ->
             val initial = graph.coordinator.capture()
             graph.playbackState.mark(com.greatwall.callring.contracts.runtime.PlaybackMode.PREVIEW, com.greatwall.callring.contracts.runtime.PlaybackState.PLAYING)
             assertEquals(1L, graph.coordinator.marker())
@@ -61,7 +61,7 @@ class CompleteSnapshotAssemblyTest {
             override fun home(requestCode: Int) = PendingIntent.getActivity(context, requestCode, Intent("fixture"), PendingIntent.FLAG_IMMUTABLE)
             override fun playback(preview: Boolean, stopAction: PendingIntent) = Notification()
         }
-        val graph = BackendGraph(context, configuration, notifications, object : IncomingCallUiSink { override fun show(request: IncomingCallUiRequest) = Unit })
+        val graph = BackendGraph(com.greatwall.callring.bootstrap.BackupGraphOwner { _, _ -> throw AssertionError("Unexpected fixture restore") }, context, configuration, notifications, object : IncomingCallUiSink { override fun show(request: IncomingCallUiRequest) = Unit })
         val cipher = object : RecordingCipher { override fun encrypt(value: String) = value; override fun decrypt(value: String) = value }
         val store = AndroidRecordingStore(context, "small_recording", cipher, recordingVersion = { graph.coordinator.capture().values.getValue("recording") })
         val connection = AiConnection(url = "https://example.com/v1", model = "model", apiKey = "unique-secret-sentinel")

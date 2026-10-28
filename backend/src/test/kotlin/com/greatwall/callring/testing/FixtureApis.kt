@@ -56,7 +56,7 @@ object FixtureConversationApi : ConversationApi {
 
 object FixtureRecordingApi : RecordingApi {
     override suspend fun getIdentity(callId: Long): ApiResult<RecordingIdentity> = throw AssertionError("Unexpected fixture operation: getIdentity")
-    override suspend fun listArchives(): ApiResult<List<CallArchive>> = throw AssertionError("Unexpected fixture operation: listArchives")
+    override suspend fun queryArchives(query: ArchiveListQuery): ApiResult<ArchiveListPage> = throw AssertionError("Unexpected fixture operation: listArchives")
 
     override suspend fun inspectSystemRecording(document: DocumentRef): ApiResult<RecordingFile> = throw AssertionError("Unexpected fixture operation: inspectSystemRecording")
 
@@ -72,3 +72,18 @@ object FixtureRecordingApi : RecordingApi {
 }
 
 fun fixtureFailure(): ApiResult.Failure = ApiResult.Failure(ApiError(ErrorCode.SYSTEM_UNAVAILABLE, "fixture.unavailable"))
+
+object FixtureBackupApi : com.greatwall.callring.contracts.backup.BackupApi {
+    override val progress = kotlinx.coroutines.flow.MutableStateFlow(com.greatwall.callring.contracts.backup.BackupProgress(com.greatwall.callring.contracts.backup.BackupPhase.IDLE))
+    override suspend fun export(destination: DocumentRef, password: CharArray, includeAudio: Boolean): ApiResult<com.greatwall.callring.contracts.backup.BackupSummary> = throw AssertionError("Unexpected backup export")
+    override suspend fun preview(source: DocumentRef, password: CharArray): ApiResult<com.greatwall.callring.contracts.backup.BackupPreview> = throw AssertionError("Unexpected backup preview")
+    override suspend fun restore(previewToken: String): ApiResult<com.greatwall.callring.contracts.backup.RestoreReceipt> = throw AssertionError("Unexpected backup restore")
+    override suspend fun discard(previewToken: String): ApiResult<Unit> = throw AssertionError("Unexpected backup discard")
+}
+
+object FixtureStorageApi : com.greatwall.callring.contracts.storage.StorageManagementApi {
+ override suspend fun inventory(): ApiResult<com.greatwall.callring.contracts.storage.StorageInventory> = error("unused")
+ override suspend fun preview(selection: com.greatwall.callring.contracts.storage.ArchiveCleanupSelection): ApiResult<com.greatwall.callring.contracts.storage.ArchiveCleanupPreview> = error("unused")
+ override suspend fun confirm(token: String): ApiResult<com.greatwall.callring.contracts.storage.ArchiveCleanupReceipt> = error("unused")
+ override fun cancel(token: String) = Unit
+}

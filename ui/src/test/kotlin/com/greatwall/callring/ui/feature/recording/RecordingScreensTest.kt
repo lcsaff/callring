@@ -29,7 +29,7 @@ class RecordingScreensTest {
             override val callers: CallersApi get() = error("Archive list must not access caller statistics")
             override val reports: ReportsApi get() = error("Archive list must not access reports")
             override val recordings = object : RecordingApi by FixtureRecordingApi {
-                override suspend fun listArchives() = ApiResult.Success(listOf(archive))
+                override suspend fun queryArchives(query: ArchiveListQuery) = ApiResult.Success(archivePageForTest(archive))
             }
         }
         compose.setContent { com.greatwall.callring.ui.app.CallringApp(api,
@@ -42,16 +42,16 @@ class RecordingScreensTest {
     @Test fun independentArchiveListDisplaysStateAndOpensOpaqueId() {
         val archive = CallArchive(-42, "10086", 0, status = ArchiveStatus.COMPLETE,
             analysis = CallAnalysis(summary = "商量下次会议"))
-        var selected: CallArchive? = null
+        var selected: ArchiveListItem? = null
         var refreshes = 0
         compose.setContent { CallringTheme(DefaultAppearance.rememberAppearanceThemeSpec(androidx.compose.foundation.isSystemInDarkTheme())) {
-            RecordingArchivesScreen(LoadState(listOf(archive), loaded = true), {}, { refreshes++ }, { selected = it })
+            RecordingArchivesScreen(LoadState(listOf(archive.listItemForTest()), loaded = true), {}, { refreshes++ }, { selected = it })
         } }
         compose.onNodeWithText("10086").assertIsDisplayed()
         compose.onNodeWithText("已完成").assertIsDisplayed()
         compose.onNodeWithText("商量下次会议").assertIsDisplayed()
         compose.onNodeWithText("10086").performClick()
-        assertEquals(archive, selected)
+        assertEquals(archive.listItemForTest(), selected)
         compose.onNodeWithText("刷新").performClick()
         assertEquals(1, refreshes)
     }
@@ -62,7 +62,7 @@ class RecordingScreensTest {
         val api = object : com.greatwall.callring.ui.testing.UiFakeApi() {
             override val reports: ReportsApi get() = error("Recording navigation must not access reports")
             override val recordings = object : RecordingApi by FixtureRecordingApi {
-                override suspend fun listArchives() = ApiResult.Success(listOf(archive))
+                override suspend fun queryArchives(query: ArchiveListQuery) = ApiResult.Success(archivePageForTest(archive))
                 override suspend fun getArchive(callId: Long): ApiResult<CallArchive?> {
                     requestedId = callId
                     return ApiResult.Success(archive)
@@ -79,7 +79,7 @@ class RecordingScreensTest {
     }
 
     @Test fun independentArchiveListShowsEmptyAndErrorFeedback() {
-        val state = mutableStateOf(LoadState<List<CallArchive>>(emptyList(), loaded = true))
+        val state = mutableStateOf(LoadState<List<ArchiveListItem>>(emptyList(), loaded = true))
         compose.setContent { CallringTheme(DefaultAppearance.rememberAppearanceThemeSpec(androidx.compose.foundation.isSystemInDarkTheme())) { RecordingArchivesScreen(state.value, {}, {}, {}) } }
         compose.onNodeWithText("暂无通话录音").assertIsDisplayed()
         compose.runOnIdle { state.value = LoadState(error = ApiError(ErrorCode.STORAGE_FAILURE, "recording.storage_or_network")) }

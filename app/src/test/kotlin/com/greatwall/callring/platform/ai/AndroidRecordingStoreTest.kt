@@ -47,7 +47,7 @@ class AndroidRecordingStoreTest {
         val second = com.greatwall.callring.application.recording.RecordingRegistrationService(store, com.greatwall.callring.application.coordination.BusinessRevisionCoordinator()).registerIncoming("session-b", "31234", 1000, "sim-b", null)
         assertNotEquals(first.id, second.id)
         assertEquals(ArchiveStatus.WAITING_RECORDING, store.get(first.id)!!.status)
-        assertEquals(2, store.listArchives().size)
+        assertEquals(2, store.queryArchives(ArchiveListQuery()) { false }.items.size)
         store.delete(first.id)
         com.greatwall.callring.application.recording.RecordingRegistrationService(store, com.greatwall.callring.application.coordination.BusinessRevisionCoordinator()).registerIncoming("session-a", "31234", 1000, "sim-a", null)
         assertNull(store.get(first.id))

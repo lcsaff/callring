@@ -64,7 +64,7 @@ object FixtureNumberDeletionApi : NumberDeletionApi {
 
 object FixtureRecordingApi : RecordingApi {
     override suspend fun getIdentity(callId: Long): ApiResult<RecordingIdentity> = throw AssertionError("Unexpected fixture operation: getIdentity")
-    override suspend fun listArchives(): ApiResult<List<CallArchive>> = throw AssertionError("Unexpected fixture operation: listArchives")
+    override suspend fun queryArchives(query: ArchiveListQuery): ApiResult<ArchiveListPage> = throw AssertionError("Unexpected fixture operation: listArchives")
 
     override suspend fun inspectSystemRecording(document: DocumentRef): ApiResult<RecordingFile> = throw AssertionError("Unexpected fixture operation: inspectSystemRecording")
 

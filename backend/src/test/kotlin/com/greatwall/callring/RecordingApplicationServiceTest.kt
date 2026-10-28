@@ -38,6 +38,56 @@ import java.io.IOException
 
 /** No Android resource, filesystem, full backend context, or alternate archive publisher. */
 class RecordingApplicationServiceTest {
+    @Test fun cleanupOfAnotherArchivePreservesPlayingArchiveIncludingStatisticsAlias() = runBlocking {
+        val f=Fixture()
+        f.events[-3]=RecordingCall(-3,"300",3,null)
+        f.events[-4]=RecordingCall(-4,"400",4,null)
+        f.entries[-3]=CallArchive(-3,"300",3,1,status=ArchiveStatus.COMPLETE,audioPath="playing")
+        f.entries[-4]=CallArchive(-4,"400",4,1,status=ArchiveStatus.COMPLETE,audioPath="selected")
+        f.links[30]=f.events.getValue(-3)
+        f.playing=true; f.playingCallId=30
+        f.service.remove(-4,1).requiredValue()
+        assertTrue("Cleaning another target must leave active playback running",f.playing)
+        assertEquals(listOf("delete:selected"),f.effects)
+        assertTrue(f.service.remove(-3,1) is ApiResult.Failure)
+        assertTrue(f.playing); assertTrue(-3L in f.entries)
+        assertEquals(0,f.fullReads)
+    }
+    @Test fun deletingAnotherArchiveDoesNotInvalidatePreparedPlayback() = runBlocking {
+        val f=Fixture()
+        f.events[-3]=RecordingCall(-3,"300",3,null)
+        f.events[-4]=RecordingCall(-4,"400",4,null)
+        f.entries[-3]=CallArchive(-3,"300",3,1,audioPath="playing")
+        f.entries[-4]=CallArchive(-4,"400",4,1,audioPath="selected")
+        f.beforePlayback={ runBlocking { f.service.delete(-4).requiredValue() } }
+        f.service.play(-3).requiredValue()
+        assertTrue(f.playing); assertEquals(-3L,f.playingCallId)
+        assertFalse("stop" in f.effects)
+        assertFalse(-4L in f.entries)
+    }
+    @Test fun captureWorkerTailKeepsCleanupExcludedAfterCallIdentityClears() {
+        val f=Fixture()
+        f.entries[3]=CallArchive(3,"31234",1,1,status=ArchiveStatus.COMPLETE)
+        assertFalse(requireNotNull(f.service.snapshot(3)).active)
+        f.capturing=true
+        assertTrue(requireNotNull(f.service.snapshot(3)).active)
+    }
+    @Test fun lowSpaceImportReportsSpecificFailureWithoutChangingArchive() = runBlocking {
+        val f=Fixture().seed()
+        val before=f.entries.toMap()
+        f.prepareFailure=IOException("storage.insufficient_space")
+        val result=f.service.importRecording(-1,"31234",1,DocumentRef("content://audio")) as ApiResult.Failure
+        assertEquals("recording.insufficient_space",result.error.message)
+        assertEquals(before,f.entries)
+    }
+    @Test fun deletionUsesScalarAudioAndNeverReadsFullArchive() = runBlocking {
+        val f = Fixture().seed()
+        f.service.delete(-1).requiredValue()
+        assertEquals(0, f.fullReads)
+        assertEquals(listOf("delete:old"), f.effects)
+        assertTrue(-1L in f.deleted)
+        assertFalse(-1L in f.entries)
+    }
     @Test fun stoppingIdleRecordsCommandWithoutPublishing() = runBlocking {
         val f = Fixture()
         val command = com.greatwall.callring.contracts.command.CommandContext("stop", f.coordinator.capture(), 0) { true }
@@ -93,7 +143,7 @@ class RecordingApplicationServiceTest {
         f.entries[1] = CallArchive(1, "1", 2)
         f.entries[2] = CallArchive(2, "2", 3)
         f.entries[3] = CallArchive(3, "3", 2)
-        assertEquals(listOf(2L, 1L, 3L), f.service.listArchives().requiredValue().map { it.callId })
+        assertEquals(listOf(2L, 1L, 3L), f.service.queryArchives().requiredValue().items.map { it.callId })
     }
     @Test fun changedGenerationDuringPreparationDiscardsOpaqueAudioWithoutStoppingPlayer() = runBlocking {
         val f = Fixture().seed()
@@ -182,9 +232,13 @@ class RecordingApplicationServiceTest {
         var failDirectory = false
         var transcriptions = 0
         var playing = false
+        var playingCallId: Long? = -1
+        var beforePlayback: () -> Unit = {}
         var failCas = false
         var failDelete = false
         var failStart = false
+        var fullReads = 0
+        var capturing=false
         var prepareFailure: Exception? = null
         var beforePrepared: () -> Unit = {}
         private val commands = RecordingArchiveCommands(this, this, coordinator)
@@ -198,14 +252,14 @@ class RecordingApplicationServiceTest {
         private val workflow = RecordingWorkflow(this, commands, client)
         private val ai = AiSettingsService(this, coordinator, { true }, { _, _ -> }, folderView = { error("unused") }, operationActive = { true })
         val service = RecordingService(this, this, ::settings, { workflow }, commands, RecordingRegistrationService(this, coordinator), ai,
-            this, this, this, { legacyReads += it; legacy }, { -1 }, {}, coordinator, operationActive = { true })
+            this, this, this, { legacyReads += it; legacy }, { -1 }, {}, coordinator, operationActive = { true }, captureBusy = { capturing })
         fun seed() = apply {
             events[-1] = RecordingCall(-1, "31234", 1, null)
             entries[-1] = CallArchive(-1, "31234", 1, 1, audioPath = "old")
         }
         override fun settings() = config
         override fun persistSettings(value: RecordingSettings) { config = value }
-        override fun get(callId: Long) = entries[callId]
+        override fun get(callId: Long) = entries[callId].also { fullReads++ }
         override fun generation(callId: Long) = entries[callId]?.generation
         override fun isDeleted(callId: Long) = callId in deleted
         override fun compareAndSet(callId: Long, expectedGeneration: Long?, value: CallArchive): Boolean {
@@ -214,13 +268,16 @@ class RecordingApplicationServiceTest {
             entries[callId] = value
             return true
         }
-        override fun delete(callId: Long): CallArchive? { deleted += callId; return entries.remove(callId) }
+        override fun delete(callId: Long): Boolean { deleted += callId; return entries.remove(callId) != null }
         override fun findRecording(id: Long) = events[id]
         override fun linkedRecording(statisticsId: Long) = links[statisticsId]
         override fun metadata(callId: Long, cancelled: () -> Boolean) = entries[callId]?.let {
             RecordingArchiveMetadata(it.callId, it.generation, it.number, it.startedAtEpochMillis, it.status, it.source, it.durationMillis, it.audioPath != null, it.nextAttemptAt)
         }
-        override fun listArchives() = entries.values.toList()
+        override fun archiveStamp() = "fixture:1"
+        override fun ownedAudio(callId: Long, cancelled: () -> Boolean) = entries[callId]?.audioPath?.let(::AudioReference)
+        override fun ownedBytes(reference: AudioReference): Long? = 10
+        override fun queryArchives(query: ArchiveListQuery, cancelled: () -> Boolean) = ArchiveListPage(entries.values.sortedWith(compareByDescending<CallArchive> { it.startedAtEpochMillis }.thenBy { it.callId }).take(query.limit).map { ArchiveListItem(it.callId,it.generation,it.number,it.startedAtEpochMillis,it.status,it.source,it.durationMillis,it.audioPath!=null, it.analysis?.summary.orEmpty()) }, null, true)
         override fun numberMetadata(number: String, cancelled: () -> Boolean) = emptyList<NumberRecordingMetadata>()
         override fun recentMetadata(since: Long, cancelled: () -> Boolean) = entries.values.filter { it.startedAtEpochMillis >= since }.mapNotNull { metadata(it.callId, cancelled) }
         override fun earliestPendingAt(cancelled: () -> Boolean): Long? = null
@@ -246,13 +303,14 @@ class RecordingApplicationServiceTest {
         override fun deleteOwned(reference: AudioReference) { effects += "delete:" + reference.location; if (failDelete) throw IOException("forced") }
         override fun prepare(reference: AudioReference): PreparedRecordingPlayback {
             assertFalse(Thread.holdsLock(coordinator.fence))
+            beforePlayback()
             effects += "prepare-play"
             return object : PreparedRecordingPlayback { override fun close() { effects += "release" } }
         }
-        override fun activate(prepared: PreparedRecordingPlayback, callId: Long) { effects += "start"; if (failStart) throw IOException("forced"); playing = true }
+        override fun activate(prepared: PreparedRecordingPlayback, callId: Long) { effects += "start"; if (failStart) throw IOException("forced"); playing = true; playingCallId=callId }
         override fun stop(): Boolean { if (!playing) return false; effects += "stop"; playing = false; return true }
         override fun status() = PlaybackStatus(PlaybackMode.NONE, PlaybackState.IDLE)
-        override fun observation() = com.greatwall.callring.application.ports.recording.RecordingPlaybackObservation(status(), null)
+        override fun observation() = com.greatwall.callring.application.ports.recording.RecordingPlaybackObservation(status(), if(playing) playingCallId else null)
         override fun authorize(document: DocumentRef) = Unit
         override fun list(folder: String): List<RecordingFile> { if (failDirectory) throw SecurityException(); return directoryFiles }
         override fun inspect(folder: String, document: DocumentRef): RecordingFile? = null

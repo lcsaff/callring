@@ -25,6 +25,26 @@ import org.robolectric.annotation.Config
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [35], application = PermissionRecoveryApplication::class)
 class CallringActivityTest {
+    @Test fun recreationDuringOwnerSwitchWaitsForAvailableApi() {
+        val application = RuntimeEnvironment.getApplication() as PermissionRecoveryApplication
+        application.availableUiApi.value = null
+        var reads = 0
+        application.uiApi.prepareRule = { reads++; ApiResult.Success(com.greatwall.callring.contracts.settings.NumberRuleSettings(listOf(com.greatwall.callring.contracts.settings.NumberRuleEntry("3", 5)), 0)) }
+        val first = Robolectric.buildActivity(CallringActivity::class.java).create().start().resume()
+        shadowOf(Looper.getMainLooper()).idle()
+        assertEquals(0, reads)
+        val saved = android.os.Bundle()
+        first.saveInstanceState(saved).pause().stop().destroy()
+        val second = Robolectric.buildActivity(CallringActivity::class.java).create(saved).start().resume()
+        try {
+            shadowOf(Looper.getMainLooper()).idle()
+            assertEquals(0, reads)
+            application.availableUiApi.value = application.uiApi
+            shadowOf(Looper.getMainLooper()).idle()
+            assertEquals(1, reads)
+        } finally { second.pause().stop().destroy() }
+    }
+
     @Test fun recordingArchiveListExternalIntentKeepsIndependentDestination() {
         val intent = CallringActivity.intent(RuntimeEnvironment.getApplication(), UiDestination.RecordingArchives)
         assertEquals("recording-archives", intent.getStringExtra("callring.ui.target"))
@@ -128,6 +148,7 @@ class CallringActivityTest {
 class PermissionRecoveryApplication : Application(), UiApiOwner {
     override suspend fun reobservePlatform() { uiApi.runtime.getStatus() }
     override val uiApi = PermissionRecoveryApi()
+    override val availableUiApi = kotlinx.coroutines.flow.MutableStateFlow<com.greatwall.callring.contracts.CallringUiApi?>(uiApi)
 }
 
 class PermissionRecoveryApi : UiFakeApi() {

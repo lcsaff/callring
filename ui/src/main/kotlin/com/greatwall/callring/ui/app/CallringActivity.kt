@@ -28,6 +28,7 @@ import kotlinx.coroutines.launch
 class CallringActivity : ComponentActivity() {
     private lateinit var startupGate: NumberRuleStartupGate
     private lateinit var actionHost: ForegroundActionHost
+    private var boundApi by mutableStateOf<com.greatwall.callring.contracts.CallringUiApi?>(null)
     private var notice by mutableStateOf<UiNotice?>(null)
     private var noticeSequence = 0L
     private fun notifyUser(text: String) { notice = UiNotice(++noticeSequence, text) }
@@ -41,14 +42,23 @@ class CallringActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         requestSequence = savedInstanceState?.getLong(STATE_REQUEST_SEQUENCE) ?: 0
-        val api = (application as UiApiOwner).uiApi
-        actionHost = ForegroundActionHost(this,api,::notifyUser)
-        startupGate = NumberRuleStartupGate(lifecycleScope, api.settings::getNumberRule, api::checkNumber)
-        startupGate.open(UiDestination.fromExternal(
-            savedInstanceState?.getString(STATE_PENDING_TARGET) ?: intent.getStringExtra(EXTRA_TARGET),
-            savedInstanceState?.getString(STATE_PENDING_NUMBER) ?: intent.getStringExtra(EXTRA_NUMBER),
-            savedInstanceState?.getString(STATE_PENDING_PAGE) ?: intent.getStringExtra(EXTRA_PAGE)))
+        val owner = application as UiApiOwner
+        owner.availableUiApi.value?.let { bindApi(it, savedInstanceState) }
+        lifecycleScope.launch {
+            owner.availableUiApi.collect { available ->
+                if (available == null) { if (::startupGate.isInitialized) startupGate.close() }
+                else if (boundApi == null) bindApi(available, savedInstanceState)
+            }
+        }
         setContent {
+            val available by owner.availableUiApi.collectAsState()
+            val api = boundApi
+            if (api == null || available !== api) {
+                com.greatwall.callring.ui.designsystem.components.ScreenFrame("正在恢复数据") {
+                    androidx.compose.material3.CircularProgressIndicator()
+                }
+                return@setContent
+            }
             val startup by startupGate.state.collectAsState()
             val ready = startup.destination
             if (ready == null) {
@@ -66,19 +76,30 @@ class CallringActivity : ComponentActivity() {
         }
     }
 
+    private fun bindApi(api: com.greatwall.callring.contracts.CallringUiApi, savedInstanceState: Bundle?) {
+        actionHost = ForegroundActionHost(this, api, ::notifyUser)
+        startupGate = NumberRuleStartupGate(lifecycleScope, api.settings::getNumberRule, api::checkNumber)
+        startupGate.open(UiDestination.fromExternal(
+            savedInstanceState?.getString(STATE_PENDING_TARGET) ?: intent.getStringExtra(EXTRA_TARGET),
+            savedInstanceState?.getString(STATE_PENDING_NUMBER) ?: intent.getStringExtra(EXTRA_NUMBER),
+            savedInstanceState?.getString(STATE_PENDING_PAGE) ?: intent.getStringExtra(EXTRA_PAGE)))
+        boundApi = api
+    }
     override fun onResume() {
         super.onResume()
-        lifecycleScope.launch { (application as UiApiOwner).reobservePlatform() }
+        val owner = application as UiApiOwner
+        val api = owner.availableUiApi.value ?: return
+        lifecycleScope.launch { owner.reobservePlatform() }
         // A grant made in system settings must restore the observer as well as refresh its status.
         if (checkSelfPermission(Manifest.permission.READ_CALL_LOG) == PackageManager.PERMISSION_GRANTED) {
-            lifecycleScope.launch { (application as UiApiOwner).uiApi.runtime.requestCallLogSync() }
+            lifecycleScope.launch { api.runtime.requestCallLogSync() }
         }
     }
 
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
-        startupGate.open(readDestination(intent))
+        if (::startupGate.isInitialized && (application as UiApiOwner).availableUiApi.value === boundApi) startupGate.open(readDestination(intent))
         requestSequence++
     }
 
@@ -153,6 +174,7 @@ class CallringActivity : ComponentActivity() {
                 UiDestination.Lookup -> "lookup"
                 UiDestination.Leaves -> "leaves"
                 UiDestination.Positions -> "positions"
+                UiDestination.Setup -> "setup"
                 is UiDestination.Setting -> "setting"
                 UiDestination.Home -> "home"
             }

@@ -23,10 +23,11 @@ import java.time.ZoneId
 fun RuntimeScreen(
     state: LoadState<RuntimeUiData>, mutation: MutationState,
     onBack: () -> Unit, onRetry: () -> Unit, onCapability: (Capability) -> Unit,
-    onSynchronize: () -> Unit, onAppSettings: () -> Unit, onTestOverlay: () -> Unit = {},
+    onSynchronize: () -> Unit, onAppSettings: () -> Unit, onTestOverlay: () -> Unit = {}, onSetup: () -> Unit = {},
 ) {
     ScreenFrame("运行状态与权限", onBack) {
         Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            OutlinedButton(onSetup, modifier = Modifier.fillMaxWidth()) { Text("配置清单") }
             if (state.data == null && (state.loading || (!state.loaded && state.error == null))) LoadingContent()
             state.error?.let { ApiErrorNotice(it, onCapability); TextButton(onRetry) { Text("重试") } }
             MutationFeedback(mutation, onCapability, showSuccess = false)

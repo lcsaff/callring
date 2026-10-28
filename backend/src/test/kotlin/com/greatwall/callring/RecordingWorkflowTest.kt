@@ -21,6 +21,54 @@ import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 
 class RecordingWorkflowTest {
+    @Test fun ownerCloseCancelsAndDrainsAdmittedWorkWithoutPersistingLateResults() {
+        configure()
+        val entered = CountDownLatch(1)
+        val release = CountDownLatch(1)
+        val cancelled = CountDownLatch(1)
+        val blocking = object : AiClient by client {
+            override fun operation(cancelled: () -> Boolean): AiClient = this
+            override fun cancel() { cancelled.countDown() }
+            override fun transcribe(connection: AiConnection, reference: com.greatwall.callring.application.ports.recording.AudioReference): String {
+                entered.countDown(); check(release.await(5, TimeUnit.SECONDS)); return "late transcript"
+            }
+        }
+        val owned = RecordingWorkflow(store, commands, blocking)
+        owned.attach(1,"31234",100,"/private/test.m4a",RecordingSource.IMPORTED,1000,null,false)
+        val worker = Thread { owned.processPending() }.apply { start() }
+        assertTrue(entered.await(2, TimeUnit.SECONDS))
+        val before = store.get(1)
+        val closer = Thread { owned.close() }.apply { start() }
+        try {
+            assertTrue(cancelled.await(2, TimeUnit.SECONDS))
+            assertTrue(closer.isAlive)
+            release.countDown(); closer.join(2000); worker.join(2000)
+            assertFalse(closer.isAlive); assertFalse(worker.isAlive)
+            assertEquals(before, store.get(1))
+            owned.processPending()
+            assertEquals(before, store.get(1))
+        } finally { release.countDown(); closer.join(2000); worker.join(2000) }
+    }
+
+    @Test fun cleanupReservationPreventsPendingCandidateFromStartingBeforeDeletionCompletes() {
+        configure()
+        workflow.attach(1,"31234",100,"/private/test.m4a",RecordingSource.IMPORTED,1000,null,false)
+        val candidate=CountDownLatch(1)
+        val finished=CountDownLatch(1)
+        store.candidatesObserved={candidate.countDown()}
+        val thread=Thread { try { workflow.processPending() } finally { finished.countDown() } }
+        try {
+            workflow.withIdle(1) {
+                thread.start()
+                assertTrue(candidate.await(3,TimeUnit.SECONDS))
+                assertFalse("Worker must not start while cleanup owns the target",finished.await(1,TimeUnit.SECONDS))
+                workflow.delete(1,null,false)
+            }
+            assertTrue(finished.await(3,TimeUnit.SECONDS))
+            assertEquals(0,transcriptions)
+            assertEquals(0,analyses)
+        } finally { thread.join(3000) }
+    }
     @Test fun candidatePagesCoverPositiveAndNegativeIdsWithoutHoldingStorageDuringNetwork() {
         configure()
         for (id in -70L..70L) if (id != 0L) workflow.attach(id, "31234", 100, "/private/test.m4a", RecordingSource.IMPORTED, 1000, null, false)
@@ -206,14 +254,15 @@ class RecordingWorkflowTest {
         override fun isDeleted(callId: Long) = false
         override fun earliestPendingAt(cancelled: () -> Boolean) = entries.values.filter { it.status in pending && it.nextAttemptAt != Long.MAX_VALUE }.minOfOrNull { it.nextAttemptAt }
         val candidatePageSizes = mutableListOf<Int>()
+        var candidatesObserved: () -> Unit = {}
         override fun dueCandidates(at: Long, afterId: Long?, limit: Int, cancelled: () -> Boolean) = entries.values.filter {
             (afterId == null || it.callId > afterId) && it.status in pending && it.nextAttemptAt <= at
-        }.sortedBy { it.callId }.take(limit).map { RecordingCandidate(it.callId, it.generation) }.also { candidatePageSizes += it.size }
+        }.sortedBy { it.callId }.take(limit).map { RecordingCandidate(it.callId, it.generation) }.also { candidatePageSizes += it.size; candidatesObserved() }
         private val pending = setOf(ArchiveStatus.QUEUED, ArchiveStatus.TRANSCRIBING, ArchiveStatus.ANALYZING, ArchiveStatus.FAILED)
         @Synchronized override fun compareAndSet(callId: Long, expectedGeneration: Long?, value: CallArchive): Boolean {
             if (entries[callId]?.generation != expectedGeneration) return false
             entries[callId] = value; return true
         }
-        @Synchronized override fun delete(callId: Long) = entries.remove(callId)
+        @Synchronized override fun delete(callId: Long) = entries.remove(callId) != null
     }
 }

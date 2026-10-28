@@ -8,9 +8,13 @@ import com.greatwall.callring.platform.runtime.UiNotificationEntryPoints
 
 /** Separate package/process/data directory. Never changes the production application's graph. */
 class BackendQaApplication : CallringApplication() {
-    override val backendGraph by lazy {
-        BackendGraph(
-            this,
+    override fun backendConfiguration() = BackendConfiguration(
+        AppearanceSettings(ThemeSelection.PRESET, "backend_qa", null, ColorMode.FOLLOW_SYSTEM),
+        databaseName = "backend_qa.db", ringPreferencesName = "backend_qa_ring",
+        widgetPreferencesName = "backend_qa_widgets", appearancePreferencesName = "backend_qa_appearance")
+    override fun createGraph(configuration: BackendConfiguration, owner: BackupGraphOwner): BackendGraph {
+        return BackendGraph(
+            owner, this,
             BackendConfiguration(
                 defaultAppearance =
                     AppearanceSettings(

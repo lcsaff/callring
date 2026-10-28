@@ -33,6 +33,8 @@ class AndroidAudioController(
     private val documents: DocumentStore,
 ) : AudioController, Closeable {
     private val generation = AudioGeneration()
+    private val fileAccess = com.greatwall.callring.platform.ownership.OwnedFileAccess()
+    private val playbackLeases = java.util.concurrent.atomic.AtomicInteger()
     private val files = AudioFiles(directoryProvider)
     @Volatile private var closed = false
     @Volatile private var settingsSnapshot: RingtoneSettings? = null
@@ -66,6 +68,11 @@ class AndroidAudioController(
     }
 
     override fun prepareAudio(source: DocumentRef, checkCancellation: () -> Unit): PreparedRingtoneImport {
+        val lease = fileAccess.acquire()
+        return try { prepareAudioLeased(source, { fileAccess.checkOpen(); checkCancellation() }, lease) }
+        catch (failure: Throwable) { lease.close(); throw failure }
+    }
+    private fun prepareAudioLeased(source: DocumentRef, checkCancellation: () -> Unit, lease: Closeable): PreparedRingtoneImport {
         checkOpen()
         checkCancellation()
         val ticket = generation.begin()
@@ -117,7 +124,7 @@ class AndroidAudioController(
                     if (!published) throw BackendFailure(ApiError(ErrorCode.SYSTEM_RESTRICTED, "audio.import_superseded"))
                     return settings
                 }
-                override fun close() { scratch.delete(); backup.close() }
+                override fun close() { try { scratch.delete(); backup.close() } finally { lease.close() } }
             }
         } catch (failure: Throwable) {
             scratch.delete()
@@ -168,6 +175,12 @@ class AndroidAudioController(
      * Platform playback consumes the configured source without exposing private paths through the
      * UI API.
      */
+    fun acquirePlaybackLease(): Closeable {
+        val lease = fileAccess.acquire()
+        playbackLeases.incrementAndGet()
+        val released = java.util.concurrent.atomic.AtomicBoolean()
+        return Closeable { if (released.compareAndSet(false, true)) { playbackLeases.decrementAndGet(); lease.close() } }
+    }
     fun configureDataSource(player: MediaPlayer) {
         checkOpen()
         synchronized(preferences) {
@@ -214,6 +227,9 @@ class AndroidAudioController(
 
     override fun close() {
         generation.invalidate { closed = true }
+        fileAccess.seal()
+        if (playbackLeases.get() > 0) RingPlaybackService.stopOwnedPlayback(this)
+        fileAccess.close()
     }
 }
 

@@ -56,12 +56,16 @@ class CallringBackend(
     private val updateProvider: () -> AppUpdateApi,
     private val snapshotsProvider: () -> AiSnapshotApi,
     private val recordingsProvider: (CommandContext?) -> RecordingApi,
+    private val storageProvider: () -> com.greatwall.callring.contracts.storage.StorageManagementApi,
+    private val backupProvider: () -> com.greatwall.callring.contracts.backup.BackupApi,
     private val decisions: com.greatwall.callring.application.calling.DecisionMirror = com.greatwall.callring.application.calling.DecisionMirror(),
     private val numberRuleState: com.greatwall.callring.application.calling.NumberRuleState = com.greatwall.callring.application.calling.NumberRuleState(coordinator),
     private val numberMatcher: NumberMatcher = com.greatwall.callring.domain.calling.PrefixLengthNumberMatcher,
     private val commandContext: CommandContext? = null,
     private val runtimeObservations: com.greatwall.callring.application.runtime.RuntimeObservationTracker = com.greatwall.callring.application.runtime.RuntimeObservationTracker(coordinator),
 ) : CallringUiApi {
+    override val storage get() = storageProvider()
+    override val backup get() = backupProvider()
     private val numberRuleService = com.greatwall.callring.application.settings.NumberRuleSettingsService(coreTransactions, coordinator, numberRuleState, dispatcher, commandContext, operationActive, decisions::numberRule)
     /** Explicit lifecycle preparation for synchronous consumers; never opens storage at construction. */
     suspend fun prepareNumberRule(): ApiResult<Unit> = numberRuleService.prepare()
@@ -248,7 +252,7 @@ class CallringBackend(
     private fun bound(command: CommandContext) = CallringBackend(preferences, documents, runtimeProbe,
         audio, syncScheduler, clock, dispatcher, calendarSource, coordinator, coreTransactions,
         numberRecordings, identityArchive, operationActive, persistenceActive, conversationProvider, aiSettingsProvider,
-        updateProvider, snapshotsProvider, recordingsProvider, decisions, numberRuleState, numberMatcher, command, runtimeObservations)
+        updateProvider, snapshotsProvider, recordingsProvider, storageProvider, backupProvider, decisions, numberRuleState, numberMatcher, command, runtimeObservations)
 
     override fun commandApi(context: CommandContext): CallringUiApi = bound(context)
 

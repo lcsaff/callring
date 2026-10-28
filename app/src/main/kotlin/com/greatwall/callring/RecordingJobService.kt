@@ -13,21 +13,23 @@ import java.util.concurrent.Executors
 
 /** A single durable job owns AI work. No call-screening thread waits for networking. */
 class RecordingJobService : JobService() {
-    private val controller by lazy {
+    private var controller: com.greatwall.callring.entrypoint.jobs.RecordingJobController? = null
+    private var owner: com.greatwall.callring.bootstrap.BackendGraph? = null
+    private fun controller(graph: com.greatwall.callring.bootstrap.BackendGraph) =
         com.greatwall.callring.entrypoint.jobs.RecordingJobController(
-            { stopped -> BackendProvider.from(this).backendGraph.recordings.service.runScheduled(stopped) },
-            { BackendProvider.from(this).backendGraph.recordings.workflow.cancelProcessing() },
-            System::currentTimeMillis, { schedule(this, it) }, worker,
+            { stopped -> graph.recordings.service.runScheduled { stopped() || !graph.acceptsOperations() } },
+            { graph.recordings.workflow.cancelProcessing() },
+            System::currentTimeMillis, { if (graph.acceptsOperations()) schedule(this, it) }, worker,
             { Handler(Looper.getMainLooper()).post(it) },
         )
-    }
     override fun onStartJob(params: JobParameters): Boolean {
-        controller.start { jobFinished(params, it) }
+        val graph = try { BackendProvider.from(this).backendGraph } catch (_: IllegalStateException) { return false }
+        if (owner !== graph) { controller?.cancel(); owner = graph; controller = controller(graph) }
+        controller!!.start { jobFinished(params, it) }
         return true
     }
-    override fun onStopJob(params: JobParameters): Boolean { controller.cancel(); return true }
-    override fun onDestroy() { controller.cancel(); super.onDestroy() }
-    companion object {
+    override fun onStopJob(params: JobParameters): Boolean { controller?.cancel(); return true }
+    override fun onDestroy() { controller?.cancel(); super.onDestroy() }    companion object {
         private const val JOB_ID = 73140
         private val worker = Executors.newSingleThreadExecutor()
         fun schedule(context: Context, delayMillis: Long = 0) {

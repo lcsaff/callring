@@ -38,7 +38,9 @@ class RecordingService(
     private val schedule: (Long) -> Unit,
     private val coordinator: BusinessRevisionCoordinator,
     private val operationActive: () -> Boolean,
-) : RecordingApi, com.greatwall.callring.application.callers.NumberDeletionRecordings {
+    private val captureBusy: () -> Boolean,
+) : RecordingApi, com.greatwall.callring.application.callers.NumberDeletionRecordings,
+    com.greatwall.callring.application.ports.storage.StorageArchiveAccess {
     private val playbackGeneration = AtomicLong()
     private suspend fun <T> result(block: suspend () -> T): ApiResult<T> = withContext(Dispatchers.IO) {
         try { requireOperationActive(operationActive); ApiResult.Success(block()) }
@@ -48,6 +50,14 @@ class RecordingService(
         catch (_: SecurityException) { ApiResult.Failure(ApiError(ErrorCode.PERMISSION_REQUIRED, "recording.permission_required")) }
         catch (_: IllegalArgumentException) { ApiResult.Failure(ApiError(ErrorCode.VALIDATION, "recording.invalid_configuration_or_audio")) }
         catch (_: IllegalStateException) { ApiResult.Failure(ApiError(ErrorCode.SYSTEM_RESTRICTED, "recording.busy_or_changed", retryable = true)) }
+        catch (failure: java.io.IOException) {
+            val reason = when(failure.message) {
+                "storage.insufficient_space" -> "recording.insufficient_space"
+                "storage.space_unknown" -> "recording.space_unknown"
+                else -> "recording.storage_or_network"
+            }
+            ApiResult.Failure(ApiError(if(reason == "recording.storage_or_network") ErrorCode.IO_FAILURE else ErrorCode.STORAGE_FAILURE, reason, retryable=true))
+        }
         catch (_: Exception) { ApiResult.Failure(ApiError(ErrorCode.IO_FAILURE, "recording.storage_or_network", retryable = true)) }
     }
     fun observeIncoming(sessionId: String, number: String, at: Long, account: String?): RecordingCall? = coordinator.guard {
@@ -65,7 +75,23 @@ class RecordingService(
     }
     private fun archiveId(callId: Long): Long = recordingCall(callId)?.id ?: callId
     override suspend fun getIdentity(callId: Long) = result { val call = requireNotNull(recordingCall(callId)); RecordingIdentity(call.id, call.number, call.startedAt) }
-    override suspend fun listArchives() = result { reads.listArchives().sortedByDescending { it.startedAtEpochMillis } }
+    override suspend fun queryArchives(query: ArchiveListQuery) = result {
+        val caller = currentCoroutineContext()
+        require(query.limit in 1..100)
+        reads.queryArchives(query) { !caller.isActive || !operationActive() }
+    }
+    override fun sourceStamp(): String = coordinator.guard { requireOperationActive(operationActive); reads.archiveStamp() }
+    override suspend fun page(query: ArchiveListQuery) = queryArchives(query)
+    override fun snapshot(callId: Long): com.greatwall.callring.application.ports.storage.StorageArchiveState? = coordinator.guard {
+        requireOperationActive(operationActive)
+        val metadata = reads.metadata(callId) { !operationActive() } ?: return@guard null
+        com.greatwall.callring.application.ports.storage.StorageArchiveState(callId, metadata.generation, metadata.status,
+            reads.ownedAudio(callId) { !operationActive() }?.let(audio::ownedBytes) ?: if (!metadata.hasAudio) 0L else null,
+            captureBusy() || activeCallId()?.let { archiveId(it) == callId } == true || workflow().isRunning(callId) ||
+                playback.observation().callId?.let(::archiveId) == callId || metadata.status in setOf(ArchiveStatus.QUEUED, ArchiveStatus.TRANSCRIBING, ArchiveStatus.ANALYZING))
+    }
+    override suspend fun remove(callId: Long, expectedGeneration: Long): ApiResult<Unit> =
+        deleteWith(callId, null, expectedGeneration, requireInactive = true)
     suspend fun numberArchives(number: String) = result {
         val caller = kotlinx.coroutines.currentCoroutineContext()[kotlinx.coroutines.Job]
         reads.numberMetadata(number) { caller?.isActive == false }
@@ -165,21 +191,28 @@ class RecordingService(
         runCatching { schedule(0) }; Unit
     }
     override suspend fun delete(callId: Long) = deleteWith(callId, null)
-    private suspend fun deleteWith(callId: Long, command: CommandContext?, expectedGeneration: Long? = null) = result { coordinator.guard(command) {
+    private suspend fun deleteWith(callId: Long, command: CommandContext?, expectedGeneration: Long? = null, requireInactive: Boolean = false) = result { coordinator.guard(command) {
         requireOperationActive(operationActive)
-        if (expectedGeneration != null && state.generation(callId) != expectedGeneration)
+        val id = archiveId(callId)
+        if (expectedGeneration != null && state.generation(id) != expectedGeneration)
             throw BackendFailure(ApiError(ErrorCode.CONFLICT, "recording.changed", retryable = true))
-        playbackGeneration.incrementAndGet()
-        val playbackStopped = playback.stop()
-        try {
-            val id = archiveId(callId)
-            // Retain the durable path until removal succeeds so cleanup can be retried.
-            state.get(id)?.audioPath?.let { path -> audio.deleteOwned(AudioReference(path)) }
-            workflow().delete(id, command, playbackStopped)
-        } catch (failure: Exception) {
-            if (playbackStopped) coordinator.publishRuntime(setOf("runtime:recordingPlayback"))
-            throw failure
+        fun removeArchive() {
+            if (requireInactive && snapshot(id)?.active != false)
+                throw BackendFailure(ApiError(ErrorCode.CONFLICT, "recording.busy_or_changed", retryable = true))
+            val playbackStopped = if(playback.observation().callId?.let(::archiveId) == id) {
+                playbackGeneration.incrementAndGet()
+                playback.stop()
+            } else false
+            try {
+                // Retain the durable path until removal succeeds so cleanup can be retried.
+                reads.ownedAudio(id) { !operationActive() }?.let(audio::deleteOwned)
+                workflow().delete(id, command, playbackStopped)
+            } catch (failure: Exception) {
+                if (playbackStopped) coordinator.publishRuntime(setOf("runtime:recordingPlayback"))
+                throw failure
+            }
         }
+        if(requireInactive) workflow().withIdle(id, ::removeArchive) else removeArchive()
         Unit
     } }
     override suspend fun play(callId: Long): ApiResult<Unit> = playWith(callId, null)

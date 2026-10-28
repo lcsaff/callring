@@ -28,9 +28,9 @@ class RecordingArchiveCommandsTest {
             if (reject || this.value?.generation != expectedGeneration) return false
             this.value = value; deleted = false; writes++; afterWrite(); return true
         }
-        override fun delete(callId: Long): CallArchive? {
+        override fun delete(callId: Long): Boolean {
             if (fail) error("storage failed")
-            return value.also { value = null; deleted = true; writes++ }
+            return (value != null).also { value = null; deleted = true; writes++ }
         }
     }
 

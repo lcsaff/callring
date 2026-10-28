@@ -12,7 +12,7 @@ import com.greatwall.callring.application.conversation.query.safeValue
 import java.util.concurrent.CancellationException
 
 /** Derived index only. Legacy payload remains authoritative and is never rewritten by a query. */
-internal class ArchiveProjectionIndex(private val db:SQLiteDatabase,private val onSourceRead:(Int)->Unit={}) {
+internal class ArchiveProjectionIndex(private val db:SQLiteDatabase,private val cancelled:()->Boolean={false},private val onSourceRead:(Int)->Unit={}) {
     companion object {
         fun createProgress(db:SQLiteDatabase){db.execSQL("CREATE TABLE IF NOT EXISTS archive_parse_progress(call_id INTEGER PRIMARY KEY,generation INTEGER NOT NULL,source_offset INTEGER NOT NULL,state TEXT NOT NULL)")}
         fun create(db:SQLiteDatabase){
@@ -24,8 +24,8 @@ internal class ArchiveProjectionIndex(private val db:SQLiteDatabase,private val 
             db.execSQL("CREATE TABLE archive_raw_chunks(call_id INTEGER,generation INTEGER,start INTEGER,text TEXT NOT NULL,PRIMARY KEY(call_id,generation,start))")
         }
     }
-    private fun checkActive(){if(Thread.currentThread().isInterrupted)throw CancellationException("ai.cancelled")}
-    private fun <T> transaction(block:()->T):T {db.beginTransaction();try{return block().also{db.setTransactionSuccessful()}}finally{db.endTransaction()}}
+    private fun checkActive(){if(cancelled()||Thread.currentThread().isInterrupted)throw CancellationException("ai.cancelled")}
+    private fun <T> transaction(block:()->T):T {checkActive();db.beginTransaction();try{return block().also{checkActive();db.setTransactionSuccessful()}}finally{db.endTransaction()}}
     fun remove(id:Long){listOf("archive_projection","archive_text_fields","archive_text_chunks","archive_index_progress","archive_raw_chunks","archive_parse_progress").forEach{db.delete(it,"call_id=?",arrayOf(id.toString()))}}
     private fun text(id:Long,generation:Long,field:String,value:String){
         val total=value.codePointCount(0,value.length)
@@ -58,7 +58,7 @@ internal class ArchiveProjectionIndex(private val db:SQLiteDatabase,private val 
             current()
             listOf("archive_projection","archive_text_fields","archive_text_chunks","archive_parse_progress").forEach{db.delete(it,"call_id=?",arrayOf(id.toString()))}
         }
-        val parser=ArchiveStreamParser(db,id,generation,saved)
+        val parser=ArchiveStreamParser(db,id,generation,saved,cancelled)
         val total=db.rawQuery("SELECT length(CAST(payload AS BLOB)) FROM archives WHERE call_id=? AND generation=?",arrayOf(id.toString(),generation.toString())).use{c->if(c.moveToFirst())c.getLong(0)else throw BackendFailure(ApiError(ErrorCode.CONFLICT,"recording.changed"))}
         var bytes=0;var transactions=if(saved==null)1 else 0
         while(parser.sourceOffset<total&&budget-bytes>=4){

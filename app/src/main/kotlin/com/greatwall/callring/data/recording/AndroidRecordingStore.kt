@@ -69,14 +69,16 @@ class AndroidRecordingStore(context: Context, namespace: String,
 ) : RecordingIdentityReads, RecordingArchiveState, RecordingArchiveMutations, RecordingWorkflowReads, RecordingSettingsStore, RecordingRegistrationStore, AutoCloseable {
     val readCounters = RecordingReadCounters()
     private val preferences = context.getSharedPreferences(namespace + "_recording", Context.MODE_PRIVATE)
-    private val helper = object : SQLiteOpenHelper(context, namespace + "_recording.db", null, 4) {
+    private val listIncarnation = java.util.UUID.randomUUID().toString()
+    private val helper = object : SQLiteOpenHelper(context, namespace + "_recording.db", null, 5) {
         override fun onCreate(db: SQLiteDatabase) {
             db.execSQL("CREATE TABLE archives (call_id INTEGER PRIMARY KEY, generation INTEGER NOT NULL, payload TEXT NOT NULL)")
             db.execSQL("CREATE TABLE deleted_archives (call_id INTEGER PRIMARY KEY)")
             createEvents(db)
             ArchiveProjectionIndex.create(db)
+            RecordingArchivePages.create(db, initiallyReady = true)
         }
-        override fun onUpgrade(db: SQLiteDatabase, oldVersion: Int, newVersion: Int) { if (oldVersion < 2) createEvents(db);if(oldVersion<3)ArchiveProjectionIndex.create(db);if(oldVersion<4)ArchiveProjectionIndex.createProgress(db) }
+        override fun onUpgrade(db: SQLiteDatabase, oldVersion: Int, newVersion: Int) { if (oldVersion < 2) createEvents(db);if(oldVersion<3)ArchiveProjectionIndex.create(db);if(oldVersion<4)ArchiveProjectionIndex.createProgress(db);if(oldVersion<5)RecordingArchivePages.create(db) }
         private fun createEvents(db: SQLiteDatabase) {
             db.execSQL("CREATE TABLE recording_events (id INTEGER PRIMARY KEY AUTOINCREMENT, session_id TEXT NOT NULL UNIQUE, number TEXT NOT NULL, started INTEGER NOT NULL, account TEXT)")
             db.execSQL("CREATE TABLE recording_statistics_links (statistics_id INTEGER PRIMARY KEY, session_id TEXT NOT NULL)")
@@ -147,8 +149,11 @@ class AndroidRecordingStore(context: Context, namespace: String,
     }
     @Synchronized override fun get(callId: Long): CallArchive? = readableDatabase.query("archives", arrayOf("payload"),
         "call_id=?", arrayOf(callId.toString()), null, null, null).use { if (it.moveToFirst()) RecordingJson.archive(JSONObject(it.getString(0))).also { readCounters.add("fullArchiveDecodes") } else null }
-    @Synchronized override fun listArchives(): List<CallArchive> = readableDatabase.query("archives", arrayOf("payload"),
-        null, null, null, null, "call_id").use { cursor -> buildList { while (cursor.moveToNext()) add(RecordingJson.archive(JSONObject(cursor.getString(0))).also { readCounters.add("listArchiveDecodes") }) } }
+    @Synchronized override fun queryArchives(query: ArchiveListQuery, cancelled: () -> Boolean): ArchiveListPage =
+        RecordingArchivePages(writableDatabase, listIncarnation, readCounters, cancelled).query(query)
+    @Synchronized override fun archiveStamp(): String = listIncarnation + ":" + DatabaseUtils.longForQuery(readableDatabase, "SELECT revision FROM archive_list_state WHERE id=1", null)
+    @Synchronized override fun ownedAudio(callId: Long, cancelled: () -> Boolean) =
+        RecordingMetadataReads(readableDatabase, readCounters, cancelled).ownedAudio(callId)
     @Synchronized override fun metadata(callId: Long, cancelled: () -> Boolean) =
         RecordingMetadataReads(readableDatabase, readCounters, cancelled).metadata(callId)
     @Synchronized override fun generation(callId: Long): Long? = readableDatabase.rawQuery(
@@ -199,12 +204,11 @@ class AndroidRecordingStore(context: Context, namespace: String,
             return success
         } finally { db.endTransaction() }
     }
-    @Synchronized override fun delete(callId: Long): CallArchive? {
+    @Synchronized override fun delete(callId: Long): Boolean {
         val db = writableDatabase
         db.beginTransaction()
         try {
-            val value = get(callId)
-            db.delete("archives", "call_id=?", arrayOf(callId.toString()))
+            val value = db.delete("archives", "call_id=?", arrayOf(callId.toString())) > 0
             ArchiveProjectionIndex(db).remove(callId)
             db.execSQL("INSERT OR IGNORE INTO deleted_archives(call_id) VALUES (?)", arrayOf(callId))
             db.setTransactionSuccessful()
