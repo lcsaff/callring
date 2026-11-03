@@ -84,12 +84,22 @@ internal object ArchiveBackupFields {
     private val identityFields = setOf("name", "department", "selfReportedPosition", "region")
     private fun validateBaseline(reader: android.util.JsonReader) {
         val seen = hashSetOf<String>()
+        var epoch = ""
+        var eligible = true
         reader.beginObject()
         while (reader.hasNext()) {
             val key = reader.nextName()
             if (!seen.add(key)) throw BackupFormatException()
             when (key) {
-                "epoch" -> if (reader.peek() != android.util.JsonToken.STRING || reader.nextString().let { it.isBlank() || it.length > 128 }) throw BackupFormatException()
+                "epoch" -> {
+                    if (reader.peek() != android.util.JsonToken.STRING) throw BackupFormatException()
+                    epoch = reader.nextString()
+                    if (epoch.length > 128) throw BackupFormatException()
+                }
+                "eligible" -> {
+                    if (reader.peek() != android.util.JsonToken.BOOLEAN) throw BackupFormatException()
+                    eligible = reader.nextBoolean()
+                }
                 "revisions" -> {
                     val fields = hashSetOf<String>()
                     reader.beginObject()
@@ -103,7 +113,7 @@ internal object ArchiveBackupFields {
             }
         }
         reader.endObject()
-        if (seen != setOf("epoch", "revisions")) throw BackupFormatException()
+        if (!seen.containsAll(setOf("epoch", "revisions")) || (eligible && epoch.isBlank())) throw BackupFormatException()
     }
     private fun validateAnalysis(reader: android.util.JsonReader) {
         val required = setOf("name", "organization", "position", "purpose", "evidence", "identity", "summary", "actions")

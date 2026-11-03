@@ -9,7 +9,8 @@ enum class ArchiveStatus { WAITING_RECORDING, READY, QUEUED, TRANSCRIBING, ANALY
 
 enum class RecordingSource { SYSTEM, IMPORTED, MICROPHONE }
 
-data class CallerIdentityBaseline(val epoch: String, val revisions: Map<String, Long>)
+/** Ineligible recording numbers retain analysis but never access caller storage. */
+data class CallerIdentityBaseline(val epoch: String, val revisions: Map<String, Long>, val eligible: Boolean = true)
 
 data class CallAnalysis(
     val name: String = "", val organization: String = "", val position: String = "",

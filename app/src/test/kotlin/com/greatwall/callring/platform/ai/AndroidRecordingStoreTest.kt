@@ -16,6 +16,14 @@ import org.robolectric.annotation.Config
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [33], manifest = Config.NONE)
 class AndroidRecordingStoreTest {
+    @Test fun ineligibleIdentityBaselineIsExplicitAndSurvivesCodec() {
+        val entry = CallArchive(-91, "１２３", 1, enrichmentBaseline = CallerIdentityBaseline("", emptyMap(), eligible = false))
+        assertEquals(entry, RecordingJson.archive(RecordingJson.archive(entry)))
+        val legacy = RecordingJson.archive(entry.copy(enrichmentBaseline = CallerIdentityBaseline("epoch", emptyMap())))
+        legacy.getJSONObject("enrichmentBaseline").remove("eligible")
+        assertTrue(RecordingJson.archive(legacy).enrichmentBaseline!!.eligible)
+    }
+
     @Test fun enrichmentStateAndEvidenceSurviveReopenAndAreScheduledLocally() {
         val entry = CallArchive(-33, "31234", 1, generation = 7, status = ArchiveStatus.ENRICHING,
             analysis = CallAnalysis(name = "甲", department = "财务部", region = "杭州", fieldEvidence = mapOf("region" to "我在杭州工作")),

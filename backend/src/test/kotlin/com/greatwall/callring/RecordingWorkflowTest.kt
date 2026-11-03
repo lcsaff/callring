@@ -165,10 +165,19 @@ class RecordingWorkflowTest {
         assertEquals(2, analyses)
         assertNotEquals(first, store.get(1)!!.enrichmentSourceGeneration)
     }
+    @Test fun ineligibleNumberStillTranscribesAndAnalyzesWithoutProfileWrites() {
+        configure(); eligibleNumber = false
+        workflow.attach(1, "１２３", 100, "/private/test.m4a", RecordingSource.IMPORTED, 1000, null, false)
+        workflow.processPending()
+        assertEquals(ArchiveStatus.COMPLETE, store.get(1)!!.status)
+        assertEquals(1, analyses); assertEquals(1, transcriptions); assertEquals(0, localAttempts)
+        assertFalse(store.get(1)!!.enrichmentBaseline!!.eligible)
+    }
+    private var eligibleNumber = true
     private var localFailure = false
     private var localAttempts = 0
     private val localEnrichment = object : com.greatwall.callring.application.ports.recording.RecordingIdentityEnrichment {
-        override fun capture(number: String): CallerIdentityBaseline { localCaptures++; return CallerIdentityBaseline("test", emptyMap()) }
+        override fun capture(number: String): CallerIdentityBaseline { localCaptures++; return CallerIdentityBaseline(if (eligibleNumber) "test" else "", emptyMap(), eligibleNumber) }
         override fun apply(number: String, baseline: CallerIdentityBaseline, archiveId: Long, generation: Long, candidates: Map<String, Pair<String, String>>) {
             localAttempts++; lastCandidates = candidates
             if (localFailure) error("synthetic storage failure")

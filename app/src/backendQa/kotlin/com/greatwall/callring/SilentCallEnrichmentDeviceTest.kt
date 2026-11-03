@@ -54,11 +54,19 @@ class SilentCallEnrichmentDeviceTest : InstrumentationTestCase() {
             assertEquals("经理", caller.selfReportedPosition); assertEquals("杭州", caller.region)
             assertFalse(caller.whitelisted); assertNull(caller.positionId)
             assertEquals(call.id, caller.identityMetadata.getValue("region").archiveId)
+            val unsupported = requireNotNull(runtime.service.observeIncoming(namespace + "-unsupported", "１２３", System.currentTimeMillis(), null))
+            val otherAudio = File(runtime.directory, "unsupported.wav")
+            context.assets.open("ai-test.wav").use { source -> otherAudio.outputStream().use { source.copyTo(it) } }
+            runtime.service.attachCapture(unsupported, AudioReference(otherAudio.path))
+            runtime.service.runScheduled { false }
+            assertEquals(ArchiveStatus.COMPLETE, runtime.store.get(unsupported.id)!!.status)
+            assertFalse(runtime.store.get(unsupported.id)!!.enrichmentBaseline!!.eligible)
+            assertNull(core.sessions.readCaller { it.caller("１２３") })
             runtime.close(); core.close()
             core = SqliteCoreStorageResource(context, "$namespace.db"); runtime = assembly()
             assertEquals(caller, core.sessions.readCaller { it.caller("31234") })
             runtime.service.runScheduled { false }
-            assertEquals(1, transcriptions); assertEquals(1, analyses)
+            assertEquals(2, transcriptions); assertEquals(2, analyses)
             for (name in listOf("com.greatwall.callring.ui.overlay.CallringOverlayService", "com.greatwall.callring.ui.overlay.LockScreenOverlayActivity")) {
                 try {
                     val component = ComponentName(context.packageName, name)

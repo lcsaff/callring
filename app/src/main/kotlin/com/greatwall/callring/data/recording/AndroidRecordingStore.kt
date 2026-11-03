@@ -242,12 +242,12 @@ internal object RecordingJson {
         .put("generation", v.generation).put("status", v.status.name).put("source", v.source.name).put("audio", v.audioPath).put("quality", v.audioQuality)
         .put("duration", v.durationMillis).put("transcript", v.transcript).put("analysis", v.analysis?.let(::analysis)).put("error", v.error)
         .put("attempts", v.attempts).put("next", v.nextAttemptAt).put("analyzed", v.analyzedAt).put("analysisModel", v.analysisModel)
-        .put("transcriptionModel", v.transcriptionModel).put("protocol", v.analysisProtocol?.name).put("manual", v.manualAnalysis).put("enrichmentBaseline", v.enrichmentBaseline?.let { JSONObject().put("epoch", it.epoch).put("revisions", JSONObject(it.revisions)) }).put("enrichmentSourceGeneration", v.enrichmentSourceGeneration)
+        .put("transcriptionModel", v.transcriptionModel).put("protocol", v.analysisProtocol?.name).put("manual", v.manualAnalysis).put("enrichmentBaseline", v.enrichmentBaseline?.let { JSONObject().put("epoch", it.epoch).put("revisions", JSONObject(it.revisions)).put("eligible", it.eligible) }).put("enrichmentSourceGeneration", v.enrichmentSourceGeneration)
     fun archive(v: JSONObject) = CallArchive(v.getLong("id"), v.getString("number"), v.getLong("started"), v.getLong("generation"),
         ArchiveStatus.valueOf(v.getString("status")), RecordingSource.valueOf(v.getString("source")), v.nullableString("audio"), v.getString("quality"),
         v.nullableLong("duration"), v.getString("transcript"), v.optJSONObject("analysis")?.let(::analysis), v.nullableString("error"), v.getInt("attempts"),
         v.getLong("next"), v.nullableLong("analyzed"), v.getString("analysisModel"), v.getString("transcriptionModel"), v.nullableString("protocol")?.let(AiProtocol::valueOf), v.optBoolean("manual", false),
-        v.optJSONObject("enrichmentBaseline")?.let { base -> val revisions = base.getJSONObject("revisions"); CallerIdentityBaseline(base.getString("epoch"), revisions.keys().asSequence().associateWith { revisions.getLong(it) }) },
+        v.optJSONObject("enrichmentBaseline")?.let { base -> val revisions = base.getJSONObject("revisions"); CallerIdentityBaseline(base.getString("epoch"), revisions.keys().asSequence().associateWith { revisions.getLong(it) }, base.optBoolean("eligible", true)) },
         v.nullableLong("enrichmentSourceGeneration"))
     private fun JSONObject.nullableString(key: String) = if (isNull(key)) null else getString(key)
     private fun JSONObject.nullableLong(key: String) = if (isNull(key)) null else getLong(key)

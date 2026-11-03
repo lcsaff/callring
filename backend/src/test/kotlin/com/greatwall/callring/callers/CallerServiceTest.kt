@@ -95,6 +95,13 @@ class CallerServiceTest {
                 error("unexpected calls")
         }
 
+    @Test fun unsupportedRecordingNumberDoesNotCreateOrReadProfile() {
+        val p = Profiles(); val c = BusinessRevisionCoordinator()
+        val service = CallerEnrichmentService(p, c) { true }
+        assertNotNull(service.capture("１２３"))
+        assertEquals(0, p.writes); assertEquals(0, p.reads)
+    }
+
     @Test fun lateAnalysisPreservesManualRegionAndFillsAnotherEligibleField() = runBlocking {
         val p = Profiles(); val c = BusinessRevisionCoordinator()
         val enrichment = CallerEnrichmentService(p, c) { true }

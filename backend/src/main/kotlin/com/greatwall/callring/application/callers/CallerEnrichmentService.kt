@@ -20,7 +20,9 @@ class CallerEnrichmentService(
 
     override fun capture(number: String): CallerIdentityBaseline = coordinator.guard(null) {
         check(operationActive()) { "backend.closed" }
-        val normalized = callerNumber(number)
+        val identity = com.greatwall.callring.domain.model.NumberIdentity.parse(number)
+        if (!identity.validProfileNumber) return@guard CallerIdentityBaseline("", emptyMap(), eligible = false)
+        val normalized = identity.normalized
         var changed = false
         val baseline = transactions.writeCaller { writer ->
             val old = writer.caller(normalized)
@@ -37,6 +39,7 @@ class CallerEnrichmentService(
     override fun apply(number: String, baseline: CallerIdentityBaseline, archiveId: Long, generation: Long,
               candidates: Map<String, Pair<String, String>>) = coordinator.guard(null) {
         check(operationActive()) { "backend.closed" }
+        if (!baseline.eligible) return@guard
         val normalized = callerNumber(number)
         val changed = transactions.writeCaller { writer ->
             val old = writer.caller(normalized) ?: return@writeCaller false

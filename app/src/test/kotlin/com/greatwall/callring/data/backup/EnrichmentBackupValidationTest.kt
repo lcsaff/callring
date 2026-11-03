@@ -13,6 +13,15 @@ import org.robolectric.annotation.Config
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [33], manifest = Config.NONE)
 class EnrichmentBackupValidationTest {
+    @Test fun validIneligibleBaselineDoesNotBlockArchiveRestore() {
+        val json = RecordingJson.archive(CallArchive(-1, "１２３", 1, enrichmentBaseline = CallerIdentityBaseline("", emptyMap(), eligible = false)))
+        SQLiteDatabase.create(null).use { db ->
+            db.execSQL("CREATE TABLE archives(call_id INTEGER PRIMARY KEY,generation INTEGER,payload TEXT)")
+            db.execSQL("INSERT INTO archives VALUES(-1,0,?)", arrayOf(json.toString()))
+            assertTrue(ArchiveBackupFields.fields(db, -1) {}.containsKey("id"))
+        }
+    }
+
     @Test fun malformedEvidenceIsRejectedBeforeRestore() {
         val json = RecordingJson.archive(CallArchive(-1, "31234", 1, analysis = CallAnalysis()))
         json.getJSONObject("analysis").put("fieldEvidence", JSONObject().put("region", 42))

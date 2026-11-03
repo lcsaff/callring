@@ -58,7 +58,7 @@ Reviewed breaking catalog revision 3 retires O13/O63/O70/O71 (overlay toggle, id
 
 CallerProfile/CallerDraft expose selfReportedPosition, region and four-field identityMetadata (revision, disputed, archive ID/generation and verbatim evidence). SaveCallerProfile accepts the new nullable text patches and disputedFields; omission preserves existing data. UiEditsApi.profile retains its single merge entrypoint. O07/X07 gain these fields, and O07 rejects marking a changed text value disputed in the same command before any commit. Identity text edits guard metadata scope because they clear dispute/provenance. No organization profile field is introduced; legacy analysis organization is preserved only as analysis data.
 
-CallAnalysis adds department, region and fieldEvidence; CallArchive adds the durable identity baseline/source generation. ENRICHING/ENRICHMENT_FAILED distinguish local completion from paid analysis. Old JSON reads with empty new claims/evidence and no baseline, so it is not silently backfilled. Database version 4 upgrades legacy callers without changing department/position/whitelist, and historical core backups migrate in private staging before schema and content verification.
+CallAnalysis adds department, region and fieldEvidence; CallArchive adds the durable identity baseline/source generation. The baseline explicitly marks ineligible recording numbers; these bypass profile storage while transcription and analysis continue, and legacy baselines default to eligible. ENRICHING/ENRICHMENT_FAILED distinguish local completion from paid analysis. Old JSON reads with empty new claims/evidence and no baseline, so it is not silently backfilled. Database version 4 upgrades legacy callers without changing department/position/whitelist, and historical core backups migrate in private staging before schema and content verification.
 
 <!-- contract-inventory -->
 ```json
@@ -255,7 +255,7 @@ CallAnalysis adds department, region and fieldEvidence; CallArchive adds the dur
     ]
   },
   "recording/RecordingApi.kt": {
-    "sha256": "a2bb4378d7778fd790c0c68a39c1e98e0a80099d28a17c62de9ccd52906f8a72",
+    "sha256": "73042ca00ffb2a40fee3c288c9acd8411ee6bf85805ce2e9383d0441fa5e545e",
     "declarations": [
       "CaptureMode",
       "ArchiveStatus",

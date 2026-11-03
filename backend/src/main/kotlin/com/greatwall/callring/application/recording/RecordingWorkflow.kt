@@ -134,6 +134,10 @@ class RecordingWorkflow(
             if (isCancelled()) return
             val analysis = current.analysis ?: error("recording.analysis_missing")
             val baseline = current.enrichmentBaseline ?: error("recording.baseline_missing")
+            if (!baseline.eligible) {
+                if (!isCancelled()) update(current.copy(status = ArchiveStatus.COMPLETE, error = null, nextAttemptAt = 0))
+                return
+            }
             val claims = mapOf("name" to analysis.name, "department" to analysis.department,
                 "selfReportedPosition" to analysis.position, "region" to analysis.region)
             val candidates = claims.mapNotNull { (field, claim) ->

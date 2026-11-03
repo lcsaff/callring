@@ -41,6 +41,8 @@ import com.greatwall.callring.ui.state.*
                 Text("来源：${when (item.source) { RecordingSource.SYSTEM -> "系统录音"; RecordingSource.IMPORTED -> "手动导入"; RecordingSource.MICROPHONE -> "实验性麦克风" }}")
                 Text("质量：${recordingMessage(item.audioQuality)}")
                 Text("状态：${archiveStatusLabel(item.status)}")
+                if (item.status == ArchiveStatus.COMPLETE && item.enrichmentBaseline?.eligible == false)
+                    Text("此号码暂不支持建立档案，转写与分析已保留。")
                 item.error?.let { Text(recordingMessage(it), color = MaterialTheme.colorScheme.error) }
                 if (item.audioPath != null) {
                     Row { TextButton(onClick = onPlay, enabled = !mutation.busy) { Text("播放") }; TextButton(onClick = onStop) { Text("停止播放") } }
@@ -62,7 +64,7 @@ import com.greatwall.callring.ui.state.*
                     Text("摘要：${analysis.summary}")
                     analysis.actionItems.forEach { Text("• $it") }
                     Text("AI 结果可能不准确，不能作为已经核实的身份。")
-                    TextButton(onClick = onEdit) { Text("编辑档案") }
+                    TextButton(onClick = onEdit, enabled = item.enrichmentBaseline?.eligible != false) { Text("编辑档案") }
                 }
                 TextButton(onClick = { deletion = true }, enabled = !mutation.busy) { Text("删除本次归档") }
             }
