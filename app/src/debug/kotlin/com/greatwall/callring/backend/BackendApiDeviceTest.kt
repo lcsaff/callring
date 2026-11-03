@@ -229,7 +229,10 @@ class BackendApiDeviceTest : InstrumentationTestCase() {
         val mainThreadApi = AtomicReference<CallringUiApi>()
         instrumentation.runOnMainSync { mainThreadApi.set(fixture.graph.api) }
         val api = mainThreadApi.get()
-        assertEquals("31234", api.checkNumber("3-1234").normalized)
+        try {
+            api.checkNumber("3-1234")
+            fail("Synchronous matching must wait for rule preparation")
+        } catch (_: IllegalStateException) { }
         assertEquals(fixture.defaultAppearance, success(api.settings.getAppearance()))
         success(api.ringtone.getSettings())
         assertEquals(0, fixture.context.filesDirectoryReads.get())
@@ -239,6 +242,8 @@ class BackendApiDeviceTest : InstrumentationTestCase() {
         assertFalse(fixture.databaseFile.exists())
 
         fixture.reopen()
+        success(fixture.graph.backend.prepareNumberRule())
+        assertEquals("31234", fixture.graph.api.checkNumber("3-1234").normalized)
         success(
             fixture.graph.api.callers.saveProfile(
                 SaveCallerProfile("31234", "isolated", "test", null)

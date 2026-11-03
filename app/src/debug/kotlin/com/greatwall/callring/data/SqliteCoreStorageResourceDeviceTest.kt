@@ -43,6 +43,14 @@ class SqliteCoreStorageResourceDeviceTest : InstrumentationTestCase() {
         super.tearDown()
     }
 
+    private fun stripCallerEnrichment(db: android.database.sqlite.SQLiteDatabase) {
+        db.setForeignKeyConstraintsEnabled(false)
+        db.execSQL("CREATE TABLE legacy_callers(number TEXT PRIMARY KEY,department TEXT NOT NULL DEFAULT '',name TEXT NOT NULL DEFAULT '',position_id INTEGER REFERENCES positions(id) ON DELETE RESTRICT,whitelist INTEGER NOT NULL DEFAULT 0 CHECK(whitelist IN(0,1)))")
+        db.execSQL("INSERT INTO legacy_callers(number,department,name,position_id,whitelist) SELECT number,department,name,position_id,whitelist FROM callers")
+        db.execSQL("DROP TABLE callers")
+        db.execSQL("ALTER TABLE legacy_callers RENAME TO callers")
+    }
+
     private fun fixture() =
         SQLiteDatabase.openDatabase(
             instrumentation.targetContext.getDatabasePath(database).absolutePath,
@@ -230,6 +238,7 @@ class SqliteCoreStorageResourceDeviceTest : InstrumentationTestCase() {
                 "UPDATE calls SET log_id='legacy-provider',time=?,duration=8,result='已接听',source='筛选＋系统通话记录',working=0,reason='工作时段外' WHERE id=1",
                 arrayOf<Any>(at + 1000),
             )
+            stripCallerEnrichment(db)
             db.version = 1
         }
         store = SqliteCoreStorageResource(instrumentation.targetContext, database)
@@ -249,7 +258,7 @@ class SqliteCoreStorageResourceDeviceTest : InstrumentationTestCase() {
             assertEquals(1L, provider.linkedScreenId)
         }
         fixture().use { db ->
-            assertEquals(3, db.version)
+            assertEquals(4, db.version)
             assertEquals(0L, db.scalar("SELECT COUNT(*) FROM pragma_foreign_key_check"))
         }
     }
@@ -284,6 +293,7 @@ class SqliteCoreStorageResourceDeviceTest : InstrumentationTestCase() {
         store.close()
         fixture().use { db ->
             db.execSQL("UPDATE calls SET working=0,reason='工作时段外' WHERE id=1")
+            stripCallerEnrichment(db)
             db.version = 2
         }
         store = SqliteCoreStorageResource(instrumentation.targetContext, database)
