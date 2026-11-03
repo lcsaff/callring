@@ -10,6 +10,7 @@ import com.greatwall.callring.contracts.change.DataDomain
 import com.greatwall.callring.contracts.command.*
 import com.greatwall.callring.contracts.common.*
 import com.greatwall.callring.domain.model.ProfileRecord
+import com.greatwall.callring.domain.model.IdentityFieldMetadata
 import kotlinx.coroutines.*
 
 internal class CallerCommandService(
@@ -35,6 +36,8 @@ internal class CallerCommandService(
                 value.whitelisted,
                 base,
                 dirty(base, value),
+                value.selfReportedPosition, value.region,
+                value.identityMetadata.filterValues { it.disputed }.keys,
             ),
             true,
         )
@@ -65,7 +68,7 @@ internal class CallerCommandService(
                                     (base.number.isEmpty() || base.number == n) &&
                                     dirty.all {
                                         it in
-                                            setOf("name", "department", "positionId", "whitelisted")
+                                            setOf("name", "department", "positionId", "whitelisted", "selfReportedPosition", "region", "identityMetadata")
                                     }),
                             "baseline",
                             "draft.baseline_required",
@@ -91,6 +94,8 @@ internal class CallerCommandService(
                             old?.department.orEmpty(),
                             base?.department.orEmpty(),
                         )
+                    val selfReportedPosition = merge("selfReportedPosition", value.selfReportedPosition ?: old?.selfReportedPosition.orEmpty(), old?.selfReportedPosition.orEmpty(), base?.selfReportedPosition.orEmpty())
+                    val region = merge("region", value.region ?: old?.region.orEmpty(), old?.region.orEmpty(), base?.region.orEmpty())
                     val position =
                         merge("positionId", value.positionId, old?.positionId, base?.positionId)
                     val white =
@@ -114,7 +119,25 @@ internal class CallerCommandService(
                         "positionId",
                         "position.inactive",
                     )
-                    val saved = ProfileRecord(n, name.trim(), department.trim(), position, white)
+                    val metadata = old?.identityMetadata.orEmpty().toMutableMap()
+                    val identityFields = setOf("name", "department", "selfReportedPosition", "region")
+                    callerRequire(value.disputedFields?.all { it in identityFields } != false, "disputedFields", "caller.field.invalid")
+                    val previous = mapOf("name" to old?.name.orEmpty(), "department" to old?.department.orEmpty(), "selfReportedPosition" to old?.selfReportedPosition.orEmpty(), "region" to old?.region.orEmpty())
+                    val wanted = mapOf("name" to name.trim(), "department" to department.trim(), "selfReportedPosition" to selfReportedPosition.trim(), "region" to region.trim())
+                    wanted.forEach { (field, text) ->
+                        callerRequire(text.length <= 500, field, "caller.field.too_long")
+                        val m = metadata[field] ?: IdentityFieldMetadata()
+                        val changed = previous[field] != text
+                        val requestedDispute = value.disputedFields?.let { field in it }
+                        val baseDispute = base?.identityMetadata?.get(field)?.disputed ?: false
+                        val disputeEdited = requestedDispute != null && (dirty == null || "identityMetadata" in dirty && requestedDispute != baseDispute)
+                        if (disputeEdited && base != null && (base.identityMetadata[field]?.revision ?: 0) != m.revision)
+                            callerFailure(ErrorCode.CONFLICT, "draft.field_changed", field)
+                        val dispute = if (changed) false else if (disputeEdited) requestedDispute!! else m.disputed
+                        if (changed || dispute != m.disputed) metadata[field] = m.copy(revision = Math.addExact(m.revision, 1), disputed = dispute,
+                            archiveId = if (changed) null else m.archiveId, analysisGeneration = if (changed) null else m.analysisGeneration, evidence = if (changed) "" else m.evidence)
+                    }
+                    val saved = ProfileRecord(n, name.trim(), department.trim(), position, white, selfReportedPosition.trim(), region.trim(), metadata.toMap(), old?.identityEpoch.orEmpty())
                     if (old != saved) writer.putCaller(saved, old == null)
                     val mine = writer.myPositionId()?.let(writer::position)
                     MutationDelta(
@@ -223,6 +246,9 @@ internal class CallerCommandService(
                 if ((old == null) != (saved == null)) add("profile:$n:exists")
                 if (old?.name != saved?.name) add("profile:$n:name")
                 if (old?.department != saved?.department) add("profile:$n:department")
+                if (old?.selfReportedPosition != saved?.selfReportedPosition) add("profile:$n:selfReportedPosition")
+                if (old?.region != saved?.region) add("profile:$n:region")
+                if (old?.identityMetadata != saved?.identityMetadata) add("profile:$n:identityMetadata")
                 if (old?.positionId != saved?.positionId) {
                     add("profile:$n:positionId")
                     old?.positionId?.let { add("positionRefs:$it") }
@@ -235,6 +261,9 @@ internal class CallerCommandService(
         setOfNotNull(
             if (a.name != b.name) "name" else null,
             if (a.department != b.department) "department" else null,
+            if (a.selfReportedPosition != b.selfReportedPosition) "selfReportedPosition" else null,
+            if (a.region != b.region) "region" else null,
+            if (a.identityMetadata != b.identityMetadata) "identityMetadata" else null,
             if (a.positionId != b.positionId) "positionId" else null,
             if (a.whitelisted != b.whitelisted) "whitelisted" else null,
         )

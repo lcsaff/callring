@@ -9,6 +9,8 @@ enum class ArchiveStatus { WAITING_RECORDING, READY, QUEUED, TRANSCRIBING, ANALY
 
 enum class RecordingSource { SYSTEM, IMPORTED, MICROPHONE }
 
+data class CallerIdentityBaseline(val epoch: String, val revisions: Map<String, Long>)
+
 data class CallAnalysis(
     val name: String = "", val organization: String = "", val position: String = "",
     val purpose: String = "", val evidence: String = "", val inferredIdentity: String = "",

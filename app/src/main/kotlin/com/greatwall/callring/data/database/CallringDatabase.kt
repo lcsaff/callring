@@ -8,9 +8,9 @@ import android.database.sqlite.SQLiteDatabase
 import android.database.sqlite.SQLiteOpenHelper
 import com.greatwall.callring.domain.model.defaultWorkSchedule
 
-/** Exact shipped version-3 schema. Unsupported versions fail without deleting user data. */
+/** Version-4 schema with caller enrichment. Unsupported versions fail without deleting user data. */
 internal class CallringDatabase(private val context: Context, name: String) :
-    SQLiteOpenHelper(context, name, null, 3) {
+    SQLiteOpenHelper(context, name, null, 4) {
     override fun onConfigure(db: SQLiteDatabase) {
         db.setForeignKeyConstraintsEnabled(true)
     }
@@ -20,7 +20,7 @@ internal class CallringDatabase(private val context: Context, name: String) :
             "CREATE TABLE positions(id INTEGER PRIMARY KEY AUTOINCREMENT,name TEXT NOT NULL UNIQUE,level INTEGER NOT NULL CHECK(level>0),active INTEGER NOT NULL CHECK(active IN(0,1)))"
         )
         db.execSQL(
-            "CREATE TABLE callers(number TEXT PRIMARY KEY,department TEXT NOT NULL DEFAULT '',name TEXT NOT NULL DEFAULT '',position_id INTEGER REFERENCES positions(id) ON DELETE RESTRICT,whitelist INTEGER NOT NULL DEFAULT 0 CHECK(whitelist IN(0,1)))"
+            "CREATE TABLE callers(number TEXT PRIMARY KEY,department TEXT NOT NULL DEFAULT '',self_reported_position TEXT NOT NULL DEFAULT '',region TEXT NOT NULL DEFAULT '',identity_metadata TEXT NOT NULL DEFAULT '{}',identity_epoch TEXT NOT NULL DEFAULT '',name TEXT NOT NULL DEFAULT '',position_id INTEGER REFERENCES positions(id) ON DELETE RESTRICT,whitelist INTEGER NOT NULL DEFAULT 0 CHECK(whitelist IN(0,1)))"
         )
         db.execSQL(
             "CREATE TABLE settings(key TEXT PRIMARY KEY,value TEXT,position_id INTEGER REFERENCES positions(id) ON DELETE RESTRICT)"

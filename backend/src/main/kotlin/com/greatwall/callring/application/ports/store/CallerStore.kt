@@ -4,7 +4,7 @@ import com.greatwall.callring.domain.model.ProfileRecord
 import com.greatwall.callring.domain.model.RawCallRecord
 
 /** Search visits necessary stored-profile fields in number order; no call-derived callers. */
-data class CallerSearchRow(val number: String, val name: String, val department: String)
+data class CallerSearchRow(val number: String, val name: String, val department: String, val selfReportedPosition: String = "", val region: String = "")
 
 interface CallerReader {
     fun caller(number: String): ProfileRecord?

@@ -17,7 +17,7 @@ import com.greatwall.callring.domain.model.NumberIdentity
 
 internal class SqliteCallerStore(private val sql: SqlAccess, private val lease: (Boolean) -> Unit) :
     CallerWriter, CallerCallReader {
-    private val profileColumns = "number,name,department,position_id,whitelist"
+    private val profileColumns = "number,name,department,position_id,whitelist,self_reported_position,region,identity_metadata,identity_epoch"
 
     private fun profile(c: Cursor) =
         ProfileRecord(
@@ -26,6 +26,7 @@ internal class SqliteCallerStore(private val sql: SqlAccess, private val lease: 
             c.getString(2),
             if (c.isNull(3)) null else c.getLong(3),
             c.getInt(4) != 0,
+            c.getString(5), c.getString(6), CallerIdentityCodec.decode(c.getString(7)), c.getString(8),
         )
 
     private fun profiles(where: String, parameters: Array<String>) =
@@ -91,12 +92,12 @@ internal class SqliteCallerStore(private val sql: SqlAccess, private val lease: 
             sql.rawQuery(
                     QueryTag.SCOPED_ROWS,
                     setOf(SqlTable.CALLERS),
-                    "SELECT number,name,department FROM callers ORDER BY number LIMIT 256 OFFSET ?",
+                    "SELECT number,name,department,self_reported_position,region FROM callers ORDER BY number LIMIT 256 OFFSET ?",
                     arrayOf(offset.toString()),
                 )
                 .use { c ->
                     while (c.moveToNext()) {
-                        accept(CallerSearchRow(c.getString(0), c.getString(1), c.getString(2)))
+                        accept(CallerSearchRow(c.getString(0), c.getString(1), c.getString(2), c.getString(3), c.getString(4)))
                         count++
                     }
                 }
@@ -112,6 +113,10 @@ internal class SqliteCallerStore(private val sql: SqlAccess, private val lease: 
                     "number" to value.number,
                     "name" to value.name,
                     "department" to value.department,
+                    "self_reported_position" to value.selfReportedPosition,
+                    "region" to value.region,
+                    "identity_metadata" to CallerIdentityCodec.encode(value.identityMetadata),
+                    "identity_epoch" to value.identityEpoch,
                     "position_id" to value.positionId,
                     "whitelist" to value.whitelisted,
                 )
@@ -119,6 +124,10 @@ internal class SqliteCallerStore(private val sql: SqlAccess, private val lease: 
         } else {
             val existing = checkNotNull(caller(value.number)) { "storage.caller.update" }
             val changed = values().apply {
+                if (existing.identityEpoch != value.identityEpoch) put("identity_epoch", value.identityEpoch)
+                if (existing.selfReportedPosition != value.selfReportedPosition) put("self_reported_position", value.selfReportedPosition)
+                if (existing.region != value.region) put("region", value.region)
+                if (existing.identityMetadata != value.identityMetadata) put("identity_metadata", CallerIdentityCodec.encode(value.identityMetadata))
                 if (existing.name != value.name) put("name", value.name)
                 if (existing.department != value.department) put("department", value.department)
                 if (existing.positionId != value.positionId) {

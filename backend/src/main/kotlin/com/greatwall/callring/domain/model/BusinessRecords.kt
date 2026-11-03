@@ -10,6 +10,18 @@ data class ProfileRecord(
     val department: String = "",
     val positionId: Long? = null,
     val whitelisted: Boolean = false,
+    val selfReportedPosition: String = "",
+    val region: String = "",
+    val identityMetadata: Map<String, IdentityFieldMetadata> = emptyMap(),
+    val identityEpoch: String = "",
+)
+
+data class IdentityFieldMetadata(
+    val revision: Long = 0,
+    val disputed: Boolean = false,
+    val archiveId: Long? = null,
+    val analysisGeneration: Long? = null,
+    val evidence: String = "",
 )
 
 data class PositionRecord(val id: Long, val name: String, val level: Int, val active: Boolean)

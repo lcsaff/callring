@@ -41,6 +41,14 @@ data class NumberCheck(
     val matchesRule: Boolean
 )
 
+data class CallerFieldMetadata(
+    val revision: Long = 0,
+    val disputed: Boolean = false,
+    val archiveId: Long? = null,
+    val analysisGeneration: Long? = null,
+    val evidence: String = "",
+)
+
 data class CallerProfile(
     val number: String,
     val stored: Boolean,
@@ -48,7 +56,10 @@ data class CallerProfile(
     val department: String,
     val position: PositionOption?,
     val relation: PositionRelation,
-    val whitelisted: Boolean
+    val whitelisted: Boolean,
+    val selfReportedPosition: String = "",
+    val region: String = "",
+    val identityMetadata: Map<String, CallerFieldMetadata> = emptyMap(),
 )
 
 data class CallerDraft(
@@ -56,7 +67,10 @@ data class CallerDraft(
     val name: String,
     val department: String,
     val positionId: Long?,
-    val whitelisted: Boolean
+    val whitelisted: Boolean,
+    val selfReportedPosition: String = "",
+    val region: String = "",
+    val identityMetadata: Map<String, CallerFieldMetadata> = emptyMap(),
 )
 
 data class CallerEditorData(
@@ -73,6 +87,9 @@ data class SaveCallerProfile(
     val whitelisted: Boolean? = null,
     val baseline:CallerDraft?=null,
     val dirtyFields:Set<String>?=null,
+    val selfReportedPosition: String? = null,
+    val region: String? = null,
+    val disputedFields: Set<String>? = null,
 )
 
 data class CallerOverview(

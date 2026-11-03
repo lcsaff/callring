@@ -95,6 +95,25 @@ class CallerServiceTest {
                 error("unexpected calls")
         }
 
+    @Test fun enrichmentPreservesExistingAndCorrectsOnlyDisputedFields() {
+        val p = Profiles()
+        val c = BusinessRevisionCoordinator()
+        val service = CallerEnrichmentService(p, c) { true }
+        val base = service.capture("31234")
+        service.apply("31234", base, 4, 12, mapOf("name" to ("B" to "我是B"), "region" to ("杭州" to "我在杭州工作")))
+        assertEquals("A", p.rows.getValue("31234").name)
+        assertEquals("杭州", p.rows.getValue("31234").region)
+        val row = p.rows.getValue("31234")
+        p.rows["31234"] = row.copy(identityMetadata = row.identityMetadata + ("name" to com.greatwall.callring.domain.model.IdentityFieldMetadata(1, true)))
+        val disputed = service.capture("31234")
+        service.apply("31234", disputed, 5, 14, mapOf("name" to ("B" to "我是B")))
+        assertEquals("B", p.rows.getValue("31234").name)
+        assertFalse(p.rows.getValue("31234").identityMetadata.getValue("name").disputed)
+        p.rows.remove("31234")
+        service.apply("31234", disputed, 5, 14, mapOf("name" to ("C" to "我是C")))
+        assertFalse(p.rows.containsKey("31234"))
+    }
+
     @Test
     fun queriesRunOutsideFenceAndRetryRelevantChanges() = runBlocking {
         val p = Profiles()

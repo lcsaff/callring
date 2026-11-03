@@ -70,6 +70,8 @@ internal class CallerQueryService(
                         p?.department.orEmpty(),
                         p?.positionId,
                         p?.whitelisted ?: false,
+                        p?.selfReportedPosition.orEmpty(), p?.region.orEmpty(),
+                        p?.identityMetadata.orEmpty().mapValues { (_, m) -> CallerFieldMetadata(m.revision, m.disputed, m.archiveId, m.analysisGeneration, m.evidence) },
                     ),
                     frozenList(
                         positions
@@ -100,7 +102,7 @@ internal class CallerQueryService(
                             if (
                                 row.number.contains(text, true) ||
                                     row.name.contains(text, true) ||
-                                    row.department.contains(text, true)
+                                    row.department.contains(text, true) || row.selfReportedPosition.contains(text, true) || row.region.contains(text, true)
                             ) {
                                 if (total >= offset && numbers.size < query.page.pageSize)
                                     numbers.add(row.number)
