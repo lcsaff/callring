@@ -33,7 +33,7 @@ class RecordingWorkflowTest {
                 entered.countDown(); check(release.await(5, TimeUnit.SECONDS)); return "late transcript"
             }
         }
-        val owned = RecordingWorkflow(store, commands, blocking)
+        val owned = RecordingWorkflow(store, commands, blocking, enrichment = testEnrichment)
         owned.attach(1,"31234",100,"/private/test.m4a",RecordingSource.IMPORTED,1000,null,false)
         val worker = Thread { owned.processPending() }.apply { start() }
         assertTrue(entered.await(2, TimeUnit.SECONDS))
@@ -101,6 +101,79 @@ class RecordingWorkflowTest {
         assertEquals(ArchiveStatus.COMPLETE, store.get(-7)!!.status)
         assertEquals("A brief call", store.get(-7)!!.analysis!!.summary)
     }
+    @Test fun localFailureRetriesWithoutCallingModelAgain() {
+        configure()
+        localFailure = true
+        workflow.attach(1, "31234", 100, "/private/test.m4a", RecordingSource.IMPORTED, 1000, null, false)
+        workflow.processPending()
+        assertEquals(ArchiveStatus.ENRICHMENT_FAILED, store.get(1)!!.status)
+        assertNotNull(store.get(1)!!.analysis)
+        localFailure = false
+        workflow.retry(1, null)
+        workflow.processPending()
+        assertEquals(ArchiveStatus.COMPLETE, store.get(1)!!.status)
+        assertEquals(1, analyses)
+        assertEquals(1, transcriptions)
+        assertEquals(2, localAttempts)
+    }
+    @Test fun failureToPersistLocalFailureNeverReplaysPaidAnalysis() {
+        configure()
+        localFailure = true
+        store.rejectLocalFailureState = true
+        workflow.attach(1, "31234", 100, "/private/test.m4a", RecordingSource.IMPORTED, 1000, null, false)
+        workflow.processPending()
+        assertEquals(ArchiveStatus.ENRICHING, store.get(1)!!.status)
+        localFailure = false
+        store.rejectLocalFailureState = false
+        workflow.retry(1, null)
+        workflow.processPending()
+        assertEquals(ArchiveStatus.COMPLETE, store.get(1)!!.status)
+        assertEquals(1, analyses)
+        assertEquals(1, transcriptions)
+    }
+    @Test fun baselineIsDurableBeforeNetworkAndDeletedArchiveCannotCaptureAgain() {
+        configure()
+        beforeTranscription = {
+            assertEquals(1, localCaptures)
+            assertNotNull(store.get(1)!!.enrichmentBaseline)
+            workflow.delete(1, null, false)
+        }
+        workflow.attach(1, "31234", 100, "/private/test.m4a", RecordingSource.IMPORTED, 1000, null, false)
+        workflow.processPending()
+        assertNull(store.get(1)); assertEquals(1, localCaptures); assertEquals(0, localAttempts)
+    }
+    @Test fun onlyClaimsWithLiteralTranscriptEvidenceReachEnrichment() {
+        configure()
+        analysisResult = CallAnalysis(name = "Caller", region = "杭州", position = "CEO",
+            fieldEvidence = mapOf("name" to "Caller says hello", "region" to "我在杭州", "selfReportedPosition" to "Caller says hello"))
+        workflow.attach(1, "31234", 100, "/private/test.m4a", RecordingSource.IMPORTED, 1000, null, false)
+        workflow.processPending()
+        assertEquals(setOf("name"), lastCandidates.keys)
+        assertEquals("Caller", lastCandidates.getValue("name").first)
+    }
+    private var localCaptures = 0
+    private var beforeTranscription: () -> Unit = {}
+    private var analysisResult = CallAnalysis(summary = "A brief call")
+    private var lastCandidates = emptyMap<String, Pair<String, String>>()
+    @Test fun explicitReanalysisCapturesFreshBaselineAndSourceGeneration() {
+        configure()
+        workflow.attach(1, "31234", 100, "/private/test.m4a", RecordingSource.IMPORTED, 1000, null, false)
+        workflow.processPending()
+        val first = store.get(1)!!.enrichmentSourceGeneration
+        workflow.retry(1, null); workflow.processPending()
+        assertEquals(2, localCaptures)
+        assertEquals(2, analyses)
+        assertNotEquals(first, store.get(1)!!.enrichmentSourceGeneration)
+    }
+    private var localFailure = false
+    private var localAttempts = 0
+    private val localEnrichment = object : com.greatwall.callring.application.ports.recording.RecordingIdentityEnrichment {
+        override fun capture(number: String): CallerIdentityBaseline { localCaptures++; return CallerIdentityBaseline("test", emptyMap()) }
+        override fun apply(number: String, baseline: CallerIdentityBaseline, archiveId: Long, generation: Long, candidates: Map<String, Pair<String, String>>) {
+            localAttempts++; lastCandidates = candidates
+            if (localFailure) error("synthetic storage failure")
+        }
+    }
     private val connection = AiConnection(url = "https://example.com/v1", apiKey = "secret", model = "model")
     private val store = MemoryStore()
     private var transcriptions = 0
@@ -111,15 +184,15 @@ class RecordingWorkflowTest {
         override fun operation(cancelled: () -> Boolean): AiClient = this
         override fun cancel() = Unit
         override fun test(connection: AiConnection, transcription: Boolean) {}
-        override fun transcribe(connection: AiConnection, reference: com.greatwall.callring.application.ports.recording.AudioReference): String { transcriptions++; return "Caller says hello" }
+        override fun transcribe(connection: AiConnection, reference: com.greatwall.callring.application.ports.recording.AudioReference): String { transcriptions++; beforeTranscription(); return "Caller says hello" }
         override fun analyze(connection: AiConnection, transcript: String): CallAnalysis {
             analyses++; beforeAnalysis()
             if (fail) throw AiFailure("ai.temporary", true)
-            return CallAnalysis(summary = "A brief call")
+            return analysisResult
         }
     }
     private val commands = RecordingArchiveCommands(store, store, BusinessRevisionCoordinator())
-    private val workflow = RecordingWorkflow(store, commands, client, { 1000L })
+    private val workflow = RecordingWorkflow(store, commands, client, { 1000L }, enrichment = localEnrichment)
     private fun configure(auto: Boolean = true) {
         store.seedSettings(RecordingSettings(automaticAnalysis = auto, analysis = connection, transcription = connection))
     }
@@ -174,7 +247,7 @@ class RecordingWorkflowTest {
             override fun operation(cancelled: () -> Boolean): AiClient = this
             override fun transcribe(connection: AiConnection, reference: com.greatwall.callring.application.ports.recording.AudioReference): String = throw AiFailure("ai.authentication")
         }
-        val brokenWorkflow = RecordingWorkflow(store, commands, brokenClient, { 1000L })
+        val brokenWorkflow = RecordingWorkflow(store, commands, brokenClient, { 1000L }, enrichment = testEnrichment)
         brokenWorkflow.attach(1, "31234", 100, "/private/test.m4a", RecordingSource.IMPORTED, 1000, null, false)
         brokenWorkflow.processPending()
         assertEquals(Long.MAX_VALUE, store.get(1)!!.nextAttemptAt)
@@ -202,7 +275,7 @@ class RecordingWorkflowTest {
             }
             lateinit var deleting: RecordingWorkflow
         }
-        val deletingWorkflow = RecordingWorkflow(store, commands, cancelClient)
+        val deletingWorkflow = RecordingWorkflow(store, commands, cancelClient, enrichment = testEnrichment)
         cancelClient.deleting = deletingWorkflow
         deletingWorkflow.attach(1, "31234", 100, "/private/test.m4a", RecordingSource.IMPORTED, 1000, null, false)
         deletingWorkflow.processPending()
@@ -219,7 +292,7 @@ class RecordingWorkflowTest {
                 throw AiFailure("recording.cancelled")
             }
         }
-        val resumable = RecordingWorkflow(store, commands, cancellable)
+        val resumable = RecordingWorkflow(store, commands, cancellable, enrichment = testEnrichment)
         resumable.attach(1, "31234", 100, "/private/test.m4a", RecordingSource.IMPORTED, 1000, null, false)
         resumable.processPending { stopped }
         assertEquals(ArchiveStatus.QUEUED, store.get(1)!!.status)
@@ -237,7 +310,7 @@ class RecordingWorkflowTest {
                 return CallAnalysis(summary = "late result")
             }
         }
-        val resumable = RecordingWorkflow(store, commands, late)
+        val resumable = RecordingWorkflow(store, commands, late, enrichment = testEnrichment)
         resumable.attach(1, "31234", 100, "/private/test.m4a", RecordingSource.IMPORTED, 1000, null, false)
         resumable.processPending { stopped }
         assertEquals(ArchiveStatus.QUEUED, store.get(1)!!.status)
@@ -260,11 +333,18 @@ class RecordingWorkflowTest {
         override fun dueCandidates(at: Long, afterId: Long?, limit: Int, cancelled: () -> Boolean) = entries.values.filter {
             (afterId == null || it.callId > afterId) && it.status in pending && it.nextAttemptAt <= at
         }.sortedBy { it.callId }.take(limit).map { RecordingCandidate(it.callId, it.generation) }.also { candidatePageSizes += it.size; candidatesObserved() }
-        private val pending = setOf(ArchiveStatus.QUEUED, ArchiveStatus.TRANSCRIBING, ArchiveStatus.ANALYZING, ArchiveStatus.FAILED)
+        private val pending = setOf(ArchiveStatus.QUEUED, ArchiveStatus.TRANSCRIBING, ArchiveStatus.ANALYZING, ArchiveStatus.FAILED, ArchiveStatus.ENRICHING, ArchiveStatus.ENRICHMENT_FAILED)
+        var rejectLocalFailureState = false
         @Synchronized override fun compareAndSet(callId: Long, expectedGeneration: Long?, value: CallArchive): Boolean {
+            if (rejectLocalFailureState && value.status == ArchiveStatus.ENRICHMENT_FAILED) error("synthetic failure saving local failure")
             if (entries[callId]?.generation != expectedGeneration) return false
             entries[callId] = value; return true
         }
         @Synchronized override fun delete(callId: Long) = entries.remove(callId) != null
     }
+}
+
+private val testEnrichment = object : com.greatwall.callring.application.ports.recording.RecordingIdentityEnrichment {
+    override fun capture(number: String) = CallerIdentityBaseline("test", emptyMap())
+    override fun apply(number: String, baseline: CallerIdentityBaseline, archiveId: Long, generation: Long, candidates: Map<String, Pair<String, String>>) = Unit
 }

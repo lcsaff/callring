@@ -170,7 +170,7 @@ class AndroidBackupArchivePortTest {
         fun newGraph() = BackendGraph(owner, context, configuration, object : UiNotificationEntryPoints {
             override fun home(requestCode: Int) = PendingIntent.getActivity(context, requestCode, Intent("test"), PendingIntent.FLAG_IMMUTABLE)
             override fun playback(preview: Boolean, stopAction: PendingIntent) = Notification()
-        }, object : IncomingCallUiSink { override fun show(request: IncomingCallUiRequest) {} })
+        })
         override fun close() {
             graph.close(); provider.shutdown(); root.deleteRecursively()
             context.deleteDatabase(configuration.databaseName); context.deleteDatabase(configuration.databaseName + "_recording.db")

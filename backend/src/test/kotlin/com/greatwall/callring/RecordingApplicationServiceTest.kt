@@ -249,7 +249,7 @@ class RecordingApplicationServiceTest {
             override fun transcribe(connection: AiConnection, reference: AudioReference): String { transcriptions++; return "call text" }
             override fun analyze(connection: AiConnection, transcript: String) = CallAnalysis(summary = "done")
         }
-        private val workflow = RecordingWorkflow(this, commands, client)
+        private val workflow = RecordingWorkflow(this, commands, client, enrichment = testEnrichment)
         private val ai = AiSettingsService(this, coordinator, { true }, { _, _ -> }, folderView = { error("unused") }, operationActive = { true })
         val service = RecordingService(this, this, ::settings, { workflow }, commands, RecordingRegistrationService(this, coordinator), ai,
             this, this, this, { legacyReads += it; legacy }, { -1 }, {}, coordinator, operationActive = { true }, captureBusy = { capturing })
@@ -315,4 +315,9 @@ class RecordingApplicationServiceTest {
         override fun list(folder: String): List<RecordingFile> { if (failDirectory) throw SecurityException(); return directoryFiles }
         override fun inspect(folder: String, document: DocumentRef): RecordingFile? = null
     }
+}
+
+private val testEnrichment = object : com.greatwall.callring.application.ports.recording.RecordingIdentityEnrichment {
+    override fun capture(number: String) = CallerIdentityBaseline("test", emptyMap())
+    override fun apply(number: String, baseline: CallerIdentityBaseline, archiveId: Long, generation: Long, candidates: Map<String, Pair<String, String>>) = Unit
 }

@@ -16,10 +16,9 @@ import com.greatwall.callring.ui.state.*
 
 @Composable fun ArchiveScreen(state: LoadState<CallArchive?>, files: LoadState<List<RecordingFile>>, mutation: MutationState,
     onBack: () -> Unit, onRefresh: () -> Unit, onImport: () -> Unit, onList: () -> Unit, onSelect: (RecordingFile) -> Unit,
-    onRetry: () -> Unit, onDelete: () -> Unit, onPlay: () -> Unit, onStop: () -> Unit, onAdopt: () -> Unit, onEdit: () -> Unit,
+    onRetry: () -> Unit, onDelete: () -> Unit, onPlay: () -> Unit, onStop: () -> Unit, onEdit: () -> Unit,
     zone: LoadState<java.time.ZoneId> = LoadState(), onRetryZone: () -> Unit = {}) {
     var deletion by remember { mutableStateOf(false) }
-    var adoption by remember { mutableStateOf(false) }
     ScreenFrame("通话录音归档", onBack) {
         Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             RecordingFeedback(state.error ?: files.error, mutation)
@@ -46,20 +45,23 @@ import com.greatwall.callring.ui.state.*
                 if (item.audioPath != null) {
                     Row { TextButton(onClick = onPlay, enabled = !mutation.busy) { Text("播放") }; TextButton(onClick = onStop) { Text("停止播放") } }
                     Text("分析会将录音发送到配置的转写服务，将文字发送到配置的分析服务，可能按服务商价格收费。")
-                    Button(onClick = onRetry, enabled = !mutation.busy) { Text("分析 / 重试") }
+                    if (item.status !in setOf(ArchiveStatus.ENRICHING, ArchiveStatus.ENRICHMENT_FAILED))
+                        Button(onClick = onRetry, enabled = !mutation.busy) { Text("分析 / 重试") }
                 }
+                if (item.status == ArchiveStatus.ENRICHMENT_FAILED)
+                    Button(onClick = onRetry, enabled = !mutation.busy) { Text("重试档案补全（不调用模型）") }
                 Text("转写文字", style = MaterialTheme.typography.titleMedium)
                 Text(item.transcript.ifBlank { "尚无转写结果" })
                 item.analysis?.let { analysis ->
                     Text("对方自述身份（需核对）", style = MaterialTheme.typography.titleMedium)
                     Text("姓名：${analysis.name.ifBlank { "未提及" }}\n单位：${analysis.organization.ifBlank { "未提及" }}\n职位：${analysis.position.ifBlank { "未提及" }}")
+                    Text("部门：${analysis.department.ifBlank { "未提及" }}\n所属地区：${analysis.region.ifBlank { "未提及" }}")
                     Text("自述依据：${analysis.evidence.ifBlank { "无" }}")
                     Text("模型推测（未核实）：${analysis.inferredIdentity.ifBlank { "无" }}")
                     Text("来电目的：${analysis.purpose}")
                     Text("摘要：${analysis.summary}")
                     analysis.actionItems.forEach { Text("• $it") }
                     Text("AI 结果可能不准确，不能作为已经核实的身份。")
-                    TextButton(onClick = { adoption = true }, enabled = !mutation.busy && (analysis.name.isNotBlank() || analysis.organization.isNotBlank())) { Text("采纳自述姓名和单位") }
                     TextButton(onClick = onEdit) { Text("编辑档案") }
                 }
                 TextButton(onClick = { deletion = true }, enabled = !mutation.busy) { Text("删除本次归档") }
@@ -67,5 +69,4 @@ import com.greatwall.callring.ui.state.*
         }
     }
     if (deletion) AlertDialog(onDismissRequest = { deletion = false }, title = { Text("删除本次归档？") }, text = { Text("删除应用内的录音、转写和分析结果。原始导入文件保留。") }, confirmButton = { TextButton(onClick = { deletion = false; onDelete() }) { Text("删除") } }, dismissButton = { TextButton(onClick = { deletion = false }) { Text("取消") } })
-    if (adoption) AlertDialog(onDismissRequest = { adoption = false }, title = { Text("确认采纳自述身份？") }, text = { Text("将自述姓名和单位填入号码档案，替换对应的非空字段。请核实；职位和白名单保持不变，模型推测不会采纳。") }, confirmButton = { TextButton(onClick = { adoption = false; onAdopt() }) { Text("确认采纳") } }, dismissButton = { TextButton(onClick = { adoption = false }) { Text("取消") } })
 }

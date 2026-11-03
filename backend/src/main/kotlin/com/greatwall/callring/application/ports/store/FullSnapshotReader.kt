@@ -28,7 +28,6 @@ class FullSnapshotFacts(
     quiet: QuietSettings,
     val lastQuietMode: QuietMode,
     val score: ScoreSettings,
-    val overlayEnabled: Boolean,
     audits: List<AuditRecord>,
     val numberRule: com.greatwall.callring.contracts.settings.NumberRuleSettings,
 ) {

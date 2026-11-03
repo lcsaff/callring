@@ -21,6 +21,7 @@ class RecordingWorkflow(
     private val commands: RecordingArchiveCommands,
     private val client: AiClient,
     private val now: () -> Long = System::currentTimeMillis,
+    private val enrichment: com.greatwall.callring.application.ports.recording.RecordingIdentityEnrichment,
 ) {
     private val running = ConcurrentHashMap.newKeySet<Long>()
     private val activityFence = Object()
@@ -57,12 +58,16 @@ class RecordingWorkflow(
         check(!closed) { "recording.closed" }
         check(callId !in running) { "recording.busy" }
         val value = requireNotNull(store.get(callId)) { "recording.not_found" }
+        if (value.status in setOf(ArchiveStatus.ENRICHING, ArchiveStatus.ENRICHMENT_FAILED)) {
+            check(commands.compareAndSet(callId, value.generation, value.copy(generation = version(value.generation), status = ArchiveStatus.ENRICHING, nextAttemptAt = 0, error = null), command, false)) { "recording.changed" }
+            return
+        }
         require(value.audioPath != null) { "recording.missing_audio" }
         val config = store.settings()
         config.analysis.validate(); config.transcription.validate()
         require(config.transcription.protocol == AiProtocol.OPENAI) { "ai.transcription_requires_openai" }
         check(commands.compareAndSet(callId, value.generation, value.copy(generation = version(value.generation),
-            status = ArchiveStatus.QUEUED, attempts = 0, nextAttemptAt = 0, error = null, manualAnalysis = true), command, false)) { "recording.changed" }
+            status = ArchiveStatus.QUEUED, attempts = 0, nextAttemptAt = 0, error = null, manualAnalysis = true, enrichmentBaseline = null, enrichmentSourceGeneration = null), command, false)) { "recording.changed" }
     }
 
     fun delete(callId: Long, command: CommandContext?, playbackStopped: Boolean): Boolean {
@@ -115,13 +120,38 @@ class RecordingWorkflow(
         val cancellation = AtomicBoolean(false)
         cancelledOperations[current.callId] = cancellation
         val isCancelled = { closed || cancelled() || cancellation.get() }
-        val operation = client.operation(isCancelled)
-        activeClients[current.callId] = operation
+        val localOnly = current.status in setOf(ArchiveStatus.ENRICHING, ArchiveStatus.ENRICHMENT_FAILED)
+        val operation by lazy { client.operation(isCancelled).also { activeClients[current.callId] = it } }
         fun update(value: CallArchive): Boolean {
             if (closed) return false
-            val next = value.copy(generation = version(current.generation))
+            val generation = version(current.generation)
+            val next = value.copy(generation = generation,
+                enrichmentSourceGeneration = value.enrichmentSourceGeneration ?: generation.takeIf { value.status == ArchiveStatus.ENRICHING })
             if (!commands.compareAndSet(current.callId, current.generation, next, null, false)) return false
             current = next; return true
+        }
+        fun enrich() {
+            if (isCancelled()) return
+            val analysis = current.analysis ?: error("recording.analysis_missing")
+            val baseline = current.enrichmentBaseline ?: error("recording.baseline_missing")
+            val claims = mapOf("name" to analysis.name, "department" to analysis.department,
+                "selfReportedPosition" to analysis.position, "region" to analysis.region)
+            val candidates = claims.mapNotNull { (field, claim) ->
+                val quote = analysis.fieldEvidence[field].orEmpty()
+                if (claim.isNotBlank() && quote.isNotBlank() && current.transcript.contains(quote) && quote.contains(claim)) field to (claim to quote) else null
+            }.toMap()
+            if (!commands.withCurrent(current.callId, current.generation) {
+                    if (isCancelled()) throw AiFailure("recording.cancelled")
+                    enrichment.apply(current.number, baseline, current.callId, current.enrichmentSourceGeneration ?: current.generation, candidates)
+                }) return
+            if (!isCancelled()) update(current.copy(status = ArchiveStatus.COMPLETE, error = null, nextAttemptAt = 0))
+        }
+        if (localOnly) {
+            try { enrich() } catch (_: Exception) {
+                if (!isCancelled()) update(current.copy(status = ArchiveStatus.ENRICHMENT_FAILED,
+                    error = "recording.enrichment_failed", nextAttemptAt = Long.MAX_VALUE))
+            }
+            return
         }
         try {
             if (!config.automaticAnalysis && !current.manualAnalysis) {
@@ -129,6 +159,15 @@ class RecordingWorkflow(
             }
             config.analysis.validate(); config.transcription.validate()
             require(config.transcription.protocol == AiProtocol.OPENAI) { "ai.transcription_requires_openai" }
+            if (current.enrichmentBaseline == null) {
+                var baselineSaved = false
+                val live = commands.withCurrent(current.callId, current.generation) {
+                    if (isCancelled()) throw AiFailure("recording.cancelled")
+                    val baseline = enrichment.capture(current.number)
+                    if (!isCancelled()) baselineSaved = update(current.copy(enrichmentBaseline = baseline))
+                }
+                if (!live || !baselineSaved) return
+            }
             if (!update(current.copy(attempts = current.attempts + 1, status =
                     if (current.transcript.isBlank()) ArchiveStatus.TRANSCRIBING else ArchiveStatus.ANALYZING))) return
             if (isCancelled()) throw AiFailure("recording.cancelled")
@@ -141,10 +180,22 @@ class RecordingWorkflow(
             if (isCancelled()) throw AiFailure("recording.cancelled")
             val result = operation.analyze(config.analysis, current.transcript)
             if (isCancelled()) throw AiFailure("recording.cancelled")
-            update(current.copy(analysis = result, status = ArchiveStatus.COMPLETE, error = null,
+            val savedAnalysis = update(current.copy(analysis = result, status = ArchiveStatus.ENRICHING, error = null,
                 nextAttemptAt = 0, analyzedAt = now(), analysisModel = config.analysis.model,
                 analysisProtocol = config.analysis.protocol))
+            if (savedAnalysis) {
+                try { enrich() } catch (_: Exception) {
+                    if (!isCancelled()) update(current.copy(status = ArchiveStatus.ENRICHMENT_FAILED,
+                        error = "recording.enrichment_failed", nextAttemptAt = Long.MAX_VALUE))
+                }
+            }
         } catch (failure: Exception) {
+            // Once analysis is durable, failure-state persistence must never return to network work.
+            if (current.status in setOf(ArchiveStatus.ENRICHING, ArchiveStatus.ENRICHMENT_FAILED)) {
+                if (!isCancelled()) runCatching { update(current.copy(status = ArchiveStatus.ENRICHMENT_FAILED,
+                    error = "recording.enrichment_failed", nextAttemptAt = Long.MAX_VALUE)) }
+                return
+            }
             if (isCancelled()) {
                 update(current.copy(status = ArchiveStatus.QUEUED, error = null,
                     nextAttemptAt = 0, attempts = (current.attempts - 1).coerceAtLeast(0)))

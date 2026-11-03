@@ -13,6 +13,8 @@ internal fun archiveStatusLabel(status: ArchiveStatus): String = when (status) {
     ArchiveStatus.QUEUED -> "等待分析"
     ArchiveStatus.TRANSCRIBING -> "正在转写"
     ArchiveStatus.ANALYZING -> "正在分析"
+    ArchiveStatus.ENRICHING -> "分析已完成，正在补全档案"
+    ArchiveStatus.ENRICHMENT_FAILED -> "分析已完成，档案补全失败"
     ArchiveStatus.COMPLETE -> "已完成"
     ArchiveStatus.FAILED -> "处理失败"
 }
@@ -23,6 +25,7 @@ internal fun archiveStatusLabel(status: ArchiveStatus): String = when (status) {
 }
 
 fun recordingMessage(key: String): String = when (key) {
+    "recording.enrichment_failed" -> "分析已保存，档案补全未完成；重试只处理本地保存，不重复调用模型"
     "recording.audio_not_restored" -> "原音频未随备份恢复；转写与分析已保留，可重新导入音频。"
     "recording.restore_retry_required" -> "恢复后已暂停未完成的处理，请检查连接后手动重试。"
     "ai.invalid_url" -> "服务地址须为 HTTPS，不能包含账户、查询参数或片段"

@@ -44,7 +44,6 @@ class StorageResourcesTest {
                 QuietSettings(QuietMode.OFF, false, emptyMap()),
                 QuietMode.NON_WORK,
                 ScoreSettings(5, 2, 10, 30),
-                false,
                 emptyList(),
                 com.greatwall.callring.contracts.settings.NumberRuleSettings(listOf(com.greatwall.callring.contracts.settings.NumberRuleEntry("3", 5)), 0),
             )
@@ -215,9 +214,7 @@ class StorageResourcesTest {
 
                         override fun saveScore(value: ScoreSettings): Boolean = error("unused")
 
-                        override fun overlay(): Boolean = error("unused")
 
-                        override fun saveOverlay(value: Boolean): Boolean = error("unused")
 
                         override fun statisticsHead(): StatisticsHead = error("unused")
 

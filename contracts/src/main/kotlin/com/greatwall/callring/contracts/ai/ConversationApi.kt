@@ -33,15 +33,14 @@ interface ConversationApi {
     suspend fun newSession(expectedSessionId: String): ApiResult<Unit>
 }
 
-enum class ForegroundActionKind { CAPABILITY, APP_SETTINGS, PIN_WIDGET, TEST_OVERLAY, PREVIEW_CALL, IMPORT_AUDIO, IMPORT_RECORDING, IMPORT_CALENDAR, SELECT_FOLDER, EXPORT_CSV, CONFIRM, CREDENTIAL, COPY_CONNECTION, TEST_CONNECTION }
+enum class ForegroundActionKind { CAPABILITY, APP_SETTINGS, PIN_WIDGET, IMPORT_AUDIO, IMPORT_RECORDING, IMPORT_CALENDAR, SELECT_FOLDER, EXPORT_CSV, CONFIRM, CREDENTIAL, COPY_CONNECTION, TEST_CONNECTION }
 
 enum class ForegroundResultStatus { VERIFIED, LAUNCHED, CANCELLED, DENIED, UNAVAILABLE, STALE, EXPIRED, UNKNOWN }
 
 sealed class ConfirmationTarget {
     data class Position(val id: Long, val name: String, val level: Int, val active: Boolean) : ConfirmationTarget()
     data class Leave(val id: Long, val start: Long, val end: Long, val note: String) : ConfirmationTarget()
-    data class Adoption(val previousName: String, val previousOrganization: String, val name: String?, val organization: String?)
-    data class Recording(val id: Long, val number: String, val startedAt: Long, val generation: Long, val adoption: Adoption? = null) : ConfirmationTarget()
+    data class Recording(val id: Long, val number: String, val startedAt: Long, val generation: Long) : ConfirmationTarget()
     data class Connection(val slot: AiSlot, val connection: AiConnectionView) : ConfirmationTarget()
     data class NumberDeletion(
         val number: String,

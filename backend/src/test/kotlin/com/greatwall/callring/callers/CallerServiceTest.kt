@@ -95,6 +95,56 @@ class CallerServiceTest {
                 error("unexpected calls")
         }
 
+    @Test fun lateAnalysisPreservesManualRegionAndFillsAnotherEligibleField() = runBlocking {
+        val p = Profiles(); val c = BusinessRevisionCoordinator()
+        val enrichment = CallerEnrichmentService(p, c) { true }
+        val baseline = enrichment.capture("(3-1234)")
+        val commands = CallerCommandService(p, c, Dispatchers.Unconfined, { _, _ -> }, operationActive = { true })
+        commands.save(SaveCallerProfile("31234", "A", "D", null, region = "南京")).requiredValue()
+        enrichment.apply("31-234", baseline, -1, 3, mapOf("region" to ("杭州" to "在杭州"), "selfReportedPosition" to ("经理" to "我是经理")))
+        val row = p.rows.getValue("31234")
+        assertEquals("南京", row.region); assertEquals("经理", row.selfReportedPosition)
+        val marker = c.marker()
+        enrichment.apply("31234", baseline, -1, 3, mapOf("selfReportedPosition" to ("经理" to "我是经理")))
+        assertEquals(marker, c.marker())
+    }
+
+    @Test fun deletionAndRecreationInvalidateOldBaseline() {
+        val p = Profiles(); val c = BusinessRevisionCoordinator()
+        val enrichment = CallerEnrichmentService(p, c) { true }
+        val baseline = enrichment.capture("31234")
+        p.rows.remove("31234")
+        val replacement = enrichment.capture("31234")
+        assertNotEquals(baseline.epoch, replacement.epoch)
+        enrichment.apply("31234", baseline, -1, 3, mapOf("name" to ("old" to "old")))
+        assertEquals("", p.rows.getValue("31234").name)
+    }
+
+    @Test fun manualCorrectionsClearOnlyChangedFieldsAndEmptyRemainsEligible() = runBlocking {
+        val p = Profiles(); val c = BusinessRevisionCoordinator()
+        val commands = CallerCommandService(p, c, Dispatchers.Unconfined, { _, _ -> }, operationActive = { true })
+        commands.save(SaveCallerProfile("31234", "A", "D", null, disputedFields = setOf("name", "department"))).requiredValue()
+        commands.save(SaveCallerProfile("31234", "corrected", "D", null)).requiredValue()
+        assertFalse(p.rows.getValue("31234").identityMetadata.getValue("name").disputed)
+        assertTrue(p.rows.getValue("31234").identityMetadata.getValue("department").disputed)
+        commands.save(SaveCallerProfile("31234", "", "D", null)).requiredValue()
+        val enrichment = CallerEnrichmentService(p, c) { true }
+        val baseline = enrichment.capture("31234")
+        enrichment.apply("31234", baseline, -1, 3, mapOf("name" to ("new" to "new")))
+        assertEquals("new", p.rows.getValue("31234").name)
+    }
+
+    @Test fun enrichmentDoesNotTouchPositionWhitelistOrUnknownFields() {
+        val p = Profiles(); val c = BusinessRevisionCoordinator()
+        p.rows["31234"] = p.rows.getValue("31234").copy(positionId = 4, whitelisted = true)
+        val enrichment = CallerEnrichmentService(p, c) { true }
+        val baseline = enrichment.capture("31234")
+        enrichment.apply("31234", baseline, -1, 3, mapOf("positionId" to ("1" to "1"), "organization" to ("单位" to "单位"), "whitelisted" to ("false" to "false")))
+        assertEquals(4L, p.rows.getValue("31234").positionId)
+        assertTrue(p.rows.getValue("31234").whitelisted)
+        assertEquals("D", p.rows.getValue("31234").department)
+    }
+
     @Test fun enrichmentPreservesExistingAndCorrectsOnlyDisputedFields() {
         val p = Profiles()
         val c = BusinessRevisionCoordinator()

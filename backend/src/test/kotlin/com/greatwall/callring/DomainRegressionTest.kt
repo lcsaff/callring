@@ -239,7 +239,6 @@ class DomainRegressionTest {
             coreTransactions = MemoryCoreUnitOfWork(),
             calendarSource = unusedPort(),
             numberRecordings = com.greatwall.callring.EmptyNumberRecordings,
-            identityArchive = { com.greatwall.callring.contracts.common.ApiResult.Success(null) },
             operationActive = { true },
             conversationProvider = { unusedPort() }, aiSettingsProvider = { unusedPort() },
             updateProvider = { unusedPort() }, snapshotsProvider = { unusedPort() }, storageProvider = { com.greatwall.callring.testing.FixtureStorageApi }, backupProvider = { com.greatwall.callring.testing.FixtureBackupApi }, recordingsProvider = { unusedPort() }, persistenceActive = { true }).also { kotlinx.coroutines.runBlocking { it.prepareNumberRule().requiredValue() } }

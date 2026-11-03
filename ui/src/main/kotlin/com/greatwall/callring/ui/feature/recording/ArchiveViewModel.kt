@@ -11,7 +11,6 @@ import kotlinx.coroutines.flow.*
 class ArchiveViewModel(private val api: RecordingApi, private val callId: Long,
     private val number: String, private val startedAt: Long, testScope: CoroutineScope? = null,
     private val cleanupDispatcher: CoroutineDispatcher = Dispatchers.IO,
-    private val adoptCommand: suspend (Long, Long) -> ApiResult<CallerProfile>,
     private val changes: ChangeFeed) : UiViewModel(testScope) {
     private val mutableState = MutableStateFlow(LoadState<CallArchive?>())
     val state = mutableState.asStateFlow()
@@ -64,7 +63,10 @@ class ArchiveViewModel(private val api: RecordingApi, private val callId: Long,
     fun listSystem() = fileLoader.load { api.systemRecordings() }
     fun import(document: DocumentRef, source: RecordingSource = RecordingSource.IMPORTED) = writer.run(
         { api.importRecording(callId, number, startedAt, document, source) }, "录音已导入") {}
-    fun retry() = writer.run({ api.retry(callId) }, "已提交分析；录音和文字将发送到配置的服务") {}
+    fun retry() {
+        val local = state.value.data?.status in setOf(ArchiveStatus.ENRICHING, ArchiveStatus.ENRICHMENT_FAILED)
+        writer.run({ api.retry(callId) }, if (local) "已提交档案补全；不调用模型" else "已提交分析；录音和文字将发送到配置的服务") {}
+    }
     fun delete() = writer.run({ api.delete(callId) }, "本次归档已删除") {}
     fun play() = writer.run({ api.play(callId) }, "正在播放")
     fun stop() = writer.run({ api.stop() }, "已停止播放")
@@ -73,10 +75,5 @@ class ArchiveViewModel(private val api: RecordingApi, private val callId: Long,
         withContext(NonCancellable + cleanupDispatcher) {
             try { api.stop() } catch (_: Exception) { /* No UI remains to receive feedback. */ }
         }
-    }
-    /** Called only after the user confirms the self-reported fields. Never copies inferred identity or position. */
-    fun adoptIdentity() {
-        val archive = state.value.data ?: return
-        writer.run({ adoptCommand(callId, archive.generation) }, "姓名和单位已采纳；请到档案核对")
     }
 }

@@ -21,7 +21,6 @@ class ScreeningControllerTest {
         rig.clock.runCurrent()
         assertEquals(listOf(CallDecision.SYSTEM_RINGTONE_FALLBACK), rig.outcomes())
         assertEquals(0, rig.audio.prepareCount)
-        assertEquals(1, rig.calls.shown.size)
         assertEquals(listOf(false), rig.responses())
     }
 
@@ -157,14 +156,12 @@ class ScreeningControllerTest {
         assertEquals(listOf(false), rig.responses())
         assertEquals(listOf(CallDecision.NORMAL_RINGING), rig.outcomes())
         assertEquals(0, rig.audio.prepareCount)
-        assertEquals(1, rig.calls.shown.size)
     }
 
     @Test
     fun successfulCommitHasOneResponseAndFinalFactEvenIfUiThrowsOrReadyRepeats() {
         val rig = Rig()
         rig.calls.latest = assessment(whitelisted = true)
-        rig.calls.showFailure = IllegalStateException("window denied")
         rig.prepare()
         rig.audio.ready(true)
         rig.audio.ready(true)
@@ -179,7 +176,6 @@ class ScreeningControllerTest {
         assertEquals(1, rig.audio.commits)
         assertEquals(0, rig.audio.cancels)
         assertEquals(1, rig.calls.rechecks)
-        assertEquals(1, rig.calls.shown.size)
     }
 
     @Test
@@ -196,7 +192,6 @@ class ScreeningControllerTest {
         assertEquals(1, rig.audio.commits)
         assertEquals(1, rig.audio.cancels)
         assertEquals(listOf(CallDecision.SYSTEM_RINGTONE_FALLBACK), rig.outcomes())
-        assertEquals(1, rig.calls.shown.size)
     }
 
     @Test
@@ -246,10 +241,8 @@ class ScreeningControllerTest {
         var latest = assessment()
         var rejectExecution = false
         var inspectFailure: Exception? = null
-        var showFailure: Exception? = null
         var rechecks = 0
         val completed = mutableListOf<Pair<String, CallDecision>>()
-        val shown = mutableListOf<Pair<String, CallDecision>>()
 
         override fun execute(task: Runnable) {
             if (rejectExecution) throw IllegalStateException("executor closed")
@@ -289,14 +282,6 @@ class ScreeningControllerTest {
             return CompletableFuture.completedFuture(Unit)
         }
 
-        override fun show(
-            session: IncomingCallSession,
-            decision: CallDecision,
-            latest: IncomingDecision,
-        ) {
-            shown += session.sessionId to decision
-            showFailure?.let { throw it }
-        }
     }
 
     private class FakePlayback : ScreeningPlayback {
@@ -398,7 +383,6 @@ class ScreeningControllerTest {
                 matched,
                 whitelisted,
                 silence,
-                true,
                 true,
                 ClassificationFact(false, WorkReason.REST_DAY, null, true, "UTC", 1, "fixture", 0).toDomain(),
                 com.greatwall.callring.domain.calling.NumberMatchFact(0, matched),

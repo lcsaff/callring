@@ -34,7 +34,7 @@ class LockedRecordingPipelineDeviceTest : InstrumentationTestCase() {
             }
         }
         fun assembly() = RecordingAssembly(context, namespace, findCall = { error("No statistics dependency") },
-            activeCallId = { null }, schedule = {}, clientFactory = { client }, operationActive = { true })
+            activeCallId = { null }, schedule = {}, clientFactory = { client }, operationActive = { true }, enrichment = testEnrichment)
         var runtime = assembly()
         try {
             val connection = AiConnection(url = "https://fixture.invalid/v1", apiKey = "synthetic-device-test", model = "fixture")
@@ -73,4 +73,9 @@ class LockedRecordingPipelineDeviceTest : InstrumentationTestCase() {
             }
         }
     }
+}
+
+private val testEnrichment = object : com.greatwall.callring.application.ports.recording.RecordingIdentityEnrichment {
+    override fun capture(number: String) = com.greatwall.callring.contracts.recording.CallerIdentityBaseline("test", emptyMap())
+    override fun apply(number: String, baseline: com.greatwall.callring.contracts.recording.CallerIdentityBaseline, archiveId: Long, generation: Long, candidates: Map<String, Pair<String, String>>) = Unit
 }

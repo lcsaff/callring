@@ -2,14 +2,12 @@ package com.greatwall.callring.platform.calling
 
 import com.greatwall.callring.application.recording.IncomingRecordingSession
 import com.greatwall.callring.domain.calling.RecordingCall
-import com.greatwall.callring.contracts.callers.IncomingCallUiSink
 import java.io.Closeable
 import java.time.Clock
 
 /** Connects durable incoming identities with the live recording session and platform recovery. */
 class IncomingCallController(
     engine: IncomingCallEngine,
-    presentation: IncomingCallUiSink,
     acquireLease: () -> Closeable,
     observeIncoming: (String, String, Long, String?) -> RecordingCall?,
     linkStatistics: (String, Long) -> Unit,
@@ -22,7 +20,6 @@ class IncomingCallController(
     val coordinator =
         IncomingCallCoordinator(
             engine,
-            presentation,
             workLease = { acquireLease() },
             onIncoming = { sessionId, number, at, account ->
                 observeIncoming(sessionId, number, at, account)?.let { call ->

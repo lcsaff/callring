@@ -28,6 +28,8 @@ fun CallerCard(profile: CallerProfile, onClick: (() -> Unit)? = null, modifier: 
             Text(profile.name.ifBlank { profile.number }, style = MaterialTheme.typography.titleMedium)
             if (profile.name.isNotBlank()) Text(profile.number, style = MaterialTheme.typography.bodyLarge)
             if (profile.department.isNotBlank()) Text(profile.department, style = MaterialTheme.typography.bodyMedium)
+            if (profile.selfReportedPosition.isNotBlank()) Text("自述职位：${profile.selfReportedPosition}", maxLines = 2, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
+            if (profile.region.isNotBlank()) Text("所属地区：${profile.region}", maxLines = 2, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
             profile.position?.let { position ->
                 val status = if (position.active) "" else stringResource(R.string.callring_inactive_position)
                 Text("${position.name}$status", style = MaterialTheme.typography.bodyMedium)

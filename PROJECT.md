@@ -2,7 +2,7 @@
 
 ## 项目与文档职责
 
-独立 Android 来电管理应用，按号码规则播放自定义铃声，并提供档案、统计、免打扰、悬浮窗、组件、录音及 AI 沟通。状态 incubating，2026-10-14 从 android-funs 拆分；默认工具 codex。
+独立 Android 来电管理应用，按号码规则播放自定义铃声，并提供档案、统计、免打扰、组件、录音及 AI 沟通。状态 incubating，2026-10-14 从 android-funs 拆分；默认工具 codex。
 
 - 根目录：`D:/Users/GreatWall/projects/callring`；发现入口：`D:/Users/GreatWall/workspace/projects/projects.json`。
 - Android 包名：`com.greatwall.callring`；应用入口及资源在 `app/`。
@@ -15,7 +15,7 @@
 | --- | --- |
 | `contracts` | 纯 JVM 公共 DTO、命令、查询、回执、变更订阅与能力契约；不依赖其他模块，不包含存储、网络、平台适配、凭据和业务策略。 |
 | `backend` | 只依赖 contracts；`application` 负责业务编排、窄 ports、查询投影及 AI 执行，`domain` 保存独立算法且不依赖 application/contracts/Android/UI。 |
-| `ui` | 只依赖 contracts，包括 sharedTest/AndroidTest；`feature` / `state` 负责 Compose/MVVM，`designsystem` 只消费视觉参数，悬浮窗和组件复用正式 API。 |
+| `ui` | 只依赖 contracts，包括 sharedTest/AndroidTest；`feature` / `state` 负责 Compose/MVVM，`designsystem` 只消费视觉参数，组件复用正式 API。 |
 | `app` | 组合上述模块；`bootstrap` 唯一装配，`bridge` 转换 UI 偏好与通知，`data` 持有 SQLite/偏好/文件及编码器，`platform` 适配 Android 能力，`entrypoint` 拥有系统事件和生命周期工作流。 |
 
 `CallringApplication` 创建唯一业务图；主题偏好解释归 app/bridge，业务组件与表单状态归 ui/feature，纯视觉组件归 designsystem。六个根系统组件 RuntimeReceiver、CalendarSyncJobService、SyncJobService、RecordingJobService、CallCaptureService、RingPlaybackService 保留原 Manifest、Job、PendingIntent 身份与真实资源接线，工作流分别进入 RuntimeEventController、CalendarSyncJobController、CallLogSyncJobController、RecordingJobController、CaptureServiceController、PlaybackServiceController。ScreeningController / IncomingCallController 保持 platform/calling 的唯一实现。
@@ -54,13 +54,13 @@
 - 备份与恢复为本地显式能力，不向 AI 目录增加工具。口令只在内存保留，以可跨设备的口令认证加密导出版本化文件；所有输入先解密到私有暂存、校验结构、摘要、引用和偏好类型。包含核心数据、录音事件/删除标记、转写分析及自定义铃声，可选应用自有音频；排除 API 密钥、Keystore、目录授权、系统权限/角色、组件宿主身份、更新缓存和聊天。恢复为全量替换，自动分析关闭，待处理任务暂停，未恢复音频明确标记，外部原文件不改动。恢复预览绑定 owner、版本、摘要及期限，不能绕过本地确认。
 - 数据库备份以私有暂存库为主连接、附加启用 WAL 的源库，避免复制读快照阻塞来电写入；多表复制期间若业务版本变化则拒绝该暂存。跨库、文件和偏好替换须在 owner 封口、取消和排空后进入持久日志；启动恢复先于正常图、组件和 Job。日志分别记录准备、切换、已提交和已回滚状态，清理中断不再重放回滚；已提交后的清理问题不能报告成原数据未变。偏好缓存与 SQLite sidecar 纳入恢复，旧 owner 永不重新开库，新 owner 使用新 incarnation。系统壳保留身份，只装配资源，任务固定本次 owner，恢复期间 UI 等待新 owner，不把旧请求重新接入新图。文件验证、真实设备断电恢复与 JVM 故障注入证据分别记录。
 - 存储管理先提供占用观察和手动录音清理，不自动按保留期删除。按配置时区的半开日期区间及状态筛选，每次最多 1,000 条，超过明确拒绝；预览 5 分钟有效，绑定独立冻结的选择、目标 generation 与来源 stamp。确认中的票据先保留再校验，取消和回执始终可达；逐项区分已提交、失败和未开始，不重放成功删除。活动通话、采集尾部、排队/处理及播放中的目标排除；正式删除复用唯一事务、删除标记和精准发布，元数据与音频引用读取不解码全文。只统计未证明闲置的缓存/临时文件，不提供自动清理按钮；数据库空间可复用不等于文件立即缩小。导入、采集及备份检查可用空间，未知与不足明确失败，不自动删旧数据。
-- 首用配置清单可跳过，核心就绪规则仅在后端运行状态投影实现；首页只在核心缺失、未知或不可用时显示检查入口。授权由用户点击进入既有宿主，按启用功能提示附加条件；系统声音、电池豁免、厂商设置和悬浮窗测试不能证明真实来电可靠。现有授权观察不能可靠区分从未授权与永久拒绝，界面如实说明并提供应用设置入口，不编造永久拒绝状态。恢复前台重新观察，配置与系统状态分别采样。
+- 首用配置清单可跳过，核心就绪规则仅在后端运行状态投影实现；首页只在核心缺失、未知或不可用时显示检查入口。授权由用户点击进入既有宿主，按启用功能提示附加条件；系统声音、电池豁免、厂商设置不能证明真实来电可靠。现有授权观察不能可靠区分从未授权与永久拒绝，界面如实说明并提供应用设置入口，不编造永久拒绝状态。恢复前台重新观察，配置与系统状态分别采样。
 
 ## AI 接入约定
 
 - AI 沟通输入草稿归 ui/feature/conversation，以进程内存状态跨页面及宿主重建保留，不写 SavedState、偏好或数据库；进程重启清空。新建会话、继续任务及发送失败不清草稿；发送成功仅清除仍与已发送文本一致的草稿，保留等待期间编辑的新内容，不新增契约或失效域。
 - 模型负责理解与选工具，本地程序独立负责权限、参数、版本、事务、执行与核验；业务文字、转写、摘要及工具结果均视为不可信数据，不能授予权限。
-- `OperationCatalog` 是唯一目录；所有操作声明稳定 OperationId、工具名、Schema、读写及绑定、作用域、确认和回执策略，启动拒绝缺声明或重复。当前 85 项（50 写、35 非写），身份/分派不用 ordinal、数字编号或展示顺序。`ToolRegistry.definitions` 为唯一发现入口，完整协议以冻结 JSON 与生产目录为准。
+- `OperationCatalog` 是唯一目录；所有操作声明稳定 OperationId、工具名、Schema、读写及绑定、作用域、确认和回执策略，启动拒绝缺声明或重复。当前 81 项（46 写、35 非写），目录版本为 3，身份/分派不用 ordinal、数字编号或展示顺序。`ToolRegistry.definitions` 为唯一发现入口，完整协议以冻结 JSON 与生产目录为准。
 - X10/X11 的号码规则读取/保存使用 rules 数组（元素为 prefix/length）与 revision；保存携带完整 base 与期望 rules，AI 可通过整组替换增加、修改、删除或清空。保持 numberRule 精确作用域、D10 真实来源观察及完整持久列表/revision 读回，不能用返回值自证成功。
 - 普通聊天不读业务数据；业务任务按需发现、分页、详情、全集聚合或码点分块。来源版本、游标、完整性和访问状态必须明确，EMPTY/PARTIAL/NOT_CONFIGURED/DENIED/UNAVAILABLE 不混同；当前页不冒充全集。外部 D01–D21 与 UI 失效域不是同一概念。
 - 不向模型、日志、回执或保存的 UI 状态泄露密钥、私有路径和可调用 URI；文件只给短期句柄，使用前复核授权。凭据仅经本地表单修改，连接变化取消旧请求并核对页面已显示的目标。
@@ -90,7 +90,7 @@ python tools/verify_ui.py --device ADB_SERIAL
 - Windows 保留实际工作树路径并调用 gradlew.bat；Linux/CI 使用 PATH 中的 Gradle8.13。每次运行先覆盖本轮 summary，失败/超时也写 argv、退出码、精确任务状态和 cleanup；区分 EXECUTED、UP-TO-DATE、FROM-CACHE、NO-SOURCE，不能用旧 XML 冒充本轮执行。
 - 后端证据在 `app/build/qa/backend-refactor/`，UI 在 `ui/build/qa/`；保留匹配提交的日志、JUnit/lint、APK及摘要。contracts 无测试源码可单列 NO-SOURCE，业务模块不得以零测试或跳过冒充通过。
 - 设备仅安装各自隔离包 `com.greatwall.callring.backendqa` / `com.greatwall.callring.ui.test`；核对 APK 包名和 metadata，临时权限及 app-ops 在 finally 恢复，只停止对应测试包，不清数据、不覆盖生产安装、不改主包角色或锁屏超时、不自动解锁。
-- 普通 UI 测试排除 lockeddevice；锁屏专项须显式选择 `com.greatwall.callring.ui.lockeddevice.LockScreenOverlayDeviceTest`，小米测试包按需临时允许10020/10021并恢复。录音专项为 `com.greatwall.callring.LockedRecordingPipelineDeviceTest`。
+- 普通 UI 测试排除 lockeddevice；旧锁屏悬浮窗专项随产品方案退役。静默补全专项为隔离包中的 `com.greatwall.callring.SilentCallEnrichmentDeviceTest`，使用固定音频及模拟 AI 验证真实解码与重开持久化；锁屏录音专项仍为 `com.greatwall.callring.LockedRecordingPipelineDeviceTest`，须手动锁屏后显式选择，不自动改变锁屏状态。
 - 真实模型及连接测试可能计费，付费执行需明确授权。`tools/verify_ai_device.py` 是验证工具，不是通用业务 CLI，不能为补历史诊断重复新增业务数据；私人截图和日志不入库或发布。
 
 ## 版本与交付
@@ -113,9 +113,9 @@ python tools/verify_ui.py --device ADB_SERIAL
 
 ## 已有验收摘要与剩余缺口
 
-### 已采纳、待实现：来电静默整理（2026-11-03）
+### 来电静默整理（2026-11-03）
 
-完整移除旧来电悬浮窗及锁屏编辑窗口方案，包括开关、权限申请、预览、自检、专用系统组件和无消费者的接线；息屏走同一后台流程。通话后沿用已授权的录音与自动分析配置，静默整理转写、摘要及待办，不发完成通知。档案仅新增自述职位、所属地区文本字段，不新增单位字段，保留原部门及职位级别语义；单位名称不自动写成部门。有明确对方身份原文依据时只补空缺，不自动修改职位级别、上下级关系或白名单。用户可逐字段标记有异议，后续通话分析可纠正，实际纠正成功后标记无异议；其余非空字段不覆盖。用户清空按普通空缺处理，不增加锁定机制。写入时复核字段当前状态与版本，保留来源依据并隔离迟到结果。此项尚未实现或验收，不代表当前产品行为。
+完整移除旧来电悬浮窗及锁屏编辑窗口方案，包括开关、权限申请、预览、自检、专用系统组件和无消费者的接线；息屏走同一后台流程。通话后沿用已授权的录音与自动分析配置，静默整理转写、摘要及待办，不发完成通知。档案仅新增自述职位、所属地区文本字段，不新增单位字段，保留原部门及职位级别语义；单位名称不自动写成部门。有明确对方身份原文依据时只补空缺，不自动修改职位级别、上下级关系或白名单。用户可逐字段标记有异议，后续通话分析可纠正，实际纠正成功后标记无异议；其余非空字段不覆盖。用户清空按普通空缺处理，不增加锁定机制。写入时复核字段当前状态与版本，保留来源依据并隔离迟到结果。核心数据库 schema 4 保留旧档案并添加新字段及逐字段版本、异议、来源；历史备份先在私有暂存升级并核对结构，身份原文不触发自动级别判断。首次模型调用前持久化档案基线，分析结果落盘后独立进行本地补全；补全失败或失败状态落盘异常不能回到付费分析。ENRICHING 纳入后台待处理和清理排除集合，恢复备份后暂停本地补全并允许显式重试。本轮验证结果另在下方记录。
 
 以下均为历史验证范围，不代表后续代码自动通过；当次交付以对应提交的新证据为准，原始机器证据仍在构建目录及既有归档中。
 

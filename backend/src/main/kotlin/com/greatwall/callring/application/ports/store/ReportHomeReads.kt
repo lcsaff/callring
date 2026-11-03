@@ -34,7 +34,7 @@ interface OpenStatisticsReader {
     fun statisticsEnabled(): Boolean
 }
 
-interface HomeReader : OpenStatisticsReader, OverlayReader {
+interface HomeReader : OpenStatisticsReader {
     fun homeQuietMode(): com.greatwall.callring.domain.model.QuietMode
 
     fun workHistory(): WorkHistory

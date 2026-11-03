@@ -21,7 +21,7 @@ fun FeedbackSnackbar(host: SnackbarHostState) {
     }
 }
 
-/** Each window owns its host. An overlay never attaches feedback to the Activity behind it. */
+/** Each window owns its feedback host. */
 @Composable
 fun FeedbackPanel(content: @Composable () -> Unit) {
     val host = remember { SnackbarHostState() }

@@ -10,9 +10,6 @@ interface ScoreTransactions {
     fun <T> readScore(block: (ScoreReader) -> T): T
     fun <T> writeScore(block: (ScoreWriter) -> T): T
 }
-interface OverlayReader { fun overlay(): Boolean }
-interface OverlayWriter : OverlayReader { fun saveOverlay(value: Boolean): Boolean }
-interface OverlayTransactions { fun <T> writeOverlay(block: (OverlayWriter) -> T): T }
 data class OpenStatistics(val id: Long, val interval: StatisticsInterval)
 data class StatisticsHead(val open: OpenStatistics?, val maxClosedEnd: Long?)
 interface StatisticsReader { fun statisticsHead(): StatisticsHead }
@@ -38,7 +35,7 @@ interface PositionTransactions {
     fun <T> readPositions(block: (PositionReader) -> T): T
     fun <T> writePositions(block: (PositionWriter) -> T): T
 }
-data class CoreSettingsSummary(val statisticsEnabled: Boolean, val overlayEnabled: Boolean,
+data class CoreSettingsSummary(val statisticsEnabled: Boolean,
     val quietMode: com.greatwall.callring.domain.model.QuietMode, val myPosition: PositionRecord?,
     val zone: String, val score: ScoreSettings)
 interface SummaryReader { fun settingsSummary(): CoreSettingsSummary }

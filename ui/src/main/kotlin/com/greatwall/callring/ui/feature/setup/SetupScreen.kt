@@ -52,12 +52,10 @@ fun SetupScreen(
                     Text("若不再弹出授权提示，请打开应用设置调整；无法仅凭当前授权状态判断是否永久拒绝。", style = MaterialTheme.typography.bodySmall)
                     OutlinedButton(onAppSettings, Modifier.fillMaxWidth()) { Text("打开应用设置") }
                 }
-                if (data.overlayEnabled == true || data.recording?.recordingEnabled == true ||
-                    data.overlayError != null || data.recordingError != null) {
+                if (data.recording?.recordingEnabled == true ||
+                    data.recordingError != null) {
                     SettingsCard("已启用功能的条件") {
-                        data.overlayError?.let { Text("悬浮窗配置待确认"); ApiErrorNotice(it, onCapability) }
                         data.recordingError?.let { Text("录音配置待确认"); ApiErrorNotice(it, onCapability) }
-                        if (data.overlayEnabled == true) SetupCapability(status, Capability.OVERLAY, "显示来电卡片", onCapability)
                         data.recording?.takeIf { it.recordingEnabled }?.let { recording ->
                             if (recording.captureMode == CaptureMode.MICROPHONE_EXPERIMENTAL) {
                                 SetupCapability(status, Capability.MICROPHONE, "实验性麦克风采集", onCapability)

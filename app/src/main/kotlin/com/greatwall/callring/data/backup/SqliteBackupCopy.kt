@@ -41,11 +41,31 @@ internal object SqliteBackupCopy {
         validate(destination, source)
     }
 
+    fun upgradeCoreCandidate(context: android.content.Context, candidate: File) {
+        val version = SQLiteDatabase.openDatabase(candidate.path, null, SQLiteDatabase.OPEN_READONLY).use { it.version }
+        ensure(version in 3..4)
+        if (version == 3) com.greatwall.callring.data.database.CallringDatabase(context, candidate.path).use { it.writableDatabase }
+    }
+
+    private fun normalized(schema: Schema): Schema {
+        if (schema.type != "table" || schema.name != "callers") return schema
+        var sql = schema.sql.replace(Regex("\\s+"), "").replace("\"callers\"", "callers")
+        listOf("self_reported_position" to "''", "region" to "''", "identity_metadata" to "'{}'", "identity_epoch" to "''").forEach { (column, default) ->
+            sql = sql.replace(",$column" + "TEXTNOTNULLDEFAULT$default", "")
+        }
+        return schema.copy(sql = sql)
+    }
+
+    private fun callerColumns(db: SQLiteDatabase): Map<String, List<String?>> = db.rawQuery("PRAGMA table_info(callers)", null).use { rows ->
+        buildMap { while(rows.moveToNext()) put(rows.getString(1), (2..5).map { if(rows.isNull(it)) null else rows.getString(it) }) }
+    }
+
     fun validate(candidate: File, installed: File) {
         SQLiteDatabase.openDatabase(candidate.absolutePath, null, SQLiteDatabase.OPEN_READONLY).use { staged ->
             SQLiteDatabase.openDatabase(installed.absolutePath, null, SQLiteDatabase.OPEN_READONLY).use { current ->
                 ensure(staged.version == current.version)
-                ensure(schema(staged).toSet() == schema(current).toSet())
+                ensure(schema(staged).map(::normalized).toSet() == schema(current).map(::normalized).toSet())
+                if (schema(current).any { it.name == "callers" }) ensure(callerColumns(staged) == callerColumns(current))
             }
             staged.rawQuery("PRAGMA integrity_check", null).use { ensure(it.moveToFirst() && it.getString(0) == "ok" && !it.moveToNext()) }
             staged.rawQuery("PRAGMA foreign_key_check", null).use { ensure(!it.moveToFirst()) }

@@ -28,7 +28,6 @@ import com.greatwall.callring.contracts.command.*
 import com.greatwall.callring.contracts.*
 import com.greatwall.callring.ui.feature.callers.NumberDeletionDialogs
 import com.greatwall.callring.ui.feature.ai.*
-import com.greatwall.callring.ui.overlay.CallringOverlayService
 import com.greatwall.callring.ui.widget.CallringWidgetReceiver
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.collect
@@ -87,15 +86,6 @@ class ForegroundActionHost(private val activity: ComponentActivity, private val 
             ForegroundActionKind.SELECT_FOLDER -> register(ticket,ActivityResultContracts.OpenDocumentTree(),null) { document(ticket,it,true) }
             ForegroundActionKind.EXPORT_CSV -> register(ticket,ActivityResultContracts.CreateDocument("text/csv"),"callring-report.csv") { document(ticket,it,false) }
             ForegroundActionKind.PIN_WIDGET -> launch = { deliver(ticket,pinWidget()) }
-            ForegroundActionKind.TEST_OVERLAY -> launch = { deliver(ticket,testOverlay()) }
-            ForegroundActionKind.PREVIEW_CALL -> launch = {
-                activity.lifecycleScope.launch {
-                    when(val result = api.callers.getCallDetail(ticket.parameters["callId"].long())) {
-                        is ApiResult.Success -> deliver(ticket,previewCall(result.value))
-                        is ApiResult.Failure -> foreground.deliver(ticket.requestId,ForegroundHostResult(ForegroundResultStatus.UNAVAILABLE,error = result.error))
-                    }
-                }
-            }
             ForegroundActionKind.CONFIRM, ForegroundActionKind.CREDENTIAL, ForegroundActionKind.COPY_CONNECTION, ForegroundActionKind.TEST_CONNECTION -> launch = { }
         }
     }
@@ -125,12 +115,6 @@ class ForegroundActionHost(private val activity: ComponentActivity, private val 
         val manager = AppWidgetManager.getInstance(activity)
         if(manager.isRequestPinAppWidgetSupported && manager.requestPinAppWidget(ComponentName(activity,CallringWidgetReceiver::class.java),null,null)) ForegroundResultStatus.LAUNCHED else ForegroundResultStatus.UNAVAILABLE
     } catch(_: RuntimeException) { ForegroundResultStatus.UNAVAILABLE }
-    fun testOverlay(): ForegroundResultStatus = overlay { activity.startForegroundService(CallringOverlayService.testPreviewIntent(activity)) }
-    fun previewCall(call: CallDetail): ForegroundResultStatus = overlay { activity.startForegroundService(CallringOverlayService.previewIntent(activity,call)) }
-    private fun overlay(launch: () -> Unit): ForegroundResultStatus {
-        if(!Settings.canDrawOverlays(activity)) return ForegroundResultStatus.DENIED
-        return try { launch(); ForegroundResultStatus.LAUNCHED } catch(_: RuntimeException) { ForegroundResultStatus.UNAVAILABLE }
-    }
     private fun applicationSettingsIntent() = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS,Uri.parse("package:${activity.packageName}"))
     private fun permissionFor(capability: Capability): String? = when(capability) {
         Capability.PHONE_STATE -> Manifest.permission.READ_PHONE_STATE; Capability.CALL_LOG -> Manifest.permission.READ_CALL_LOG; Capability.CONTACTS -> Manifest.permission.READ_CONTACTS; Capability.MICROPHONE -> Manifest.permission.RECORD_AUDIO
@@ -138,7 +122,6 @@ class ForegroundActionHost(private val activity: ComponentActivity, private val 
         else -> null
     }
     private fun capabilityIntent(capability: Capability): Intent? = when(capability) {
-        Capability.OVERLAY -> Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION,Uri.parse("package:${activity.packageName}"))
         Capability.BATTERY_OPTIMIZATION_EXEMPTION -> Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS)
         Capability.NOTIFICATIONS -> Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).putExtra(Settings.EXTRA_APP_PACKAGE,activity.packageName)
         Capability.CALL_SCREENING_ROLE -> activity.getSystemService(RoleManager::class.java)?.let { if(it.isRoleAvailable(RoleManager.ROLE_CALL_SCREENING)) it.createRequestRoleIntent(RoleManager.ROLE_CALL_SCREENING) else null }
@@ -171,7 +154,6 @@ class ForegroundActionHost(private val activity: ComponentActivity, private val 
                     val operation = (current.parameters["operation"] as? AiJson.Str)?.value.orEmpty()
                     val message = when(operation) {
                         "recordings_testConnection" -> "将向已保存的服务发送固定测试文字或音频，可能产生费用；不会发送通话内容。"
-                        "recordings_adoptIdentity" -> "仅采纳本次分析中的非空自述姓名和单位，保留职位与白名单；模型推测不会采纳。"
                         "recordings_delete" -> "将删除本次录音归档及其本地音频，此操作保留原删除规则。"
                         "settings_deletePosition" -> "将删除所选职位，正在使用的职位会拒绝删除。"
                         "settings_deleteLeave" -> "将删除所选请假记录并重新计算受影响的业务数据。"
@@ -197,10 +179,6 @@ class ForegroundActionHost(private val activity: ComponentActivity, private val 
         is ConfirmationTarget.Leave -> { Text("请假 #${target.id}"); Text("${time(target.start)} 至 ${time(target.end)}"); Text("备注：${target.note}") }
         is ConfirmationTarget.Recording -> {
             Text("录音 #${target.id}：${target.number}"); Text("来电时间：${time(target.startedAt)}")
-            target.adoption?.let {
-                Text(if(it.name == null) "姓名保持：${it.previousName}" else "姓名：${it.previousName} → ${it.name}")
-                Text(if(it.organization == null) "单位保持：${it.previousOrganization}" else "单位：${it.previousOrganization} → ${it.organization}")
-            }
         }
         is ConfirmationTarget.Connection -> {
             Text(if(target.slot == AiSlot.ANALYSIS) "内容分析连接" else "录音转写连接")

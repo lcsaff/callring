@@ -18,6 +18,9 @@ internal object CoreBackupValidation {
     }
     private fun validateRows(file: File, check: () -> Unit) {
         SQLiteDatabase.openDatabase(file.absolutePath, null, SQLiteDatabase.OPEN_READONLY).use { db ->
+            db.rawQuery("SELECT identity_metadata,length(self_reported_position),length(region),length(identity_epoch) FROM callers", null).use { rows ->
+                while (rows.moveToNext()) { check(); require(rows.getLong(1) <= 500 && rows.getLong(2) <= 500 && rows.getLong(3) <= 128); require(rows.getString(0).length <= 20000); com.greatwall.callring.data.callers.CallerIdentityCodec.decode(rows.getString(0)) }
+            }
             db.rawQuery("SELECT id,effective,snapshot FROM config_versions ORDER BY id", null).use { rows ->
                 while (rows.moveToNext()) { check(); WorkConfigCodec.decode(rows.getString(2), rows.getLong(0), rows.getLong(1)) }
             }

@@ -123,23 +123,6 @@ class SimpleSettingsRefreshTest {
             assertEquals("no-op has no additional reload", 2, api.summaries)
         } finally { store.clear(); Dispatchers.resetMain() }
     }
-    @Test fun overlaySummaryLoaderTracksEveryFieldInItsSummaryContract() = runTest {
-        val api = Api()
-        val model = com.greatwall.callring.ui.overlay.OverlayViewModel(
-            com.greatwall.callring.contracts.callers.IncomingCallUiRequest("session", "30001", 123,
-                com.greatwall.callring.contracts.callers.CallDecision.NORMAL_RINGING), api, backgroundScope)
-        runCurrent(); assertEquals(1, api.summaries)
-        for (domain in listOf(DataDomain.SCORE_SETTINGS, DataDomain.POSITIONS, DataDomain.STATISTICS,
-                DataDomain.QUIET_HOURS, DataDomain.WORK_CALENDAR)) {
-            val before = api.summaries
-            api.emit(domain); runCurrent()
-            assertEquals("summary must track $domain", before + 1, api.summaries)
-        }
-        assertTrue(model.settings.value.loaded)
-        val count = api.summaries
-        api.emit(DataDomain.RECORDING_ARCHIVES); api.emit(DataDomain.AI_SETTINGS); runCurrent()
-        assertEquals(count, api.summaries)
-    }
     @Test fun actualSettingModelsIgnoreRecordingAiAndUpdatesAndRefreshTheirOwnData() = runTest {
         Dispatchers.setMain(UnconfinedTestDispatcher(testScheduler))
         val store = ViewModelStore()

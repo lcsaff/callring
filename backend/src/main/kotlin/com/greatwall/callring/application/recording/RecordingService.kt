@@ -88,7 +88,7 @@ class RecordingService(
         com.greatwall.callring.application.ports.storage.StorageArchiveState(callId, metadata.generation, metadata.status,
             reads.ownedAudio(callId) { !operationActive() }?.let(audio::ownedBytes) ?: if (!metadata.hasAudio) 0L else null,
             captureBusy() || activeCallId()?.let { archiveId(it) == callId } == true || workflow().isRunning(callId) ||
-                playback.observation().callId?.let(::archiveId) == callId || metadata.status in setOf(ArchiveStatus.QUEUED, ArchiveStatus.TRANSCRIBING, ArchiveStatus.ANALYZING))
+                playback.observation().callId?.let(::archiveId) == callId || metadata.status in setOf(ArchiveStatus.QUEUED, ArchiveStatus.TRANSCRIBING, ArchiveStatus.ANALYZING, ArchiveStatus.ENRICHING))
     }
     override suspend fun remove(callId: Long, expectedGeneration: Long): ApiResult<Unit> =
         deleteWith(callId, null, expectedGeneration, requireInactive = true)

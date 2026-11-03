@@ -86,7 +86,7 @@ abstract class SettingsScreenCases {
         val runtime = RuntimeStatus(Capability.entries.associateWith { AccessState.DENIED }, Audibility.SILENT,
             PhoneActivity.IDLE, PlaybackStatus(PlaybackMode.NONE, PlaybackState.IDLE), true, 0)
         val home = HomeData(RingtoneSettings(false, AudioSource.BUILT_IN, "内置铃声", 8), runtime,
-            WorkStatus(0, fact, null), null, false, false, QuietMode.OFF, SnapshotMeta(0, 0))
+            WorkStatus(0, fact, null), null, false, QuietMode.OFF, SnapshotMeta(0, 0))
         compose.setContent { CallringTheme(DefaultAppearance.rememberAppearanceThemeSpec(androidx.compose.foundation.isSystemInDarkTheme())) {
             com.greatwall.callring.ui.feature.home.HomeScreen(LoadState(home, loaded = true), {}, {})
         } }
@@ -110,7 +110,7 @@ abstract class SettingsScreenCases {
         val runtime = RuntimeStatus(Capability.entries.associateWith { AccessState.DENIED }, Audibility.SILENT,
             PhoneActivity.IDLE, PlaybackStatus(PlaybackMode.NONE, PlaybackState.IDLE), true, 0)
         val home = HomeData(RingtoneSettings(false, AudioSource.BUILT_IN, "内置铃声", 8), runtime,
-            WorkStatus(0, fact, null), null, false, false, QuietMode.OFF, SnapshotMeta(0, 0))
+            WorkStatus(0, fact, null), null, false, QuietMode.OFF, SnapshotMeta(0, 0))
         val state = mutableStateOf(LoadState(home, loaded = true))
         compose.setContent { CallringTheme(DefaultAppearance.rememberAppearanceThemeSpec(androidx.compose.foundation.isSystemInDarkTheme())) {
             com.greatwall.callring.ui.feature.home.HomeScreen(state.value, {}, {})

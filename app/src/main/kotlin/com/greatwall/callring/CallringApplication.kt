@@ -9,14 +9,12 @@ import com.greatwall.callring.bootstrap.*
 import com.greatwall.callring.platform.runtime.UiNotificationEntryPoints
 import com.greatwall.callring.ui.app.bridge.UiNotifications
 import com.greatwall.callring.ui.app.bridge.DefaultAppearance
-import com.greatwall.callring.ui.overlay.*
 import com.greatwall.callring.ui.widget.observeWidgetUpdates
 import com.greatwall.callring.ui.widget.UiWidgetRefresh
 import kotlinx.coroutines.*
 
 /** The single production composition root. Each replacement permanently closes the previous owner. */
-open class CallringApplication : Application(), BackendProvider, UiOverlayOwner {
-    override val overlaySessions = OverlaySessions()
+open class CallringApplication : Application(), BackendProvider, com.greatwall.callring.ui.app.bridge.UiApiOwner {
     private val graphLock = Any()
     @Volatile private var restoring = false
     @Volatile private var graphInstance: BackendGraph? = null
@@ -26,7 +24,7 @@ open class CallringApplication : Application(), BackendProvider, UiOverlayOwner 
         return BackendGraph(owner, this, configuration, object : UiNotificationEntryPoints {
             override fun home(requestCode: Int): PendingIntent = notifications.home(requestCode)
             override fun playback(preview: Boolean, stopAction: PendingIntent): Notification = notifications.playback(preview, stopAction)
-        }, AndroidIncomingCallUiSink(this))
+        })
     }
     override val backendGraph: BackendGraph get() {
         // Telecom callers never wait behind restore IO; system ringing remains available.

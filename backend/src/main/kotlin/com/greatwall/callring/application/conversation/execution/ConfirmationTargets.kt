@@ -18,13 +18,9 @@ internal suspend fun confirmationTarget(api: CallringUiApi, operation: Operation
             val settings = api.aiSettings.getAiView().requiredValue()
             ConfirmationTarget.Connection(slot,if(slot == AiSlot.ANALYSIS) settings.analysis else settings.transcription)
         }
-        OperationId.RECORDINGS_DELETE, OperationId.RECORDINGS_ADOPT_IDENTITY -> {
+        OperationId.RECORDINGS_DELETE -> {
             val archive = api.recordings.getArchive(arguments.l("callId")).requiredValue() ?: missing()
-            val adoption = if(operation==OperationId.RECORDINGS_ADOPT_IDENTITY) {
-                val profile = api.callers.getEditor(archive.number).requiredValue().draft
-                ConfirmationTarget.Adoption(profile.name,profile.department,archive.analysis?.name?.takeIf { it.isNotBlank() },archive.analysis?.organization?.takeIf { it.isNotBlank() })
-            } else null
-            ConfirmationTarget.Recording(archive.callId,archive.number,archive.startedAtEpochMillis,archive.generation,adoption)
+            ConfirmationTarget.Recording(archive.callId,archive.number,archive.startedAtEpochMillis,archive.generation)
         }
         OperationId.CALLERS_DELETE_NUMBER -> {
             val impact = api.numberDeletion.impact(arguments.s("number")).requiredValue()

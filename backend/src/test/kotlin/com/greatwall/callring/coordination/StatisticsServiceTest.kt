@@ -17,7 +17,7 @@ import kotlinx.coroutines.*
 import org.junit.Assert.*
 import org.junit.Test
 
-class StatisticsAndOverlayServiceTest {
+class StatisticsServiceTest {
     private class Statistics : StatisticsTransactions {
         var intervals = listOf(StatisticsInterval(10, 200))
         var fail = false; var writes = 0
@@ -75,33 +75,5 @@ class StatisticsAndOverlayServiceTest {
         assertNotNull(tx.intervals.last().let { it.takeIf { interval -> interval.endMillis == null } })
         assertEquals("a committed enable still schedules after caller cancellation", 1, schedules)
         scope.cancel()
-    }
-    private class Overlay : OverlayTransactions {
-        var enabled = false; var writes = 0
-        override fun <T> writeOverlay(block: (OverlayWriter) -> T): T = block(object : OverlayWriter {
-            override fun overlay() = enabled
-            override fun saveOverlay(value: Boolean): Boolean { writes++; enabled = value; return true }
-        })
-    }
-    @Test fun overlayChecksCapabilityOutsideFenceAndRechecksCommandBeforeCommitting() = runBlocking {
-        val tx = Overlay(); val coordinator = BusinessRevisionCoordinator(); var observations = 0; var patches = 0
-        var access = AccessState.DENIED
-        val service = OverlaySettingsService(tx, { assertFalse(Thread.holdsLock(coordinator.fence)); observations++; access },
-            coordinator, Dispatchers.Unconfined, { patches++ }, operationActive = { true })
-        assertTrue(service.set(false) is ApiResult.Success)
-        assertEquals(0, observations); assertEquals(0L, coordinator.marker())
-        val denied = (service.set(true) as ApiResult.Failure).error
-        assertEquals(ErrorCode.PERMISSION_REQUIRED, denied.code); assertEquals(setOf(Capability.OVERLAY), denied.requiredCapabilities)
-        access = AccessState.GRANTED
-        assertTrue(service.set(true) is ApiResult.Success)
-        assertEquals(1, tx.writes); assertEquals(1, patches); assertEquals(1L, coordinator.marker())
-        var active = true
-        val command = CommandContext("cancelled", coordinator.capture(), 0) { active }
-        val bound = OverlaySettingsService(tx, { active = false; AccessState.GRANTED }, coordinator, Dispatchers.Unconfined, { patches++ }, command, operationActive = { true })
-        assertEquals("ai.cancelled", (bound.set(true) as ApiResult.Failure).error.message)
-        assertEquals(1, tx.writes); assertEquals(1L, coordinator.marker())
-        access = AccessState.DENIED
-        assertTrue(service.set(false) is ApiResult.Success)
-        assertEquals(2, patches); assertEquals(2L, coordinator.marker())
     }
 }

@@ -34,7 +34,7 @@ internal class HomeService(
                 "overrides",
                 "leaves",
                 "quiet",
-                "overlay",
+
                 "statistics",
                 "runtime:status", "runtime:ringtonePlayback",
                 "ringtone",
@@ -50,7 +50,6 @@ internal class HomeService(
                     WorkClassifier.status(reader.workHistory(), now).toContract(),
                     reader.latestVisibleReportCall()?.let { callDetail(it.current, it.screening) },
                     reader.statisticsEnabled(),
-                    reader.overlay(),
                     reader.homeQuietMode().toContract(),
                     SnapshotMeta(before, now),
                 )

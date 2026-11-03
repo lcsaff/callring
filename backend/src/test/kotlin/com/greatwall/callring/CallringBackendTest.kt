@@ -204,7 +204,7 @@ class CallringBackendTest {
             Clock.fixed(Instant.ofEpochMilli(now), ZoneOffset.UTC),
             Dispatchers.Unconfined,
             CalendarSource { annualCalendar() },
-            coreTransactions = store, numberRecordings = com.greatwall.callring.EmptyNumberRecordings, identityArchive = { com.greatwall.callring.contracts.common.ApiResult.Success(null) }, operationActive = { true }, conversationProvider = { com.greatwall.callring.testing.FixtureConversationApi }, aiSettingsProvider = { com.greatwall.callring.testing.FixtureAiSettingsApi }, updateProvider = { com.greatwall.callring.testing.FixtureAppUpdateApi }, snapshotsProvider = { com.greatwall.callring.testing.FixtureAiSnapshotApi }, storageProvider = { com.greatwall.callring.testing.FixtureStorageApi }, backupProvider = { com.greatwall.callring.testing.FixtureBackupApi }, recordingsProvider = { com.greatwall.callring.testing.FixtureRecordingApi }, persistenceActive = { true })
+            coreTransactions = store, numberRecordings = com.greatwall.callring.EmptyNumberRecordings, operationActive = { true }, conversationProvider = { com.greatwall.callring.testing.FixtureConversationApi }, aiSettingsProvider = { com.greatwall.callring.testing.FixtureAiSettingsApi }, updateProvider = { com.greatwall.callring.testing.FixtureAppUpdateApi }, snapshotsProvider = { com.greatwall.callring.testing.FixtureAiSnapshotApi }, storageProvider = { com.greatwall.callring.testing.FixtureStorageApi }, backupProvider = { com.greatwall.callring.testing.FixtureBackupApi }, recordingsProvider = { com.greatwall.callring.testing.FixtureRecordingApi }, persistenceActive = { true })
 
     @Test fun unchangedRingtoneSettingDoesNotPublish() = runBlocking {
         api.ringtone.setEnabled(false).value()
@@ -986,7 +986,6 @@ class CallringBackendTest {
             val first = withTimeout(5000) { initial.await() }
             assertEquals(0L, first.revision)
             api.callers.setWhitelisted("30001", true).value()
-            api.settings.setOverlayEnabled(true).value()
             val finalRevision = api.changes.snapshots().value.revision
             subscribe.complete(Unit)
             val observed = withTimeout(5000) { delivered.await() }
@@ -994,7 +993,7 @@ class CallringBackendTest {
             assertTrue(api.changes.snapshots().value.domains.getValue(DataDomain.CALLERS).lastAnyRevision > 0)
             assertTrue(
                 observed.domains.keys.containsAll(
-                    setOf(DataDomain.CALLERS, DataDomain.REPORTS, DataDomain.OVERLAY_SETTINGS)
+                    setOf(DataDomain.CALLERS, DataDomain.REPORTS)
                 )
             )
         } finally {

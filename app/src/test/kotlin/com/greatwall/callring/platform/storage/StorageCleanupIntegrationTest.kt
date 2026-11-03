@@ -26,7 +26,7 @@ class StorageCleanupIntegrationTest {
             override fun encrypt(value:String)=value
             override fun decrypt(value:String)=value
         },recordingVersion={0})
-        val runtime=RecordingAssembly(context,namespace,findCall={error("statistics must not be read")},activeCallId={null},schedule={},storeFactory={store},operationActive={true})
+        val runtime=RecordingAssembly(context,namespace,findCall={error("statistics must not be read")},activeCallId={null},schedule={},storeFactory={store},operationActive={true}, enrichment = testEnrichment)
         runtime.directory.mkdirs()
         val original=File(context.cacheDir,"external-original.wav").apply { writeBytes(ByteArray(100)) }
         val file=File(runtime.directory,"owned.wav").apply { writeBytes(ByteArray(50)) }
@@ -46,4 +46,9 @@ class StorageCleanupIntegrationTest {
         assertTrue((store.readCounters.snapshot()["sourceBytes"] ?: 0) < 128*1024)
         runtime.close()
     }
+}
+
+private val testEnrichment = object : com.greatwall.callring.application.ports.recording.RecordingIdentityEnrichment {
+    override fun capture(number: String) = com.greatwall.callring.contracts.recording.CallerIdentityBaseline("test", emptyMap())
+    override fun apply(number: String, baseline: com.greatwall.callring.contracts.recording.CallerIdentityBaseline, archiveId: Long, generation: Long, candidates: Map<String, Pair<String, String>>) = Unit
 }

@@ -31,13 +31,33 @@ import com.greatwall.callring.ui.state.*
     Column(modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         LoadFeedback(state, onRetry)
         if (draft != null) {
-            val errors = mutation.error?.fieldErrors.orEmpty()
+            val errors = mutation.error?.fieldErrors.orEmpty().mapValues { (_, message) ->
+                when(message) {
+                    "caller.field.too_long" -> "最多输入 500 个字符"
+                    "draft.field_changed" -> "此信息已更新，请重新加载后保存"
+                    else -> message
+                }
+            }
             val enabled = !mutation.busy
             EditorField("号码", draft.number, errors["number"], enabled && numberEditable,
                 keyboardType = KeyboardType.Phone) { onChange(draft.copy(number = it)) }
             EditorField("姓名", draft.name, errors["name"], enabled) { onChange(draft.copy(name = it)) }
             EditorField("部门", draft.department, errors["department"], enabled, done = true,
                 onDone = submit) { onChange(draft.copy(department = it)) }
+            EditorField("自述职位", draft.selfReportedPosition, errors["selfReportedPosition"], enabled) { onChange(draft.copy(selfReportedPosition = it)) }
+            EditorField("所属地区", draft.region, errors["region"], enabled) { onChange(draft.copy(region = it)) }
+            Text("有明确通话依据时自动补全空缺；有异议的信息允许后续通话纠正。", style = MaterialTheme.typography.bodySmall)
+            listOf("name" to "姓名", "department" to "部门", "selfReportedPosition" to "自述职位", "region" to "所属地区").forEach { (field, label) ->
+                val metadata = draft.identityMetadata[field] ?: CallerFieldMetadata()
+                SwitchSettingRow("$label 有异议", metadata.disputed, { checked ->
+                    onChange(draft.copy(identityMetadata = draft.identityMetadata + (field to metadata.copy(disputed = checked))))
+                }, enabled = enabled)
+                if (metadata.evidence.isNotBlank()) {
+                    var expanded by remember(field, metadata.revision) { mutableStateOf(false) }
+                    TextButton({ expanded = !expanded }) { Text(if (expanded) "收起来源" else "$label 的来源") }
+                    if (expanded) Text("通话归档 ${metadata.archiveId}：${metadata.evidence}", style = MaterialTheme.typography.bodySmall)
+                }
+            }
             var menu by remember { mutableStateOf(false) }
             val options = state.data?.selectablePositions.orEmpty()
             val selected = options.firstOrNull { it.id == draft.positionId }

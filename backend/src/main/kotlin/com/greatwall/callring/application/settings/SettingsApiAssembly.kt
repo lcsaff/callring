@@ -9,7 +9,6 @@ internal fun createSettingsApi(
     numberRuleService: NumberRuleSettingsService,
     summaryService: SettingsSummaryService,
     statisticsService: StatisticsSettingsService,
-    overlayService: OverlaySettingsService,
     quietService: QuietSettingsService,
     positionService: PositionService,
     workScheduleService: WorkScheduleService,
@@ -25,7 +24,6 @@ internal fun createSettingsApi(
 
         override suspend fun setStatisticsEnabled(enabled: Boolean) = statisticsService.set(enabled)
 
-        override suspend fun setOverlayEnabled(enabled: Boolean) = overlayService.set(enabled)
 
         override suspend fun getQuietHours(): ApiResult<QuietSettings> = quietService.get()
 

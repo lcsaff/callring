@@ -53,7 +53,7 @@ class NumberDeletionService(
         coordinator.check(context)
         return Plan(NumberDeletionImpact(core.number, core.profileExists, core.callCount, archives.size,
             archives.sumOf { it.audioBytes }, widgets.size,
-            archives.any { it.status in setOf(ArchiveStatus.QUEUED, ArchiveStatus.TRANSCRIBING, ArchiveStatus.ANALYZING) }), archives, widgets)
+            archives.any { it.status in setOf(ArchiveStatus.QUEUED, ArchiveStatus.TRANSCRIBING, ArchiveStatus.ANALYZING, ArchiveStatus.ENRICHING) }), archives, widgets)
     }
     override suspend fun impact(number: String) = result { plan(number, baseline(number)).impact }
     override suspend fun delete(command: DeleteNumberCommand) = result {

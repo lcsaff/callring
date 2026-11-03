@@ -34,7 +34,7 @@ internal class RecordingMetadataReads(private val db: SQLiteDatabase, private va
         db.beginTransactionNonExclusive()
         try { return block().also { db.setTransactionSuccessful() } } finally { db.endTransaction() }
     }
-    private val pending = setOf(ArchiveStatus.QUEUED, ArchiveStatus.TRANSCRIBING, ArchiveStatus.ANALYZING, ArchiveStatus.FAILED)
+    private val pending = setOf(ArchiveStatus.QUEUED, ArchiveStatus.TRANSCRIBING, ArchiveStatus.ANALYZING, ArchiveStatus.FAILED, ArchiveStatus.ENRICHING, ArchiveStatus.ENRICHMENT_FAILED)
     private val joined = "archive_projection p JOIN archives a ON a.call_id=p.call_id AND a.generation=p.generation"
 
     /** UTF-8 is decoded across byte chunks; SQLite never returns a whole payload to this reader. */
@@ -142,7 +142,7 @@ internal class RecordingMetadataReads(private val db: SQLiteDatabase, private va
         fun accept(row: RecordingArchiveMetadata) {
             if (row.status in pending && row.nextAttemptAt != Long.MAX_VALUE) result = result?.let { minOf(it, row.nextAttemptAt) } ?: row.nextAttemptAt
         }
-        db.rawQuery("SELECT p.metadata FROM $joined WHERE p.status IN ('QUEUED','TRANSCRIBING','ANALYZING','FAILED')", null).use { c ->
+        db.rawQuery("SELECT p.metadata FROM $joined WHERE p.status IN ('QUEUED','TRANSCRIBING','ANALYZING','FAILED','ENRICHING','ENRICHMENT_FAILED')", null).use { c ->
             while (c.moveToNext()) { active(); counters.add("warmMetadataRows"); accept(warm(c.getString(0))) }
         }
         cold { accept(it.metadata); true }; result
@@ -158,7 +158,7 @@ internal class RecordingMetadataReads(private val db: SQLiteDatabase, private va
             }
             return false
         }
-        db.rawQuery("SELECT p.metadata FROM $joined WHERE p.status IN ('QUEUED','TRANSCRIBING','ANALYZING','FAILED')" +
+        db.rawQuery("SELECT p.metadata FROM $joined WHERE p.status IN ('QUEUED','TRANSCRIBING','ANALYZING','FAILED','ENRICHING','ENRICHMENT_FAILED')" +
             (if (after == null) "" else " AND p.call_id>?") + " ORDER BY p.call_id", after?.let { arrayOf(it.toString()) }).use { c ->
             var due = 0
             while (due < limit && c.moveToNext()) {

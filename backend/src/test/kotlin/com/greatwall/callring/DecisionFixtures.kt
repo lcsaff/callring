@@ -19,7 +19,6 @@ internal class DecisionFixture : WorkInputs {
     val whitelist = linkedSetOf<String>()
     var quiet = QuietSettings(QuietMode.OFF, false, emptyMap())
     val intervals = mutableListOf<StatisticsInterval>()
-    var overlay = false
     fun decisionInputs() = DecisionInputs(schedules, calendarYears, holidays, makeupDates,
-        overrides, leaves, leaveVersion, whitelist, quiet, intervals, overlay, com.greatwall.callring.domain.calling.NumberRuleSnapshot(listOf(com.greatwall.callring.domain.calling.NumberRule.DEFAULT), 0))
+        overrides, leaves, leaveVersion, whitelist, quiet, intervals, com.greatwall.callring.domain.calling.NumberRuleSnapshot(listOf(com.greatwall.callring.domain.calling.NumberRule.DEFAULT), 0))
 }

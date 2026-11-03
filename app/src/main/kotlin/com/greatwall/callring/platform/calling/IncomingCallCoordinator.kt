@@ -83,7 +83,6 @@ internal constructor(
 
 class IncomingCallCoordinator(
     private val engine: IncomingCallEngine,
-    private val presentation: IncomingCallUiSink,
     private val workLease: () -> Closeable = { Closeable {} },
     private val afterCompletion: () -> Unit = {},
     private val afterRecorded: (Long, String, Long) -> Unit = { _, _, _ -> },
@@ -187,21 +186,6 @@ class IncomingCallCoordinator(
                         .also { session.completion = it }
             }
         }
-
-    override fun show(
-        session: IncomingCallSession,
-        decision: CallDecision,
-        latest: IncomingDecision,
-    ) {
-        if (!latest.overlayEnabled || !latest.matched) return
-        try {
-            presentation.show(
-                IncomingCallUiRequest(session.sessionId, session.number, session.at, decision)
-            )
-        } catch (_: Exception) {
-            safeFailure()
-        }
-    }
 
     private fun <T> tracked(future: CompletableFuture<T>): CompletableFuture<T> {
         pending.add(future)

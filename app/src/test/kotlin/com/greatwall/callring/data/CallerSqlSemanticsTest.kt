@@ -85,7 +85,7 @@ class CallerSqlSemanticsTest {
             Clock.fixed(Instant.ofEpochMilli(at + 60000), ZoneOffset.UTC),
             Dispatchers.Unconfined,
             coordinator = c,
-            coreTransactions = store.sessions, numberRecordings = com.greatwall.callring.EmptyNumberRecordings, identityArchive = { com.greatwall.callring.contracts.common.ApiResult.Success(null) }, operationActive = { true }, conversationProvider = { com.greatwall.callring.testing.FixtureConversationApi }, aiSettingsProvider = { com.greatwall.callring.testing.FixtureAiSettingsApi }, updateProvider = { com.greatwall.callring.testing.FixtureAppUpdateApi }, snapshotsProvider = { com.greatwall.callring.testing.FixtureAiSnapshotApi }, storageProvider = { com.greatwall.callring.testing.FixtureStorageApi }, backupProvider = { com.greatwall.callring.testing.FixtureBackupApi }, recordingsProvider = { com.greatwall.callring.testing.FixtureRecordingApi }, calendarSource = com.greatwall.callring.application.ports.platform.CalendarSource { throw AssertionError("Unexpected calendar source") }, persistenceActive = { true })
+            coreTransactions = store.sessions, numberRecordings = com.greatwall.callring.EmptyNumberRecordings, operationActive = { true }, conversationProvider = { com.greatwall.callring.testing.FixtureConversationApi }, aiSettingsProvider = { com.greatwall.callring.testing.FixtureAiSettingsApi }, updateProvider = { com.greatwall.callring.testing.FixtureAppUpdateApi }, snapshotsProvider = { com.greatwall.callring.testing.FixtureAiSnapshotApi }, storageProvider = { com.greatwall.callring.testing.FixtureStorageApi }, backupProvider = { com.greatwall.callring.testing.FixtureBackupApi }, recordingsProvider = { com.greatwall.callring.testing.FixtureRecordingApi }, calendarSource = com.greatwall.callring.application.ports.platform.CalendarSource { throw AssertionError("Unexpected calendar source") }, persistenceActive = { true })
     }
 
     private fun seed(store: SqliteCoreStorageResource) {
@@ -457,7 +457,10 @@ class CallerSqlSemanticsTest {
                 val edited = api.callers.saveProfile(SaveCallerProfile("31234", "edited", "edited department", null, null)).requiredValue()
                 assertFalse(edited.whitelisted)
                 assertNull(api.callers.getEditor("31234").requiredValue().draft.positionId)
-                assertEquals(ProfileRecord("31234", "edited", "edited department", null, false), store.sessions.readCaller { it.caller("31234") })
+                val updated = store.sessions.readCaller { it.caller("31234") }!!
+                assertEquals(ProfileRecord("31234", "edited", "edited department", null, false), updated.copy(identityMetadata = emptyMap()))
+                assertEquals(setOf("name", "department"), updated.identityMetadata.keys)
+                assertTrue(updated.identityMetadata.values.all { it.revision == 1L && !it.disputed })
                 assertFalse(api.decisionSnapshot().evaluate("31234", at).whitelisted)
                 assertTrue(oldSnapshot.evaluate("31234", at).whitelisted)
                 context.openOrCreateDatabase(name, 0, null).use { db ->

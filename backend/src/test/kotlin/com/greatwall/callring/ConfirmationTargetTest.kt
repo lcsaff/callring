@@ -24,8 +24,8 @@ import org.junit.Assert.*
 import org.junit.Test
 
 class ConfirmationTargetTest {
-    @Test fun fiveConfirmationsUseRealTargetsAndRejectCancelChangedOrMissingTargets() = runBlocking {
-        for(operation in listOf(OperationId.SETTINGS_DELETE_POSITION,OperationId.SETTINGS_DELETE_LEAVE,OperationId.RECORDINGS_TEST_CONNECTION,OperationId.RECORDINGS_DELETE,OperationId.RECORDINGS_ADOPT_IDENTITY)) {
+    @Test fun fourConfirmationsUseRealTargetsAndRejectCancelChangedOrMissingTargets() = runBlocking {
+        for(operation in listOf(OperationId.SETTINGS_DELETE_POSITION,OperationId.SETTINGS_DELETE_LEAVE,OperationId.RECORDINGS_TEST_CONNECTION,OperationId.RECORDINGS_DELETE)) {
             val f = ConversationFixtures()
             f.backend.settings.savePosition(SavePosition(name = "actual-role",level = 2,active = true))
             f.backend.settings.saveLeave(SaveLeave(period = LeavePeriod.Timed(10,20),note = "actual-note"))
@@ -45,7 +45,6 @@ class ConfirmationTargetTest {
                 override val recordings = recording
                 override val aiSettings = settings
                 override fun commandApi(context: CommandContext) = root(context)
-                override suspend fun adoptIdentity(callId: Long, expectedGeneration: Long) = com.greatwall.callring.application.recording.IdentityAdoptionService(recordings::getArchive, { callers.getEditor(it) }, { base, value, cmd -> f.backend.commandApi(cmd).edits.profile(base, value) }, f.coordinator, context, active = { true }).adoptIdentity(callId,expectedGeneration)
             }
             val foreground = ForegroundActionService(checkCommand = ForegroundCommandValidator(f.coordinator)::check)
             val host = foreground.attachHost()
@@ -66,7 +65,7 @@ class ConfirmationTargetTest {
                 when(val target = ticket.confirmation) {
                     is ConfirmationTarget.Position -> { assertEquals(1L,target.id); assertEquals("actual-role",target.name) }
                     is ConfirmationTarget.Leave -> { assertEquals("actual-note",target.note); assertEquals(10L,target.start) }
-                    is ConfirmationTarget.Recording -> { assertEquals("31234",target.number); assertEquals(123L,target.startedAt); if(operation == OperationId.RECORDINGS_ADOPT_IDENTITY) assertEquals("self",target.adoption!!.name) }
+                    is ConfirmationTarget.Recording -> { assertEquals(1L, target.id); assertEquals("31234", target.number) }
                     is ConfirmationTarget.Connection -> { assertEquals(AiSlot.ANALYSIS,target.slot); assertEquals("actual-model",target.connection.model) }
                     is ConfirmationTarget.NumberDeletion -> fail("Number deletion is not part of the legacy five confirmations")
                     null -> fail("Missing authoritative target for $operation")

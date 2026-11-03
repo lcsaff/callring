@@ -23,6 +23,16 @@ import org.robolectric.annotation.Config
 @Config(sdk = [35])
 class RecordingScreensTest {
     @get:Rule val compose = createComposeRule()
+    @Test fun localEnrichmentRetryDoesNotRequireAudioAndHasNoAdoptionAction() {
+        var retries = 0
+        val archive = CallArchive(-7, "31234", 0, status = ArchiveStatus.ENRICHMENT_FAILED, analysis = CallAnalysis(summary = "已整理"))
+        compose.setContent { ArchiveScreen(state = LoadState(archive, loaded = true), files = LoadState(), mutation = MutationState(),
+            onBack = {}, onRefresh = {}, onImport = {}, onList = {}, onSelect = {}, onRetry = { retries++ }, onDelete = {}, onPlay = {}, onStop = {}, onEdit = {}) }
+        compose.onNodeWithText("重试档案补全（不调用模型）").performScrollTo().performClick()
+        assertEquals(1, retries)
+        compose.onNodeWithText("采纳自述姓名和单位").assertDoesNotExist()
+    }
+
     @Test fun archiveNavigationWorksWithStatisticsApisUnavailable() {
         val archive = CallArchive(-51, "10086", 0, status = ArchiveStatus.COMPLETE)
         val api = object : com.greatwall.callring.ui.testing.UiFakeApi() {
@@ -34,7 +44,7 @@ class RecordingScreensTest {
         }
         compose.setContent { com.greatwall.callring.ui.app.CallringApp(api,
             requestedDestination = com.greatwall.callring.ui.app.UiDestination.RecordingArchives,
-            onCapability = {}, onPreviewCall = {}, onPinWidget = {}, onAppSettings = {}) }
+            onCapability = {}, onPinWidget = {}, onAppSettings = {}) }
         compose.onNodeWithText("10086").assertIsDisplayed()
         compose.onNodeWithText("已完成").assertIsDisplayed()
     }
@@ -71,7 +81,7 @@ class RecordingScreensTest {
         }
         compose.setContent { com.greatwall.callring.ui.app.CallringApp(api,
             requestedDestination = com.greatwall.callring.ui.app.UiDestination.RecordingArchives,
-            onCapability = {}, onPreviewCall = {}, onPinWidget = {}, onAppSettings = {}) }
+            onCapability = {}, onPinWidget = {}, onAppSettings = {}) }
         compose.onNodeWithText("10086").performClick()
         compose.onNodeWithText("通话录音归档").assertIsDisplayed()
         compose.waitUntil { requestedId != null }
@@ -106,7 +116,7 @@ class RecordingScreensTest {
         var deletes = 0
         compose.setContent { CallringTheme(DefaultAppearance.rememberAppearanceThemeSpec(androidx.compose.foundation.isSystemInDarkTheme())) {
             ArchiveScreen(LoadState(CallArchive(1, "10086", 0), loaded = true), LoadState(), MutationState(),
-                {}, {}, {}, {}, {}, {}, { deletes++ }, {}, {}, {}, {})
+                {}, {}, {}, {}, {}, {}, { deletes++ }, {}, {}, {})
         } }
         compose.onNodeWithText("删除本次归档").performScrollTo().performClick()
         assertEquals(0, deletes)

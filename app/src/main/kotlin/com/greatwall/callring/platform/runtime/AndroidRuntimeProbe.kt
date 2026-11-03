@@ -65,11 +65,6 @@ class AndroidRuntimeProbe(
                     },
                 Capability.CALL_LOG to probe { permission(Manifest.permission.READ_CALL_LOG) },
                 Capability.CONTACTS to probe { permission(Manifest.permission.READ_CONTACTS) },
-                Capability.OVERLAY to
-                    probe {
-                        if (Settings.canDrawOverlays(context)) AccessState.GRANTED
-                        else AccessState.DENIED
-                    },
                 Capability.CALL_SCREENING_ROLE to
                     probe {
                         val manager = context.getSystemService(RoleManager::class.java)

@@ -40,7 +40,7 @@ class OperationScopePlannerTest {
     @Test fun profilesAndAppearanceHaveOnlyTheirAffectedFieldScopes()=runBlocking {
         val p=OperationScopePlanner(q,c)
         val scopes=p.prepare(ConversationToolCall("a","callers_saveProfile",aiObject("number" to aiString("31234"),"name" to aiString("test"))),OperationId.CALLERS_SAVE_PROFILE)
-        assertEquals(setOf("profile:31234:exists","profile:31234:name"),scopes.keys)
+        assertEquals(setOf("profile:31234:exists","profile:31234:name","profile:31234:identityMetadata"),scopes.keys)
         assertEquals(setOf("appearance:colorMode"),p.prepare(ConversationToolCall("b","settings_saveAppearance",aiObject("colorMode" to aiString("DARK"))),OperationId.SETTINGS_SAVE_APPEARANCE).keys)
     }
     @Test fun ownCommitAdvancesOnlyItsScopesAndUsesCommittedMarker()=runBlocking {

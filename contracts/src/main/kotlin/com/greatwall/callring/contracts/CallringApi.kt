@@ -21,7 +21,6 @@ interface CallringUiApi {
     val update: AppUpdateApi
     val snapshots: AiSnapshotApi
     fun commandApi(context: CommandContext): CallringUiApi
-    suspend fun adoptIdentity(callId: Long, expectedGeneration: Long): ApiResult<CallerProfile>
     val recordings: RecordingApi
     val home: HomeApi
     val callers: CallersApi

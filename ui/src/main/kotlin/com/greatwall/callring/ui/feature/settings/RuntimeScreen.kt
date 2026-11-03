@@ -23,7 +23,7 @@ import java.time.ZoneId
 fun RuntimeScreen(
     state: LoadState<RuntimeUiData>, mutation: MutationState,
     onBack: () -> Unit, onRetry: () -> Unit, onCapability: (Capability) -> Unit,
-    onSynchronize: () -> Unit, onAppSettings: () -> Unit, onTestOverlay: () -> Unit = {}, onSetup: () -> Unit = {},
+    onSynchronize: () -> Unit, onAppSettings: () -> Unit, onSetup: () -> Unit = {},
 ) {
     ScreenFrame("运行状态与权限", onBack) {
         Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -33,18 +33,6 @@ fun RuntimeScreen(
             MutationFeedback(mutation, onCapability, showSuccess = false)
             state.data?.let { data ->
                 val status = data.status
-                SettingsCard("悬浮窗检查") {
-                    Text("无需来电记录，可显示一张只读测试卡片，不会拨打电话或播放铃声。")
-                    BrandButton(onTestOverlay, enabled = !mutation.busy, modifier = Modifier.fillMaxWidth()) {
-                        Text("测试悬浮窗")
-                    }
-                    Text("测试成功仅代表当前显示正常；后台来电显示还受系统后台限制影响。", style = MaterialTheme.typography.bodySmall)
-                    Text("请先允许“在其他应用上层显示”权限。", style = MaterialTheme.typography.bodySmall)
-                    if (Build.MANUFACTURER.equals("Xiaomi", ignoreCase = true) ||
-                        Build.BRAND.equals("Redmi", ignoreCase = true) || Build.BRAND.equals("POCO", ignoreCase = true)) {
-                        Text("MIUI / HyperOS：还请在应用权限中允许“后台弹出界面”和“锁屏显示”（名称可能因系统版本不同）。标准悬浮窗权限已允许，并不代表这两项也已允许。", style = MaterialTheme.typography.bodySmall)
-                    }
-                }
                 SettingsCard("应用能力") {
                     Capability.entries.forEach { capability ->
                         val access = status.capabilities[capability] ?: AccessState.UNKNOWN
@@ -97,7 +85,6 @@ private fun capabilityPurpose(capability: Capability): String = when (capability
     Capability.CALL_LOG -> "补全通话结果与时长"
     Capability.CONTACTS -> "识别已保存联系人的来电"
     Capability.NOTIFICATIONS -> "显示铃声服务运行通知"
-    Capability.OVERLAY -> "在其他应用上显示来电卡片"
     Capability.BATTERY_OPTIMIZATION_EXEMPTION -> "减少后台来电处理受到的限制"
     Capability.CALL_SCREENING_ROLE -> "接收系统交付的来电筛选事件"
 }

@@ -40,8 +40,8 @@ class OperationCatalogTest {
     }
     @Test fun compositeWriteHasChildScopeAndChildPersistedReadback() {
         val c=OperationCatalog();val batch=c[OperationId.CALLERS_SAVE_PROFILES]
-        assertEquals(50,rows.count { it.write })
-        assertEquals(49,rows.count { it.scope==ScopeStrategy.DIRECT })
+        assertEquals(46,rows.count { it.write })
+        assertEquals(45,rows.count { it.scope==ScopeStrategy.DIRECT })
         assertEquals(31,rows.count { it.readSource==ReadStrategy.SOURCE })
         assertEquals(0,rows.count { it.readSource==ReadStrategy.PURE_COMPUTATION })
         assertEquals(1,rows.count { it.readSource==ReadStrategy.CATALOG })

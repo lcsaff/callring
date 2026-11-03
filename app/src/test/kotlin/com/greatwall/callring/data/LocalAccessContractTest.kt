@@ -62,9 +62,7 @@ class LocalAccessContractTest {
             override fun playback(preview: Boolean, stopAction: PendingIntent): Notification =
                 Notification.Builder(context, "synthetic").build()
         }
-        val graph = BackendGraph(com.greatwall.callring.bootstrap.BackupGraphOwner { _, _ -> throw AssertionError("Unexpected fixture restore") }, context, configuration, notifications, object : IncomingCallUiSink {
-            override fun show(request: IncomingCallUiRequest) = Unit
-        })
+        val graph = BackendGraph(com.greatwall.callring.bootstrap.BackupGraphOwner { _, _ -> throw AssertionError("Unexpected fixture restore") }, context, configuration, notifications)
         try {
             // Audit reads are deliberately outside measured production operations and their counters.
             fun unrelatedFacts() = SqliteCoreStorageResource(context, databaseName).use { store ->

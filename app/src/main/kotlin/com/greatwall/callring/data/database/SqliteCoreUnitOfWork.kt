@@ -231,7 +231,6 @@ internal class SqliteCoreUnitOfWork(private val db: SQLiteDatabase, private val 
                 whitelist,
                 quiet().settings,
                 intervals,
-                overlay(),
                 numberRule().toSnapshot(),
             )
         }
@@ -378,9 +377,7 @@ internal class SqliteCoreUnitOfWork(private val db: SQLiteDatabase, private val 
 
         override fun saveScore(value: ScoreSettings) = settings.saveScore(value)
 
-        override fun overlay() = settings.overlay()
 
-        override fun saveOverlay(value: Boolean) = settings.saveOverlay(value)
 
         override fun statisticsHead() = settings.statisticsHead()
 

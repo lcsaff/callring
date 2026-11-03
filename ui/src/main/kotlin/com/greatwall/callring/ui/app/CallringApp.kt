@@ -49,9 +49,8 @@ private val BottomBarContentHeight = 44.dp
 @Composable fun CallringApp(
     api: CallringUiApi, requestedDestination: UiDestination = UiDestination.Home, requestSequence: Long = 0,
     refreshSignal: Long = 0, onCapability: (Capability) -> Unit,
-    onPreviewCall: (CallDetail) -> Unit, onPinWidget: () -> Unit, onAppSettings: () -> Unit,
+    onPinWidget: () -> Unit, onAppSettings: () -> Unit,
     notice: UiNotice? = null, onNoticeConsumed: (Long) -> Unit = {},
-    onTestOverlay: () -> Unit = {},
 ) {
     val settings: SettingsSummaryViewModel = uiViewModel("application-settings") { SettingsSummaryViewModel(api) }
     val appearanceModel: AppearanceViewModel = uiViewModel("application-appearance") { AppearanceViewModel(api, it) }
@@ -110,7 +109,7 @@ private val BottomBarContentHeight = 44.dp
                     },
                 ) {
                     AppScaffold(api, settings, appearanceModel, navigation, refreshSignal, feedbackHost, {},
-                        onCapability, onAppSettings, onTestOverlay, startupUpdateFinished)
+                        onCapability, onAppSettings, startupUpdateFinished)
                 }
             } else {
                 AppScaffold(api, settings, appearanceModel, navigation, refreshSignal, feedbackHost,
@@ -118,7 +117,7 @@ private val BottomBarContentHeight = 44.dp
                         // 键盘弹出时隐藏常驻栏，只让输入区随键盘上移。
                         if (isTabRoute && !imeVisible) CallringBottomBar(tabs, route) { destination -> selectTab(navigation, destination) }
                     },
-                    onCapability = onCapability, onAppSettings = onAppSettings, onTestOverlay = onTestOverlay,
+                    onCapability = onCapability, onAppSettings = onAppSettings,
                     startupUpdateFinished = startupUpdateFinished)
             }
         }
@@ -136,7 +135,6 @@ private fun AppScaffold(
     bottomBar: @Composable () -> Unit,
     onCapability: (Capability) -> Unit,
     onAppSettings: () -> Unit,
-    onTestOverlay: () -> Unit,
     startupUpdateFinished: Boolean,
 ) {
     fun open(destination: UiDestination) { navigation.navigate(destination.route) { launchSingleTop = true } }
@@ -229,7 +227,7 @@ private fun AppScaffold(
             composable("settings") {
                 val summary by settings.state.collectAsStateWithLifecycle()
                 val mutation by settings.mutation.collectAsStateWithLifecycle()
-                SettingsOverviewScreen(summary, mutation, null, settings::refresh, settings::statistics, settings::overlay,
+                SettingsOverviewScreen(summary, mutation, null, settings::refresh, settings::statistics,
                     { open(UiDestination.Setting(it)) })
             }
             composable("conversation") { ConversationRoute(api, onOpenSettings = { open(UiDestination.Setting(SettingsPage.AI)) }) }
@@ -241,7 +239,7 @@ private fun AppScaffold(
             }
             SettingsPage.entries.forEach { page -> composable(UiDestination.Setting(page).route) {
                 SettingsRoute(page, api, settings, appearanceModel, refreshSignal, back, onCapability, onAppSettings,
-                    onTestOverlay = onTestOverlay, startupUpdateFinished = startupUpdateFinished,
+                    startupUpdateFinished = startupUpdateFinished,
                     onSetup = { open(UiDestination.Setup) })
             } }
         }

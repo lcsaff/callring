@@ -30,7 +30,6 @@ class ConfirmationSummaryTest {
             Triple("settings_deletePosition",ConfirmationTarget.Position(37,"actual-role",3,true),"职位 #37：actual-role"),
             Triple("settings_deleteLeave",ConfirmationTarget.Leave(8,10,20,"actual-note"),"备注：actual-note"),
             Triple("recordings_delete",ConfirmationTarget.Recording(9,"31234",123,7),"录音 #9：31234"),
-            Triple("recordings_adoptIdentity",ConfirmationTarget.Recording(9,"31234",123,7,ConfirmationTarget.Adoption("old","old-unit","self","new-unit")),"姓名：old → self"),
             Triple("recordings_testConnection",ConfirmationTarget.Connection(AiSlot.TRANSCRIPTION,AiConnectionView(AiProtocol.OPENAI,"https://actual.example","actual-model",true)),"模型：actual-model"))
         for((operation,target,label) in cases) {
             compose.runOnIdle { pending.value = ForegroundTicket(operation,"s","t","call",1,ForegroundActionKind.CONFIRM,aiObject("operation" to aiString(operation),"name" to aiString("untrusted-model-label")),0,600000,true,confirmation = target) }
@@ -39,7 +38,7 @@ class ConfirmationSummaryTest {
             compose.onNodeWithText("确认").assertIsEnabled()
             compose.onNodeWithText("取消").performClick()
         }
-        compose.runOnIdle { assertEquals(5,delivered.size); assertTrue(delivered.all { it.status == ForegroundResultStatus.CANCELLED }); pending.value = ForegroundTicket("missing","s","t","call",1,ForegroundActionKind.CONFIRM,aiObject(),0,600000,true) }
+        compose.runOnIdle { assertEquals(4,delivered.size); assertTrue(delivered.all { it.status == ForegroundResultStatus.CANCELLED }); pending.value = ForegroundTicket("missing","s","t","call",1,ForegroundActionKind.CONFIRM,aiObject(),0,600000,true) }
         compose.onNodeWithText("确认").assertIsNotEnabled()
     }
 }

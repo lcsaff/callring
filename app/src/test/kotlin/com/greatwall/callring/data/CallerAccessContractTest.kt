@@ -64,9 +64,6 @@ class CallerAccessContractTest {
                 context,
                 config,
                 notifications,
-                object : IncomingCallUiSink {
-                    override fun show(request: IncomingCallUiRequest) = Unit
-                },
             )
         try {
             val before = graph.businessReadCounters().getValue("completeCaptures")

@@ -112,6 +112,7 @@ class CallingMigrationTest {
                 "UPDATE calls SET log_id='legacy-provider',time=?,duration=8,result='已接听',source='筛选＋系统通话记录',working=0,reason='工作时段外' WHERE id=1",
                 arrayOf<Any>(at + 1000),
             )
+            stripCallerEnrichmentForFixture(db)
             rejectIncidentalWrites(db)
             db.version = 1
         }
@@ -135,7 +136,7 @@ class CallingMigrationTest {
             assertEquals(1L, provider.linkedScreenId)
         }
         fixture().use { db ->
-            assertEquals(3, db.version)
+            assertEquals(4, db.version)
             assertEquals(0L, db.scalar("SELECT COUNT(*) FROM pragma_foreign_key_check"))
         }
     }
@@ -171,6 +172,7 @@ class CallingMigrationTest {
         store.close()
         fixture().use { db ->
             db.execSQL("UPDATE calls SET working=0,reason='工作时段外' WHERE id=1")
+            stripCallerEnrichmentForFixture(db)
             rejectIncidentalWrites(db)
             db.version = 2
         }

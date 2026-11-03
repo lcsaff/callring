@@ -48,7 +48,6 @@ class CallringBackend(
     val coordinator: BusinessRevisionCoordinator = BusinessRevisionCoordinator(),
     private val coreTransactions: com.greatwall.callring.application.ports.store.CoreUnitOfWork,
     private val numberRecordings: com.greatwall.callring.application.callers.NumberDeletionRecordings,
-    private val identityArchive: suspend (Long) -> ApiResult<CallArchive?>,
     private val operationActive: () -> Boolean,
     private val persistenceActive: () -> Boolean,
     private val conversationProvider: () -> ConversationApi,
@@ -129,14 +128,6 @@ class CallringBackend(
             preferences,
             coordinator,
             dispatcher,
-            commandContext, operationActive = operationActive)
-    private val overlayService =
-        com.greatwall.callring.application.settings.OverlaySettingsService(
-            coreTransactions,
-            { runtimeProbe.getStatus().capabilities[Capability.OVERLAY] ?: AccessState.UNKNOWN },
-            coordinator,
-            dispatcher,
-            decisions::overlay,
             commandContext, operationActive = operationActive)
     private val statisticsService =
         com.greatwall.callring.application.settings.StatisticsSettingsService(
@@ -228,11 +219,7 @@ class CallringBackend(
         { number, count, cmd -> bound(cmd).callers.deleteNumberCore(number, count) },
         numberRecordings, widgetService::bindingsForNumber,
         { binding, cmd -> widgetService.bound(cmd).removeStoredBinding(binding) }, coordinator, command, operationActive)
-    private fun adoption(command: CommandContext? = commandContext) = com.greatwall.callring.application.recording.IdentityAdoptionService(
-        identityArchive, { callers.getEditor(it) },
-        { base, value, cmd -> bound(cmd).edits.profile(base, value) }, coordinator, command, operationActive)
     override val numberDeletion: NumberDeletionApi = deletion()
-    override suspend fun adoptIdentity(callId: Long, expectedGeneration: Long) = adoption().adoptIdentity(callId, expectedGeneration)
     override val changes: ChangeFeed =
         object : ChangeFeed {
 
@@ -244,14 +231,14 @@ class CallringBackend(
         com.greatwall.callring.application.mapping.checkNumber(raw, numberRuleState.snapshot(), numberMatcher)
     }
 
-    private fun settingsApi() = createSettingsApi(numberRuleService, summaryService, statisticsService, overlayService,
+    private fun settingsApi() = createSettingsApi(numberRuleService, summaryService, statisticsService,
         quietService, positionService, workScheduleService, calendarService, leaveService, scoreService, appearanceService)
     private fun editsApi() = createUiEditsApi(callerCommands, quietService, workScheduleService,
         scoreService, appearanceService, positionService, leaveService)
 
     private fun bound(command: CommandContext) = CallringBackend(preferences, documents, runtimeProbe,
         audio, syncScheduler, clock, dispatcher, calendarSource, coordinator, coreTransactions,
-        numberRecordings, identityArchive, operationActive, persistenceActive, conversationProvider, aiSettingsProvider,
+        numberRecordings, operationActive, persistenceActive, conversationProvider, aiSettingsProvider,
         updateProvider, snapshotsProvider, recordingsProvider, storageProvider, backupProvider, decisions, numberRuleState, numberMatcher, command, runtimeObservations)
 
     override fun commandApi(context: CommandContext): CallringUiApi = bound(context)

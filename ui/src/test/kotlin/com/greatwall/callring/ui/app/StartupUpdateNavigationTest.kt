@@ -36,7 +36,7 @@ class StartupUpdateNavigationTest {
         }
         val api = object : UiFakeApi() { override val update = updates }
         val content: @androidx.compose.runtime.Composable () -> Unit = {
-            CallringApp(api, onCapability = {}, onPreviewCall = {}, onPinWidget = {}, onAppSettings = {})
+            CallringApp(api, onCapability = {}, onPinWidget = {}, onAppSettings = {})
         }
         if (restoration == null) compose.setContent(content) else restoration.setContent(content)
     }

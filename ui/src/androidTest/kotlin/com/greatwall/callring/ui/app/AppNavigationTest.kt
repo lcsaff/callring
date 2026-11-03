@@ -21,7 +21,7 @@ class AppNavigationTest {
     @Test fun callerReportEditorNavigateAndSaveThroughViewModel() {
         val api = UiFakeApi()
         val baseline = CallerDraft("100", "测试档案", "示例部门", null, false)
-        compose.setContent { CallringApp(api, onCapability = {}, onPreviewCall = {}, onPinWidget = {}, onAppSettings = {}) }
+        compose.setContent { CallringApp(api, onCapability = {}, onPinWidget = {}, onAppSettings = {}) }
         compose.captureArtifact("home")
         compose.onNodeWithTag("tab-callers").performClick()
         compose.captureArtifact("callers")
@@ -44,7 +44,7 @@ class AppNavigationTest {
 
     @Test fun compactBottomNavigationKeeps44dpContentAndWorkingDestinations() {
         val api = UiFakeApi()
-        compose.setContent { CallringApp(api, onCapability = {}, onPreviewCall = {}, onPinWidget = {}, onAppSettings = {}) }
+        compose.setContent { CallringApp(api, onCapability = {}, onPinWidget = {}, onAppSettings = {}) }
         compose.onNodeWithTag("bottom-bar").assertExists().assertHeightIsEqualTo(44.dp)
         listOf("home", "callers", "conversation", "settings").forEach { route ->
             compose.onNodeWithTag("tab-$route").assertHeightIsEqualTo(44.dp).assertHasClickAction()
@@ -57,7 +57,7 @@ class AppNavigationTest {
 
     @Test fun everySettingsDestinationOpensAndThemeSavesThroughApi() {
         val api = UiFakeApi()
-        compose.setContent { CallringApp(api, onCapability = {}, onPreviewCall = {}, onPinWidget = {}, onAppSettings = {}) }
+        compose.setContent { CallringApp(api, onCapability = {}, onPinWidget = {}, onAppSettings = {}) }
         compose.onNodeWithTag("tab-settings").performClick()
         compose.captureArtifact("settings")
         compose.onNodeWithText("免打扰").assertDoesNotExist()
@@ -81,7 +81,7 @@ class AppNavigationTest {
 
     @Test fun presetAndCustomThemesRenderInBothModes() {
         val api = UiFakeApi()
-        compose.setContent { CallringApp(api, onCapability = {}, onPreviewCall = {}, onPinWidget = {}, onAppSettings = {}) }
+        compose.setContent { CallringApp(api, onCapability = {}, onPinWidget = {}, onAppSettings = {}) }
         val appearances = ThemeRegistry.Default.presets.map { DefaultAppearance.copy(presetId = it.id) } +
             DefaultAppearance.copy(selection = ThemeSelection.CUSTOM, customSeedRgb = 0x663399)
         appearances.forEach { appearance ->

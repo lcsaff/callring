@@ -73,7 +73,7 @@ class CallerEditorViewModel(
                     profile.name,
                     profile.department,
                     profile.position?.id,
-                    profile.whitelisted,
+                    profile.whitelisted, profile.selfReportedPosition, profile.region, profile.identityMetadata,
                 )
             setBaseline(mutableDraft.value!!)
             persist(mutableDraft.value!!)
@@ -136,6 +136,9 @@ class CallerEditorViewModel(
         savedState["baseDepartment"] = value.department
         savedState["basePosition"] = value.positionId
         savedState["baseWhitelist"] = value.whitelisted
+        savedState["baseSelfReportedPosition"] = value.selfReportedPosition
+        savedState["baseRegion"] = value.region
+        saveMetadata("base", value.identityMetadata)
     }
 
     private fun restoreBase() =
@@ -145,6 +148,7 @@ class CallerEditorViewModel(
             savedState["baseDepartment"] ?: "",
             savedState["basePosition"],
             savedState["baseWhitelist"] ?: false,
+            savedState["baseSelfReportedPosition"] ?: "", savedState["baseRegion"] ?: "", restoreMetadata("base"),
         )
 
     private fun persist(draft: CallerDraft) {
@@ -154,6 +158,9 @@ class CallerEditorViewModel(
         savedState["draftDepartment"] = draft.department
         savedState["draftPosition"] = draft.positionId
         savedState["draftWhitelist"] = draft.whitelisted
+        savedState["draftSelfReportedPosition"] = draft.selfReportedPosition
+        savedState["draftRegion"] = draft.region
+        saveMetadata("draft", draft.identityMetadata)
     }
 
     private fun restore(fallback: CallerDraft) =
@@ -163,5 +170,28 @@ class CallerEditorViewModel(
             savedState["draftDepartment"] ?: fallback.department,
             savedState["draftPosition"],
             savedState["draftWhitelist"] ?: fallback.whitelisted,
+            savedState["draftSelfReportedPosition"] ?: fallback.selfReportedPosition,
+            savedState["draftRegion"] ?: fallback.region, restoreMetadata("draft"),
         )
+    private fun saveMetadata(prefix: String, fields: Map<String, CallerFieldMetadata>) {
+        listOf("name", "department", "selfReportedPosition", "region").forEach { field ->
+            val m = fields[field]
+            val key = "$prefix.identity.$field"
+            savedState["$key.present"] = m != null
+            savedState["$key.revision"] = m?.revision
+            savedState["$key.disputed"] = m?.disputed
+            savedState["$key.archive"] = m?.archiveId
+            savedState["$key.generation"] = m?.analysisGeneration
+            savedState["$key.evidence"] = m?.evidence
+        }
+    }
+    private fun restoreMetadata(prefix: String): Map<String, CallerFieldMetadata> = buildMap {
+        listOf("name", "department", "selfReportedPosition", "region").forEach { field ->
+            val key = "$prefix.identity.$field"
+            if (savedState.get<Boolean>("$key.present") == true) put(field, CallerFieldMetadata(
+                savedState["$key.revision"] ?: 0L, savedState["$key.disputed"] ?: false,
+                savedState["$key.archive"], savedState["$key.generation"], savedState["$key.evidence"] ?: ""))
+        }
+    }
+
 }

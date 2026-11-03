@@ -1,8 +1,6 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <uses-permission android:name="android.permission.WAKE_LOCK" />
-    <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
     <uses-permission android:name="android.permission.BIND_APPWIDGET" />
-    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <application android:name="com.greatwall.callring.ui.testing.UiTestApplication"
-        android:icon="@drawable/ic_overlay_test" />
+        android:icon="@drawable/ic_test_app" />
 </manifest>

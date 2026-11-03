@@ -83,7 +83,7 @@ abstract class InteractionCases {
         var changes = 0
         compose.setContent { CallringTheme(DefaultAppearance.rememberAppearanceThemeSpec(androidx.compose.foundation.isSystemInDarkTheme())) {
             SettingsOverviewScreen(LoadState(summary, loaded = true), MutationState(), {}, {},
-                { changes++ }, {}, {})
+                { changes++ }, {})
         } }
         compose.onNodeWithText("来电统计").performScrollTo().performClick()
         compose.runOnIdle { assertEquals(1, changes) }
@@ -152,7 +152,7 @@ abstract class InteractionCases {
         val api = UiFakeApi()
         compose.setContent {
             DeviceConfigurationOverride(DeviceConfigurationOverride.ForcedSize(size.value)) {
-                CallringApp(api, onCapability = {}, onPreviewCall = {}, onPinWidget = {}, onAppSettings = {})
+                CallringApp(api, onCapability = {}, onPinWidget = {}, onAppSettings = {})
             }
         }
         compose.onNodeWithTag("tab-settings").performClick().assertIsSelected()
@@ -171,7 +171,7 @@ abstract class InteractionCases {
 
     @Test fun saveAndExitKeepsSuccessFeedbackVisibleOnTheDestinationScreen() {
         val api = UiFakeApi()
-        compose.setContent { CallringApp(api, onCapability = {}, onPreviewCall = {}, onPinWidget = {}, onAppSettings = {}) }
+        compose.setContent { CallringApp(api, onCapability = {}, onPinWidget = {}, onAppSettings = {}) }
         compose.onNodeWithTag("tab-callers").performClick()
         compose.onNodeWithText("测试档案").performClick()
         compose.onNodeWithText("编辑档案").performClick()

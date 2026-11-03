@@ -43,7 +43,7 @@ class HomeViewModelTest {
     fun realLoaderReadsOnlyActualDependenciesAndNoopWritesDoNotReload() = runTest {
         val feed = Feed()
         var reads = 0
-        var overlayValue = false
+        var statisticsValue = false
         val api =
             object : UiFakeApi() {
                 override val changes = feed
@@ -53,11 +53,11 @@ class HomeViewModelTest {
                     return super.load()
                 }
 
-                override suspend fun setOverlayEnabled(enabled: Boolean): ApiResult<Unit> {
-                    if (overlayValue != enabled) {
-                        overlayValue = enabled
+                override suspend fun setStatisticsEnabled(enabled: Boolean): ApiResult<Unit> {
+                    if (statisticsValue != enabled) {
+                        statisticsValue = enabled
                         feed.publish(
-                            com.greatwall.callring.contracts.change.DataDomain.OVERLAY_SETTINGS,
+                            com.greatwall.callring.contracts.change.DataDomain.STATISTICS
                         )
                     }
                     return ApiResult.Success(Unit)
@@ -76,10 +76,10 @@ class HomeViewModelTest {
             runCurrent()
             assertEquals(1, reads)
         }
-        model.overlay(true)
+        model.statistics(true)
         runCurrent()
         assertEquals(2, reads)
-        model.overlay(true)
+        model.statistics(true)
         runCurrent()
         assertEquals(2, reads)
         for (domain in
@@ -126,29 +126,4 @@ class HomeViewModelTest {
         assertEquals(2L, model.state.value.data!!.meta.dataRevision)
     }
 
-    @Test fun previewQueriesLatestCallAndDeliversItsOriginalFactsOnlyOnce() = runTest {
-        val fact = ClassificationFact(true, WorkReason.WORKING, null, true, "Asia/Shanghai", 1, null, 1)
-        val call = CallDetail(1, "100", 123, null, null, CallResult.UNKNOWN, CallDecision.QUIET_SILENCED,
-            CallSource.SYSTEM_CALL_LOG, true, fact, fact, false, null)
-        var reads = 0
-        val api = object : UiFakeApi() {
-            override suspend fun getLatestCall(): ApiResult<CallDetail?> { reads++; return ApiResult.Success(call) }
-        }
-        val model = HomeViewModel(api, backgroundScope)
-        runCurrent()
-        assertEquals(0, reads)
-        model.previewLatest(); runCurrent()
-        assertEquals(call, model.pendingPreview.value)
-        model.consumePreview()
-        assertNull(model.pendingPreview.value)
-        model.previewLatest(); runCurrent()
-        assertEquals(2, reads)
-    }
-    @Test fun noLatestCallIsAnExplicitLoadedEmptyResult() = runTest {
-        val model = HomeViewModel(UiFakeApi(), backgroundScope)
-        model.previewLatest(); runCurrent()
-        assertTrue(model.latestPreview.value.loaded)
-        assertNull(model.latestPreview.value.data)
-        assertNull(model.pendingPreview.value)
-    }
 }

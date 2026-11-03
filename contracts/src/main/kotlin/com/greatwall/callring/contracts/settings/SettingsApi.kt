@@ -9,7 +9,6 @@ interface SettingsApi {
     suspend fun saveNumberRule(command: SaveNumberRule): ApiResult<NumberRuleSettings>
     suspend fun getSummary(): ApiResult<SettingsSummary>
     suspend fun setStatisticsEnabled(enabled: Boolean): ApiResult<Unit>
-    suspend fun setOverlayEnabled(enabled: Boolean): ApiResult<Unit>
 
     suspend fun getQuietHours(): ApiResult<QuietSettings>
     suspend fun saveQuietHours(settings: QuietSettings): ApiResult<QuietSettings>
@@ -169,7 +168,6 @@ data class AppearanceSettings(
 
 data class SettingsSummary(
     val statisticsEnabled: Boolean,
-    val overlayEnabled: Boolean,
     val quietMode: QuietMode,
     val myPosition: PositionOption?,
     val workZoneId: String,

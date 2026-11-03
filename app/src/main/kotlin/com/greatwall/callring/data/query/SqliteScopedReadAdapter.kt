@@ -103,20 +103,21 @@ internal class SqliteScopedReadAdapter(
         return when (domain) {
             AiDomain.D01 ->
                 Table(
-                    "SELECT n.number entity_key,n.number,CASE WHEN c.number IS NULL THEN 0 ELSE 1 END stored,coalesce(c.name,'') name,coalesce(c.department,'') department,c.position_id,coalesce(c.whitelist,0) whitelisted,p.name position_name,p.level position_level,p.active position_active FROM (SELECT number FROM callers UNION SELECT number FROM calls) n LEFT JOIN callers c ON n.number=c.number LEFT JOIN positions p ON p.id=c.position_id",
+                    "SELECT n.number entity_key,n.number,CASE WHEN c.number IS NULL THEN 0 ELSE 1 END stored,coalesce(c.name,'') name,coalesce(c.department,'') department,coalesce(c.self_reported_position,'') selfReportedPosition,coalesce(c.region,'') region,coalesce(c.identity_metadata,'{}') identityMetadata,c.position_id,coalesce(c.whitelist,0) whitelisted,p.name position_name,p.level position_level,p.active position_active FROM (SELECT number FROM callers UNION SELECT number FROM calls) n LEFT JOIN callers c ON n.number=c.number LEFT JOIN positions p ON p.id=c.position_id",
                     listOf(
                         "number",
                         "stored",
                         "name",
-                        "department",
+                        "department", "selfReportedPosition", "region", "identityMetadata",
                         "position_id",
                         "whitelisted",
                         "position_name",
                         "position_level",
                         "position_active",
                     ),
-                    setOf("name", "department", "position_name"),
-                    searchable = setOf("number", "name", "department"),
+                    setOf("name", "department", "selfReportedPosition", "region", "position_name"),
+                    structured = setOf("identityMetadata"),
+                    searchable = setOf("number", "name", "department", "selfReportedPosition", "region"),
                 )
             AiDomain.D02 ->
                 if (projection == "current")
@@ -247,7 +248,6 @@ internal class SqliteScopedReadAdapter(
                         setting("repeat_weight", "2"),
                         setting("repeat_minutes", "10"),
                         setting("score_days", "30"),
-                        setting("overlay", "0"),
                         setting("leave_revision", "0"),
                         "EXISTS(SELECT 1 FROM statistics_intervals WHERE end IS NULL) statisticsEnabled",
                         "(SELECT position_id FROM settings WHERE key='my_position') myPositionId",
@@ -263,7 +263,6 @@ internal class SqliteScopedReadAdapter(
                         "repeat_weight",
                         "repeat_minutes",
                         "score_days",
-                        "overlay",
                         "leave_revision",
                         "statisticsEnabled",
                         "myPositionId",

@@ -75,11 +75,10 @@ class ScopedTransactionTest {
     fun simpleSettingsShareRollbackAndSqliteAutoincrementNeverReusesDeletedPosition() {
         SqliteCoreStorageResource(RuntimeEnvironment.getApplication(), "simple-shared-rollback.db").use {
             store ->
-            val original = store.sessions.readSession { it.score() to it.overlay() }
+            val original = store.sessions.readSession { it.score() }
             assertThrows(IllegalStateException::class.java) {
                 store.sessions.writeSession { writer ->
                     writer.saveScore(writer.score().copy(repeatWeight = 3))
-                    writer.saveOverlay(true)
                     val role =
                         writer.putPosition(
                             com.greatwall.callring.domain.model.PositionRecord(0, "Transient", 1, true),
@@ -90,7 +89,7 @@ class ScopedTransactionTest {
                     error("rollback")
                 }
             }
-            assertEquals(original, store.sessions.readSession { it.score() to it.overlay() })
+            assertEquals(original, store.sessions.readSession { it.score() })
             assertEquals(
                 emptyList<com.greatwall.callring.domain.model.PositionRecord>(),
                 store.sessions.readSession { it.positions() },
@@ -146,7 +145,6 @@ class ScopedTransactionTest {
             assertThrows(IllegalStateException::class.java) { reader.quiet() }
             assertThrows(IllegalStateException::class.java) { reader.statisticsHead() }
             assertThrows(IllegalStateException::class.java) { reader.score() }
-            assertThrows(IllegalStateException::class.java) { reader.overlay() }
             assertThrows(IllegalStateException::class.java) { reader.positions() }
             assertThrows(IllegalStateException::class.java) { reader.settingsSummary() }
             lateinit var writer: CoreWriteSession
@@ -166,7 +164,6 @@ class ScopedTransactionTest {
             assertThrows(IllegalStateException::class.java) {
                 writer.saveScore(com.greatwall.callring.domain.model.ScoreSettings(5, 2, 10, 30))
             }
-            assertThrows(IllegalStateException::class.java) { writer.saveOverlay(true) }
             assertThrows(IllegalStateException::class.java) { writer.openStatistics(123) }
             assertThrows(IllegalStateException::class.java) { writer.saveMyPosition(null) }
             assertThrows(IllegalStateException::class.java) { writer.saveQuiet(value) }

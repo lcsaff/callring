@@ -125,7 +125,7 @@ internal class CallerCommandService(
                     val previous = mapOf("name" to old?.name.orEmpty(), "department" to old?.department.orEmpty(), "selfReportedPosition" to old?.selfReportedPosition.orEmpty(), "region" to old?.region.orEmpty())
                     val wanted = mapOf("name" to name.trim(), "department" to department.trim(), "selfReportedPosition" to selfReportedPosition.trim(), "region" to region.trim())
                     wanted.forEach { (field, text) ->
-                        callerRequire(text.length <= 500, field, "caller.field.too_long")
+                        callerRequire(text.length <= 500 || text == previous[field], field, "caller.field.too_long")
                         val m = metadata[field] ?: IdentityFieldMetadata()
                         val changed = previous[field] != text
                         val requestedDispute = value.disputedFields?.let { field in it }

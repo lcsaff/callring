@@ -62,9 +62,7 @@ class SimpleSettingsAccessContractTest {
             override fun playback(preview: Boolean, stopAction: PendingIntent): Notification =
                 Notification.Builder(context, "synthetic").build()
         }
-        val graph = BackendGraph(com.greatwall.callring.bootstrap.BackupGraphOwner { _, _ -> throw AssertionError("Unexpected fixture restore") }, context, configuration, notifications, object : IncomingCallUiSink {
-            override fun show(request: IncomingCallUiRequest) = Unit
-        })
+        val graph = BackendGraph(com.greatwall.callring.bootstrap.BackupGraphOwner { _, _ -> throw AssertionError("Unexpected fixture restore") }, context, configuration, notifications)
         try {
             // Audit reads are deliberately outside measured production operations and their counters.
             fun unrelatedFacts() = SqliteCoreStorageResource(context, databaseName).use { store ->
@@ -129,12 +127,6 @@ class SimpleSettingsAccessContractTest {
             measure("scoreNoop") { graph.api.settings.saveScoreSettings(ScoreSettings(6, 2, 10, 30)).requiredValue() }
             measure("scoreEdit") { graph.api.edits.score(ScoreSettings(6, 2, 10, 30), ScoreSettings(6, 3, 10, 30)).requiredValue() }
             assertSame("score cannot rebuild decision inputs", decision, graph.backend.decisionSnapshot())
-            measure("overlayNoop") { graph.api.settings.setOverlayEnabled(false).requiredValue() }
-            org.robolectric.shadows.ShadowSettings.setCanDrawOverlays(true)
-            measure("overlayEnable") { graph.api.settings.setOverlayEnabled(true).requiredValue() }
-            assertTrue(graph.backend.decisionSnapshot().inputs.overlayEnabled)
-            measure("overlayDisable") { graph.api.settings.setOverlayEnabled(false).requiredValue() }
-            assertFalse(graph.backend.decisionSnapshot().inputs.overlayEnabled)
             measure("statisticsDisable") { graph.api.settings.setStatisticsEnabled(false).requiredValue() }
             measure("statisticsEnable") { graph.api.settings.setStatisticsEnabled(true).requiredValue() }
             measure("statisticsNoop") { graph.api.settings.setStatisticsEnabled(true).requiredValue() }

@@ -44,7 +44,7 @@ import com.greatwall.callring.ui.feature.ai.ScopedRecordingSettingsViewModel
 
 @Composable internal fun ArchiveRoute(api: CallringUiApi, callId: Long, number: String, startedAt: Long, signal: Long,
     onBack: () -> Unit, onEdit: () -> Unit) {
-    val model: ArchiveViewModel = uiViewModel { ArchiveViewModel(api.recordings, callId, number, startedAt, adoptCommand = api::adoptIdentity, changes = api.changes) }
+    val model: ArchiveViewModel = uiViewModel { ArchiveViewModel(api.recordings, callId, number, startedAt, changes = api.changes) }
     val state by model.state.collectAsStateWithLifecycle()
     val files by model.files.collectAsStateWithLifecycle()
     val mutation by model.mutation.collectAsStateWithLifecycle()
@@ -54,5 +54,5 @@ import com.greatwall.callring.ui.feature.ai.ScopedRecordingSettingsViewModel
     DisposableEffect(model) { onDispose { model.stopForExit() } }
     ArchiveScreen(state, files, mutation, onBack, model::refresh, picker, model::listSystem,
         { model.import(DocumentRef(it.uri), RecordingSource.SYSTEM) }, model::retry, model::delete, model::play, model::stop,
-        model::adoptIdentity, onEdit, zone, timeZone::refresh)
+        onEdit, zone, timeZone::refresh)
 }

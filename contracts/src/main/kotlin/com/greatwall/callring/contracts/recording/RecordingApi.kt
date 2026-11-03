@@ -5,7 +5,7 @@ import com.greatwall.callring.contracts.ai.*
 
 enum class CaptureMode { SYSTEM_ONLY, MICROPHONE_EXPERIMENTAL }
 
-enum class ArchiveStatus { WAITING_RECORDING, READY, QUEUED, TRANSCRIBING, ANALYZING, COMPLETE, FAILED }
+enum class ArchiveStatus { WAITING_RECORDING, READY, QUEUED, TRANSCRIBING, ANALYZING, COMPLETE, FAILED, ENRICHING, ENRICHMENT_FAILED }
 
 enum class RecordingSource { SYSTEM, IMPORTED, MICROPHONE }
 
@@ -15,6 +15,8 @@ data class CallAnalysis(
     val name: String = "", val organization: String = "", val position: String = "",
     val purpose: String = "", val evidence: String = "", val inferredIdentity: String = "",
     val summary: String = "", val actionItems: List<String> = emptyList(),
+    val department: String = "", val region: String = "",
+    val fieldEvidence: Map<String, String> = emptyMap(),
 )
 
 data class CallArchive(
@@ -27,6 +29,8 @@ data class CallArchive(
     val analyzedAt: Long? = null, val analysisModel: String = "", val transcriptionModel: String = "",
     val analysisProtocol: AiProtocol? = null,
     val manualAnalysis: Boolean = false,
+    val enrichmentBaseline: CallerIdentityBaseline? = null,
+    val enrichmentSourceGeneration: Long? = null,
 )
 
 data class RecordingFile(val uri: String, val name: String, val modifiedAt: Long, val size: Long? = null, val modifiedKnown: Boolean = true)

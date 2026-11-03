@@ -62,9 +62,6 @@ class CallAccessContractTest {
                 context,
                 config,
                 notifications,
-                object : IncomingCallUiSink {
-                    override fun show(request: IncomingCallUiRequest) = Unit
-                },
             )
         try {
             graph.api.callers.getEditor(LocalAccessFixture.TARGET).requiredValue()

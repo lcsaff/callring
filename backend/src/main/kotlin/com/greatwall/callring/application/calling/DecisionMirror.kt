@@ -25,7 +25,6 @@ class DecisionMirror {
         }
     }
     internal fun work(schedule: WorkScheduleSettings) = patch { it.copy(schedules = it.schedules + schedule) }
-    internal fun overlay(enabled: Boolean) = patch { it.copy(overlayEnabled = enabled) }
     internal fun quiet(quiet: QuietSettings) = patch { it.copy(quiet = quiet) }
     internal fun statistics(change: com.greatwall.callring.application.settings.StatisticsChange) = patch {
         it.copy(statisticsIntervals = if (change.before == null) it.statisticsIntervals + change.after

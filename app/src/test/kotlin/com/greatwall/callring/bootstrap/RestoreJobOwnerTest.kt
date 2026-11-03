@@ -69,7 +69,7 @@ class RestoreJobOwnerTest {
             object : UiNotificationEntryPoints {
                 override fun home(requestCode: Int) = PendingIntent.getActivity(context, requestCode, Intent("test"), PendingIntent.FLAG_IMMUTABLE)
                 override fun playback(preview: Boolean, stopAction: PendingIntent) = Notification()
-            }, object : IncomingCallUiSink { override fun show(request: IncomingCallUiRequest) {} })
+            })
     }
 }
 class RunOwnerApplication : Application(), BackendProvider {

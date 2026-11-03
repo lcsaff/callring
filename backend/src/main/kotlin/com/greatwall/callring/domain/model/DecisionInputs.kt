@@ -29,6 +29,5 @@ data class DecisionInputs(
     val whitelistedNumbers: Set<String>,
     val quiet: QuietSettings,
     val statisticsIntervals: List<StatisticsInterval>,
-    val overlayEnabled: Boolean,
     val numberRule: NumberRuleSnapshot,
 ) : WorkInputs

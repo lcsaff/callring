@@ -27,7 +27,7 @@ import java.util.concurrent.*
 class RecordingCommandContextTest {
     @Test fun playbackFinalGenerationCheckDoesNotDecodeArchiveAgain() = runBlocking {
         val store = AndroidRecordingStore(context, "play-generation", cipher, recordingVersion = { 0L })
-        val runtime = RecordingAssembly(context, "play-generation", { null }, { null }, {}, { store }, operationActive = { true })
+        val runtime = RecordingAssembly(context, "play-generation", { null }, { null }, {}, { store }, operationActive = { true }, enrichment = testEnrichment)
         runtime.directory.mkdirs()
         val audio = File(runtime.directory, "play.wav").apply { writeBytes(ByteArray(32)) }
         store.compareAndSet(-7, null, com.greatwall.callring.contracts.recording.CallArchive(-7, "31234", 1, generation = 4, audioPath = audio.absolutePath))
@@ -44,7 +44,7 @@ class RecordingCommandContextTest {
     @Test fun cancelledGuiPlaybackReleasesPreparedPlayerWithoutPublishing() = runBlocking {
         val coordinator = BusinessRevisionCoordinator()
         val store = AndroidRecordingStore(context, "play-cancel", cipher, recordingVersion = { coordinator.capture().values.getValue("recording") })
-        val runtime = RecordingAssembly(context, "play-cancel", { null }, { null }, {}, { store }, coordinator = coordinator, operationActive = { true })
+        val runtime = RecordingAssembly(context, "play-cancel", { null }, { null }, {}, { store }, coordinator = coordinator, operationActive = { true }, enrichment = testEnrichment)
         runtime.directory.mkdirs()
         val audio = File(runtime.directory, "play.wav").apply { writeBytes(ByteArray(32)) }
         store.compareAndSet(-7, null, com.greatwall.callring.contracts.recording.CallArchive(-7, "31234", 1, generation = 4, audioPath = audio.absolutePath))
@@ -85,7 +85,7 @@ class RecordingCommandContextTest {
         }
         provider.attachInfo(context, android.content.pm.ProviderInfo().apply { authority = "import-race"; exported = true; grantUriPermissions = true })
         ShadowContentResolver.registerProviderInternal("import-race", provider)
-        val runtime = RecordingAssembly(context, "import_race", { null }, { null }, {}, { store }, metadataReader = { entered.countDown(); release.await(5, TimeUnit.SECONDS); 1000L to "wav" }, coordinator = coordinator, operationActive = { true })
+        val runtime = RecordingAssembly(context, "import_race", { null }, { null }, {}, { store }, metadataReader = { entered.countDown(); release.await(5, TimeUnit.SECONDS); 1000L to "wav" }, coordinator = coordinator, operationActive = { true }, enrichment = testEnrichment)
         val call = runtime.service.observeIncoming("session", "31234", 1, null)!!
         val importing = async(Dispatchers.IO) { runtime.service.importRecording(call.id, call.number, call.startedAt, DocumentRef("content://import-race/audio")) }
         assertTrue(entered.await(3, TimeUnit.SECONDS))
@@ -116,7 +116,7 @@ class RecordingCommandContextTest {
         }
         provider.attachInfo(context, android.content.pm.ProviderInfo().apply { authority = "import-race"; exported = true; grantUriPermissions = true })
         ShadowContentResolver.registerProviderInternal("import-race", provider)
-        val runtime = RecordingAssembly(context, "import_cancel", { null }, { null }, {}, { store }, metadataReader = { entered.countDown(); release.await(5, TimeUnit.SECONDS); 1000L to "wav" }, coordinator = coordinator, operationActive = { true })
+        val runtime = RecordingAssembly(context, "import_cancel", { null }, { null }, {}, { store }, metadataReader = { entered.countDown(); release.await(5, TimeUnit.SECONDS); 1000L to "wav" }, coordinator = coordinator, operationActive = { true }, enrichment = testEnrichment)
         val call = runtime.service.observeIncoming("session", "31234", 1, null)!!
         val importing = async(Dispatchers.IO) { runtime.service.importRecording(call.id, call.number, call.startedAt, DocumentRef("content://import-race/audio")) }
         assertTrue(entered.await(3, TimeUnit.SECONDS))
@@ -147,7 +147,7 @@ class RecordingCommandContextTest {
         }
         provider.attachInfo(context, android.content.pm.ProviderInfo().apply { authority = "import-race"; exported = true; grantUriPermissions = true })
         ShadowContentResolver.registerProviderInternal("import-race", provider)
-        val runtime = RecordingAssembly(context, "failed_import_cas", { null }, { null }, {}, { store }, metadataReader = { 1000L to "wav" }, coordinator = coordinator, operationActive = { true })
+        val runtime = RecordingAssembly(context, "failed_import_cas", { null }, { null }, {}, { store }, metadataReader = { 1000L to "wav" }, coordinator = coordinator, operationActive = { true }, enrichment = testEnrichment)
         val call = runtime.service.observeIncoming("session", "31234", 1, null)!!
         runtime.directory.mkdirs()
         val oldAudio = File(runtime.directory, "old.wav").apply { writeText("retained old audio") }
@@ -170,11 +170,16 @@ class RecordingCommandContextTest {
         val store = AndroidRecordingStore(context, "record_command", cipher, recordingVersion = { coordinator.capture().values.getValue("recording") })
         val call = com.greatwall.callring.application.recording.RecordingRegistrationService(store, coordinator).registerIncoming("one", "31234", 1, null, null)
         val old = store.get(call.id)!!
-        val runtime = RecordingAssembly(context, "record_command", { null }, { null }, {}, { store }, coordinator = coordinator, operationActive = { true })
+        val runtime = RecordingAssembly(context, "record_command", { null }, { null }, {}, { store }, coordinator = coordinator, operationActive = { true }, enrichment = testEnrichment)
         val stale = CommandContext("op", coordinator.capture(), 1) { true }
         coordinator.publishCore(setOf("core"), com.greatwall.callring.application.coordination.ChangeImpact(emptyMap()))
         assertTrue(runtime.service.bound(stale).retry(call.id) is ApiResult.Failure)
         assertEquals(old.generation, store.get(call.id)!!.generation)
         runtime.close()
     }
+}
+
+private val testEnrichment = object : com.greatwall.callring.application.ports.recording.RecordingIdentityEnrichment {
+    override fun capture(number: String) = com.greatwall.callring.contracts.recording.CallerIdentityBaseline("test", emptyMap())
+    override fun apply(number: String, baseline: com.greatwall.callring.contracts.recording.CallerIdentityBaseline, archiveId: Long, generation: Long, candidates: Map<String, Pair<String, String>>) = Unit
 }

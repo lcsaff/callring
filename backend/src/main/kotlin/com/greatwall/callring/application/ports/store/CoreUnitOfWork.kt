@@ -27,7 +27,6 @@ interface CoreReadSession :
     DecisionInputsReader,
     QuietReader,
     ScoreReader,
-    OverlayReader,
     StatisticsReader,
     PositionReader,
     SummaryReader,
@@ -42,7 +41,6 @@ interface CoreWriteSession :
     CallingWriter,
     QuietWriter,
     ScoreWriter,
-    OverlayWriter,
     StatisticsWriter,
     PositionWriter,
     WorkScheduleWriter,
@@ -58,7 +56,6 @@ interface CoreUnitOfWork :
     DecisionInputsTransactions,
     QuietTransactions,
     ScoreTransactions,
-    OverlayTransactions,
     StatisticsTransactions,
     PositionTransactions,
     SummaryTransactions,
@@ -116,7 +113,6 @@ interface CoreUnitOfWork :
 
     override fun <T> writeScore(block: (ScoreWriter) -> T): T = writeSession { block(it) }
 
-    override fun <T> writeOverlay(block: (OverlayWriter) -> T): T = writeSession { block(it) }
 
     override fun <T> writeStatistics(block: (StatisticsWriter) -> T): T = writeSession { block(it) }
 

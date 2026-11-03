@@ -78,7 +78,6 @@ class ReportHomeReadTest {
         var scoreValue = DomainScore(5, 2, 10, 30)
         var enabled = true
         var quietMode = DomainQuietMode.OFF
-        var overlayValue = false
         val mine = PositionRecord(2, "Mine", 2, true)
         val role = PositionRecord(1, "Role", 1, false)
         var history =
@@ -127,7 +126,6 @@ class ReportHomeReadTest {
 
         override fun homeQuietMode() = quietMode
 
-        override fun overlay() = overlayValue
 
         override fun workHistory() = history
 
@@ -457,7 +455,6 @@ class ReportHomeReadTest {
                 "overrides",
                 "leaves",
                 "quiet",
-                "overlay",
                 "statistics",
                 "runtime:status", "runtime:ringtonePlayback",
                 "ringtone",

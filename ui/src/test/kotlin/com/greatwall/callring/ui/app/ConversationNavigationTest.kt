@@ -14,7 +14,7 @@ import org.robolectric.annotation.Config
 @Config(sdk = [35])
 class ConversationNavigationTest {
     @get:Rule val compose = createComposeRule()
-    private fun show() { compose.setContent { CallringApp(UiFakeApi(), onCapability = {}, onPreviewCall = {}, onPinWidget = {}, onAppSettings = {}) } }
+    private fun show() { compose.setContent { CallringApp(UiFakeApi(), onCapability = {}, onPinWidget = {}, onAppSettings = {}) } }
     @Test fun narrowScreenHasFourPrimaryDestinationsAndSeparateSettings() {
         show()
         listOf("home", "callers", "conversation", "settings").forEach { compose.onNodeWithTag("tab-$it").assertExists() }

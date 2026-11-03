@@ -16,6 +16,25 @@ import org.robolectric.annotation.Config
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [33], manifest = Config.NONE)
 class AndroidRecordingStoreTest {
+    @Test fun enrichmentStateAndEvidenceSurviveReopenAndAreScheduledLocally() {
+        val entry = CallArchive(-33, "31234", 1, generation = 7, status = ArchiveStatus.ENRICHING,
+            analysis = CallAnalysis(name = "甲", department = "财务部", region = "杭州", fieldEvidence = mapOf("region" to "我在杭州工作")),
+            enrichmentBaseline = CallerIdentityBaseline("epoch", mapOf("region" to 3)), enrichmentSourceGeneration = 6)
+        AndroidRecordingStore(context, "enrichment_roundtrip", cipher, recordingVersion = { 0L }).use {
+            assertTrue(it.compareAndSet(entry.callId, null, entry))
+        }
+        AndroidRecordingStore(context, "enrichment_roundtrip", cipher, recordingVersion = { 0L }).use {
+            assertEquals(entry, it.get(entry.callId))
+            assertEquals(0L, it.earliestPendingAt { false })
+            assertEquals(entry.callId, it.dueCandidates(1, null, 64) { false }.single().callId)
+        }
+        val json = RecordingJson.archive(entry)
+        json.getJSONObject("analysis").remove("department"); json.getJSONObject("analysis").remove("region"); json.getJSONObject("analysis").remove("fieldEvidence")
+        json.remove("enrichmentBaseline"); json.remove("enrichmentSourceGeneration")
+        val old = RecordingJson.archive(json)
+        assertEquals("", old.analysis!!.region); assertTrue(old.analysis!!.fieldEvidence.isEmpty()); assertNull(old.enrichmentBaseline)
+    }
+
     @Test fun retainedStoreCannotReopenDatabaseAfterClose() {
         val store = AndroidRecordingStore(context, "terminal-store", cipher, recordingVersion = { 0L })
         store.captureRecordingText()

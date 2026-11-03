@@ -6,9 +6,9 @@ The facade is `com.greatwall.callring.contracts.CallringUiApi` in `CallringApi.k
 
 ## Current operation catalog (T12)
 
-`backend/application/conversation/operation/OperationCatalog` owns all 85 explicit `OperationDefinition` records. `OperationId` is business identity; `operationCode`, `legacyIndex` and `displayOrder` are protocol metadata, with displayOrder used only for discovery sorting. `ToolRegistry.definitions` is the sole 85-item discovery entry point. Registry validation, execution, source reads, scopes, authoritative confirmation, batch orchestration and receipts resolve the same injected catalog. `ConversationRequest.tools` carries OperationDefinition, with no ToolDefinition alias or old constructor.
+`backend/application/conversation/operation/OperationCatalog` owns all 81 explicit `OperationDefinition` records. `OperationId` is business identity; `operationCode`, `legacyIndex` and `displayOrder` are protocol metadata, with displayOrder used only for discovery sorting. `ToolRegistry.definitions` is the sole 81-item discovery entry point. Registry validation, execution, source reads, scopes, authoritative confirmation, batch orchestration and receipts resolve the same injected catalog. `ConversationRequest.tools` carries OperationDefinition, with no ToolDefinition alias or old constructor.
 
-The catalog declares 50 writes and 35 nonwrites (31 source reads, two update observations, one catalog read, one in-memory plan). The 49 direct writes use direct scopes/readback; `CALLERS_SAVE_PROFILES` is a composite using each `CALLERS_SAVE_PROFILE` child's scope, confirmation policy and persisted readback, classified `BATCH_CHILD_PERSISTED_READBACK`. Startup rejects duplicate identities/protocol metadata, missing definitions/execution and incomplete or inconsistent read/write policies. Executor/ConversationService require QueryService and document readback verification; the old UI-read executor branch is deleted. All external schema/default/description text remains pinned by the frozen 85-operation golden.
+The catalog declares 46 writes and 35 nonwrites (31 source reads, two update observations, one catalog read, one in-memory plan). The 45 direct writes use direct scopes/readback; `CALLERS_SAVE_PROFILES` is a composite using each `CALLERS_SAVE_PROFILE` child's scope, confirmation policy and persisted readback, classified `BATCH_CHILD_PERSISTED_READBACK`. Startup rejects duplicate identities/protocol metadata, missing definitions/execution and incomplete or inconsistent read/write policies. Executor/ConversationService require QueryService and document readback verification; the old UI-read executor branch is deleted. All external schema/default/description text remains pinned by the frozen 81-operation golden.
 
 The architecture guard rejects operation dispatch through numeric index/ordinal, discovery order or parsed O/X codes in registry consumers and the catalog itself. Fixed schema limits, capacity values, explicit protocol metadata, uniqueness checks and discovery sorting remain legal. The localized-text guard permits only a literal named `description` argument on a named OperationDefinition in the actual OperationCatalog; unrelated strings and computed descriptions are rejected, with no file-wide exemption.
 
@@ -52,11 +52,19 @@ T10c removes only missing-capability method bodies: `UiEditsApi`'s seven edits, 
 
 The approved 2026-10-28 plan replaces the internal full-archive listing with `queryArchives` and bounded, generation-stamped list DTOs. Archive cursors bind the storage owner, exact archive revision and page size; preparation is explicitly incomplete. The facade requires injected `backup` and `storage` capabilities in every production assembly and command-bound facade. Backup progress is a structured phase observation; passwords remain transient CharArray inputs. Cleanup previews bind a frozen selection and target generations, and receipts distinguish committed, failed and unstarted items. Runtime samples carry `CoreReadiness`; the sole backend projection derives it from observed phone-state and screening-role prerequisites, with raw/unknown samples remaining UNKNOWN. These internal APIs add no AI operations, permissions, defaults or provider fallbacks; the external 85-operation compatibility golden is unchanged. The catalog's internal shared API label for O50 follows the new recording query; its external tool name/schema and existing D16 source pagination remain unchanged.
 
+## Silent enrichment contract review (2026-11-03)
+
+Reviewed breaking catalog revision 3 retires O13/O63/O70/O71 (overlay toggle, identity adoption, overlay test and call preview) without reusing their IDs. The overlay capability, invalidation domain, foreground actions, incoming UI sink and confirmation adoption payload are removed with all consumers. Existing phone/recording/system entrypoint identities remain.
+
+CallerProfile/CallerDraft expose selfReportedPosition, region and four-field identityMetadata (revision, disputed, archive ID/generation and verbatim evidence). SaveCallerProfile accepts the new nullable text patches and disputedFields; omission preserves existing data. UiEditsApi.profile retains its single merge entrypoint. O07/X07 gain these fields, and O07 rejects marking a changed text value disputed in the same command before any commit. Identity text edits guard metadata scope because they clear dispute/provenance. No organization profile field is introduced; legacy analysis organization is preserved only as analysis data.
+
+CallAnalysis adds department, region and fieldEvidence; CallArchive adds the durable identity baseline/source generation. ENRICHING/ENRICHMENT_FAILED distinguish local completion from paid analysis. Old JSON reads with empty new claims/evidence and no baseline, so it is not silently backfilled. Database version 4 upgrades legacy callers without changing department/position/whitelist, and historical core backups migrate in private staging before schema and content verification.
+
 <!-- contract-inventory -->
 ```json
 {
   "CallringApi.kt": {
-    "sha256": "eb5ebc6a2d82c61873302c0ff4d990f7bf9ecc291e8f753d0b626d726f2dc516",
+    "sha256": "926c6b4b044cf0f30adf2fc10b4ab2017c21e704c770dece9a456142e3243752",
     "declarations": [
       "CallringUiApi"
     ]
@@ -120,7 +128,7 @@ The approved 2026-10-28 plan replaces the internal full-archive listing with `qu
     ]
   },
   "ai/ConversationApi.kt": {
-    "sha256": "e8c8e13bd5a890dc7292a474b559a2dac3cfa8bac6fd84b521a0fbc35d865980",
+    "sha256": "07f170e57221769998ceb96dffe11d5032ff5842495a0b4d0101991a4a4ae5ab",
     "declarations": [
       "ConversationPhase",
       "ToolStatus",
@@ -170,13 +178,14 @@ The approved 2026-10-28 plan replaces the internal full-archive listing with `qu
     ]
   },
   "callers/CallersApi.kt": {
-    "sha256": "87155410e1b49edf19774ebecdf0c8ab62e50461abef5fcad1230f3ce8e4ca6c",
+    "sha256": "2d66488a61ec2b9ee6d87f3564570f4ec3063ceaff5de777bd53e6fb392a3939",
     "declarations": [
       "HomeApi",
       "CallersApi",
       "CallerSearch",
       "OverviewQuery",
       "NumberCheck",
+      "CallerFieldMetadata",
       "CallerProfile",
       "CallerDraft",
       "CallerEditorData",
@@ -190,13 +199,11 @@ The approved 2026-10-28 plan replaces the internal full-archive listing with `qu
       "CallDecision",
       "CallSource",
       "CallDetail",
-      "HomeData",
-      "IncomingCallUiSink",
-      "IncomingCallUiRequest"
+      "HomeData"
     ]
   },
   "change/ChangeFeed.kt": {
-    "sha256": "178950eba34fea2449a7b55d8c34cdb1a1210cf2e8e21ebf84b38b413bb46a21",
+    "sha256": "2de616c4a9e89db723c5ea9e096f416a831933ddcd8ae7c457e82e5c0f408213",
     "declarations": [
       "ChangeFeed",
       "DataDomain"
@@ -248,11 +255,12 @@ The approved 2026-10-28 plan replaces the internal full-archive listing with `qu
     ]
   },
   "recording/RecordingApi.kt": {
-    "sha256": "78da9d62a2e69771e856c9d016991f89079a286e476b6f80cdd3486f30392653",
+    "sha256": "a2bb4378d7778fd790c0c68a39c1e98e0a80099d28a17c62de9ccd52906f8a72",
     "declarations": [
       "CaptureMode",
       "ArchiveStatus",
       "RecordingSource",
+      "CallerIdentityBaseline",
       "CallAnalysis",
       "CallArchive",
       "RecordingFile",
@@ -298,7 +306,7 @@ The approved 2026-10-28 plan replaces the internal full-archive listing with `qu
     ]
   },
   "runtime/RuntimeApi.kt": {
-    "sha256": "1d2bf48f1448ff7223933802d4799760578bc052e692f55e9ad9a5637c184522",
+    "sha256": "f6004bb0c41c32907b22393593e2b2d2838b48bc4b9c30c3fbf45ce6d0c84c11",
     "declarations": [
       "RuntimeApi",
       "Capability",
@@ -316,7 +324,7 @@ The approved 2026-10-28 plan replaces the internal full-archive listing with `qu
     ]
   },
   "settings/SettingsApi.kt": {
-    "sha256": "6294471763b7b9c760dae6e78d681da769c24c0b32a1e8a9e1a6725cde72ad2e",
+    "sha256": "dce2feae003b4ca7b82d1f431ef2c9937fe3d5808360b780333cfcd2e6a132dd",
     "declarations": [
       "SettingsApi",
       "RingtoneApi",

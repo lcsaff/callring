@@ -168,18 +168,6 @@ data class HomeData(
     val currentWork: WorkStatus,
     val latestCall: CallDetail?,
     val statisticsEnabled: Boolean,
-    val overlayEnabled: Boolean,
     val quietMode: QuietMode,
     val meta: SnapshotMeta
-)
-
-interface IncomingCallUiSink {
-    fun show(request: IncomingCallUiRequest)
-}
-
-data class IncomingCallUiRequest(
-    val sessionId: String,
-    val number: String,
-    val startedAtEpochMillis: Long,
-    val decision: CallDecision
 )

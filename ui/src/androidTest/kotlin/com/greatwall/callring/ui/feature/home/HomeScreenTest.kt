@@ -21,7 +21,7 @@ class HomeScreenTest {
         val runtime = RuntimeStatus(Capability.entries.associateWith { AccessState.DENIED }, Audibility.SILENT,
             PhoneActivity.IDLE, PlaybackStatus(PlaybackMode.NONE, PlaybackState.IDLE), true, 0)
         val home = HomeData(RingtoneSettings(false, AudioSource.BUILT_IN, "内置铃声", 8), runtime,
-            WorkStatus(0, fact, null), null, false, false, QuietMode.OFF, SnapshotMeta(0, 0))
+            WorkStatus(0, fact, null), null, false, QuietMode.OFF, SnapshotMeta(0, 0))
         var leaves = 0
         compose.setContent { CallringTheme(DefaultAppearance.rememberAppearanceThemeSpec(androidx.compose.foundation.isSystemInDarkTheme())) {
             HomeScreen(LoadState(home, loaded = true), onRetry = {}, onLeaves = { leaves++ })

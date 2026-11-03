@@ -71,7 +71,7 @@ internal class CallerQueryService(
                         p?.positionId,
                         p?.whitelisted ?: false,
                         p?.selfReportedPosition.orEmpty(), p?.region.orEmpty(),
-                        p?.identityMetadata.orEmpty().mapValues { (_, m) -> CallerFieldMetadata(m.revision, m.disputed, m.archiveId, m.analysisGeneration, m.evidence) },
+                        frozenMap(p?.identityMetadata.orEmpty().mapValues { (_, m) -> CallerFieldMetadata(m.revision, m.disputed, m.archiveId, m.analysisGeneration, m.evidence) }),
                     ),
                     frozenList(
                         positions

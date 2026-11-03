@@ -89,7 +89,7 @@ class BackendApiDeviceTest : InstrumentationTestCase() {
         filter: CallFilter = CallFilter.ALL,
     ): CallerReport = success(fixture.graph.api.reports.load(ReportQuery(number, range, filter)))
 
-    fun testQuietScoreOverlayReopenAndEmptyCustomValidationPreserveCommittedState() = runBlocking {
+    fun testQuietScoreReopenAndEmptyCustomValidationPreserveCommittedState() = runBlocking {
         val api = fixture.graph.api
         val quiet = QuietSettings(QuietMode.CUSTOM, true, (1..7).associateWith { day ->
             if (day == 1) listOf(TimeWindow(1439, 0)) else emptyList()
@@ -97,7 +97,6 @@ class BackendApiDeviceTest : InstrumentationTestCase() {
         val score = ScoreSettings(7, 4, 8, 45)
         success(api.settings.saveQuietHours(quiet))
         success(api.settings.saveScoreSettings(score))
-        success(api.settings.setOverlayEnabled(false))
         val revision = api.changes.snapshots().value.revision
         val snapshot = fixture.graph.backend.refreshDecisionSnapshot()
         val raw = SQLiteDatabase.openDatabase(fixture.databaseFile.absolutePath, null, SQLiteDatabase.OPEN_READONLY).use { db ->
@@ -118,7 +117,6 @@ class BackendApiDeviceTest : InstrumentationTestCase() {
         fixture.reopen()
         assertEquals(quiet, success(fixture.graph.api.settings.getQuietHours()))
         assertEquals(score, success(fixture.graph.api.settings.getScoreSettings()))
-        assertFalse(success(fixture.graph.api.settings.getSummary()).overlayEnabled)
     }
 
     fun testPositionReferenceProtectionTrimmedNamesAndActiveEditorOptions() = runBlocking {
@@ -499,12 +497,6 @@ class BackendApiDeviceTest : InstrumentationTestCase() {
                     "fixture-account",
                 )
             val completion = coordinator.complete(session, CallDecision.CUSTOM_RINGTONE)
-            coordinator.show(
-                session,
-                CallDecision.CUSTOM_RINGTONE,
-                session.assessment.copy(overlayEnabled = true),
-            )
-            assertEquals("fixture-session", fixture.ui.requests.single().sessionId)
             Thread {
                     closeStarted.countDown()
                     try {

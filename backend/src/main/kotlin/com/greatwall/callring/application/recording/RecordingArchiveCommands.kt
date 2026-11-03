@@ -29,6 +29,11 @@ class RecordingArchiveCommands(
         true
     }
 
+    fun withCurrent(callId: Long, expectedGeneration: Long, block: () -> Unit): Boolean = coordinator.guard(null) {
+        if (state.generation(callId) != expectedGeneration || state.isDeleted(callId)) false
+        else { block(); true }
+    }
+
     fun delete(callId: Long, command: CommandContext?, playbackStopped: Boolean): Boolean = coordinator.guard(command) {
         val deleted = state.isDeleted(callId)
         val previous = mutations.delete(callId)

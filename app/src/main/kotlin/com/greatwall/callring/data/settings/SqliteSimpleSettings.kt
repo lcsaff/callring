@@ -15,7 +15,7 @@ import com.greatwall.callring.domain.model.*
 
 /** One adapter per leased session; shares its SQL connection and lifetime checks. */
 internal class SqliteSimpleSettings(private val sql: SqlAccess, private val checkLease: (Boolean) -> Unit) :
-    NumberRuleWriter, ScoreWriter, OverlayWriter, StatisticsWriter, PositionWriter, SummaryReader {
+    NumberRuleWriter, ScoreWriter, StatisticsWriter, PositionWriter, SummaryReader {
     private fun checkActive(write: Boolean = false) = checkLease(write)
     private fun settings(vararg keys: String): Map<String, String?> {
         checkActive()
@@ -52,12 +52,6 @@ internal class SqliteSimpleSettings(private val sql: SqlAccess, private val chec
         if(old.observationDays != value.observationDays) putSetting("score_days", value.observationDays.toString())
         loadedScore = value
         return old != value
-    }
-    override fun overlay() = settings("overlay")["overlay"] == "1"
-    override fun saveOverlay(value: Boolean): Boolean {
-        checkActive(true)
-        putSetting("overlay", if(value) "1" else "0")
-        return true
     }
     override fun statisticsHead(): StatisticsHead {
         checkActive()
@@ -129,7 +123,7 @@ internal class SqliteSimpleSettings(private val sql: SqlAccess, private val chec
             sql.insert("settings", fields.apply { put("key", "my_position") })
     }
     override fun settingsSummary(): CoreSettingsSummary {
-        val v = settings("quiet_mode", "overlay", "my_position", "off_weight", "repeat_weight", "repeat_minutes", "score_days")
+        val v = settings("quiet_mode", "my_position", "off_weight", "repeat_weight", "repeat_minutes", "score_days")
         val enabled = sql.scalar(QueryTag.AGGREGATE, setOf(SqlTable.STATISTICS_INTERVALS),
             "SELECT EXISTS(SELECT 1 FROM statistics_intervals WHERE end IS NULL)") != 0L
         val zone = sql.rawQuery(QueryTag.SCOPED_ROWS, setOf(SqlTable.CONFIG_VERSIONS),
@@ -137,7 +131,7 @@ internal class SqliteSimpleSettings(private val sql: SqlAccess, private val chec
             if(c.moveToFirst()) WorkConfigCodec.decode(c.getString(0), c.getLong(1), c.getLong(2)).zoneId
             else com.greatwall.callring.domain.model.defaultWorkSchedule().zoneId
         }
-        return CoreSettingsSummary(enabled, v["overlay"] == "1", QuietMode.valueOf(v["quiet_mode"] ?: "OFF"),
+        return CoreSettingsSummary(enabled, QuietMode.valueOf(v["quiet_mode"] ?: "OFF"),
             v["my_position"]?.toLong()?.let(::position), zone,
             ScoreSettings((v["off_weight"] ?: "5").toInt(), (v["repeat_weight"] ?: "2").toInt(),
                 (v["repeat_minutes"] ?: "10").toInt(), (v["score_days"] ?: "30").toInt()))

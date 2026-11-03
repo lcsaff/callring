@@ -27,7 +27,7 @@ internal fun installedVersionName(context: Context): String? = runCatching {
 fun SettingsOverviewScreen(
     state: LoadState<SettingsSummary>, mutation: MutationState,
     onBack: (() -> Unit)?, onRetry: () -> Unit, onStatistics: (Boolean) -> Unit,
-    onOverlay: (Boolean) -> Unit, onNavigate: (SettingsPage) -> Unit,
+    onNavigate: (SettingsPage) -> Unit,
 ) {
     val context = LocalContext.current
     val versionName = remember(context) { installedVersionName(context) }
@@ -41,8 +41,6 @@ fun SettingsOverviewScreen(
             SettingRow("号码规则", "设置号码前缀和长度", { onNavigate(SettingsPage.NUMBER_RULE) })
             SwitchSettingRow("来电统计", data.statisticsEnabled, onStatistics, "记录并统计来电情况", enabled = !mutation.busy)
             FieldError(mutation, "statisticsEnabled")
-            SwitchSettingRow("来电悬浮提示", data.overlayEnabled, onOverlay, "来电时显示号码与处理信息", enabled = !mutation.busy)
-            FieldError(mutation, "overlayEnabled")
             SettingRow("铃声", "导入、试听与恢复内置铃声", { onNavigate(SettingsPage.RINGTONE) })
         }
         SettingsCard("工作与评分") {

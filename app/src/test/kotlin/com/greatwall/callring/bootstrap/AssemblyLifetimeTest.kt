@@ -136,7 +136,7 @@ class AssemblyLifetimeTest {
             entered.countDown()
             check(release.await(5, java.util.concurrent.TimeUnit.SECONDS))
             store
-        }, operationActive = { true })
+        }, operationActive = { true }, enrichment = testEnrichment)
         val failures = java.util.concurrent.ConcurrentLinkedQueue<Throwable>()
         val reader = Thread { try { assembly.store } catch (e: Throwable) { failures.add(e) } }.apply { start() }
         assertTrue(entered.await(5, java.util.concurrent.TimeUnit.SECONDS))
@@ -370,6 +370,11 @@ class AssemblyLifetimeTest {
             object : UiNotificationEntryPoints {
                 override fun home(requestCode: Int) = PendingIntent.getActivity(context, requestCode, Intent("fixture"), PendingIntent.FLAG_IMMUTABLE)
                 override fun playback(preview: Boolean, stopAction: PendingIntent) = Notification()
-            }, object : IncomingCallUiSink { override fun show(request: IncomingCallUiRequest) = Unit })
+            })
     }
+}
+
+private val testEnrichment = object : com.greatwall.callring.application.ports.recording.RecordingIdentityEnrichment {
+    override fun capture(number: String) = com.greatwall.callring.contracts.recording.CallerIdentityBaseline("test", emptyMap())
+    override fun apply(number: String, baseline: com.greatwall.callring.contracts.recording.CallerIdentityBaseline, archiveId: Long, generation: Long, candidates: Map<String, Pair<String, String>>) = Unit
 }

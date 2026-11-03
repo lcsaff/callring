@@ -44,7 +44,7 @@ class CallerEditorViewModelTest {
                     value.department,
                     value.positionId,
                     value.whitelisted,
-                    base,
+                    base, selfReportedPosition = value.selfReportedPosition, region = value.region,
                 )
             saved = command
             gate?.let {
@@ -59,7 +59,7 @@ class CallerEditorViewModelTest {
                         command.department,
                         null,
                         PositionRelation.UNKNOWN,
-                        command.whitelisted ?: false,
+                        command.whitelisted ?: false, value.selfReportedPosition, value.region, value.identityMetadata,
                     ),
                 )
         }
@@ -82,6 +82,22 @@ class CallerEditorViewModelTest {
         val events = TestChangeFeed()
 
         override fun snapshots() = events.snapshots()
+    }
+
+    @Test fun enrichmentFieldsAndDisputeDraftSurviveHostRecreation() = runTest {
+        val api = CallersFake(); val changes = ChangesFake(); val saved = SavedStateHandle()
+        val model = CallerEditorViewModel("100", api, changes, saved, backgroundScope, api::edit)
+        runCurrent()
+        model.edit { copy(selfReportedPosition = "经理", region = "杭州", identityMetadata = mapOf("name" to CallerFieldMetadata(3, true, -1, 12, "我是旧姓名"))) }
+        val restored = CallerEditorViewModel("100", api, changes, saved, backgroundScope, api::edit)
+        runCurrent()
+        assertEquals("杭州", restored.draft.value!!.region)
+        assertEquals("经理", restored.draft.value!!.selfReportedPosition)
+        assertTrue(restored.draft.value!!.identityMetadata.getValue("name").disputed)
+        assertEquals(3L, restored.draft.value!!.identityMetadata.getValue("name").revision)
+        restored.save(); runCurrent()
+        assertEquals("杭州", api.saved!!.region)
+        assertEquals("经理", api.saved!!.selfReportedPosition)
     }
 
     @Test

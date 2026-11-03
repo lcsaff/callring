@@ -105,7 +105,6 @@ internal class CoreAssembly(
                 override suspend fun archives(number: String) = recordings().service.numberArchives(number)
                 override suspend fun delete(callId: Long, expectedGeneration: Long, command: CommandContext) = recordings().service.delete(callId, expectedGeneration, command)
             },
-            { recordings().service.getArchive(it) },
             operationActive,
             conversationProvider = { conversation().service },
             aiSettingsProvider = { command -> if (command == null) recordings().aiSettings else recordings().aiSettings.bound(command) },

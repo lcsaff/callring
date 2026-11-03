@@ -100,9 +100,6 @@ class ReportReadContractTest {
                 context,
                 config,
                 notifications,
-                object : IncomingCallUiSink {
-                    override fun show(request: IncomingCallUiRequest) = Unit
-                },
             )
         try {
             val observations = org.json.JSONObject().put("unrelatedCallCount", size)

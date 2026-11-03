@@ -240,56 +240,6 @@ class QuerySnapshotConsistencyTest {
     }
 
     @Test
-    fun adoptionReadbackRejectsAnArchiveChangedBetweenArchiveAndProfileReads() = runBlocking {
-        var archiveVersion = 0L
-        var archiveRead = false
-        val source =
-            object : ScopedReadPort {
-                override val domains = setOf(AiDomain.D01, AiDomain.D16)
-
-                override fun version(domain: AiDomain): Long {
-                    if (domain == AiDomain.D01 && archiveRead) archiveVersion = 1
-                    return if (domain == AiDomain.D16) archiveVersion else 0
-                }
-
-                override fun query(spec: QuerySpec, after: String?) = SourcePage(emptyList(), 0)
-
-                override fun get(domain: AiDomain, key: String, projection: String): SourceRow {
-                    val value =
-                        if (domain == AiDomain.D16) {
-                            archiveRead = true
-                            aiObject(
-                                "number" to aiString("31234"),
-                                "generation" to aiNumber(1),
-                                "analysis" to
-                                    aiObject(
-                                        "name" to aiString("name"),
-                                        "organization" to aiString("unit"),
-                                    ),
-                            )
-                        } else
-                            aiObject("name" to aiString("name"), "department" to aiString("unit"))
-                    return SourceRow(key, value)
-                }
-            }
-        val query = QueryService(listOf(source))
-        val receipt =
-            ReceiptVerifier(query)
-                .verify(
-                    OperationId.RECORDINGS_ADOPT_IDENTITY,
-                    ConversationToolCall("c", "recording_adopt", aiObject("callId" to aiNumber(1))),
-                    ToolReceipt(
-                        "op",
-                        "c",
-                        ToolStatus.COMMITTED,
-                        commitRevision = RevisionVector("test", emptyMap()),
-                    ),
-                )
-        assertEquals(VerificationStatus.COMMITTED_UNVERIFIED, receipt.verification)
-        assertEquals(2L, query.sourceQueries.get())
-    }
-
-    @Test
     fun deletionReadbackCannotVerifyAnAbsenceBeforeProfileRecreation() = runBlocking {
         var profileVersion = 0L
         var absentRead = false

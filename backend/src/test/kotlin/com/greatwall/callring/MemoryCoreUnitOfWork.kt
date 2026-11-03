@@ -322,13 +322,6 @@ internal class MemoryCoreUnitOfWork : CoreUnitOfWork {
                 return changed
             }
 
-            override fun overlay() = decision.overlay
-
-            override fun saveOverlay(value: Boolean): Boolean {
-                val changed = decision.overlay != value
-                decision.overlay = value
-                return changed
-            }
 
             override fun statisticsHead() =
                 StatisticsHead(
@@ -388,7 +381,6 @@ internal class MemoryCoreUnitOfWork : CoreUnitOfWork {
             override fun settingsSummary() =
                 CoreSettingsSummary(
                     decision.intervals.any { it.endMillis == null },
-                    decision.overlay,
                     decision.quiet.mode,
                     roles[selectedRole],
                     decision.schedules
@@ -425,7 +417,7 @@ internal class MemoryCoreUnitOfWork : CoreUnitOfWork {
         remember(decision.schedules); remember(decision.calendarYears); remember(decision.holidays)
         remember(decision.overrides); remember(decision.leaves); remember(decision.intervals)
         val makeup = decision.makeupDates.toSet()
-        val quiet = decision.quiet; val overlay = decision.overlay; val leaveVersion = decision.leaveVersion
+        val quiet = decision.quiet; val leaveVersion = decision.leaveVersion
         val rule = numberRuleSettings
         val selected = selectedRole; val mode = lastMode; val score = scoreSettings
         val callId = nextCall; val roleId = nextRole; val leaveId = nextLeave; val scheduleId = nextSchedule
@@ -436,7 +428,7 @@ internal class MemoryCoreUnitOfWork : CoreUnitOfWork {
         } catch (failure: Throwable) {
             undo.forEach { it() }
             decision.makeupDates.clear(); decision.makeupDates.addAll(makeup)
-            decision.quiet = quiet; decision.overlay = overlay; decision.leaveVersion = leaveVersion
+            decision.quiet = quiet; decision.leaveVersion = leaveVersion
             numberRuleSettings = rule
             selectedRole = selected; lastMode = mode; scoreSettings = score
             nextCall = callId; nextRole = roleId; nextLeave = leaveId; nextSchedule = scheduleId

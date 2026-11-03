@@ -20,8 +20,8 @@ internal class SettingsSummaryService(private val transactions: SummaryTransacti
             val at = clock.millis()
             val appearance = preferences.getAppearance()
             val value = transactions.readSummary { it.settingsSummary() }
-            if (coordinator.unchanged(setOf("score", "statistics", "overlay", "quiet", "myPosition", "positions", "schedule", "preferences"), before)) {
-                return@io SettingsSummary(value.statisticsEnabled, value.overlayEnabled, value.quietMode.toContract(),
+            if (coordinator.unchanged(setOf("score", "statistics", "quiet", "myPosition", "positions", "schedule", "preferences"), before)) {
+                return@io SettingsSummary(value.statisticsEnabled, value.quietMode.toContract(),
                     value.myPosition?.let { positionOption(it, it) }, value.zone, value.score.toContract(), appearance, SnapshotMeta(before, at))
             }
         }

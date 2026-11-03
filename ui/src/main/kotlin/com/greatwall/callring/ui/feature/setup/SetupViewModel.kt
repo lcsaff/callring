@@ -11,24 +11,19 @@ import kotlinx.coroutines.CoroutineScope
 /** These independent platform/configuration samples are observations, not an atomic snapshot. */
 data class SetupUiData(
     val status: RuntimeStatus,
-    val overlayEnabled: Boolean?,
     val recording: RecordingSettingsView?,
-    val overlayError: ApiError? = null,
     val recordingError: ApiError? = null,
 )
 
 class SetupViewModel(api: CallringUiApi, testScope: CoroutineScope? = null) : SnapshotViewModel<SetupUiData>(
-    api.changes, setOf(DataDomain.RUNTIME, DataDomain.OVERLAY_SETTINGS, DataDomain.RECORDING_SETTINGS),
+    api.changes, setOf(DataDomain.RUNTIME, DataDomain.RECORDING_SETTINGS),
     load = {
         when (val status = api.runtime.getStatus()) {
             is ApiResult.Failure -> status
             is ApiResult.Success -> {
-                val summary = api.settings.getSummary()
                 val recording = api.aiSettings.getRecordingView()
                 ApiResult.Success(SetupUiData(status.value,
-                    (summary as? ApiResult.Success)?.value?.overlayEnabled,
                     (recording as? ApiResult.Success)?.value,
-                    (summary as? ApiResult.Failure)?.error,
                     (recording as? ApiResult.Failure)?.error))
             }
         }

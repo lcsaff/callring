@@ -25,8 +25,8 @@ class T11ArchiveRefreshTest {
                 return ApiResult.Success(RecordingIdentity(if (callId == 1L) linked ?: callId else callId, "A", 0))
             }
         }
-        val a = ArchiveViewModel(api, 1, "A", 0, backgroundScope, adoptCommand = { _, _ -> error("unused") }, changes = feed)
-        val b = ArchiveViewModel(api, -2, "B", 0, backgroundScope, adoptCommand = { _, _ -> error("unused") }, changes = feed)
+        val a = ArchiveViewModel(api, 1, "A", 0, backgroundScope, changes = feed)
+        val b = ArchiveViewModel(api, -2, "B", 0, backgroundScope, changes = feed)
         runCurrent(); assertEquals(mapOf(1L to 1, -2L to 1), reads); assertEquals(0, metadata)
         data[1] = data.getValue(1).copy(generation = 1); feed.entity(DataDomain.RECORDING_ARCHIVES, "1"); runCurrent()
         assertEquals(2, reads[1L]); assertEquals(1, reads[-2L])
@@ -51,7 +51,7 @@ class T11ArchiveRefreshTest {
                 return ApiResult.Success(captured)
             }
         }
-        val model = ArchiveViewModel(api, 1, "A", 0, backgroundScope, adoptCommand = { _, _ -> error("unused") }, changes = feed)
+        val model = ArchiveViewModel(api, 1, "A", 0, backgroundScope, changes = feed)
         runCurrent(); value = value!!.copy(generation = 2)
         feed.entity(DataDomain.RECORDING_ARCHIVES, "-1"); runCurrent(); assertEquals(1, reads)
         gate.complete(Unit); runCurrent(); assertEquals(2, reads); assertEquals(2L, model.state.value.data!!.generation)
@@ -64,7 +64,7 @@ class T11ArchiveRefreshTest {
             override suspend fun getArchive(callId: Long): ApiResult<CallArchive?> { reads++; return ApiResult.Success(archive) }
             override suspend fun getIdentity(callId: Long): ApiResult<RecordingIdentity> { identities++; return ApiResult.Success(RecordingIdentity(-1, "A", 0)) }
         }
-        val model = ArchiveViewModel(api, 1, "A", 0, backgroundScope, adoptCommand = { _, _ -> error("unused") }, changes = feed)
+        val model = ArchiveViewModel(api, 1, "A", 0, backgroundScope, changes = feed)
         runCurrent(); assertEquals(1, reads); assertEquals(1, identities)
         archive = CallArchive(-1, "A", 0); feed.entity(DataDomain.RECORDING_ARCHIVES, "-1"); runCurrent()
         assertEquals(2, reads); assertEquals(-1L, model.state.value.data!!.callId)

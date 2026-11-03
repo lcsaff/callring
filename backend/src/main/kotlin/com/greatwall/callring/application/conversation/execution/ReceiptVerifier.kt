@@ -1,8 +1,6 @@
 package com.greatwall.callring.application.conversation.execution
 
-import com.greatwall.callring.application.conversation.query.AdoptionExpectation
 import com.greatwall.callring.application.conversation.query.QueryService
-import com.greatwall.callring.application.conversation.query.ScopedTextFingerprint
 import com.greatwall.callring.application.conversation.query.json
 
 import com.greatwall.callring.application.conversation.operation.*
@@ -14,18 +12,7 @@ import kotlinx.coroutines.CancellationException
 
 /** A committed command is never replayed merely because its readback failed. */
 class ReceiptVerifier(private val q:QueryService,private val catalog:OperationCatalog = OperationCatalog()) {
-    suspend fun prepareAdoption(call:ConversationToolCall):AdoptionExpectation {
-        val saved=q.snapshotObservations()
-        try{
-            val archive=q.get(AiDomain.D16,call.arguments.l("callId").toString()).requiredValue().value
-            val analysis=archive["analysis"] as? AiJson.Obj?:throw BackendFailure(ApiError(ErrorCode.NOT_FOUND,"recording.analysis_missing"))
-            val number=archive.s("number")
-            val profile=when(val value=q.get(AiDomain.D01,number)){is ApiResult.Success->value.value.value;is ApiResult.Failure->if(value.error.code==ErrorCode.NOT_FOUND)null else throw BackendFailure(value.error)}
-            suspend fun expected(field:String,target:String):ScopedTextFingerprint {val value=ScopedTextFingerprint.read(q,archive,"analysis.$field",analysis[field]);return if(value.blank)ScopedTextFingerprint.read(q,profile,target,profile?.get(target)?:AiJson.Null)else value}
-            return AdoptionExpectation(number,archive["generation"],expected("name","name"),expected("organization","department"))
-        }finally{q.restoreObservations(saved)}
-    }
-    suspend fun verify(operation:OperationId,call:ConversationToolCall,receipt:ToolReceipt,before:AiJson?=null,adoption:AdoptionExpectation?=null):ToolReceipt {
+    suspend fun verify(operation:OperationId,call:ConversationToolCall,receipt:ToolReceipt,before:AiJson?=null):ToolReceipt {
         require(catalog[operation].verification==VerificationStrategy.DIRECT)
         if(receipt.status in setOf(ToolStatus.QUEUED,ToolStatus.LAUNCHED))return receipt.copy(verification=VerificationStatus.PENDING)
         if(receipt.status!=ToolStatus.COMMITTED)return receipt
@@ -47,9 +34,14 @@ class ReceiptVerifier(private val q:QueryService,private val catalog:OperationCa
         fun compare(actual:AiJson.Obj,expected:AiJson.Obj=a,aliases:Map<String,String> = emptyMap()):Boolean = expected.fields.filterKeys{it !in setOf("taskId","dependsOn")}.all{(key,value)->sameValue(actual[aliases[key]?:key],value,key)}
         fun receiptObject()=receipt.value as? AiJson.Obj?:aiObject()
         try {
-            val readbackDomains=when(operation){OperationId.RECORDINGS_ADOPT_IDENTITY->setOf(AiDomain.D01,AiDomain.D16);OperationId.CALLERS_DELETE_NUMBER->setOf(AiDomain.D01,AiDomain.D03,AiDomain.D16,AiDomain.D18);OperationId.RECORDINGS_SAVE_SETTINGS->setOf(AiDomain.D13,AiDomain.D14);else->emptySet()}
+            val readbackDomains = when(operation) { OperationId.CALLERS_DELETE_NUMBER -> setOf(AiDomain.D01,AiDomain.D03,AiDomain.D16,AiDomain.D18); OperationId.RECORDINGS_SAVE_SETTINGS -> setOf(AiDomain.D13,AiDomain.D14); else -> emptySet() }
             val matches=q.coherent(readbackDomains){when(operation) {
-                OperationId.CALLERS_SAVE_PROFILE ->{val v=get(AiDomain.D01,a.s("number"));sameValue(v["stored"],aiBool(true))&&compare(v,aliases=mapOf("positionId" to "position_id"))}
+                OperationId.CALLERS_SAVE_PROFILE ->{val v=get(AiDomain.D01,a.s("number"));sameValue(v["stored"],aiBool(true))&&compare(v,expected=AiJson.Obj(a.fields.filterKeys { it != "disputedFields" }),aliases=mapOf("positionId" to "position_id")) &&
+                    ((a["disputedFields"] as? AiJson.Arr)?.let { wanted ->
+                        val fields = (v["identityMetadata"] as? AiJson.Obj)?.fields.orEmpty()
+                        val actual = fields.filterValues { (it as? AiJson.Obj)?.get("disputed") == aiBool(true) }.keys
+                        actual == wanted.values.map { it.string() }.toSet()
+                    } ?: true)}
                 OperationId.CALLERS_SET_WHITELISTED ->compare(get(AiDomain.D01,a.s("number")),aiObject("number" to a["number"],"whitelisted" to a["enabled"]))
                 OperationId.REPORTS_EXPORT_CSV ->documentProof.isNotEmpty()
                 OperationId.SETTINGS_SAVE_NUMBER_RULE -> {
@@ -60,7 +52,6 @@ class ReceiptVerifier(private val q:QueryService,private val catalog:OperationCa
                     actual!=null&&sameValue(actual["rules"],a["rules"])&&sameValue(actual["rules"],receiptObject()["rules"])&&sameValue(actual["revision"],aiNumber(revision))&&sameValue(actual["revision"],receiptObject()["revision"])
                 }
                 OperationId.SETTINGS_SET_STATISTICS_ENABLED ->sameValue(get(AiDomain.D10,"configuration")["statisticsEnabled"],a["enabled"])
-                OperationId.SETTINGS_SET_OVERLAY_ENABLED ->sameValue(get(AiDomain.D10,"configuration")["overlay"],a["enabled"])
                 OperationId.SETTINGS_SAVE_QUIET_HOURS ->compare(get(AiDomain.D10,"configuration"),aliases=mapOf("mode" to "quiet_mode","allNumbers" to "all_numbers","weeklyWindows" to "quiet_windows"))
                 OperationId.SETTINGS_SET_QUIET_MODE ->sameValue(get(AiDomain.D10,"configuration")["quiet_mode"],a["mode"])
                 OperationId.SETTINGS_SET_QUIET_ENABLED ->sameValue(get(AiDomain.D10,"configuration")["quiet_mode"],receiptObject()["mode"])
@@ -86,16 +77,6 @@ class ReceiptVerifier(private val q:QueryService,private val catalog:OperationCa
                 OperationId.RECORDINGS_PLAY ->{val v=get(AiDomain.D19)["recordingPlayback"] as? AiJson.Obj;v!=null&&v["state"]==aiString("PLAYING")&&sameValue(v["callId"],a["callId"])}
                 OperationId.RECORDINGS_STOP ->{val v=get(AiDomain.D19)["recordingPlayback"] as? AiJson.Obj;v!=null&&v["mode"]==aiString("NONE")&&v["state"]==aiString("IDLE")&&v["callId"]==AiJson.Null}
                 OperationId.RECORDINGS_SET_SYSTEM_FOLDER ->sameValue(get(AiDomain.D13)["folderConfigured"],aiBool(true))
-                OperationId.RECORDINGS_ADOPT_IDENTITY ->{
-                    val archive=get(AiDomain.D16,a.l("callId").toString());val analysis=archive["analysis"] as? AiJson.Obj
-                    val n=archive.s("number");val profile=get(AiDomain.D01,n)
-                    suspend fun matches(field:String,target:String,expected:ScopedTextFingerprint?):Boolean {
-                        val wanted=expected?:analysis?.let{ScopedTextFingerprint.read(q,archive,"analysis.$field",it[field])}?:return false
-                        if(expected==null&&wanted.blank)return false
-                        return wanted.matches(ScopedTextFingerprint.read(q,profile,target,profile[target]))
-                    }
-                    analysis!=null&&(adoption==null||(adoption.number==n&&adoption.generation==archive["generation"]))&&matches("name","name",adoption?.name)&&matches("organization","department",adoption?.department)
-                }
                 OperationId.AI_PATCH_SETTINGS ->compareAi(get(AiDomain.D14),a)
                 OperationId.SYSTEM_REQUEST_CAPABILITY ->{val runtime=get(AiDomain.D19)["runtime"] as? AiJson.Obj;val capabilities=runtime?.get("capabilities") as? AiJson.Obj;capabilities?.get(a.s("capability")) in setOf(aiString("GRANTED"),aiString("NOT_REQUIRED"))}
                 OperationId.AI_EDIT_CREDENTIAL, OperationId.AI_COPY_CONNECTION ->{val value=get(AiDomain.D14);val expected=receiptObject();expected.fields.isNotEmpty()&&compare(value,expected)}

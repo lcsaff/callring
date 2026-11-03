@@ -22,9 +22,7 @@ class IncomingCallCoordinatorTest {
     @Test fun recordingObservesCallsWhileStatisticsRemainDisabled() {
         val engine = Engine(statisticsEnabled = false)
         val observed = CompletableFuture<List<Any?>>()
-        val coordinator = IncomingCallCoordinator(engine, object : IncomingCallUiSink {
-            override fun show(request: IncomingCallUiRequest) = Unit
-        }, onIncoming = { session, number, at, account -> observed.complete(listOf(session, number, at, account)); Unit }) {}
+        val coordinator = IncomingCallCoordinator(engine, onIncoming = { session, number, at, account -> observed.complete(listOf(session, number, at, account)); Unit }) {}
         try {
             val session = coordinator.inspect("independent", "31234", 1000, "sim-a")
             assertEquals(-1L, session.record.get(2, TimeUnit.SECONDS))
@@ -37,9 +35,7 @@ class IncomingCallCoordinatorTest {
     @Test fun blockedRecordingObserverDoesNotBlockStatisticsWriter() {
         val engine = Engine()
         val entered = CountDownLatch(1); val releaseObserver = CountDownLatch(1)
-        val coordinator = IncomingCallCoordinator(engine, object : IncomingCallUiSink {
-            override fun show(request: IncomingCallUiRequest) = Unit
-        }, onIncoming = { _, _, _, _ -> entered.countDown(); check(releaseObserver.await(5, TimeUnit.SECONDS)) }) {}
+        val coordinator = IncomingCallCoordinator(engine, onIncoming = { _, _, _, _ -> entered.countDown(); check(releaseObserver.await(5, TimeUnit.SECONDS)) }) {}
         try {
             val session = coordinator.inspect("blocked-observer", "31234", 1000, null)
             assertTrue(entered.await(2, TimeUnit.SECONDS))
@@ -51,9 +47,7 @@ class IncomingCallCoordinatorTest {
     }
     @Test fun recordingObserverFailureDoesNotFailStatistics() {
         val engine = Engine()
-        val coordinator = IncomingCallCoordinator(engine, object : IncomingCallUiSink {
-            override fun show(request: IncomingCallUiRequest) = Unit
-        }, onIncoming = { _, _, _, _ -> throw IOException("recording.storage_failed") }) {}
+        val coordinator = IncomingCallCoordinator(engine, onIncoming = { _, _, _, _ -> throw IOException("recording.storage_failed") }) {}
         try {
             val session = coordinator.inspect("failed-observer", "31234", 1000, null)
             engine.release.countDown()
@@ -61,18 +55,16 @@ class IncomingCallCoordinatorTest {
             assertEquals(listOf(42L to CallDecision.NORMAL_RINGING), engine.completed)
         } finally { engine.release.countDown(); coordinator.close() }
     }
-    @Test fun reinspectionRetainsFirstFactAndRecomputesLatestQuietOverlayAndWhitelist() {
+    @Test fun reinspectionRetainsFirstFactAndRecomputesLatestQuietAndWhitelist() {
         for (matched in listOf(true,false)) {
             val number = if (matched) "31234" else "812345"
             var inputs = DecisionInputs(emptyList(),emptyMap(),emptyMap(),emptySet(),emptyMap(),emptyMap(),0,
-                emptySet(),QuietSettings(QuietMode.OFF,false,emptyMap()),listOf(StatisticsInterval(0,null)),true,
+                emptySet(),QuietSettings(QuietMode.OFF,false,emptyMap()),listOf(StatisticsInterval(0,null)),
                 NumberRuleSnapshot(listOf(NumberRule.DEFAULT),0))
             var snapshot = DecisionSnapshot.capture(inputs,PrefixLengthNumberMatcher)
             val seen = CompletableFuture<NumberMatchFact>()
             val engine = BackendIncomingCallEngine({ snapshot },{ snapshot },{ _,_,_,_,_,fact -> seen.complete(fact); 1L },{ _,_ -> })
-            val coordinator = IncomingCallCoordinator(engine,object : IncomingCallUiSink {
-                override fun show(request: IncomingCallUiRequest) = Unit
-            }) {}
+            val coordinator = IncomingCallCoordinator(engine) {}
             try {
                 val session = coordinator.inspect("retained-$matched",number,1000,null)
                 inputs = inputs.copy(numberRule=NumberRuleSnapshot(listOf(NumberRule("8",6)),1),
@@ -81,15 +73,13 @@ class IncomingCallCoordinatorTest {
                 var again = coordinator.inspectAgain(session)
                 assertEquals(matched,again.matched)
                 assertEquals(matched,again.silence)
-                assertEquals(matched,again.overlayEnabled)
                 assertEquals(matched,again.statisticsEnabled)
                 assertEquals(session.assessment.numberMatch,again.numberMatch)
                 assertEquals(!matched,engine.evaluate(number,1000).matched)
-                inputs = inputs.copy(quiet=QuietSettings(QuietMode.NON_WORK,true,emptyMap()),overlayEnabled=false)
+                inputs = inputs.copy(quiet=QuietSettings(QuietMode.NON_WORK,true,emptyMap()))
                 snapshot = snapshot.rebuild(inputs)
                 again = coordinator.inspectAgain(session)
                 assertTrue(again.silence)
-                assertFalse(again.overlayEnabled)
                 inputs=inputs.copy(whitelistedNumbers=setOf(number))
                 snapshot=snapshot.rebuild(inputs)
                 again=coordinator.inspectAgain(session)
@@ -116,7 +106,7 @@ class IncomingCallCoordinatorTest {
         override fun normalize(raw: String) = raw
 
         override fun evaluate(number: String, at: Long, initialMatch: com.greatwall.callring.domain.calling.NumberMatchFact?) =
-            IncomingDecision(true, false, true, true, statisticsEnabled, fact.toDomain(), initialMatch ?: com.greatwall.callring.domain.calling.NumberMatchFact(0, true))
+            IncomingDecision(true, false, true, statisticsEnabled, fact.toDomain(), initialMatch ?: com.greatwall.callring.domain.calling.NumberMatchFact(0, true))
 
         override fun record(
             number: String,
@@ -144,9 +134,6 @@ class IncomingCallCoordinatorTest {
         val coordinator =
             IncomingCallCoordinator(
                 engine,
-                object : IncomingCallUiSink {
-                    override fun show(request: IncomingCallUiRequest) = Unit
-                },
             ) {}
         try {
             val session = coordinator.inspect("session-1", "31234", 1000, "account")
@@ -172,9 +159,6 @@ class IncomingCallCoordinatorTest {
         val coordinator =
             IncomingCallCoordinator(
                 engine,
-                object : IncomingCallUiSink {
-                    override fun show(request: IncomingCallUiRequest) = Unit
-                },
             ) {
                 failures += Unit
             }
@@ -192,20 +176,14 @@ class IncomingCallCoordinatorTest {
     }
 
     @Test
-    fun presentationFailureDoesNotInterruptFinalPersistence() {
+    fun finalPersistenceCompletesWithoutPresentation() {
         val engine = Engine()
         val coordinator =
             IncomingCallCoordinator(
                 engine,
-                object : IncomingCallUiSink {
-                    override fun show(request: IncomingCallUiRequest) {
-                        throw IllegalStateException("window.denied")
-                    }
-                },
             ) {}
         try {
             val session = coordinator.inspect("session-3", "31234", 1000, null)
-            coordinator.show(session, CallDecision.QUIET_SILENCED, session.assessment)
             engine.release.countDown()
             coordinator.complete(session, CallDecision.QUIET_SILENCED).get(2, TimeUnit.SECONDS)
             assertEquals(1, engine.completed.size)
@@ -224,9 +202,6 @@ class IncomingCallCoordinatorTest {
             val coordinator =
                 IncomingCallCoordinator(
                     engine,
-                    object : IncomingCallUiSink {
-                        override fun show(request: IncomingCallUiRequest) = Unit
-                    },
                     afterCompletion = { recoveryThreads += Thread.currentThread() },
                 ) {}
             try {
@@ -258,9 +233,6 @@ class IncomingCallCoordinatorTest {
         val coordinator =
             IncomingCallCoordinator(
                 engine,
-                object : IncomingCallUiSink {
-                    override fun show(request: IncomingCallUiRequest) = Unit
-                },
                 afterCompletion = {
                     recoveryCalls += Unit
                     throw IllegalStateException("test.scheduler_rejected")
@@ -289,9 +261,6 @@ class IncomingCallCoordinatorTest {
         val coordinator =
             IncomingCallCoordinator(
                 engine,
-                object : IncomingCallUiSink {
-                    override fun show(request: IncomingCallUiRequest) = Unit
-                },
                 afterCompletion = { recoveryCalls += Unit },
             ) {}
         try {
@@ -313,9 +282,6 @@ class IncomingCallCoordinatorTest {
         val coordinator =
             IncomingCallCoordinator(
                 engine,
-                object : IncomingCallUiSink {
-                    override fun show(request: IncomingCallUiRequest) = Unit
-                },
                 afterCompletion = { recoveryCalls += Unit },
             ) {}
         try {
@@ -339,9 +305,6 @@ class IncomingCallCoordinatorTest {
             val coordinator =
                 IncomingCallCoordinator(
                     engine,
-                    object : IncomingCallUiSink {
-                        override fun show(request: IncomingCallUiRequest) = Unit
-                    },
                     workLease = {
                         acquired.incrementAndGet()
                         Closeable { released.countDown() }
@@ -380,9 +343,6 @@ class IncomingCallCoordinatorTest {
         val coordinator =
             IncomingCallCoordinator(
                 engine,
-                object : IncomingCallUiSink {
-                    override fun show(request: IncomingCallUiRequest) = Unit
-                },
                 workLease = { throw SecurityException("test.wake_lock_denied") },
                 afterCompletion = { recoveryCalls += Unit },
             ) {
@@ -414,9 +374,6 @@ class IncomingCallCoordinatorTest {
         val coordinator =
             IncomingCallCoordinator(
                 engine,
-                object : IncomingCallUiSink {
-                    override fun show(request: IncomingCallUiRequest) = Unit
-                },
                 workLease = {
                     Closeable {
                         released.incrementAndGet()

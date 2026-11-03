@@ -41,7 +41,6 @@ interface IncomingCallOperations {
 
     fun complete(session: IncomingCallSession, decision: CallDecision): CompletableFuture<Unit>
 
-    fun show(session: IncomingCallSession, decision: CallDecision, latest: IncomingDecision)
 }
 
 /**
@@ -270,7 +269,6 @@ class ScreeningController(
                 /* Presentation is independent. */
             }
             try {
-                calls.show(inspected, decision, latest)
             } catch (_: Exception) {
                 /* UI cannot change the call response. */
             }

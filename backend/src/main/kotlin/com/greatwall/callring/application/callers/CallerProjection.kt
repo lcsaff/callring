@@ -26,7 +26,7 @@ internal fun callerProfile(
         option?.relationToMe ?: PositionRelation.UNKNOWN,
         value?.whitelisted ?: false,
         value?.selfReportedPosition.orEmpty(), value?.region.orEmpty(),
-        value?.identityMetadata.orEmpty().mapValues { (_, m) -> CallerFieldMetadata(m.revision, m.disputed, m.archiveId, m.analysisGeneration, m.evidence) },
+        frozenMap(value?.identityMetadata.orEmpty().mapValues { (_, m) -> CallerFieldMetadata(m.revision, m.disputed, m.archiveId, m.analysisGeneration, m.evidence) }),
     )
 }
 

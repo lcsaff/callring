@@ -8,7 +8,6 @@ data class IncomingDecision(
     val matched: Boolean,
     val whitelisted: Boolean,
     val silence: Boolean,
-    val overlayEnabled: Boolean,
     val statisticsEnabled: Boolean,
     val classification: ClassificationFact,
     val numberMatch: NumberMatchFact,
@@ -42,7 +41,6 @@ class DecisionSnapshot private constructor(val inputs: DecisionInputs, private v
             matched,
             white,
             silence,
-            matched && inputs.overlayEnabled,
             matched &&
                 inputs.statisticsIntervals.any {
                     at >= it.startMillis && (it.endMillis == null || at < it.endMillis)

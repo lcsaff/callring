@@ -102,13 +102,11 @@ class SqliteCoreStorageResourceDeviceTest : InstrumentationTestCase() {
     fun testInvalidPositionConstraintRollsBackOtherWrites() {
         try {
             store.sessions.writeSession { writer ->
-                writer.saveOverlay(true)
                 writer.putPosition(PositionRecord(0, "invalid", 0, true), true)
             }
             fail("Invalid position accepted")
         } catch (expected: android.database.sqlite.SQLiteConstraintException) {}
         assertTrue(store.fullSnapshot.capture().positions.isEmpty())
-        assertFalse(store.fullSnapshot.capture().overlayEnabled)
     }
 
     fun testIgnoredSettingsWriteRollsBackOtherValues() {
@@ -429,7 +427,6 @@ class SqliteCoreStorageResourceDeviceTest : InstrumentationTestCase() {
                 writer.replaceCalendar(old.copy(metadata = old.metadata.copy(source = "must roll back")))
                 writer.incrementLeaveVersion()
                 writer.appendAudit(AuditRecord("leave-delete", "1", "", at))
-                writer.saveOverlay(true)
                 val call = writer.callingCall(1)!!
                 writer.updateCallingCalls(listOf(call to call.copy(classification = WorkClassifier.classify(writer.workHistory(), call.time))))
                 writer.removeLeave(1)
@@ -441,7 +438,6 @@ class SqliteCoreStorageResourceDeviceTest : InstrumentationTestCase() {
             assertEquals(1L, state.work.leaveVersion)
             assertEquals(callBefore, state.calls.getValue(1))
             assertEquals(sourceBefore, state.work.calendarYears.getValue(2026).source)
-            assertFalse(state.overlayEnabled)
         }
         fixture().use {
             assertEquals(auditsBefore, it.scalar("SELECT COUNT(*) FROM calendar_audit"))

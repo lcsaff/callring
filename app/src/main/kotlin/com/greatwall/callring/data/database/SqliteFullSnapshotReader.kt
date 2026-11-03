@@ -81,7 +81,6 @@ internal class SqliteFullSnapshotReader(
             quiet.settings,
             quiet.settings.mode.takeUnless { it == QuietMode.OFF } ?: quiet.lastMode,
             reader.score(),
-            reader.overlay(),
             audits,
             reader.numberRule(),
         )

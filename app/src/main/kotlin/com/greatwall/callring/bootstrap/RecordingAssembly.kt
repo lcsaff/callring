@@ -32,6 +32,7 @@ class RecordingAssembly(
     private val coordinator: BusinessRevisionCoordinator = BusinessRevisionCoordinator(),
     clientFactory: (() -> AiClient)? = null,
     private val operationActive: () -> Boolean,
+    private val enrichment: com.greatwall.callring.application.ports.recording.RecordingIdentityEnrichment,
 ) : AutoCloseable {
     private val lifetime = Any()
     private var closed = false
@@ -62,7 +63,7 @@ class RecordingAssembly(
     suspend fun reobserveFolder() { if (aiSettingsDelegate.isInitialized()) aiSettingsDelegate.value.reobserveFolder() }
     private val archiveCommandsDelegate = lazy { RecordingArchiveCommands(store, store, coordinator) }
     private val registrationsDelegate = lazy { RecordingRegistrationService(store, coordinator) }
-    private val workflowDelegate = lazy { RecordingWorkflow(store, archiveCommands, AndroidAudioTranscriber(client, File(context.cacheDir, namespace + "_ai_audio"))) }
+    private val workflowDelegate = lazy { RecordingWorkflow(store, archiveCommands, AndroidAudioTranscriber(client, File(context.cacheDir, namespace + "_ai_audio")), enrichment = enrichment) }
     private val audioDelegate = lazy { AndroidRecordingAudio(context, directory, metadataReader) }
     private val audio get() = audioDelegate.value
     private val playbackDelegate: Lazy<AndroidRecordingPlayback> = lazy { AndroidRecordingPlayback(directory) { service.playbackFinished() } }

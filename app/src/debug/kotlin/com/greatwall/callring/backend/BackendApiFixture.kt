@@ -79,7 +79,7 @@ internal class BackendApiFixture(private val base: Context) : Closeable {
             ringPreferences,
         )
     val ui = FixtureUi(base, id)
-    var graph = BackendGraph(com.greatwall.callring.bootstrap.BackupGraphOwner { _, _ -> throw AssertionError("Unexpected fixture restore") }, context, configuration, ui, ui)
+    var graph = BackendGraph(com.greatwall.callring.bootstrap.BackupGraphOwner { _, _ -> throw AssertionError("Unexpected fixture restore") }, context, configuration, ui)
         private set
 
     val databaseFile
@@ -96,7 +96,7 @@ internal class BackendApiFixture(private val base: Context) : Closeable {
 
     fun reopen(configuration: BackendConfiguration = this.configuration) {
         graph.close()
-        graph = BackendGraph(com.greatwall.callring.bootstrap.BackupGraphOwner { _, _ -> throw AssertionError("Unexpected fixture restore") }, context, configuration, ui, ui)
+        graph = BackendGraph(com.greatwall.callring.bootstrap.BackupGraphOwner { _, _ -> throw AssertionError("Unexpected fixture restore") }, context, configuration, ui)
     }
 
     fun rawFacts(): List<List<String?>> =
@@ -244,13 +244,8 @@ internal class FixtureContext(
 }
 
 internal class FixtureUi(private val context: Context, private val id: String) :
-    UiNotificationEntryPoints, IncomingCallUiSink, Closeable {
-    val requests = CopyOnWriteArrayList<IncomingCallUiRequest>()
+    UiNotificationEntryPoints, Closeable {
     private val pending = CopyOnWriteArrayList<PendingIntent>()
-
-    override fun show(request: IncomingCallUiRequest) {
-        requests += request
-    }
 
     override fun home(requestCode: Int): PendingIntent =
         PendingIntent.getBroadcast(

@@ -18,7 +18,7 @@ import org.robolectric.annotation.Config
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [35])
 class SettingsScreensJvmTest : SettingsScreenCases() {
-    private val summary = SettingsSummary(false, false, QuietMode.OFF, null, "Asia/Shanghai",
+    private val summary = SettingsSummary(false, QuietMode.OFF, null, "Asia/Shanghai",
         ScoreSettings(5, 2, 10, 30), DefaultAppearance, SnapshotMeta(0, 0))
 
     @Test fun settingsOverviewShowsTheInstalledVersionAndOpensTheUpdatePage() {
@@ -27,7 +27,7 @@ class SettingsScreensJvmTest : SettingsScreenCases() {
         val expectedVersion = context.packageManager.getPackageInfo(context.packageName, 0).versionName
         var page: SettingsPage? = null
         compose.setContent { CallringTheme(DefaultAppearance.rememberAppearanceThemeSpec(androidx.compose.foundation.isSystemInDarkTheme())) {
-            SettingsOverviewScreen(LoadState(summary, loaded = true), MutationState(), null, {}, {}, {}, { page = it })
+            SettingsOverviewScreen(LoadState(summary, loaded = true), MutationState(), null, {}, {}, { page = it })
         } }
         compose.onNodeWithText("检查更新").performScrollTo().assertExists()
         if (expectedVersion != null) {

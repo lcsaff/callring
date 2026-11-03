@@ -55,9 +55,6 @@ class BackendQaApplication : CallringApplication() {
                         .build()
                 }
             },
-            object : IncomingCallUiSink {
-                override fun show(request: IncomingCallUiRequest) = Unit
-            },
         )
     }
 }

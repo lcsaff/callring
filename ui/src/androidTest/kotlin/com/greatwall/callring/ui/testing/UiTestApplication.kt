@@ -8,7 +8,7 @@ import com.greatwall.callring.contracts.settings.*
 import com.greatwall.callring.contracts.runtime.*
 import com.greatwall.callring.contracts.widget.*
 import com.greatwall.callring.ui.app.bridge.DefaultAppearance
-import com.greatwall.callring.ui.overlay.*
+import com.greatwall.callring.ui.app.bridge.UiApiOwner
 import com.greatwall.callring.ui.widget.observeWidgetUpdates
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -20,9 +20,8 @@ import java.util.concurrent.CopyOnWriteArrayList
 import java.util.concurrent.atomic.AtomicLong
 
 /** Synthetic data for the independently installed UI test APK only. */
-class UiTestApplication : Application(), UiOverlayOwner {
+class UiTestApplication : Application(), UiApiOwner {
     private val lifetime = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
-    override val overlaySessions = OverlaySessions()
     override val uiApi = UiDeviceFixture()
     override val availableUiApi = kotlinx.coroutines.flow.MutableStateFlow<com.greatwall.callring.contracts.CallringUiApi?>(uiApi)
     override suspend fun reobservePlatform() { uiApi.runtime.getStatus() }

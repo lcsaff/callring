@@ -106,6 +106,8 @@ internal class AndroidBackupArchivePort(
             ensure(manifest.getInt("version") == 1)
             val created = manifest.getLong("created")
             val includeAudio = manifest.getBoolean("audio")
+            SqliteBackupCopy.upgradeCoreCandidate(context, File(stage, "core.db"))
+            checkCancellation()
             SqliteBackupCopy.validate(File(stage, "core.db"), sourceCore)
             SqliteBackupCopy.validate(File(stage, "recording.db"), sourceRecording)
             CoreBackupValidation.validate(File(stage, "core.db"), checkCancellation)
@@ -243,6 +245,10 @@ internal class AndroidBackupArchivePort(
                 val pending = status in setOf(ArchiveStatus.QUEUED, ArchiveStatus.TRANSCRIBING, ArchiveStatus.ANALYZING, ArchiveStatus.WAITING_RECORDING)
                 val updates = linkedMapOf("audio" to (portable?.let(JSONObject::quote) ?: "null"), "next" to Long.MAX_VALUE.toString())
                 if ("manual" in fields) updates["manual"] = "false"
+                if (status in setOf(ArchiveStatus.ENRICHING, ArchiveStatus.ENRICHMENT_FAILED)) {
+                    updates["status"] = JSONObject.quote(ArchiveStatus.ENRICHMENT_FAILED.name)
+                    updates["error"] = JSONObject.quote("recording.restore_retry_required")
+                }
                 if (pending) { updates["status"] = JSONObject.quote(ArchiveStatus.FAILED.name); updates["error"] = JSONObject.quote("recording.restore_retry_required") }
                 if (exporting && path != null && !includeAudio) updates["error"] = JSONObject.quote("recording.audio_not_restored")
                 ArchiveBackupFields.replace(db, id, fields, updates)

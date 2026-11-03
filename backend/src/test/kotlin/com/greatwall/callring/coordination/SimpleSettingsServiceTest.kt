@@ -145,7 +145,7 @@ class SimpleSettingsServiceTest {
         val tx = object : SummaryTransactions {
             override fun <T> readSummary(block: (SummaryReader) -> T): T {
                 reads++
-                val result = block(object : SummaryReader { override fun settingsSummary() = CoreSettingsSummary(false, false,
+                val result = block(object : SummaryReader { override fun settingsSummary() = CoreSettingsSummary(false,
                     com.greatwall.callring.domain.model.QuietMode.OFF, null, "UTC", ScoreSettings(5, 2, 10, 30).toDomain()) })
                 coordinator.publishCore(setOf("score"), ChangeImpact.wide(setOf(DataDomain.SCORE_SETTINGS)))
                 return result
@@ -160,7 +160,7 @@ class SimpleSettingsServiceTest {
         val tx = object : SummaryTransactions {
             override fun <T> readSummary(block: (SummaryReader) -> T): T {
                 reads++
-                val result = block(object : SummaryReader { override fun settingsSummary() = CoreSettingsSummary(false, false,
+                val result = block(object : SummaryReader { override fun settingsSummary() = CoreSettingsSummary(false,
                     com.greatwall.callring.domain.model.QuietMode.OFF, null, "UTC", ScoreSettings(5, 2, 10, 30).toDomain()) })
                 coordinator.publishResource("recording", setOf("recording"), com.greatwall.callring.application.coordination.ChangeImpact.wide(setOf(com.greatwall.callring.contracts.change.DataDomain.RECORDING_ARCHIVES)))
                 return result

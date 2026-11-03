@@ -13,7 +13,7 @@ import com.greatwall.callring.ui.feature.update.AppUpdateViewModel
 @Composable internal fun SettingsRoute(
     page: SettingsPage, api: CallringUiApi, summaryModel: SettingsSummaryViewModel, appearanceModel: AppearanceViewModel,
     signal: Long, onBack: () -> Unit, onCapability: (Capability) -> Unit, onAppSettings: () -> Unit,
-    onTestOverlay: () -> Unit = {}, startupUpdateFinished: Boolean = false, onSetup: () -> Unit = {},
+    startupUpdateFinished: Boolean = false, onSetup: () -> Unit = {},
 ) {
     when (page) {
         SettingsPage.BACKUP -> BackupRoute(api.backup, onBack)
@@ -114,7 +114,7 @@ import com.greatwall.callring.ui.feature.update.AppUpdateViewModel
             val model: RuntimeViewModel = uiViewModel { RuntimeViewModel(api) }
             val state by model.state.collectAsStateWithLifecycle()
             val mutation by model.mutation.collectAsStateWithLifecycle()
-            RuntimeScreen(state, mutation, onBack, model::refresh, onCapability, model::synchronize, onAppSettings, onTestOverlay, onSetup)
+            RuntimeScreen(state, mutation, onBack, model::refresh, onCapability, model::synchronize, onAppSettings, onSetup)
         }
         SettingsPage.UPDATE -> {
             val model: AppUpdateViewModel = uiViewModel { AppUpdateViewModel(api.update) }

@@ -43,8 +43,6 @@ class SetupViewModelTest {
         assertEquals(3, reads)
         feed.entity(DataDomain.RUNTIME, "status"); runCurrent()
         assertEquals(4, reads)
-        feed.publish(setOf(DataDomain.OVERLAY_SETTINGS)); runCurrent()
-        assertEquals(5, reads)
     }
 
     @Test fun refreshKeepsOldObservationAndErrorsDoNotTurnUnknownOptionalSettingsIntoDisabled() = runTest {

@@ -105,13 +105,24 @@ class ToolExecutor(
                 }
                 OperationId.CALLERS_SAVE_PROFILE -> {
                     val current = bound.callers.getEditor(a.s("number")).requiredValue().draft
-                    val draft=current.copy(name=a.optS("name")?:current.name,department=a.optS("department")?:current.department,positionId=if(a.has("positionId"))a.optL("positionId")else current.positionId,whitelisted=a.optB("whitelisted")?:current.whitelisted)
+                    val requestedDisputes = (a["disputedFields"] as? AiJson.Arr)?.values?.map { it.string() }?.toSet()
+                    val identityFields = setOf("name", "department", "selfReportedPosition", "region")
+                    require(requestedDisputes == null || requestedDisputes.all { it in identityFields })
+                    requestedDisputes?.forEach { field ->
+                        val previous = when(field) { "name" -> current.name; "department" -> current.department; "region" -> current.region; else -> current.selfReportedPosition }
+                        if (a.has(field) && a.s(field).trim() != previous)
+                            throw BackendFailure(ApiError(ErrorCode.VALIDATION, "caller.dispute_changed_field", fieldErrors = mapOf(field to "caller.dispute_changed_field")))
+                    }
+                    val metadata = if (requestedDisputes == null) current.identityMetadata else identityFields.associateWith { field ->
+                        (current.identityMetadata[field] ?: CallerFieldMetadata()).copy(disputed = field in requestedDisputes)
+                    }
+                    val draft=current.copy(selfReportedPosition=a.optS("selfReportedPosition")?:current.selfReportedPosition,
+                        region=a.optS("region")?:current.region, identityMetadata=metadata, name=a.optS("name")?:current.name,department=a.optS("department")?:current.department,positionId=if(a.has("positionId"))a.optL("positionId")else current.positionId,whitelisted=a.optB("whitelisted")?:current.whitelisted)
                     bound.edits.profile(current,draft).requiredValue()
                 }
                 OperationId.CALLERS_SET_WHITELISTED -> bound.callers.setWhitelisted(a.s("number"), a.b("enabled")).requiredValue()
                 OperationId.REPORTS_EXPORT_CSV -> { val target = document(ForegroundActionKind.EXPORT_CSV); val exported=bound.reports.exportCsv(ReportExportQuery(a.s("number"), a.range()), target).requiredValue();if(documentWriteVerified(target))actionEvidence+=aiObject("documentReadback" to aiBool(true));exported }
                 OperationId.SETTINGS_SET_STATISTICS_ENABLED -> bound.settings.setStatisticsEnabled(a.b("enabled")).requiredValue()
-                OperationId.SETTINGS_SET_OVERLAY_ENABLED -> bound.settings.setOverlayEnabled(a.b("enabled")).requiredValue()
                 OperationId.SETTINGS_SAVE_QUIET_HOURS -> {
                     val old = bound.settings.getQuietHours().requiredValue()
                     bound.settings.saveQuietHours(old.copy(mode = a.optS("mode")?.let(QuietMode::valueOf) ?: old.mode, allNumbers = a.optB("allNumbers") ?: old.allNumbers,
@@ -179,7 +190,6 @@ class ToolExecutor(
                 OperationId.RECORDINGS_PLAY -> bound.recordings.play(a.l("callId")).requiredValue()
                 OperationId.RECORDINGS_STOP -> bound.recordings.stop().requiredValue()
                 OperationId.RECORDINGS_SET_SYSTEM_FOLDER -> { val target = document(ForegroundActionKind.SELECT_FOLDER); bound.recordings.setSystemFolder(target).requiredValue(); bound.aiSettings.getRecordingView().requiredValue() }
-                OperationId.RECORDINGS_ADOPT_IDENTITY -> { val archive = bound.recordings.getArchive(a.l("callId")).requiredValue() ?: throw BackendFailure(ApiError(ErrorCode.NOT_FOUND, "recording.not_found")); confirm(); bound.adoptIdentity(archive.callId, archive.generation).requiredValue() }
                 OperationId.AI_PATCH_SETTINGS -> { val base = bound.aiSettings.getAiView().requiredValue(); bound.aiSettings.patchAi(base, a.aiPatch(base.budget)).requiredValue() }
                 OperationId.AI_EDIT_CREDENTIAL -> { action(ForegroundActionKind.CREDENTIAL); api().aiSettings.getAiView().requiredValue() }
                 OperationId.SYSTEM_REQUEST_CAPABILITY -> {
@@ -202,8 +212,6 @@ class ToolExecutor(
                 }
                 OperationId.SYSTEM_OPEN_APPLICATION_SETTINGS -> { status = ToolStatus.LAUNCHED; action(ForegroundActionKind.APP_SETTINGS); bound.runtime.getStatus().requiredValue() }
                 OperationId.SYSTEM_PIN_WIDGET -> { status = ToolStatus.LAUNCHED; action(ForegroundActionKind.PIN_WIDGET); bound.widgets.listBindings().requiredValue() }
-                OperationId.SYSTEM_TEST_OVERLAY -> { status = ToolStatus.LAUNCHED; action(ForegroundActionKind.TEST_OVERLAY); Unit }
-                OperationId.SYSTEM_PREVIEW_CALL -> { val archiveId = a.l("callId"); status = ToolStatus.LAUNCHED; action(ForegroundActionKind.PREVIEW_CALL, aiObject("callId" to aiNumber(archiveId))); Unit }
                 OperationId.AI_COPY_CONNECTION -> { action(ForegroundActionKind.COPY_CONNECTION); api().aiSettings.getAiView().requiredValue() }
                 OperationId.CALLERS_DELETE_NUMBER -> {
                     val impact = bound.numberDeletion.impact(a.s("number")).requiredValue()

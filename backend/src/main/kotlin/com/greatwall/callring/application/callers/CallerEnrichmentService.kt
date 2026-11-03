@@ -15,28 +15,31 @@ class CallerEnrichmentService(
     private val transactions: CallerTransactions,
     private val coordinator: BusinessRevisionCoordinator,
     private val operationActive: () -> Boolean,
-) {
+) : com.greatwall.callring.application.ports.recording.RecordingIdentityEnrichment {
     private val fields = setOf("name", "department", "selfReportedPosition", "region")
 
-    fun capture(number: String): CallerIdentityBaseline = coordinator.guard(null) {
+    override fun capture(number: String): CallerIdentityBaseline = coordinator.guard(null) {
         check(operationActive()) { "backend.closed" }
+        val normalized = callerNumber(number)
         var changed = false
         val baseline = transactions.writeCaller { writer ->
-            val old = writer.caller(number)
-            val row = old ?: ProfileRecord(number)
+            val old = writer.caller(normalized)
+            val row = old ?: ProfileRecord(normalized)
             val saved = if (row.identityEpoch.isEmpty()) row.copy(identityEpoch = UUID.randomUUID().toString()) else row
+            check(operationActive()) { "backend.closed" }
             if (old != saved) { writer.putCaller(saved, old == null); changed = true }
             CallerIdentityBaseline(saved.identityEpoch, fields.associateWith { saved.identityMetadata[it]?.revision ?: 0 })
         }
-        if (changed) publish(number)
+        if (changed) publish(normalized)
         baseline
     }
 
-    fun apply(number: String, baseline: CallerIdentityBaseline, archiveId: Long, generation: Long,
+    override fun apply(number: String, baseline: CallerIdentityBaseline, archiveId: Long, generation: Long,
               candidates: Map<String, Pair<String, String>>) = coordinator.guard(null) {
         check(operationActive()) { "backend.closed" }
+        val normalized = callerNumber(number)
         val changed = transactions.writeCaller { writer ->
-            val old = writer.caller(number) ?: return@writeCaller false
+            val old = writer.caller(normalized) ?: return@writeCaller false
             if (old.identityEpoch != baseline.epoch) return@writeCaller false
             var saved = old
             val metadata = old.identityMetadata.toMutableMap()
@@ -54,7 +57,7 @@ class CallerEnrichmentService(
             check(operationActive()) { "backend.closed" }
             if (saved == old) false else { writer.putCaller(saved, false); true }
         }
-        if (changed) publish(number)
+        if (changed) publish(normalized)
     }
 
     private fun publish(number: String) = coordinator.publishCore(

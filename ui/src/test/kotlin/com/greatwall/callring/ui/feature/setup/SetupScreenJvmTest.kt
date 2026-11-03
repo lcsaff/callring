@@ -24,7 +24,7 @@ class SetupScreenJvmTest {
     @get:Rule val compose = createComposeRule()
     private val status = RuntimeStatus(Capability.entries.associateWith { AccessState.DENIED }, Audibility.SILENT,
         PhoneActivity.UNKNOWN, PlaybackStatus(PlaybackMode.NONE, PlaybackState.IDLE), false, 0, CoreReadiness.MISSING)
-    private fun data(recording: Boolean = false, overlay: Boolean = false) = SetupUiData(status, overlay,
+    private fun data(recording: Boolean = false) = SetupUiData(status,
         RecordingSettingsView(recording, false, CaptureMode.MICROPHONE_EXPERIMENTAL, false, 0))
 
     @Test fun checklistNeverRequestsOnOpenRefreshOrRecompositionAndCanBeSkipped() {
@@ -40,9 +40,8 @@ class SetupScreenJvmTest {
         compose.runOnIdle { assertEquals(1, skipped); assertEquals(1, requests) }
     }
 
-    @Test fun disabledFeaturesDoNotAskForOverlayMicrophoneOrFolder() {
+    @Test fun disabledFeaturesDoNotAskForMicrophoneOrFolder() {
         compose.setContent { SetupScreen(LoadState(data(), loaded = true), {}, {}, {}, {}, {}, {}) }
-        compose.onNodeWithTag("setup-action-OVERLAY").assertDoesNotExist()
         compose.onNodeWithTag("setup-action-MICROPHONE").assertDoesNotExist()
         compose.onNodeWithText("录音目录").assertDoesNotExist()
         compose.onNodeWithText("未授予联系人权限时，已保存联系人的来电识别覆盖受限。").assertExists()
@@ -51,10 +50,8 @@ class SetupScreenJvmTest {
     @Test fun enabledFeaturesExposeOnlyTheirExistingUserActionsAndSoundStaysObservational() {
         var capability: Capability? = null
         var recordingOpens = 0
-        compose.setContent { SetupScreen(LoadState(data(recording = true, overlay = true), loaded = true), {}, {},
+        compose.setContent { SetupScreen(LoadState(data(recording = true), loaded = true), {}, {},
             { capability = it }, {}, { recordingOpens++ }, {}) }
-        compose.onNodeWithTag("setup-action-OVERLAY").performScrollTo().performClick()
-        compose.runOnIdle { assertEquals(Capability.OVERLAY, capability) }
         compose.onNodeWithTag("setup-action-MICROPHONE").performScrollTo().performClick()
         compose.runOnIdle { assertEquals(Capability.MICROPHONE, capability) }
         compose.onNodeWithText("选择录音目录").performScrollTo().performClick()

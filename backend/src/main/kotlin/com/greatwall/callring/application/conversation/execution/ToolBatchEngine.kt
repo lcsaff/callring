@@ -60,7 +60,7 @@ class ToolBatchEngine(
             reconcile=false
             ledger.steps.filter{it.state==StepState.COMMITTED&&it.receipt?.status==ToolStatus.COMMITTED}.forEach{step->
                 val operation=executor.registry.definitions.single{it.name==step.call.name}.id
-                val receipt=metered{verifier.verify(operation,step.call,step.receipt!!,adoption=step.adoption)}
+                val receipt=metered{verifier.verify(operation,step.call,step.receipt!!)}
                 ledger.finish(step,receipt);report(receipt)
             }
         }
@@ -111,7 +111,6 @@ class ToolBatchEngine(
                 if(write) {
                     if(definition.id==OperationId.CALLERS_SAVE_PROFILES)throw BackendFailure(ApiError(ErrorCode.VALIDATION,"ai.invalid_profile_batch"))
                     p.expected=metered{scopes.prepare(call,definition.id)}
-                    if(definition.id==OperationId.RECORDINGS_ADOPT_IDENTITY)step.adoption=metered{verifier.prepareAdoption(call)}
                     step.effectScopes=p.expected.keys.filter{definition.id !in setOf(OperationId.CALLERS_SAVE_PROFILE,OperationId.CALLERS_SET_WHITELISTED)||it.startsWith("profile:")}.toSet()
                     if(ledger.steps.any{prior->prior!==step&&prior.effectScopes.any{it in step.effectScopes}&&
                         (prior.state==StepState.UNKNOWN||prior.receipt?.verification==VerificationStatus.COMMITTED_UNVERIFIED||
@@ -179,7 +178,7 @@ class ToolBatchEngine(
                     try {
                         receipt=metered{executor.execute(step.call,ToolExecutionContext(session,turn,generation,command))}
                         if(p.definition.write) {
-                            receipt=metered{verifier.verify(operation,step.call,receipt,adoption=step.adoption)}
+                            receipt=metered{verifier.verify(operation,step.call,receipt)}
                             if(receipt.commitRevision!=null)scopes.committed(command.operationId,p.expected.keys)
                         }
                     } catch(e:Exception){

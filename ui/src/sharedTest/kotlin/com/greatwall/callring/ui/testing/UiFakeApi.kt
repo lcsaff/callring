@@ -32,7 +32,6 @@ open class UiFakeApi(private val overlayEnabled: Boolean = false) : CallringUiAp
     override suspend fun setQuietEnabled(enabled: Boolean): ApiResult<QuietSettings> = unexpected()
     override suspend fun synchronizeCalendar(year: Int): ApiResult<CalendarInfo> = unexpected()
     override fun commandApi(context: CommandContext): CallringUiApi = this
-    override suspend fun adoptIdentity(callId: Long, expectedGeneration: Long): ApiResult<CallerProfile> = unexpected()
     override suspend fun getCallDetail(callId: Long): ApiResult<CallDetail> = unexpected()
     override suspend fun numberDataImpact(number: String): ApiResult<NumberCoreImpact> = unexpected()
     override suspend fun deleteNumberCore(number: String, expectedCallCount: Int): ApiResult<Unit> = unexpected()
@@ -97,7 +96,7 @@ open class UiFakeApi(private val overlayEnabled: Boolean = false) : CallringUiAp
     private val score = ScoreSettings(5, 2, 10, 30)
     private val work = WorkScheduleSettings("Asia/Shanghai", mapOf(1 to listOf(TimeWindow(540, 1080))), listOf(TimeWindow(540, 1080)), 1, 0)
 
-    override suspend fun load() = ApiResult.Success(HomeData(sound, status, WorkStatus(0, fact, null), null, false, overlayEnabled, QuietMode.OFF, meta))
+    override suspend fun load() = ApiResult.Success(HomeData(sound, status, WorkStatus(0, fact, null), null, false, QuietMode.OFF, meta))
     override suspend fun search(query: CallerSearch): ApiResult<Page<CallerProfile>> = ApiResult.Success(Page(listOf(profile), 0, 50, 1, meta))
     override suspend fun getEditor(number: String?) = ApiResult.Success(CallerEditorData(
         if (number == null) CallerDraft("", "", "", null, false) else CallerDraft(profile.number, profile.name, profile.department, null, profile.whitelisted), emptyList(), null))
@@ -118,9 +117,8 @@ open class UiFakeApi(private val overlayEnabled: Boolean = false) : CallringUiAp
         ReportTotals(999, 999, 0, 0, 0, 0, 0, 0), ScoreSummary(80, 999, 0, 0, 5, 2, 10, time),
         Page(emptyList(), 0, 50, 0, meta), DataQuality(true, AccessState.GRANTED, false, false, false, false), meta))
     override suspend fun exportCsv(query: ReportExportQuery, destination: DocumentRef): ApiResult<ExportReceipt> = unexpected()
-    override suspend fun getSummary() = ApiResult.Success(SettingsSummary(false, overlayEnabled, QuietMode.OFF, null, "Asia/Shanghai", score, appearance, meta))
+    override suspend fun getSummary() = ApiResult.Success(SettingsSummary(false, QuietMode.OFF, null, "Asia/Shanghai", score, appearance, meta))
     override suspend fun setStatisticsEnabled(enabled: Boolean): ApiResult<Unit> = unexpected()
-    override suspend fun setOverlayEnabled(enabled: Boolean): ApiResult<Unit> = unexpected()
     override suspend fun getQuietHours() = ApiResult.Success(QuietSettings(QuietMode.OFF, false, emptyMap()))
     override suspend fun saveQuietHours(settings: QuietSettings): ApiResult<QuietSettings> = unexpected()
     override suspend fun setQuietMode(mode: QuietMode): ApiResult<QuietSettings> = unexpected()

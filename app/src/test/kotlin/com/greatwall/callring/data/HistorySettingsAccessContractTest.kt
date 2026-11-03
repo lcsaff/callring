@@ -62,9 +62,7 @@ class HistorySettingsAccessContractTest {
             override fun playback(preview: Boolean, stopAction: PendingIntent): Notification =
                 Notification.Builder(context, "synthetic").build()
         }
-        val graph = BackendGraph(com.greatwall.callring.bootstrap.BackupGraphOwner { _, _ -> throw AssertionError("Unexpected fixture restore") }, context, configuration, notifications, object : IncomingCallUiSink {
-            override fun show(request: IncomingCallUiRequest) = Unit
-        })
+        val graph = BackendGraph(com.greatwall.callring.bootstrap.BackupGraphOwner { _, _ -> throw AssertionError("Unexpected fixture restore") }, context, configuration, notifications)
         try {
             // Audit reads are deliberately outside measured production operations and their counters.
             fun unrelatedFacts() = SqliteCoreStorageResource(context, databaseName).use { store ->
@@ -155,7 +153,6 @@ class HistorySettingsAccessContractTest {
                     .put("scope", "necessary full-history correction in batches of 256; consumed rows scale with history"))
                 val decision = graph.backend.decisionSnapshot().inputs
                 assertEquals(latestUnrelatedInputs.quiet,decision.quiet)
-                assertEquals(latestUnrelatedInputs.overlayEnabled,decision.overlayEnabled)
                 assertEquals(latestUnrelatedInputs.whitelistedNumbers,decision.whitelistedNumbers)
                 assertEquals(latestUnrelatedInputs.statisticsIntervals,decision.statisticsIntervals)
                 SqliteCoreStorageResource(context,databaseName).use { store -> store.fullSnapshot.capture().let { state ->

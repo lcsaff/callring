@@ -119,7 +119,7 @@ fun projectCoreSnapshot(
                     "quiet" to s.quiet,
                     "lastQuietMode" to s.lastQuietMode,
                     "statisticsEnabled" to stats(s),
-                    "overlayEnabled" to s.overlayEnabled,
+
                 ),
             ),
         "D11" to appearanceQueryValue(appearance),

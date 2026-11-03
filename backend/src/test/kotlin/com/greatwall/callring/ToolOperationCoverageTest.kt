@@ -19,9 +19,9 @@ import org.junit.Assert.*
 import org.junit.Test
 
 class ToolOperationCoverageTest {
-    @Test fun all85DefinitionsHaveSourceOrWriteScopeAndReceiptPolicy() {
+    @Test fun all81DefinitionsHaveSourceOrWriteScopeAndReceiptPolicy() {
         val definitions=ToolRegistry().definitions
-        assertEquals("Every discoverable operation requires a production definition",85,definitions.size)
+        assertEquals("Every discoverable operation requires a production definition",81,definitions.size)
         assertTrue(definitions.all{it.sharedApi.isNotBlank()})
         assertEquals("aiSettings.getRecordingView + aiSettings.getAiView", definitions.single{it.id==OperationId.RECORDINGS_GET_SETTINGS}.sharedApi)
         assertEquals(ReceiptPolicy.QUEUED,definitions.single{it.id==OperationId.RUNTIME_REQUEST_CALL_LOG_SYNC}.receiptPolicy)

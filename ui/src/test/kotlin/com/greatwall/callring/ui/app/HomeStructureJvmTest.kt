@@ -42,7 +42,7 @@ class HomeStructureJvmTest {
         val summary = runBlocking { (UiFakeApi().getSummary() as ApiResult.Success).value }
         var page: SettingsPage? = null
         compose.setContent { CallringTheme(DefaultAppearance.rememberAppearanceThemeSpec(androidx.compose.foundation.isSystemInDarkTheme())) {
-            SettingsOverviewScreen(LoadState(summary, loaded = true), MutationState(), null, {}, {}, {}, { page = it })
+            SettingsOverviewScreen(LoadState(summary, loaded = true), MutationState(), null, {}, {}, { page = it })
         } }
         compose.onNodeWithText("职位管理").assertDoesNotExist()
         compose.onNodeWithText("请假管理").assertDoesNotExist()
@@ -53,7 +53,7 @@ class HomeStructureJvmTest {
     }
 
     @Test fun homeLeavesAndCallerPositionsReturnToTheirOwnTabs() {
-        compose.setContent { CallringApp(UiFakeApi(), onCapability = {}, onPreviewCall = {}, onPinWidget = {}, onAppSettings = {}) }
+        compose.setContent { CallringApp(UiFakeApi(), onCapability = {}, onPinWidget = {}, onAppSettings = {}) }
         compose.onNodeWithTag("home-leaves").performScrollTo().performClick()
         compose.onNodeWithText("添加请假").assertExists()
         compose.onNodeWithContentDescription("返回").performClick()

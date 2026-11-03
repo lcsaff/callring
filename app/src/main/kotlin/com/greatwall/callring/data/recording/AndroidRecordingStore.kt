@@ -234,18 +234,21 @@ internal object RecordingJson {
         v.optJSONObject("conversation")?.let { require(it.getInt("version") == 1); ConversationBudget(it.getLong("context"), it.getLong("output")).also { b -> b.validate() } } ?: ConversationBudget(),
         v.optJSONObject("conversation")?.optString("compatibility", "AUTO")?.let(ConversationCompatibility::valueOf)?.normalized() ?: ConversationCompatibility.AUTO)
     private fun analysis(v: CallAnalysis) = JSONObject().put("name", v.name).put("organization", v.organization).put("position", v.position)
-        .put("purpose", v.purpose).put("evidence", v.evidence).put("identity", v.inferredIdentity).put("summary", v.summary).put("actions", JSONArray(v.actionItems))
+        .put("purpose", v.purpose).put("evidence", v.evidence).put("identity", v.inferredIdentity).put("summary", v.summary).put("actions", JSONArray(v.actionItems)).put("department", v.department).put("region", v.region).put("fieldEvidence", JSONObject(v.fieldEvidence))
     private fun analysis(v: JSONObject) = CallAnalysis(v.getString("name"), v.getString("organization"), v.getString("position"), v.getString("purpose"),
-        v.getString("evidence"), v.getString("identity"), v.getString("summary"), v.getJSONArray("actions").let { a -> List(a.length()) { a.getString(it) } })
+        v.getString("evidence"), v.getString("identity"), v.getString("summary"), v.getJSONArray("actions").let { a -> List(a.length()) { a.getString(it) } }, v.optString("department", ""), v.optString("region", ""),
+        v.optJSONObject("fieldEvidence")?.let { fields -> fields.keys().asSequence().associateWith { fields.getString(it) } }.orEmpty())
     fun archive(v: CallArchive): JSONObject = JSONObject().put("id", v.callId).put("number", v.number).put("started", v.startedAtEpochMillis)
         .put("generation", v.generation).put("status", v.status.name).put("source", v.source.name).put("audio", v.audioPath).put("quality", v.audioQuality)
         .put("duration", v.durationMillis).put("transcript", v.transcript).put("analysis", v.analysis?.let(::analysis)).put("error", v.error)
         .put("attempts", v.attempts).put("next", v.nextAttemptAt).put("analyzed", v.analyzedAt).put("analysisModel", v.analysisModel)
-        .put("transcriptionModel", v.transcriptionModel).put("protocol", v.analysisProtocol?.name).put("manual", v.manualAnalysis)
+        .put("transcriptionModel", v.transcriptionModel).put("protocol", v.analysisProtocol?.name).put("manual", v.manualAnalysis).put("enrichmentBaseline", v.enrichmentBaseline?.let { JSONObject().put("epoch", it.epoch).put("revisions", JSONObject(it.revisions)) }).put("enrichmentSourceGeneration", v.enrichmentSourceGeneration)
     fun archive(v: JSONObject) = CallArchive(v.getLong("id"), v.getString("number"), v.getLong("started"), v.getLong("generation"),
         ArchiveStatus.valueOf(v.getString("status")), RecordingSource.valueOf(v.getString("source")), v.nullableString("audio"), v.getString("quality"),
         v.nullableLong("duration"), v.getString("transcript"), v.optJSONObject("analysis")?.let(::analysis), v.nullableString("error"), v.getInt("attempts"),
-        v.getLong("next"), v.nullableLong("analyzed"), v.getString("analysisModel"), v.getString("transcriptionModel"), v.nullableString("protocol")?.let(AiProtocol::valueOf), v.optBoolean("manual", false))
+        v.getLong("next"), v.nullableLong("analyzed"), v.getString("analysisModel"), v.getString("transcriptionModel"), v.nullableString("protocol")?.let(AiProtocol::valueOf), v.optBoolean("manual", false),
+        v.optJSONObject("enrichmentBaseline")?.let { base -> val revisions = base.getJSONObject("revisions"); CallerIdentityBaseline(base.getString("epoch"), revisions.keys().asSequence().associateWith { revisions.getLong(it) }) },
+        v.nullableLong("enrichmentSourceGeneration"))
     private fun JSONObject.nullableString(key: String) = if (isNull(key)) null else getString(key)
     private fun JSONObject.nullableLong(key: String) = if (isNull(key)) null else getLong(key)
 }

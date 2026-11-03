@@ -10,7 +10,6 @@ import com.greatwall.callring.application.recording.IncomingRecordingSession
 import com.greatwall.callring.application.recording.findRecordingCall
 import com.greatwall.callring.application.conversation.query.QueryService
 import com.greatwall.callring.contracts.CallringUiApi
-import com.greatwall.callring.contracts.callers.IncomingCallUiSink
 import com.greatwall.callring.contracts.runtime.*
 import com.greatwall.callring.data.database.SqliteCoreStorageResource
 import com.greatwall.callring.platform.*
@@ -26,7 +25,6 @@ class BackendGraph(
     context: Context,
     val configuration: BackendConfiguration,
     notifications: UiNotificationEntryPoints,
-    incomingCallUi: IncomingCallUiSink,
 ) : Closeable {
     val coordinator = com.greatwall.callring.application.coordination.BusinessRevisionCoordinator()
     private val application = context.applicationContext
@@ -35,9 +33,8 @@ class BackendGraph(
     private val recoveryLifetime = Any()
     @Volatile private var closed = false
     @Volatile private var persistenceClosed = false
-    private val ui = UiBridgeAssembly(application, notifications, incomingCallUi)
+    private val ui = UiBridgeAssembly(application, notifications)
     val notifications get() = ui.notifications
-    val incomingCallUi get() = ui.incomingCallUi
     private val store = StorageResources {
         SqliteCoreStorageResource(application, configuration.databaseName, configuration.sqlAccessProbe)
     }
@@ -59,7 +56,7 @@ class BackendGraph(
         RecordingAssembly(application, configuration.databaseName,
             findCall = { id -> findRecordingCall(store, id) },
             activeCallId = { recordingSession.activeCandidate(configuration.clock.millis()) },
-            schedule = { delay -> RecordingJobService.schedule(application, delay) }, coordinator = coordinator, operationActive = { !closed })
+            schedule = { delay -> RecordingJobService.schedule(application, delay) }, coordinator = coordinator, operationActive = { !closed }, enrichment = com.greatwall.callring.application.callers.CallerEnrichmentService(store, coordinator) { !closed })
     }
     val recordings get() = synchronized(lifetime) { ensureOpen(); recordingDelegate.value }
     val queries: QueryService get() = conversation.queries
@@ -93,7 +90,7 @@ class BackendGraph(
         val recording = recordings
         val engine = BackendIncomingCallEngine(backend::decisionSnapshot, backend::refreshDecisionSnapshot,
             backend::recordIncoming, backend::updateDecision)
-        com.greatwall.callring.platform.calling.IncomingCallController(engine, ui.incomingCallUi,
+        com.greatwall.callring.platform.calling.IncomingCallController(engine,
             { callWorkLease.acquire() },
             { id, number, at, account -> recording.service.observeIncoming(id, number, at, account) },
             { id, call -> recording.service.linkStatistics(id, call) }, recordingSession, configuration.clock,

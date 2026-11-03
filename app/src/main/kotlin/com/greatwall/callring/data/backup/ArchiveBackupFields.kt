@@ -66,9 +66,13 @@ internal object ArchiveBackupFields {
             reader.beginObject()
             while (reader.hasNext()) {
                 val key = reader.nextName()
-                if (key in required && !seen.add(key)) throw BackupFormatException()
+                if (!seen.add(key)) throw BackupFormatException()
                 when {
                     key in strings -> { if (reader.peek() != android.util.JsonToken.STRING) throw BackupFormatException(); reader.skipValue() }
+                    key == "enrichmentBaseline" && reader.peek() != android.util.JsonToken.NULL -> validateBaseline(reader)
+                    key == "enrichmentSourceGeneration" && reader.peek() != android.util.JsonToken.NULL -> {
+                        if (reader.peek() != android.util.JsonToken.NUMBER || reader.nextLong() <= 0) throw BackupFormatException()
+                    }
                     key == "analysis" && reader.peek() == android.util.JsonToken.BEGIN_OBJECT -> validateAnalysis(reader)
                     else -> reader.skipValue()
                 }
@@ -77,18 +81,54 @@ internal object ArchiveBackupFields {
             if (!seen.containsAll(required) || reader.peek() != android.util.JsonToken.END_DOCUMENT) throw BackupFormatException()
         }
     }
+    private val identityFields = setOf("name", "department", "selfReportedPosition", "region")
+    private fun validateBaseline(reader: android.util.JsonReader) {
+        val seen = hashSetOf<String>()
+        reader.beginObject()
+        while (reader.hasNext()) {
+            val key = reader.nextName()
+            if (!seen.add(key)) throw BackupFormatException()
+            when (key) {
+                "epoch" -> if (reader.peek() != android.util.JsonToken.STRING || reader.nextString().let { it.isBlank() || it.length > 128 }) throw BackupFormatException()
+                "revisions" -> {
+                    val fields = hashSetOf<String>()
+                    reader.beginObject()
+                    while (reader.hasNext()) {
+                        val field = reader.nextName()
+                        if (field !in identityFields || !fields.add(field) || reader.peek() != android.util.JsonToken.NUMBER || reader.nextLong() < 0) throw BackupFormatException()
+                    }
+                    reader.endObject()
+                }
+                else -> throw BackupFormatException()
+            }
+        }
+        reader.endObject()
+        if (seen != setOf("epoch", "revisions")) throw BackupFormatException()
+    }
     private fun validateAnalysis(reader: android.util.JsonReader) {
         val required = setOf("name", "organization", "position", "purpose", "evidence", "identity", "summary", "actions")
         val seen = hashSetOf<String>()
         reader.beginObject()
         while (reader.hasNext()) {
             val key = reader.nextName()
-            if (key in required && !seen.add(key)) throw BackupFormatException()
+            if (!seen.add(key)) throw BackupFormatException()
             when {
                 key == "actions" -> {
                     reader.beginArray()
                     while (reader.hasNext()) { if (reader.peek() != android.util.JsonToken.STRING) throw BackupFormatException(); reader.skipValue() }
                     reader.endArray()
+                }
+                key in setOf("department", "region") -> {
+                    if (reader.peek() != android.util.JsonToken.STRING || reader.nextString().length > 500) throw BackupFormatException()
+                }
+                key == "fieldEvidence" -> {
+                    reader.beginObject()
+                    val fields = hashSetOf<String>()
+                    while (reader.hasNext()) {
+                        val field = reader.nextName()
+                        if (field !in identityFields || !fields.add(field) || reader.peek() != android.util.JsonToken.STRING || reader.nextString().length > 4000) throw BackupFormatException()
+                    }
+                    reader.endObject()
                 }
                 key in required -> { if (reader.peek() != android.util.JsonToken.STRING) throw BackupFormatException(); reader.skipValue() }
                 else -> reader.skipValue()

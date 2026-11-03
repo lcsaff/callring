@@ -16,7 +16,6 @@ object UiLabels {
         Capability.NOTIFICATIONS -> "通知权限"
         Capability.CALL_LOG -> "通话记录"
         Capability.CONTACTS -> "通讯录"
-        Capability.OVERLAY -> "悬浮窗权限"
         Capability.CALL_SCREENING_ROLE -> "来电筛选角色"
         Capability.BATTERY_OPTIMIZATION_EXEMPTION -> "电池优化设置"
     }
