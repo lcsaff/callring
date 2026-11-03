@@ -175,12 +175,13 @@ rg -n 'SYSTEM_ALERT_WINDOW|canDrawOverlays|ACTION_MANAGE_OVERLAY_PERMISSION|call
 
 **修改文件：** `PROJECT.md`、`README.md`、`docs/contracts/ai-operation-compatibility.json`、守卫实际读取的内部签名/声明摘要，以及本计划的完成记录。
 
-- [ ] 列出协议差异：删除弹窗开关、自检、预览、旧采纳工具；新增两字段、异议状态与正式命令；保留历史录音 JSON 的 organization。审查后精准更新基线和目录数量，不直接全量重生成来通过守卫，不更换既有操作身份或复用已删除编号。
-- [ ] README 移除悬浮窗能力/权限说明，说明静默流程、录音条件、自动补空缺、异议纠正与来源、两字段；PROJECT 将“待实现”改为实际行为并记录当轮验证边界。历史验收摘要不改成当前已通过。
-- [ ] 运行 `python tools/verify_backend.py`；读取本轮 summary，核对失败、跳过、缓存及任务状态，不复用旧测试 XML。当次源码改变后重新跑必要验证及最终统一门。
-- [ ] 有在线且已手动解锁的 ADB 设备时，使用隔离包覆盖：新旧 schema 升级、亮屏/锁屏/息屏不启动窗口、模拟录音到分析到 SQLite 重开读回、异议纠正与删除迟到结果。删除旧 LockScreenOverlayDeviceTest 后新增 `SilentCallEnrichmentDeviceTest`，验证静默流程而非窗口出现。无设备则如实列未测项，不改主包角色或锁屏超时。
+- [x] 列出协议差异：删除弹窗开关、自检、预览、旧采纳工具；新增两字段、异议状态与正式命令；保留历史录音 JSON 的 organization。审查后精准更新基线和目录数量，不直接全量重生成来通过守卫，不更换既有操作身份或复用已删除编号。
+- [x] README 移除悬浮窗能力/权限说明，说明静默流程、录音条件、自动补空缺、异议纠正与来源、两字段；PROJECT 将“待实现”改为实际行为并记录当轮验证边界。历史验收摘要不改成当前已通过。
+- [x] 运行 `python tools/verify_backend.py`；读取本轮 summary，核对失败、跳过、缓存及任务状态，不复用旧测试 XML。当次源码改变后重新跑必要验证及最终统一门。
+- [x] 有在线且已手动解锁的 ADB 设备时，使用隔离包覆盖：新旧 schema 升级、亮屏/锁屏/息屏不启动窗口、模拟录音到分析到 SQLite 重开读回、异议纠正与删除迟到结果。删除旧 LockScreenOverlayDeviceTest 后新增 `SilentCallEnrichmentDeviceTest`，验证静默流程而非窗口出现。无设备则如实列未测项，不改主包角色或锁屏超时。
 - [ ] 运行 `git diff --check`，审查只提交本次文件；核对 gh 登录与远端 main，依项目流程合并、推送并等待精确 SHA 的 CI。合并改变源码 SHA 则重新验证，不能用其他提交的绿灯替代。
 - [ ] 交付注明代码提交、推送/CI 实际状态、无真实模型付费验证与真实 SIM/后台调度的实测范围。未要求 APK 时不发 Release。
+
 
 ## 自检
 
@@ -189,3 +190,5 @@ rg -n 'SYSTEM_ALERT_WINDOW|canDrawOverlays|ACTION_MANAGE_OVERLAY_PERMISSION|call
 Task 1–6 已实施。上游同步为 16996ad，包含录音分页、备份恢复和 owner 封口修复，实施时扩展了 schema 3 备份私有暂存升级和新分析字段的备份形状验证。签名消费者统一迁移后共同提交，保留早期检查点 4626d0b。
 
 已补回归：补全保存和失败状态同时保存失败时不重复模型调用；新分析使用新基线及来源 generation；字段编辑同时清除异议/来源时纳入元数据作用域；矛盾的 AI 改值并标异议在提交前拒绝；待补全归档排除存储清理；字面依据验证、档案删除重建、草稿恢复及真实 SQLite 重开。生产接口读回专项和模拟器静默补全专项已通过。最终统一门、提交后 CI 与交付结果按 Task 7 继续记录，不将上述专项代替完整验收。
+
+最终源码 f0e71ba 的统一门通过：JVM 443/352/438、常规设备 31 项及静默补全专项 1 项；生产包未改动。后续文档提交不改变受测源码，推送与远端 CI 的实际结果以本次交付回执为准。
