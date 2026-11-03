@@ -9,10 +9,12 @@ import com.greatwall.callring.contracts.runtime.PlaybackStatus
 
 
 interface RecordingIdentityReads {
+    fun archiveStamp(): String
+    fun ownedAudio(callId: Long, cancelled: () -> Boolean): AudioReference?
     fun findRecording(id: Long): RecordingCall?
     fun linkedRecording(statisticsId: Long): RecordingCall?
     fun metadata(callId: Long, cancelled: () -> Boolean): RecordingArchiveMetadata?
-    fun listArchives(): List<CallArchive>
+    fun queryArchives(query: ArchiveListQuery, cancelled: () -> Boolean): ArchiveListPage
     fun numberMetadata(number: String, cancelled: () -> Boolean): List<NumberRecordingMetadata>
     fun recentMetadata(since: Long, cancelled: () -> Boolean): List<RecordingArchiveMetadata>
 }
@@ -24,6 +26,7 @@ interface PreparedRecordingAudio : AutoCloseable {
     fun retain()
 }
 interface RecordingAudioFiles {
+    fun ownedBytes(reference: AudioReference): Long?
     fun prepareImport(document: DocumentRef, cancelled: () -> Boolean): PreparedRecordingAudio
     fun prepareCapture(reference: AudioReference): PreparedRecordingAudio
     fun deleteOwned(reference: AudioReference)

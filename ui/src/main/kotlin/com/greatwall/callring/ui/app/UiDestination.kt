@@ -13,6 +13,7 @@ sealed class UiDestination(val route: String) {
     data object Lookup : UiDestination("lookup")
     data object Leaves : UiDestination("leaves")
     data object Positions : UiDestination("positions")
+    data object Setup : UiDestination("setup")
     data class EditCaller(val number: String? = null) : UiDestination("edit?number=${number?.encoded().orEmpty()}")
     data class Report(val number: String) : UiDestination("report/${number.encoded()}")
     data class Archive(val callId: Long, val number: String, val startedAt: Long) : UiDestination("archive/$callId/${number.encoded()}/$startedAt")
@@ -29,6 +30,7 @@ sealed class UiDestination(val route: String) {
             "lookup" -> Lookup
             "leaves" -> Leaves
             "positions" -> Positions
+            "setup" -> Setup
             "setting" -> SettingsPage.entries.firstOrNull { it.name == page }?.let(::Setting) ?: Settings
             else -> Home
         }

@@ -32,7 +32,8 @@ class CallringOverlayService : Service() {
     override fun onCreate() {
         super.onCreate()
         val owner = application as UiOverlayOwner
-        controller = OverlayController(owner.uiApi, owner.overlaySessions, scope)
+        val api = owner.availableUiApi.value ?: run { stopSelf(); return }
+        controller = OverlayController(api, owner.overlaySessions, scope)
         windowOwner = owner.overlaySessions.attachOwner()
         window = OverlayWindow(this, controller) { number ->
             try { startActivity(CallringActivity.intent(this, UiDestination.Report(number))) }
@@ -44,11 +45,13 @@ class CallringOverlayService : Service() {
         }
         if (Build.VERSION.SDK_INT >= 33) registerReceiver(changes, filter, RECEIVER_NOT_EXPORTED)
         else registerReceiver(changes, filter)
+        scope.launch { owner.availableUiApi.collect { if (it !== api) stopSelf() } }
         scope.launch { controller.sessions.state.collect { if (started) reconcileWindow() } }
         scope.launch { while (isActive) { delay(500); if (started) reconcileWindow() } }
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        if (!::controller.isInitialized) { stopSelf(); return START_NOT_STICKY }
         startForeground(OVERLAY_NOTIFICATION, UiNotifications(this).overlay())
         started = true
         lastStartId = startId
@@ -108,6 +111,7 @@ class CallringOverlayService : Service() {
     }
 
     override fun onDestroy() {
+        if (!::controller.isInitialized) { scope.cancel(); super.onDestroy(); return }
         hideLockScreen()
         unregisterReceiver(changes)
         controller.close()

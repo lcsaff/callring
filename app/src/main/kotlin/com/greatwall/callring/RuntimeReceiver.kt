@@ -24,13 +24,14 @@ class RuntimeReceiver : BroadcastReceiver() {
             else -> RuntimeEventController.Event.IGNORED
         }
         val app = context.applicationContext
+        val graph = try { BackendProvider.from(app).backendGraph } catch (_: IllegalStateException) { return }
         val controller = RuntimeEventController(
-            { BackendProvider.from(app).backendGraph.recordingSession.ringing() },
-            { BackendProvider.from(app).backendGraph.recordingSession.answered() },
-            { BackendProvider.from(app).backendGraph.recordingSession.idle(it) },
-            { CallCaptureService.phoneState(app, it) },
-            { BackendProvider.from(app).backendGraph.backend.refreshDecisionSnapshot() },
-            { SyncJobService.schedule(context) }, { RecordingJobService.schedule(app, it) },
+            { graph.recordingSession.ringing() },
+            { graph.recordingSession.answered() },
+            { graph.recordingSession.idle(it) },
+            { CallCaptureService.phoneState(app, it, graph) },
+            { graph.backend.refreshDecisionSnapshot() },
+            { if (graph.acceptsOperations()) SyncJobService.schedule(context) }, { if (graph.acceptsOperations()) RecordingJobService.schedule(app, it) },
             System::currentTimeMillis, worker,
         )
         controller.receive(event) { val pending = goAsync(); { pending.finish() } }

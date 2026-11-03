@@ -50,7 +50,7 @@ class CallingSqlSemanticsTest {
     @Test fun backendConfigurationMatcherControlsSqlQueriesIncomingAndImport() = runBlocking {
         for (accept in listOf(false,true)) {
             val name="matcher-$accept"
-            val graph = BackendGraph(context,BackendConfiguration(
+            val graph = BackendGraph(com.greatwall.callring.bootstrap.BackupGraphOwner { _, _ -> throw AssertionError("Unexpected fixture restore") }, context,BackendConfiguration(
                 AppearanceSettings(ThemeSelection.PRESET,"default",null,ColorMode.FOLLOW_SYSTEM),
                 databaseName="$name.db",ringPreferencesName="${name}_ring",widgetPreferencesName="${name}_widgets",
                 appearancePreferencesName="${name}_appearance",clock=Clock.fixed(Instant.ofEpochMilli(at),ZoneOffset.UTC),
@@ -163,7 +163,7 @@ class CallingSqlSemanticsTest {
             Clock.fixed(Instant.ofEpochMilli(at + 60000), ZoneOffset.UTC),
             Dispatchers.Unconfined,
             coordinator = c,
-            coreTransactions = store.sessions, numberRecordings = com.greatwall.callring.EmptyNumberRecordings, identityArchive = { com.greatwall.callring.contracts.common.ApiResult.Success(null) }, operationActive = { true }, conversationProvider = { com.greatwall.callring.testing.FixtureConversationApi }, aiSettingsProvider = { com.greatwall.callring.testing.FixtureAiSettingsApi }, updateProvider = { com.greatwall.callring.testing.FixtureAppUpdateApi }, snapshotsProvider = { com.greatwall.callring.testing.FixtureAiSnapshotApi }, recordingsProvider = { com.greatwall.callring.testing.FixtureRecordingApi }, calendarSource = com.greatwall.callring.application.ports.platform.CalendarSource { throw AssertionError("Unexpected calendar source") }, persistenceActive = { true })
+            coreTransactions = store.sessions, numberRecordings = com.greatwall.callring.EmptyNumberRecordings, identityArchive = { com.greatwall.callring.contracts.common.ApiResult.Success(null) }, operationActive = { true }, conversationProvider = { com.greatwall.callring.testing.FixtureConversationApi }, aiSettingsProvider = { com.greatwall.callring.testing.FixtureAiSettingsApi }, updateProvider = { com.greatwall.callring.testing.FixtureAppUpdateApi }, snapshotsProvider = { com.greatwall.callring.testing.FixtureAiSnapshotApi }, storageProvider = { com.greatwall.callring.testing.FixtureStorageApi }, backupProvider = { com.greatwall.callring.testing.FixtureBackupApi }, recordingsProvider = { com.greatwall.callring.testing.FixtureRecordingApi }, calendarSource = com.greatwall.callring.application.ports.platform.CalendarSource { throw AssertionError("Unexpected calendar source") }, persistenceActive = { true })
     }
 
     private fun enabled(store: SqliteCoreStorageResource) {

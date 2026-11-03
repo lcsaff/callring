@@ -64,7 +64,7 @@ class IndependentRecordingRuntimeTest {
         assertArrayEquals(original.readBytes(), File(requireNotNull(imported.audioPath)).readBytes())
         runtime.service.delete(call.id)
         runtime.service.discoverSystemRecordings()
-        assertTrue((runtime.service.listArchives() as ApiResult.Success).value.isEmpty())
+        assertTrue((runtime.service.queryArchives() as ApiResult.Success).value.items.isEmpty())
         assertTrue(original.isFile)
         runtime.close()
     }
@@ -102,7 +102,7 @@ class IndependentRecordingRuntimeTest {
         assertTrue(call.id < 0)
         val archived = (runtime.service.getArchive(call.id) as ApiResult.Success).value!!
         assertEquals(call.id, archived.callId)
-        assertEquals(listOf(archived), (runtime.service.listArchives() as ApiResult.Success).value)
+        assertEquals(listOf(archived.callId), (runtime.service.queryArchives() as ApiResult.Success).value.items.map { it.callId })
         runtime.service.discoverSystemRecordings()
         runtime.service.delete(call.id)
         runtime.service.observeIncoming("session", "31234", 1000, null)
@@ -114,7 +114,7 @@ class IndependentRecordingRuntimeTest {
         val runtime = RecordingAssembly(context, "disabled_recording", findCall = { error("statistics lookup") },
             activeCallId = { null }, schedule = {}, storeFactory = { store }, operationActive = { true })
         assertNull(runtime.service.observeIncoming("session", "31234", 1000, null))
-        assertTrue(store.listArchives().isEmpty())
+        assertTrue(store.queryArchives(ArchiveListQuery()) { false }.items.isEmpty())
         runtime.close()
     }
 }

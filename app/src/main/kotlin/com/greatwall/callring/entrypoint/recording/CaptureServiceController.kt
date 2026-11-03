@@ -25,7 +25,7 @@ class CaptureServiceController(
     }
     interface Results {
         fun attach(call: RecordingCall, audio: AudioReference)
-        fun failure(call: RecordingCall)
+        fun failure(call: RecordingCall, reason: String = "recording.capture_restricted")
     }
     private val lock = Any()
     private var recorder: Media? = null
@@ -51,9 +51,14 @@ class CaptureServiceController(
                     val next = newMedia(); recorder = next
                     next.configure(selected, target)
                     next.prepare(); next.start()
-                } catch (_: Exception) {
+                } catch (failure: Exception) {
                     recorder?.release(); recorder = null; file?.delete(); file = null
-                    sink.failure(candidate); stopSelf()
+                    val reason=when(failure.message) {
+                        "storage.insufficient_space" -> "recording.insufficient_space"
+                        "storage.space_unknown" -> "recording.space_unknown"
+                        else -> "recording.capture_restricted"
+                    }
+                    sink.failure(candidate, reason); stopSelf()
                 }
             } } catch (_: Exception) { stopSelf() }
         }

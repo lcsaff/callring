@@ -113,7 +113,7 @@ class ToolBusinessIntegrationTest {
         },audio,object : SyncScheduler { override fun requestSync(atEpochMillis: Long) = SyncRequestReceipt(SyncRequestState.QUEUED,atEpochMillis) },Clock.fixed(Instant.ofEpochMilli(now),ZoneOffset.UTC),calendarSource = CalendarSource { year -> CalendarImport(CalendarYear(year,"fixture","2026-01-01","v1").toDomain(),mapOf(LocalDate.of(year,1,1) to "fixture holiday"),emptySet()) },coordinator = coordinator, coreTransactions = store.sessions, numberRecordings = object : com.greatwall.callring.application.callers.NumberDeletionRecordings {
             override suspend fun archives(number: String) = runtime.service.numberArchives(number)
             override suspend fun delete(callId: Long, expectedGeneration: Long, command: CommandContext) = runtime.service.delete(callId, expectedGeneration, command)
-        }, identityArchive = { runtime.service.getArchive(it) }, operationActive = { true }, conversationProvider = { com.greatwall.callring.testing.FixtureConversationApi }, aiSettingsProvider = { com.greatwall.callring.testing.FixtureAiSettingsApi }, updateProvider = { com.greatwall.callring.testing.FixtureAppUpdateApi }, snapshotsProvider = { com.greatwall.callring.testing.FixtureAiSnapshotApi }, recordingsProvider = { com.greatwall.callring.testing.FixtureRecordingApi }, persistenceActive = { true })
+        }, identityArchive = { runtime.service.getArchive(it) }, operationActive = { true }, conversationProvider = { com.greatwall.callring.testing.FixtureConversationApi }, aiSettingsProvider = { com.greatwall.callring.testing.FixtureAiSettingsApi }, updateProvider = { com.greatwall.callring.testing.FixtureAppUpdateApi }, snapshotsProvider = { com.greatwall.callring.testing.FixtureAiSnapshotApi }, storageProvider = { com.greatwall.callring.testing.FixtureStorageApi }, backupProvider = { com.greatwall.callring.testing.FixtureBackupApi }, recordingsProvider = { com.greatwall.callring.testing.FixtureRecordingApi }, persistenceActive = { true })
         val recordingStore = AndroidRecordingStore(context,namespace,object : RecordingCipher { override fun encrypt(value: String) = java.util.Base64.getEncoder().encodeToString(value.toByteArray()); override fun decrypt(value: String) = String(java.util.Base64.getDecoder().decode(value)) }, recordingVersion = { coordinator.capture().values.getValue("recording") })
         val runtime = RecordingAssembly(context,namespace,{ null },{ null },{}, { recordingStore },metadataReader = { 1000L to "wav" },coordinator = coordinator,clientFactory = { client }, operationActive = { true })
         val diagnostics = AndroidDiagnosticsStore(context.getSharedPreferences("${namespace}_diagnostics",0),Clock.fixed(Instant.ofEpochMilli(now),ZoneOffset.UTC),coordinator)
@@ -201,7 +201,7 @@ class ToolBusinessIntegrationTest {
         ShadowMediaPlayer.setMediaInfoProvider { ShadowMediaPlayer.MediaInfo(1000,0) }
     }
 
-    @Test fun adoptionThroughProductionSourcesAndBatchEngineHandlesNativeIdsTextRefsAndPreservedFields()=runBlocking {
+    @Test fun adoptionPreservesNativeIdsAndFields()=runBlocking {
         provider()
         val cases=listOf("short","blank-name","blank-department","long-unicode","legacy-unindexed","linked-positive","statistics-off","mismatch","generation-change","unrelated-change","deleted","changed-native-after-disclosure","changed-linked-after-disclosure")
         for((offset,kind) in cases.withIndex())Fixture("identity-$offset").use{f->
@@ -289,7 +289,7 @@ class ToolBusinessIntegrationTest {
             }finally{service.close()}
         }
     }
-    @Test fun allBusinessToolsInvokeProductionApisAndInvalidSchemaNeverMutates() = runBlocking {
+    @Test fun toolsUseProductionApisAndRejectBadSchema() = runBlocking {
         provider()
         val registry = ToolRegistry(OperationCatalog(OperationCatalog.defaultDefinitions().shuffled(kotlin.random.Random(1202))))
         val covered = mutableSetOf<OperationId>()

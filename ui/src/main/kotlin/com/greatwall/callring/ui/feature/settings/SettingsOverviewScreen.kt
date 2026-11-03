@@ -12,7 +12,7 @@ import com.greatwall.callring.ui.feature.settings.components.*
 import com.greatwall.callring.ui.state.LoadState
 import com.greatwall.callring.ui.state.MutationState
 
-enum class SettingsPage { NUMBER_RULE, QUIET, POSITIONS, MY_POSITION, WORK, CALENDAR, LEAVES, SCORE, RINGTONE, RUNTIME, APPEARANCE, RECORDING, AI, UPDATE }
+enum class SettingsPage { NUMBER_RULE, QUIET, POSITIONS, MY_POSITION, WORK, CALENDAR, LEAVES, SCORE, RINGTONE, RUNTIME, APPEARANCE, RECORDING, AI, UPDATE, STORAGE, BACKUP }
 
 /** QA builds must not offer the in-app update entry (their applicationId cannot match a release). */
 internal fun updateEntryVisible(packageName: String): Boolean = !packageName.endsWith(".backendqa")
@@ -60,6 +60,8 @@ fun SettingsOverviewScreen(
             SettingRow("外观", "主题色与深浅模式", { onNavigate(SettingsPage.APPEARANCE) })
         }
         SettingsCard("系统与支持") {
+            SettingRow("备份与恢复", "加密导出、校验预览与替换恢复", { onNavigate(SettingsPage.BACKUP) })
+            SettingRow("存储管理", "查看占用、预览并手动清理录音归档", { onNavigate(SettingsPage.STORAGE) })
             SettingRow("运行状态与权限", "权限授权与运行诊断", { onNavigate(SettingsPage.RUNTIME) })
             if (showUpdate) {
                 SettingRow("检查更新", versionName?.let { "当前版本 $it" }, { onNavigate(SettingsPage.UPDATE) })

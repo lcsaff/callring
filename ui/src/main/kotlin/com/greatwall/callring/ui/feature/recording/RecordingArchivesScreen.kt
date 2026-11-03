@@ -14,24 +14,31 @@ import com.greatwall.callring.contracts.recording.*
 import com.greatwall.callring.ui.designsystem.components.*
 import com.greatwall.callring.ui.state.*
 
-@Composable fun RecordingArchivesScreen(state: LoadState<List<CallArchive>>, onBack: () -> Unit,
-    onRefresh: () -> Unit, onArchive: (CallArchive) -> Unit) {
+@Composable fun RecordingArchivesScreen(state: LoadState<List<ArchiveListItem>>, onBack: () -> Unit,
+    onRefresh: () -> Unit, onArchive: (ArchiveListItem) -> Unit,
+    zone: LoadState<java.time.ZoneId> = LoadState(), onRetryZone: () -> Unit = {},
+    paging: ArchivePagingState = ArchivePagingState(complete = true), onMore: () -> Unit = {}) {
     ScreenFrame("通话录音", onBack, actions = {
         TextButton(onClick = onRefresh, enabled = !state.loading) { Text("刷新") }
     }) {
         RecordingFeedback(state.error, MutationState())
-        if (state.loading) LinearProgressIndicator(Modifier.fillMaxWidth())
-        if (state.loaded && !state.loading && state.error == null && state.data.isNullOrEmpty()) Text("暂无通话录音")
+        RecordingTimeZoneFeedback(zone, onRetryZone)
+        if (state.loading && state.data == null) LinearProgressIndicator(Modifier.fillMaxWidth())
+        if (paging.preparing) Text("正在准备录音列表，剩余 ${paging.remaining} 条")
+        if (state.loaded && !state.loading && !paging.preparing && state.error == null && state.data.isNullOrEmpty()) Text("暂无通话录音")
         LazyColumn(Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             items(state.data.orEmpty(), key = { it.callId }) { archive ->
                 OutlinedCard(onClick = { onArchive(archive) }, modifier = Modifier.fillMaxWidth()) {
                     Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                         Text(archive.number, style = MaterialTheme.typography.titleMedium)
-                        Text(com.greatwall.callring.ui.format.UiFormat.time(archive.startedAtEpochMillis, java.time.ZoneId.systemDefault()))
+                        zone.data?.let { Text(com.greatwall.callring.ui.format.UiFormat.time(archive.startedAtEpochMillis, it)) }
                         Text(archiveStatusLabel(archive.status))
-                        archive.analysis?.summary?.takeIf { it.isNotBlank() }?.let { Text(it) }
+                        archive.summary.takeIf { it.isNotBlank() }?.let { Text(it) }
                     }
                 }
+            }
+            if (!paging.complete && !paging.preparing) item {
+                TextButton(onClick = onMore, enabled = !state.loading) { Text(if (state.loading) "正在加载…" else "加载更多") }
             }
         }
     }

@@ -6,9 +6,9 @@ The facade is `com.greatwall.callring.contracts.CallringUiApi` in `CallringApi.k
 
 ## Current operation catalog (T12)
 
-`backend/application/conversation/operation/OperationCatalog` owns all 83 explicit `OperationDefinition` records. `OperationId` is business identity; `operationCode`, `legacyIndex` and `displayOrder` are protocol metadata, with displayOrder used only for discovery sorting. `ToolRegistry.definitions` is the sole 83-item discovery entry point. Registry validation, execution, source reads, scopes, authoritative confirmation, batch orchestration and receipts resolve the same injected catalog. `ConversationRequest.tools` carries OperationDefinition, with no ToolDefinition alias or old constructor.
+`backend/application/conversation/operation/OperationCatalog` owns all 85 explicit `OperationDefinition` records. `OperationId` is business identity; `operationCode`, `legacyIndex` and `displayOrder` are protocol metadata, with displayOrder used only for discovery sorting. `ToolRegistry.definitions` is the sole 85-item discovery entry point. Registry validation, execution, source reads, scopes, authoritative confirmation, batch orchestration and receipts resolve the same injected catalog. `ConversationRequest.tools` carries OperationDefinition, with no ToolDefinition alias or old constructor.
 
-The catalog declares 50 writes and 33 nonwrites (31 source reads, one catalog read, one in-memory plan). The 49 direct writes use direct scopes/readback; `CALLERS_SAVE_PROFILES` is a composite using each `CALLERS_SAVE_PROFILE` child's scope, confirmation policy and persisted readback, classified `BATCH_CHILD_PERSISTED_READBACK`. Startup rejects duplicate identities/protocol metadata, missing definitions/execution and incomplete or inconsistent read/write policies. Executor/ConversationService require QueryService and document readback verification; the old UI-read executor branch is deleted. All external schema/default/description text remains pinned by the frozen 83-operation golden.
+The catalog declares 50 writes and 35 nonwrites (31 source reads, two update observations, one catalog read, one in-memory plan). The 49 direct writes use direct scopes/readback; `CALLERS_SAVE_PROFILES` is a composite using each `CALLERS_SAVE_PROFILE` child's scope, confirmation policy and persisted readback, classified `BATCH_CHILD_PERSISTED_READBACK`. Startup rejects duplicate identities/protocol metadata, missing definitions/execution and incomplete or inconsistent read/write policies. Executor/ConversationService require QueryService and document readback verification; the old UI-read executor branch is deleted. All external schema/default/description text remains pinned by the frozen 85-operation golden.
 
 The architecture guard rejects operation dispatch through numeric index/ordinal, discovery order or parsed O/X codes in registry consumers and the catalog itself. Fixed schema limits, capacity values, explicit protocol metadata, uniqueness checks and discovery sorting remain legal. The localized-text guard permits only a literal named `description` argument on a named OperationDefinition in the actual OperationCatalog; unrelated strings and computed descriptions are rejected, with no file-wide exemption.
 
@@ -48,11 +48,15 @@ T10c removes only missing-capability method bodies: `UiEditsApi`'s seven edits, 
 
 2026-10-21 theme preset correction adds `settings/ThemePresets.kt`: immutable id/name/RGB catalog shared by UI and AI. `ThemePreset.name` is catalog data; the localized-literal guard permits only that static constructor field in this contract, with positive and negative tests. D11 current/scoped/full projections add read-only `presets` while retaining all existing appearance fields. O36/O37 descriptions now expose all three names and ids and explain PRESET selection and color-mode preservation. Tool identities, schemas, confirmation, write behavior and omission defaults are unchanged; only those two description values are updated in the reviewed external golden, with its pinned digest updated explicitly. Historical extraction baselines remain unchanged.
 
+## V1-GAPS approved internal signature changes
+
+The approved 2026-10-28 plan replaces the internal full-archive listing with `queryArchives` and bounded, generation-stamped list DTOs. Archive cursors bind the storage owner, exact archive revision and page size; preparation is explicitly incomplete. The facade requires injected `backup` and `storage` capabilities in every production assembly and command-bound facade. Backup progress is a structured phase observation; passwords remain transient CharArray inputs. Cleanup previews bind a frozen selection and target generations, and receipts distinguish committed, failed and unstarted items. Runtime samples carry `CoreReadiness`; the sole backend projection derives it from observed phone-state and screening-role prerequisites, with raw/unknown samples remaining UNKNOWN. These internal APIs add no AI operations, permissions, defaults or provider fallbacks; the external 85-operation compatibility golden is unchanged. The catalog's internal shared API label for O50 follows the new recording query; its external tool name/schema and existing D16 source pagination remain unchanged.
+
 <!-- contract-inventory -->
 ```json
 {
   "CallringApi.kt": {
-    "sha256": "6e89ff3b315350d6efded784279ae4dd3d932be1135346df0a11fb5eee8f5588",
+    "sha256": "eb5ebc6a2d82c61873302c0ff4d990f7bf9ecc291e8f753d0b626d726f2dc516",
     "declarations": [
       "CallringUiApi"
     ]
@@ -154,6 +158,17 @@ T10c removes only missing-capability method bodies: `UiEditsApi`'s seven edits, 
       "ThinkingSupport"
     ]
   },
+  "backup/BackupApi.kt": {
+    "sha256": "a4451568467404658419a28615869ff4bb5b047033ebf06beb1b477daf263258",
+    "declarations": [
+      "BackupSummary",
+      "BackupPreview",
+      "RestoreReceipt",
+      "BackupPhase",
+      "BackupProgress",
+      "BackupApi"
+    ]
+  },
   "callers/CallersApi.kt": {
     "sha256": "87155410e1b49edf19774ebecdf0c8ab62e50461abef5fcad1230f3ce8e4ca6c",
     "declarations": [
@@ -233,7 +248,7 @@ T10c removes only missing-capability method bodies: `UiEditsApi`'s seven edits, 
     ]
   },
   "recording/RecordingApi.kt": {
-    "sha256": "26c950ce370fcaa83827b35a5c71d77be97a9fcb7747f47cf336b48e673d7751",
+    "sha256": "78da9d62a2e69771e856c9d016991f89079a286e476b6f80cdd3486f30392653",
     "declarations": [
       "CaptureMode",
       "ArchiveStatus",
@@ -242,7 +257,11 @@ T10c removes only missing-capability method bodies: `UiEditsApi`'s seven edits, 
       "CallArchive",
       "RecordingFile",
       "RecordingApi",
-      "RecordingIdentity"
+      "RecordingIdentity",
+      "ArchiveListItem",
+      "ArchiveListCursor",
+      "ArchiveListQuery",
+      "ArchiveListPage"
     ]
   },
   "recording/RecordingSettingsView.kt": {
@@ -279,12 +298,13 @@ T10c removes only missing-capability method bodies: `UiEditsApi`'s seven edits, 
     ]
   },
   "runtime/RuntimeApi.kt": {
-    "sha256": "ae0d7f6936f1de198ef5aed37367ad6a5af69b8e2ff45d244cdaea5dfa929803",
+    "sha256": "1d2bf48f1448ff7223933802d4799760578bc052e692f55e9ad9a5637c184522",
     "declarations": [
       "RuntimeApi",
       "Capability",
       "AccessState",
       "Audibility",
+      "CoreReadiness",
       "PhoneActivity",
       "PlaybackMode",
       "PlaybackState",
@@ -335,6 +355,19 @@ T10c removes only missing-capability method bodies: `UiEditsApi`'s seven edits, 
     "declarations": [
       "ThemePreset",
       "ThemePresets"
+    ]
+  },
+  "storage/StorageManagementApi.kt": {
+    "sha256": "d715d5356ac2858666623acd40fabeb98d947d4e8e1f22fd8918323f2882d693",
+    "declarations": [
+      "StorageInventory",
+      "ArchiveCleanupSelection",
+      "CleanupTarget",
+      "ArchiveCleanupPreview",
+      "CleanupItemStatus",
+      "CleanupItemReceipt",
+      "ArchiveCleanupReceipt",
+      "StorageManagementApi"
     ]
   },
   "widget/WidgetBindingsApi.kt": {

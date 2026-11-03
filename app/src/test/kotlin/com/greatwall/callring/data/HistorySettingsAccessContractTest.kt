@@ -62,7 +62,7 @@ class HistorySettingsAccessContractTest {
             override fun playback(preview: Boolean, stopAction: PendingIntent): Notification =
                 Notification.Builder(context, "synthetic").build()
         }
-        val graph = BackendGraph(context, configuration, notifications, object : IncomingCallUiSink {
+        val graph = BackendGraph(com.greatwall.callring.bootstrap.BackupGraphOwner { _, _ -> throw AssertionError("Unexpected fixture restore") }, context, configuration, notifications, object : IncomingCallUiSink {
             override fun show(request: IncomingCallUiRequest) = Unit
         })
         try {

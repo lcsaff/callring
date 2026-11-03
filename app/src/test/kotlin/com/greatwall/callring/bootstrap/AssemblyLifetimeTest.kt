@@ -363,7 +363,7 @@ class AssemblyLifetimeTest {
 
     private fun graph(name: String,matcher:com.greatwall.callring.domain.calling.NumberMatcher=com.greatwall.callring.domain.calling.PrefixLengthNumberMatcher,probe:com.greatwall.callring.data.database.SqlAccessProbe?=null): BackendGraph {
         val context = RuntimeEnvironment.getApplication()
-        return BackendGraph(context, BackendConfiguration(
+        return BackendGraph(com.greatwall.callring.bootstrap.BackupGraphOwner { _, _ -> throw AssertionError("Unexpected fixture restore") }, context, BackendConfiguration(
             AppearanceSettings(ThemeSelection.PRESET, "default", null, ColorMode.FOLLOW_SYSTEM),
             numberMatcher=matcher, sqlAccessProbe=probe, databaseName = "$name.db", ringPreferencesName = "${name}_ring",
             widgetPreferencesName = "${name}_widgets", appearancePreferencesName = "${name}_appearance"),

@@ -40,6 +40,19 @@ open class UiFakeApi(private val overlayEnabled: Boolean = false) : CallringUiAp
     override val conversation: ConversationApi = FixtureConversationApi
     override val aiSettings: AiSettingsApi = FixtureAiSettingsApi
     override val numberDeletion: NumberDeletionApi = FixtureNumberDeletionApi
+    override val storage: com.greatwall.callring.contracts.storage.StorageManagementApi = object : com.greatwall.callring.contracts.storage.StorageManagementApi {
+        override suspend fun inventory(): ApiResult<com.greatwall.callring.contracts.storage.StorageInventory> = ApiResult.Success(com.greatwall.callring.contracts.storage.StorageInventory(0,0,0,0,0))
+        override suspend fun preview(selection: com.greatwall.callring.contracts.storage.ArchiveCleanupSelection): ApiResult<com.greatwall.callring.contracts.storage.ArchiveCleanupPreview> = unexpected()
+        override suspend fun confirm(token: String): ApiResult<com.greatwall.callring.contracts.storage.ArchiveCleanupReceipt> = unexpected()
+        override fun cancel(token: String) = Unit
+    }
+    override val backup: com.greatwall.callring.contracts.backup.BackupApi = object : com.greatwall.callring.contracts.backup.BackupApi {
+    override val progress = kotlinx.coroutines.flow.MutableStateFlow(com.greatwall.callring.contracts.backup.BackupProgress(com.greatwall.callring.contracts.backup.BackupPhase.IDLE))
+        override suspend fun export(destination: DocumentRef, password: CharArray, includeAudio: Boolean): ApiResult<com.greatwall.callring.contracts.backup.BackupSummary> = unexpected()
+        override suspend fun preview(source: DocumentRef, password: CharArray): ApiResult<com.greatwall.callring.contracts.backup.BackupPreview> = unexpected()
+        override suspend fun restore(previewToken: String): ApiResult<com.greatwall.callring.contracts.backup.RestoreReceipt> = unexpected()
+        override suspend fun discard(previewToken: String): ApiResult<Unit> = unexpected()
+    }
     override val update: AppUpdateApi = FixtureAppUpdateApi
     override val snapshots: AiSnapshotApi = FixtureAiSnapshotApi
     override val recordings: RecordingApi = FixtureRecordingApi

@@ -20,21 +20,18 @@ import org.robolectric.annotation.Config
 @Config(sdk = [35])
 class NumberRuleScreenTest {
     @get:Rule val compose = createComposeRule()
-    @Test fun emptyPrefixAndHistoryExplanationAreVisibleAndSaveIsExplicit() {
-        var saves = 0
+    @Test fun emptyPrefixHintIsInsideFieldAndNoSaveButton() {
         compose.setContent { CallringTheme(DefaultAppearance.rememberAppearanceThemeSpec(false)) { NumberRuleScreen(LoadState(NumberRuleSettings(listOf(com.greatwall.callring.contracts.settings.NumberRuleEntry("", 5)), 0), loaded = true),
-            listOf(NumberRuleDraft(1, "", "5")), MutationState(), emptyMap(), false, "", null, {}, {}, { _, _ -> }, { _, _ -> }, {}, {}, { saves++ }, {}, {}, {}) } }
-        compose.onNodeWithText("不限前缀").assertExists()
+            listOf(NumberRuleDraft(1, "", "5")), MutationState(), emptyMap(), false, "", null, {}, {}, { _, _ -> }, { _, _ -> }, {}, {}, {}, {}, {}) } }
+        compose.onNodeWithText("前缀（不限）").assertExists()
         compose.onNodeWithText("已有记录不重算；后续同步可能补入历史通话").assertExists()
-        compose.runOnIdle { assertEquals(0, saves) }
-        compose.onNodeWithText("保存规则").performScrollTo().performClick()
-        compose.runOnIdle { assertEquals(1, saves) }
+        compose.onNodeWithText("保存规则").assertDoesNotExist()
     }
     @Test fun conflictOffersExplicitReloadAndKeepsDraftVisible() {
         var reloads = 0
         compose.setContent { CallringTheme(DefaultAppearance.rememberAppearanceThemeSpec(false)) { NumberRuleScreen(LoadState(NumberRuleSettings(listOf(com.greatwall.callring.contracts.settings.NumberRuleEntry("8", 6)), 2), loaded = true),
             listOf(NumberRuleDraft(1, "9", "5")), MutationState(), mapOf("rules[0].prefix" to "请输入数字前缀"), true, "", null,
-            {}, {}, { _, _ -> }, { _, _ -> }, {}, {}, {}, { reloads++ }, {}, {}) } }
+            {}, {}, { _, _ -> }, { _, _ -> }, {}, {}, { reloads++ }, {}, {}) } }
         compose.onNodeWithText("规则已被其他操作更新，当前输入已保留").assertExists()
         compose.onNodeWithText("请输入数字前缀").assertExists()
         compose.onNodeWithText("重新加载规则").performScrollTo().performClick()
@@ -43,7 +40,7 @@ class NumberRuleScreenTest {
     @Test fun loadFailureOffersRetryWithoutRenderingEditableRule() {
         var retries = 0
         compose.setContent { CallringTheme(DefaultAppearance.rememberAppearanceThemeSpec(false)) { NumberRuleScreen(LoadState(error = ApiError(ErrorCode.STORAGE_FAILURE, "规则读取失败")),
-            null, MutationState(), emptyMap(), false, "", null, {}, { retries++ }, { _, _ -> }, { _, _ -> }, {}, {}, {}, {}, {}, {}) } }
+            null, MutationState(), emptyMap(), false, "", null, {}, { retries++ }, { _, _ -> }, { _, _ -> }, {}, {}, {}, {}, {}) } }
         compose.onNodeWithText("规则读取失败").assertExists()
         compose.onNodeWithText("重试").performClick()
         compose.runOnIdle { assertEquals(1, retries) }
@@ -53,7 +50,7 @@ class NumberRuleScreenTest {
         compose.setContent { CallringTheme(DefaultAppearance.rememberAppearanceThemeSpec(false)) {
             NumberRuleScreen(LoadState(NumberRuleSettings(listOf(com.greatwall.callring.contracts.settings.NumberRuleEntry("3", 5)), 0), loaded = true), listOf(NumberRuleDraft(1, "9", "5")),
                 MutationState(error = ApiError(ErrorCode.CONFLICT, "规则已更新")), emptyMap(), false, "", null,
-                {}, {}, { _, _ -> }, { _, _ -> }, {}, {}, {}, {}, {}, {})
+                {}, {}, { _, _ -> }, { _, _ -> }, {}, {}, {}, {}, {})
         } }
         compose.onNodeWithText("重新加载规则").assertExists()
     }
@@ -62,27 +59,28 @@ class NumberRuleScreenTest {
         compose.setContent { CallringTheme(DefaultAppearance.rememberAppearanceThemeSpec(false)) {
             NumberRuleScreen(LoadState(NumberRuleSettings(emptyList(), 0), loaded = true),
                 listOf(NumberRuleDraft(1, "010", "11"), NumberRuleDraft(2, "138", "11")), MutationState(), emptyMap(), false, "", null,
-                {}, {}, { _, _ -> }, { _, _ -> }, {}, {}, {}, {}, { adds++ }, { removed = it })
+                {}, {}, { _, _ -> }, { _, _ -> }, {}, {}, {}, { adds++ }, { removed = it })
         } }
         listOf("1", "2").forEach { id ->
             val prefix = compose.onNodeWithTag("rule.$id.prefix").fetchSemanticsNode().boundsInRoot
             val length = compose.onNodeWithTag("rule.$id.length").fetchSemanticsNode().boundsInRoot
             assertEquals(prefix.top, length.top, 1f); assertTrue(prefix.right <= length.left)
+            val remove = compose.onNodeWithContentDescription("删除规则 $id").fetchSemanticsNode().boundsInRoot
+            assertEquals(prefix.center.y, remove.center.y, 1f)
+            assertTrue("Rule fields should be compact", prefix.height <= 52 * compose.density.density)
         }
         compose.onNodeWithContentDescription("添加规则").performScrollTo().performClick()
         compose.onNodeWithContentDescription("删除规则 1").performScrollTo().performClick()
         compose.runOnIdle { assertEquals(1, adds); assertEquals(1L, removed) }
     }
 
-    @Test fun emptyGroupExplainsNoMatchesAndAllowsExplicitSave() {
-        var saves = 0
+    @Test fun emptyGroupExplainsNoMatchesWithoutSaveButton() {
         compose.setContent { CallringTheme(DefaultAppearance.rememberAppearanceThemeSpec(false)) {
             NumberRuleScreen(LoadState(NumberRuleSettings(emptyList(), 0), loaded = true), emptyList(), MutationState(), emptyMap(), false, "", null,
-                {}, {}, { _, _ -> }, { _, _ -> }, {}, {}, { saves++ }, {}, {}, {})
+                {}, {}, { _, _ -> }, { _, _ -> }, {}, {}, {}, {}, {})
         } }
         compose.onNodeWithText("不会匹配任何号码").assertExists()
-        compose.onNodeWithText("保存规则").performScrollTo().assertIsEnabled().performClick()
-        compose.runOnIdle { assertEquals(1, saves) }
+        compose.onNodeWithText("保存规则").assertDoesNotExist()
     }
 
     @Test fun multiDigitPrefixesStayEditableAndRemovingEarlierRowRetainsFocus() {
@@ -91,7 +89,7 @@ class NumberRuleScreenTest {
             NumberRuleScreen(LoadState(NumberRuleSettings(emptyList(), 0), loaded = true), rows.value, MutationState(), emptyMap(), false, "", null,
                 {}, {}, { id, value -> rows.value = rows.value.map { if (it.id == id) it.copy(prefix = value) else it } },
                 { id, value -> rows.value = rows.value.map { if (it.id == id) it.copy(length = value) else it } },
-                {}, {}, {}, {}, {}, { id -> rows.value = rows.value.filterNot { it.id == id } })
+                {}, {}, {}, {}, { id -> rows.value = rows.value.filterNot { it.id == id } })
         } }
         compose.onNodeWithTag("rule.1.prefix").performScrollTo().performClick().performTextInput("010")
         compose.onNodeWithTag("rule.1.prefix").assertTextContains("010")

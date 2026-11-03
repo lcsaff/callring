@@ -16,12 +16,14 @@ import com.greatwall.callring.ui.state.*
 
 @Composable fun ArchiveScreen(state: LoadState<CallArchive?>, files: LoadState<List<RecordingFile>>, mutation: MutationState,
     onBack: () -> Unit, onRefresh: () -> Unit, onImport: () -> Unit, onList: () -> Unit, onSelect: (RecordingFile) -> Unit,
-    onRetry: () -> Unit, onDelete: () -> Unit, onPlay: () -> Unit, onStop: () -> Unit, onAdopt: () -> Unit, onEdit: () -> Unit) {
+    onRetry: () -> Unit, onDelete: () -> Unit, onPlay: () -> Unit, onStop: () -> Unit, onAdopt: () -> Unit, onEdit: () -> Unit,
+    zone: LoadState<java.time.ZoneId> = LoadState(), onRetryZone: () -> Unit = {}) {
     var deletion by remember { mutableStateOf(false) }
     var adoption by remember { mutableStateOf(false) }
     ScreenFrame("通话录音归档", onBack) {
         Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             RecordingFeedback(state.error ?: files.error, mutation)
+            RecordingTimeZoneFeedback(zone, onRetryZone)
             if (state.loading) LinearProgressIndicator(Modifier.fillMaxWidth())
             TextButton(onClick = onRefresh) { Text("刷新状态") }
             Text("可导入已有录音，或选择授权目录内的系统录音；请核对文件与本次通话相符。")
@@ -36,7 +38,7 @@ import com.greatwall.callring.ui.state.*
             if (archive == null && state.loaded) Text("等待录音，尚无本次通话归档")
             archive?.let { item ->
                 Text("号码：${item.number}")
-                Text(com.greatwall.callring.ui.format.UiFormat.time(item.startedAtEpochMillis, java.time.ZoneId.systemDefault()))
+                zone.data?.let { Text(com.greatwall.callring.ui.format.UiFormat.time(item.startedAtEpochMillis, it)) }
                 Text("来源：${when (item.source) { RecordingSource.SYSTEM -> "系统录音"; RecordingSource.IMPORTED -> "手动导入"; RecordingSource.MICROPHONE -> "实验性麦克风" }}")
                 Text("质量：${recordingMessage(item.audioQuality)}")
                 Text("状态：${archiveStatusLabel(item.status)}")

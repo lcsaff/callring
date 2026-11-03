@@ -520,7 +520,7 @@ private object OperationSchemas {
             schema = commandShape(false),
             description = "录音归档元数据分页，不含全部全文",
             runtimeDefaults = "No optional business arguments; required fields must be supplied. Source adapter supplies projection/default pagination; see ScopedToolReader for per-operation composed reads. dependsOn omitted: []; write taskId omitted: auto-plan only when batch has exactly one write, otherwise explicit plan required.",
-            write = false, sharedApi = "recordings.listArchives", receiptPolicy = ReceiptPolicy.SOURCE_READ,
+            write = false, sharedApi = "recordings.queryArchives", receiptPolicy = ReceiptPolicy.SOURCE_READ,
             confirmation = ConfirmationPolicy.NO_SEPARATE_CONFIRM, execution = ExecutionStrategy.SOURCE,
             scope = null, verification = null, readSource = ReadStrategy.SOURCE,
         ),

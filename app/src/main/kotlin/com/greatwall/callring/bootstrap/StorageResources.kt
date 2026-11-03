@@ -45,6 +45,8 @@ internal class StorageResources(private val factory: () -> CoreStorageResource) 
         return instance?.narrowAccessCounts() ?: emptyMap()
     }
 
+    internal fun prepareBackupStorage() = lease { Unit }
+
     override fun capture(): FullSnapshotFacts = lease {
         completeCaptures.incrementAndGet()
         it.fullSnapshot.capture()

@@ -7,7 +7,7 @@ import com.greatwall.callring.application.ports.*
 import java.util.concurrent.CancellationException
 
 /** Resumable JSON projection. A string buffer never exceeds 4097 Unicode code points. */
-internal class ArchiveStreamParser(private val db:SQLiteDatabase,private val id:Long,private val generation:Long,saved:AiJson.Obj?=null) {
+internal class ArchiveStreamParser(private val db:SQLiteDatabase,private val id:Long,private val generation:Long,saved:AiJson.Obj?=null,private val cancelled:()->Boolean={false}) {
     private data class Frame(val objectValue:Boolean,val path:String,var phase:Int=0,var key:String="",val fields:MutableMap<String,AiJson> = linkedMapOf(),val values:MutableList<AiJson> = mutableListOf())
     private val frames=mutableListOf<Frame>()
     var offset=0L;private set
@@ -42,9 +42,11 @@ internal class ArchiveStreamParser(private val db:SQLiteDatabase,private val id:
     fun finish():AiJson.Obj {
         if(mode=="atom")endAtom()
         require(done&&frames.isEmpty()&&mode.isEmpty()){"ai.archive_source_shape"}
-        return root as? AiJson.Obj?:throw IllegalArgumentException("ai.archive_source_shape")
+        val value=root as? AiJson.Obj?:throw IllegalArgumentException("ai.archive_source_shape")
+        // RecordingJson omits a null audio path. Its absence has always meant no audio.
+        return if("audioPresent" in value.fields)value else AiJson.Obj(value.fields+("audioPresent" to aiBool(false)))
     }
-    private fun checkActive(){if(Thread.currentThread().isInterrupted)throw CancellationException("ai.cancelled")}
+    private fun checkActive(){if(cancelled()||Thread.currentThread().isInterrupted)throw CancellationException("ai.cancelled")}
     private fun capacity():Nothing=throw BackendFailure(ApiError(ErrorCode.SYSTEM_RESTRICTED,"ai.archive_metadata_capacity"))
     private fun valuePath():String {
         val frame=frames.lastOrNull()?:return ""

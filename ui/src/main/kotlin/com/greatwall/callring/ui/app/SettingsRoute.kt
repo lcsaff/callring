@@ -13,9 +13,20 @@ import com.greatwall.callring.ui.feature.update.AppUpdateViewModel
 @Composable internal fun SettingsRoute(
     page: SettingsPage, api: CallringUiApi, summaryModel: SettingsSummaryViewModel, appearanceModel: AppearanceViewModel,
     signal: Long, onBack: () -> Unit, onCapability: (Capability) -> Unit, onAppSettings: () -> Unit,
-    onTestOverlay: () -> Unit = {}, startupUpdateFinished: Boolean = false,
+    onTestOverlay: () -> Unit = {}, startupUpdateFinished: Boolean = false, onSetup: () -> Unit = {},
 ) {
     when (page) {
+        SettingsPage.BACKUP -> BackupRoute(api.backup, onBack)
+        SettingsPage.STORAGE -> {
+            val model: com.greatwall.callring.ui.feature.storage.StorageManagementViewModel = uiViewModel { com.greatwall.callring.ui.feature.storage.StorageManagementViewModel(api) }
+            val state by model.state.collectAsStateWithLifecycle()
+            val cleanup by model.cleanup.collectAsStateWithLifecycle()
+            val summary by summaryModel.state.collectAsStateWithLifecycle()
+            val zone = summary.data?.workZoneId?.let { runCatching { java.time.ZoneId.of(it) }.getOrNull() }
+            LaunchedEffect(signal) { model.refresh() }
+            com.greatwall.callring.ui.feature.storage.StorageManagementScreen(state, cleanup, zone, onBack,
+                { model.refresh(); summaryModel.refresh() }, model::preview, model::discardPreview, model::confirm, model::cancel)
+        }
         SettingsPage.NUMBER_RULE -> {
             val model: NumberRuleViewModel = uiViewModel { NumberRuleViewModel(api, it) }
             val state by model.state.collectAsStateWithLifecycle()
@@ -27,7 +38,7 @@ import com.greatwall.callring.ui.feature.update.AppUpdateViewModel
             val check by model.trialCheck.collectAsStateWithLifecycle()
             NumberRuleScreen(state, draft, mutation, errors, conflict, trial, check,
                 onBack, model::refresh, model::editPrefix, model::editLength, model::editTrial,
-                { model.editTrial(trial) }, model::save, model::reload, model::addRule, model::removeRule)
+                { model.editTrial(trial) }, model::reload, model::addRule, model::removeRule)
         }
         SettingsPage.RECORDING -> RecordingSettingsRoute(api, onBack)
         SettingsPage.AI -> AiSettingsRoute(api, signal, onBack)
@@ -103,7 +114,7 @@ import com.greatwall.callring.ui.feature.update.AppUpdateViewModel
             val model: RuntimeViewModel = uiViewModel { RuntimeViewModel(api) }
             val state by model.state.collectAsStateWithLifecycle()
             val mutation by model.mutation.collectAsStateWithLifecycle()
-            RuntimeScreen(state, mutation, onBack, model::refresh, onCapability, model::synchronize, onAppSettings, onTestOverlay)
+            RuntimeScreen(state, mutation, onBack, model::refresh, onCapability, model::synchronize, onAppSettings, onTestOverlay, onSetup)
         }
         SettingsPage.UPDATE -> {
             val model: AppUpdateViewModel = uiViewModel { AppUpdateViewModel(api.update) }

@@ -12,6 +12,8 @@ import com.greatwall.callring.contracts.ai.*
 import com.greatwall.callring.contracts.command.*
 
 interface CallringUiApi {
+    val storage: com.greatwall.callring.contracts.storage.StorageManagementApi
+    val backup: com.greatwall.callring.contracts.backup.BackupApi
     val edits: UiEditsApi
     val conversation: ConversationApi
     val aiSettings: AiSettingsApi
