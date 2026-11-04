@@ -18,6 +18,7 @@ import com.greatwall.callring.domain.model.*
 internal class MemoryCoreUnitOfWork : CoreUnitOfWork {
     var numberRuleSettings = com.greatwall.callring.contracts.settings.NumberRuleSettings(listOf(com.greatwall.callring.contracts.settings.NumberRuleEntry("3", 5)), 0)
     val decision = DecisionFixture()
+    val deletedCallers = linkedMapOf<String,Long>()
     val people = linkedMapOf<String, ProfileRecord>()
     val roles = linkedMapOf<Long, PositionRecord>()
     val calls = linkedMapOf<Long, RawCallRecord>()
@@ -116,6 +117,8 @@ internal class MemoryCoreUnitOfWork : CoreUnitOfWork {
             }
 
             override fun caller(number: String) = people[number]
+            override fun callerDeletedAt(number: String) = deletedCallers[number]
+            override fun markCallerDeleted(number: String, at: Long) { deletedCallers[number]=at }
 
             override fun callerCount() = people.size.toLong()
 
@@ -414,7 +417,7 @@ internal class MemoryCoreUnitOfWork : CoreUnitOfWork {
         fun <T> remember(list: MutableList<T>) {
             val saved = list.toList(); undo += { list.clear(); list.addAll(saved) }
         }
-        remember(people); remember(roles); remember(calls); remember(audits)
+        remember(deletedCallers); remember(people); remember(roles); remember(calls); remember(audits)
         remember(decision.schedules); remember(decision.calendarYears); remember(decision.holidays)
         remember(decision.overrides); remember(decision.leaves); remember(decision.intervals)
         val makeup = decision.makeupDates.toSet()

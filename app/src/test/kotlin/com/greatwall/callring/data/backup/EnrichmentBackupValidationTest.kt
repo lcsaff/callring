@@ -13,6 +13,20 @@ import org.robolectric.annotation.Config
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [33], manifest = Config.NONE)
 class EnrichmentBackupValidationTest {
+    @Test fun callerDeletionCutoffIsValidatedAndPreservedInCoreBackup() {
+        val context=org.robolectric.RuntimeEnvironment.getApplication()
+        val name="deletion-marker-backup.db"
+        com.greatwall.callring.data.database.CallringDatabase(context,name).use { helper ->
+            helper.writableDatabase.execSQL("INSERT INTO settings(key,value) VALUES('caller_deleted_at:31234','123')")
+        }
+        val file=context.getDatabasePath(name)
+        CoreBackupValidation.validate(file) {}
+        android.database.sqlite.SQLiteDatabase.openDatabase(file.path,null,android.database.sqlite.SQLiteDatabase.OPEN_READWRITE).use {
+            it.execSQL("UPDATE settings SET value='-1' WHERE key='caller_deleted_at:31234'")
+        }
+        assertThrows(BackupFormatException::class.java) { CoreBackupValidation.validate(file) {} }
+        context.deleteDatabase(name)
+    }
     @Test fun validIneligibleBaselineDoesNotBlockArchiveRestore() {
         val json = RecordingJson.archive(CallArchive(-1, "１２３", 1, enrichmentBaseline = CallerIdentityBaseline("", emptyMap(), eligible = false)))
         SQLiteDatabase.create(null).use { db ->

@@ -38,15 +38,14 @@ internal fun NumberDeletionDialogs(
     if (stage == 1) {
         AlertDialog(
             onDismissRequest = onDismiss,
-            title = { Text("删除该号码及全部数据？") },
+            title = { Text("删除该号码档案及通话记录？") },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                     Text("将永久删除：")
                     if (impact.profileExists) Text("· 号码档案 1 条")
                     Text("· 通话记录 ${impact.callCount} 条")
-                    Text("· 录音归档 ${impact.archiveCount} 条" + if (impact.audioBytes > 0) "（音频 ${formatDeletionSize(impact.audioBytes)}）" else "")
+                    Text("录音、音频、转写和分析全部保留。")
                     if (impact.widgetBindingCount > 0) Text("· 小组件绑定 ${impact.widgetBindingCount} 个")
-                    if (impact.busy) Text("该号码仍有进行中的录音/转写/分析，稍后再试。", color = MaterialTheme.colorScheme.error)
                     error?.let { Text(it.message, color = MaterialTheme.colorScheme.error) }
                     state?.error?.let { Text(it.message, color = MaterialTheme.colorScheme.error) }
                     Text("此操作不可恢复。", color = MaterialTheme.colorScheme.error)
@@ -84,10 +83,4 @@ internal fun NumberDeletionDialogs(
             dismissButton = { TextButton(onClick = onDismiss) { Text("取消") } },
         )
     }
-}
-
-internal fun formatDeletionSize(bytes: Long): String = when {
-    bytes >= 1024L * 1024L -> String.format(java.util.Locale.ROOT, "%.1f MB", bytes / 1024.0 / 1024.0)
-    bytes >= 1024L -> String.format(java.util.Locale.ROOT, "%.1f KB", bytes / 1024.0)
-    else -> "$bytes B"
 }

@@ -2,6 +2,7 @@ package com.greatwall.callring.contracts.command
 
 import com.greatwall.callring.contracts.common.*
 
+/** archiveCount/audioBytes describe recordings retained by this operation; busy is false. */
 data class NumberDeletionImpact(
     val number: String,
     val profileExists: Boolean,
@@ -12,7 +13,7 @@ data class NumberDeletionImpact(
     val busy: Boolean,
 )
 
-/** 删除号码时的期望计数；与实时计数不一致表示状态已变化，必须重新预览。 */
+/** 通话及组件期望计数用于冲突检查；expectedArchiveCount 保留字段兼容，不授权删除录音。 */
 
 data class DeleteNumberCommand(
     val number: String,
@@ -21,7 +22,7 @@ data class DeleteNumberCommand(
     val expectedWidgetBindingCount: Int,
 )
 
-/** 删除号码及其全部关联数据（档案、通话记录、录音归档与音频、小组件绑定）。 */
+/** 删除号码档案、应用内通话记录和小组件绑定；保留全部录音、音频、转写和分析。 */
 
 interface NumberDeletionApi {
     suspend fun impact(number: String): ApiResult<NumberDeletionImpact>

@@ -103,6 +103,8 @@ class StorageResourcesTest {
                         ): Unit = error("unused")
 
                         override fun caller(number: String): ProfileRecord? = error("unused")
+                        override fun callerDeletedAt(number: String): Long? = error("unused")
+                        override fun markCallerDeleted(number: String, at: Long): Unit = error("unused")
 
                         override fun callerCount(): Long = error("unused")
 

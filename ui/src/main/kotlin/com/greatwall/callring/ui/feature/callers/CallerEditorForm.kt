@@ -88,7 +88,7 @@ import com.greatwall.callring.ui.state.*
             if (onDeleteRequest != null) {
                 HorizontalDivider(Modifier.padding(vertical = 8.dp))
                 TextButton(onClick = onDeleteRequest, enabled = enabled, modifier = Modifier.fillMaxWidth(),
-                    colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)) { Text("删除该号码及其全部数据") }
+                    colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)) { Text("删除号码档案及通话记录") }
             }        }
     }
 }

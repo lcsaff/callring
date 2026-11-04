@@ -20,9 +20,9 @@ class NumberDeletionDialogsTest {
     @Test fun firstStepShowsImpactAndSecondStepRequiresTailAndAcknowledgment() {
         var confirmations = 0
         compose.setContent { MaterialTheme { NumberDeletionDialogs(impact, null, null, {}, { confirmations++ }) } }
-        compose.onNodeWithText("删除该号码及全部数据？").assertExists()
+        compose.onNodeWithText("删除该号码档案及通话记录？").assertExists()
         compose.onNodeWithText("· 通话记录 12 条").assertExists()
-        compose.onNodeWithText("· 录音归档 3 条（音频 48.0 MB）").assertExists()
+        compose.onNodeWithText("录音、音频、转写和分析全部保留。").assertExists()
         compose.onNodeWithTag("delete-continue").performClick()
         compose.onNodeWithText("确认永久删除").assertExists()
         compose.onNodeWithTag("delete-confirm").assertIsNotEnabled()

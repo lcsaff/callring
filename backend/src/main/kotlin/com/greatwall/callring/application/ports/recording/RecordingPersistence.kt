@@ -5,7 +5,7 @@ import com.greatwall.callring.contracts.recording.CallArchive
 import com.greatwall.callring.application.recording.model.RecordingSettings
 
 interface RecordingIdentityEnrichment {
-    fun capture(number: String): com.greatwall.callring.contracts.recording.CallerIdentityBaseline
+    fun capture(number: String, recordedAt: Long): com.greatwall.callring.contracts.recording.CallerIdentityBaseline
     fun apply(number: String, baseline: com.greatwall.callring.contracts.recording.CallerIdentityBaseline,
               archiveId: Long, generation: Long, candidates: Map<String, Pair<String, String>>)
 }

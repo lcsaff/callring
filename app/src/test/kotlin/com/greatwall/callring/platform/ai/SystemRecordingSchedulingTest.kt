@@ -32,7 +32,7 @@ class SystemRecordingSchedulingTest {
         store.persistSettings(RecordingSettings(analysis=connection,transcription=connection))
         val schedules = mutableListOf<Long>()
         val enrichment = object : RecordingIdentityEnrichment {
-            override fun capture(number: String) = CallerIdentityBaseline("fixture",emptyMap())
+            override fun capture(number: String, recordedAt: Long) = CallerIdentityBaseline("fixture",emptyMap())
             override fun apply(number: String, baseline: CallerIdentityBaseline, archiveId: Long, generation: Long, candidates: Map<String,Pair<String,String>>) = Unit
         }
         val runtime = RecordingAssembly(context,namespace,{null},{null},{schedules += it},storeFactory={store},

@@ -56,6 +56,20 @@ internal class SqliteCallerStore(private val sql: SqlAccess, private val lease: 
             }
     }
 
+    override fun callerDeletedAt(number: String): Long? {
+        lease(false)
+        return sql.rawQuery(QueryTag.SCOPED_SETTING,setOf(SqlTable.SETTINGS),
+            "SELECT value FROM settings WHERE key=?",arrayOf(com.greatwall.callring.data.codec.CallerDeletionCodec.key(number))).use {
+            if(it.moveToFirst()) com.greatwall.callring.data.codec.CallerDeletionCodec.decode(it.getString(0)) else null
+        }
+    }
+    override fun markCallerDeleted(number: String, at: Long) {
+        lease(true)
+        require(at>=0)
+        val key=com.greatwall.callring.data.codec.CallerDeletionCodec.key(number)
+        if(sql.update("settings",values("value" to at.toString()),"key=?",arrayOf(key))==0)
+            sql.insert("settings",values("key" to key,"value" to at.toString()))
+    }
     override fun caller(number: String): ProfileRecord? {
         lease(false)
         return profiles("WHERE number=?", arrayOf(number)).firstOrNull()

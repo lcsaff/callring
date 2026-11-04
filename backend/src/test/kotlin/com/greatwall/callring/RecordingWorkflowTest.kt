@@ -177,7 +177,7 @@ class RecordingWorkflowTest {
     private var localFailure = false
     private var localAttempts = 0
     private val localEnrichment = object : com.greatwall.callring.application.ports.recording.RecordingIdentityEnrichment {
-        override fun capture(number: String): CallerIdentityBaseline { localCaptures++; return CallerIdentityBaseline(if (eligibleNumber) "test" else "", emptyMap(), eligibleNumber) }
+        override fun capture(number: String, recordedAt: Long): CallerIdentityBaseline { localCaptures++; return CallerIdentityBaseline(if (eligibleNumber) "test" else "", emptyMap(), eligibleNumber) }
         override fun apply(number: String, baseline: CallerIdentityBaseline, archiveId: Long, generation: Long, candidates: Map<String, Pair<String, String>>) {
             localAttempts++; lastCandidates = candidates
             if (localFailure) error("synthetic storage failure")
@@ -354,6 +354,6 @@ class RecordingWorkflowTest {
 }
 
 private val testEnrichment = object : com.greatwall.callring.application.ports.recording.RecordingIdentityEnrichment {
-    override fun capture(number: String) = CallerIdentityBaseline("test", emptyMap())
+    override fun capture(number: String, recordedAt: Long) = CallerIdentityBaseline("test", emptyMap())
     override fun apply(number: String, baseline: CallerIdentityBaseline, archiveId: Long, generation: Long, candidates: Map<String, Pair<String, String>>) = Unit
 }

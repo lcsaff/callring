@@ -14,7 +14,7 @@ import com.greatwall.callring.contracts.command.*
 import com.greatwall.callring.application.mapping.requiredValue
 import com.greatwall.callring.application.conversation.execution.OperationScopePlanner
 import com.greatwall.callring.application.callers.NumberDeletionService
-import com.greatwall.callring.application.callers.NumberDeletionRecordings
+import com.greatwall.callring.application.callers.NumberDeletionRecordingReads
 import com.greatwall.callring.platform.runtime.UiNotificationEntryPoints
 import java.io.File
 import kotlinx.coroutines.runBlocking
@@ -28,27 +28,48 @@ import org.robolectric.annotation.Config
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [33], manifest = Config.NONE)
 class NumberDeletionIntegrationTest {
-    @Test fun archiveFailureKeepsOriginalNewestFirstOrderAndStopsLaterSteps() = runBlocking {
-        val graph = graph("delete_archive_order")
+    @Test fun deletingNumberPreservesArchiveAudioTranscriptAndAnalysis() = runBlocking {
+        val graph = graph("delete_preserves_recording")
         try {
-            graph.api.callers.saveProfile(SaveCallerProfile("31234", "keep", "unit", null)).requiredValue()
-            graph.api.widgets.saveBinding(1, "31234").requiredValue()
-            for ((id, started) in listOf(-1L to 300L, -2L to 300L, -3L to 100L)) {
-                graph.recordings.store.compareAndSet(id, null, CallArchive(id, "31234", started, generation = 2, status = ArchiveStatus.READY))
-            }
-            val visited = mutableListOf<Long>()
-            val result = deletion(graph, recordingDelete = { id, generation, cmd -> if (id == -1L) { visited += id; ApiResult.Failure(ApiError(ErrorCode.IO_FAILURE, "fixture.failure")) } else { visited += id; graph.recordings.service.delete(id, generation, cmd) } })
-                .delete(DeleteNumberCommand("31234", 0, 3, 1))
-            assertTrue(result is ApiResult.Failure)
-            assertEquals(listOf(-2L, -1L), visited)
-            assertNull(graph.recordings.store.get(-2))
-            assertNotNull(graph.recordings.store.get(-3))
-            assertNotNull(graph.recordings.store.get(-1))
-            assertEquals("keep", graph.api.callers.getEditor("31234").requiredValue().draft.name)
-            assertNotNull(graph.api.widgets.getBinding(1).requiredValue())
+            graph.api.callers.saveProfile(SaveCallerProfile("31234","name","unit",null)).requiredValue()
+            val call = graph.recordings.registrations.registerIncoming("session","31234",1,null,null)
+            val old = graph.recordings.store.get(call.id)!!
+            graph.recordings.directory.mkdirs()
+            val audio = File(graph.recordings.directory,"keep.wav").apply { writeBytes(byteArrayOf(1,2,3)) }
+            val archive = old.copy(generation=old.generation+1,audioPath=audio.path,status=ArchiveStatus.COMPLETE,
+                transcript="keep transcript",analysis=CallAnalysis(summary="keep summary"),source=RecordingSource.SYSTEM)
+            graph.recordings.store.compareAndSet(call.id,old.generation,archive)
+            val version = graph.coordinator.capture().values.getValue("recording")
+            val impact = graph.api.numberDeletion.impact("31234").requiredValue()
+            graph.api.numberDeletion.delete(DeleteNumberCommand("31234",impact.callCount,impact.archiveCount,impact.widgetBindingCount)).requiredValue()
+            assertFalse(graph.api.callers.numberDataImpact("31234").requiredValue().profileExists)
+            assertEquals(archive,graph.recordings.store.get(call.id))
+            assertArrayEquals(byteArrayOf(1,2,3),audio.readBytes())
+            assertFalse(graph.recordings.store.isDeleted(call.id))
+            assertEquals(version,graph.coordinator.capture().values.getValue("recording"))
         } finally { graph.close() }
     }
-
+    @Test fun oldRecordingCannotRecreateDeletedProfileAfterStorageReopen() = runBlocking {
+        val name="delete_before_enrichment"
+        val graph=graph(name)
+        graph.api.callers.saveProfile(SaveCallerProfile("31234","delete","unit",null)).requiredValue()
+        graph.api.numberDeletion.delete(DeleteNumberCommand("31234",0,0,0)).requiredValue()
+        graph.close()
+        val context=RuntimeEnvironment.getApplication()
+        com.greatwall.callring.data.database.SqliteCoreStorageResource(context,"$name.db").use { core ->
+            val enrichment=com.greatwall.callring.application.callers.CallerEnrichmentService(core.sessions,
+                com.greatwall.callring.application.coordination.BusinessRevisionCoordinator()) { true }
+            enrichment.capture("31234",0L)
+            assertNull(core.sessions.readCaller { it.caller("31234") })
+            val cutoff=core.sessions.readCaller { it.callerDeletedAt("31234") }!!
+            val fresh=enrichment.capture("31234",cutoff+1)
+            assertNotNull(core.sessions.readCaller { it.caller("31234") })
+            val old=enrichment.capture("31234",cutoff)
+            assertNotEquals(fresh.epoch,old.epoch)
+            enrichment.apply("31234",old,-1,1,mapOf("name" to ("old recording" to "old recording")))
+            assertEquals("",core.sessions.readCaller { it.caller("31234") }!!.name)
+        }
+    }
     @Test fun impactDoesNotUseExplicitArchiveListing() = runBlocking {
         val graph = graph("deletion_metadata")
         try {
@@ -60,31 +81,12 @@ class NumberDeletionIntegrationTest {
         } finally { graph.close() }
     }
 
-    @Test fun foreignProfileEditAfterArchiveCleanupMustBePreserved() = runBlocking {
-        val graph = graph("delete_profile_edited")
-        try {
-            graph.api.callers.saveProfile(SaveCallerProfile("31234", "original", "unit", null)).requiredValue()
-            graph.recordings.registrations.registerIncoming("session", "31234", 1, null, null)
-            val call = ConversationToolCall("c", "callers_deleteNumber", aiObject("number" to aiString("31234")))
-            val scopes = OperationScopePlanner(graph.queries, graph.coordinator).prepare(call, OperationId.CALLERS_DELETE_NUMBER)
-            val command = CommandContext("delete", graph.coordinator.capture(), 1,
-                expectedScopes = scopes, continueOwnCommits = true) { true }
-            val result = deletion(graph, command = command, recordingDelete = { id, generation, cmd ->
-                val result = graph.recordings.service.delete(id, generation, cmd)
-                graph.api.callers.saveProfile(SaveCallerProfile("31234", "edited elsewhere", "unit", null)).requiredValue()
-                result
-            })
-                .delete(DeleteNumberCommand("31234", 0, 1, 0))
-            assertTrue(result is ApiResult.Failure)
-            assertEquals("edited elsewhere", graph.api.callers.getEditor("31234").requiredValue().draft.name)
-        } finally { graph.close() }
-    }
-    @Test fun deletionScopesProtectArchiveAndBindingCollectionMembership() = runBlocking {
+    @Test fun deletionScopesProtectBindingsWithoutRecordingMutationScope() = runBlocking {
         val graph = graph("delete_scopes")
         try {
             val call = ConversationToolCall("c", "callers_deleteNumber", aiObject("number" to aiString("31234")))
             val scopes = OperationScopePlanner(graph.queries, graph.coordinator).prepare(call, OperationId.CALLERS_DELETE_NUMBER)
-            assertTrue(scopes.keys.containsAll(setOf("recording", "preferences")))
+            assertTrue("preferences" in scopes.keys); assertFalse("recording" in scopes.keys)
             graph.api.widgets.saveBinding(1, "31234").requiredValue()
             val command = CommandContext("delete", graph.coordinator.capture(), 1, expectedScopes = scopes) { true }
             assertTrue(graph.api.commandApi(command).numberDeletion.delete(DeleteNumberCommand("31234", 0, 0, 1)) is ApiResult.Failure)
@@ -123,39 +125,10 @@ class NumberDeletionIntegrationTest {
                     CallArchive(-1, "31234", 1, generation = 3, status = ArchiveStatus.COMPLETE)))
                 targetBindings(graph, number)
             })
-            assertTrue(service.delete(DeleteNumberCommand("31234", 0, 1, 0)) is ApiResult.Failure)
+            service.delete(DeleteNumberCommand("31234", 0, 1, 0)).requiredValue()
             assertEquals(3L, graph.recordings.store.get(-1)!!.generation)
-            assertEquals("keep", graph.api.callers.getEditor("31234").requiredValue().draft.name)
+            assertFalse(graph.api.callers.numberDataImpact("31234").requiredValue().profileExists)
         } finally { graph.close() }
-    }
-    @Test fun guiDeleteRejectsForeignChanges() = runBlocking {
-        for (kind in listOf("archive", "profile", "call", "binding")) {
-            val graph = graph("gui_delete_foreign_$kind")
-            try {
-                graph.api.settings.setStatisticsEnabled(true).requiredValue()
-                graph.api.callers.saveProfile(SaveCallerProfile("31234", "keep", "unit", null)).requiredValue()
-                val original = graph.recordings.registrations.registerIncoming("original", "31234", 1, null, null)
-                val service = deletion(graph, recordingDelete = { id, generation, cmd ->
-                    val result = graph.recordings.service.delete(id, generation, cmd)
-                    when (kind) {
-                        "archive" -> graph.recordings.registrations.registerIncoming("new", "31234", 2, null, null)
-                        "profile" -> graph.api.callers.saveProfile(SaveCallerProfile("31234", "foreign", "unit", null)).requiredValue()
-                        "call" -> graph.backend.recordIncoming("31234", graph.configuration.clock.millis() + 1, CallDecision.NORMAL_RINGING)
-                        "binding" -> graph.api.widgets.saveBinding(7, "31234").requiredValue()
-                    }
-                    result
-                })
-                assertTrue(kind, service.delete(DeleteNumberCommand("31234", 0, 1, 0)) is ApiResult.Failure)
-                assertNull(graph.recordings.store.get(original.id))
-                assertTrue(graph.api.callers.numberDataImpact("31234").requiredValue().profileExists)
-                when (kind) {
-                    "archive" -> assertEquals(1, graph.recordings.service.numberArchives("31234").requiredValue().size)
-                    "profile" -> assertEquals("foreign", graph.api.callers.getEditor("31234").requiredValue().draft.name)
-                    "call" -> assertEquals(1, graph.api.callers.numberDataImpact("31234").requiredValue().callCount)
-                    "binding" -> assertNotNull(graph.api.widgets.getBinding(7).requiredValue())
-                }
-            } finally { graph.close() }
-        }
     }
     @Test fun oneThousandUnrelatedArchiveAndBindingReadRange() = accessRange(1000)
     @Test fun tenThousandUnrelatedArchiveAndBindingReadRange() = accessRange(10000)
@@ -227,13 +200,11 @@ class NumberDeletionIntegrationTest {
         return ApiResult.Success(preferences.bindingsForNumber(number))
     }
     private fun deletion(graph: BackendGraph, command: CommandContext? = null,
-        recordingDelete: suspend (Long, Long, CommandContext) -> ApiResult<Unit> = { id, generation, cmd -> graph.recordings.service.delete(id, generation, cmd) },
         bindingsRead: suspend (String) -> ApiResult<List<WidgetBinding>> = { targetBindings(graph, it) },
     ) = NumberDeletionService(graph.backend.callers::numberDataImpact,
         { number, count, cmd -> graph.backend.commandApi(cmd).callers.deleteNumberCore(number, count) },
-        object : NumberDeletionRecordings {
+        object : NumberDeletionRecordingReads {
             override suspend fun archives(number: String) = graph.recordings.service.numberArchives(number)
-            override suspend fun delete(callId: Long, expectedGeneration: Long, command: CommandContext) = recordingDelete(callId, expectedGeneration, command)
         }, bindingsRead,
         { binding, cmd -> graph.backend.commandApi(cmd).widgets.removeBinding(binding.widgetId) }, graph.coordinator, command, active = { true })
     private fun graph(name: String): BackendGraph {
@@ -249,7 +220,7 @@ class NumberDeletionIntegrationTest {
         return BackendGraph(com.greatwall.callring.bootstrap.BackupGraphOwner { _, _ -> throw AssertionError("Unexpected fixture restore") }, context, configuration, notifications)
     }
 
-    @Test fun guardedDeletionRemovesArchivesAudioCoreAndMultipleBindings() = runBlocking {
+    @Test fun guardedDeletionPreservesAudioWhileRemovingCoreAndMultipleBindings() = runBlocking {
         val graph = graph("delete_composite")
         try {
             graph.api.callers.saveProfile(SaveCallerProfile("31234", "name", "unit", null)).requiredValue()
@@ -264,8 +235,8 @@ class NumberDeletionIntegrationTest {
             graph.api.commandApi(context).numberDeletion.delete(DeleteNumberCommand("31234", 0, 1, 2)).requiredValue()
             assertFalse(graph.api.callers.numberDataImpact("31234").requiredValue().profileExists)
             assertTrue(graph.api.widgets.listBindings().requiredValue().stored.isEmpty())
-            assertTrue(graph.api.recordings.queryArchives().requiredValue().items.isEmpty())
-            assertFalse(audio.exists())
+            assertEquals(1,graph.api.recordings.queryArchives().requiredValue().items.size)
+            assertTrue(audio.exists())
         } finally { graph.close() }
     }
 
@@ -273,8 +244,8 @@ class NumberDeletionIntegrationTest {
         val graph = graph("delete_archive_only")
         try {
             graph.recordings.registrations.registerIncoming("session", "31234", 1, null, null)
-            graph.api.numberDeletion.delete(DeleteNumberCommand("31234", 0, 1, 0)).requiredValue()
-            assertTrue(graph.api.recordings.queryArchives().requiredValue().items.isEmpty())
+            assertTrue(graph.api.numberDeletion.delete(DeleteNumberCommand("31234", 0, 1, 0)) is ApiResult.Failure)
+            assertEquals(1,graph.api.recordings.queryArchives().requiredValue().items.size)
         } finally { graph.close() }
     }
 

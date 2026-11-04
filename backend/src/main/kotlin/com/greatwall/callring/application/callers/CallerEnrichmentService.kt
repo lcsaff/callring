@@ -18,13 +18,18 @@ class CallerEnrichmentService(
 ) : com.greatwall.callring.application.ports.recording.RecordingIdentityEnrichment {
     private val fields = setOf("name", "department", "selfReportedPosition", "region")
 
-    override fun capture(number: String): CallerIdentityBaseline = coordinator.guard(null) {
+    override fun capture(number: String, recordedAt: Long): CallerIdentityBaseline = coordinator.guard(null) {
         check(operationActive()) { "backend.closed" }
         val identity = com.greatwall.callring.domain.model.NumberIdentity.parse(number)
         if (!identity.validProfileNumber) return@guard CallerIdentityBaseline("", emptyMap(), eligible = false)
         val normalized = identity.normalized
         var changed = false
         val baseline = transactions.writeCaller { writer ->
+            // A retained historical recording must never recreate or enrich a deleted profile.
+            // Persisted cutoff survives restart/backup; future calls may establish a fresh profile.
+            val deletedAt = writer.callerDeletedAt(normalized)
+            if (deletedAt != null && recordedAt <= deletedAt)
+                return@writeCaller CallerIdentityBaseline(UUID.randomUUID().toString(),emptyMap())
             val old = writer.caller(normalized)
             val row = old ?: ProfileRecord(normalized)
             val saved = if (row.identityEpoch.isEmpty()) row.copy(identityEpoch = UUID.randomUUID().toString()) else row

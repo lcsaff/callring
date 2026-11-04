@@ -189,7 +189,7 @@ class ForegroundActionHost(private val activity: ComponentActivity, private val 
             Text("号码：${target.number}")
             if (target.profileExists) Text("档案 1 条")
             Text("通话记录 ${target.callCount} 条")
-            Text("录音归档 ${target.archiveCount} 条")
+            Text("录音、音频、转写和分析全部保留。")
             if (target.widgetBindingCount > 0) Text("小组件绑定 ${target.widgetBindingCount} 个")
             Text("删除后不可恢复。", color = MaterialTheme.colorScheme.error)
         }

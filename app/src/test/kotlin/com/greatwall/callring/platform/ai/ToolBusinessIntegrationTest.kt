@@ -113,9 +113,8 @@ class ToolBusinessIntegrationTest {
             override fun getStatus() = RuntimeStatus(Capability.values().associateWith { AccessState.GRANTED },Audibility.AUDIBLE,PhoneActivity.IDLE,PlaybackStatus(PlaybackMode.NONE,PlaybackState.IDLE),true,now)
             override fun getDiagnostics() = listOf(DiagnosticEntry(now,null,"fixture"))
             override fun getInstalledWidgets() = WidgetInstallState(listOf(1),AccessState.GRANTED)
-        },audio,object : SyncScheduler { override fun requestSync(atEpochMillis: Long) = SyncRequestReceipt(SyncRequestState.QUEUED,atEpochMillis) },Clock.fixed(Instant.ofEpochMilli(now),ZoneOffset.UTC),calendarSource = CalendarSource { year -> CalendarImport(CalendarYear(year,"fixture","2026-01-01","v1").toDomain(),mapOf(LocalDate.of(year,1,1) to "fixture holiday"),emptySet()) },coordinator = coordinator, coreTransactions = store.sessions, numberRecordings = object : com.greatwall.callring.application.callers.NumberDeletionRecordings {
+        },audio,object : SyncScheduler { override fun requestSync(atEpochMillis: Long) = SyncRequestReceipt(SyncRequestState.QUEUED,atEpochMillis) },Clock.fixed(Instant.ofEpochMilli(now),ZoneOffset.UTC),calendarSource = CalendarSource { year -> CalendarImport(CalendarYear(year,"fixture","2026-01-01","v1").toDomain(),mapOf(LocalDate.of(year,1,1) to "fixture holiday"),emptySet()) },coordinator = coordinator, coreTransactions = store.sessions, numberRecordings = object : com.greatwall.callring.application.callers.NumberDeletionRecordingReads {
             override suspend fun archives(number: String) = runtime.service.numberArchives(number)
-            override suspend fun delete(callId: Long, expectedGeneration: Long, command: CommandContext) = runtime.service.delete(callId, expectedGeneration, command)
         }, operationActive = { true }, conversationProvider = { com.greatwall.callring.testing.FixtureConversationApi }, aiSettingsProvider = { com.greatwall.callring.testing.FixtureAiSettingsApi }, updateProvider = { com.greatwall.callring.testing.FixtureAppUpdateApi }, snapshotsProvider = { com.greatwall.callring.testing.FixtureAiSnapshotApi }, storageProvider = { com.greatwall.callring.testing.FixtureStorageApi }, backupProvider = { com.greatwall.callring.testing.FixtureBackupApi }, recordingsProvider = { com.greatwall.callring.testing.FixtureRecordingApi }, persistenceActive = { true })
         val recordingStore = AndroidRecordingStore(context,namespace,object : RecordingCipher { override fun encrypt(value: String) = java.util.Base64.getEncoder().encodeToString(value.toByteArray()); override fun decrypt(value: String) = String(java.util.Base64.getDecoder().decode(value)) }, recordingVersion = { coordinator.capture().values.getValue("recording") })
         val runtime = RecordingAssembly(context,namespace,{ null },{ null },{}, { recordingStore },metadataReader = { 1000L to "wav" },coordinator = coordinator,clientFactory = { client }, operationActive = { true }, numberRules = { NumberRuleSnapshot(listOf(NumberRule.DEFAULT),0) }, numberMatcher = PrefixLengthNumberMatcher, findCalls = { _, _ -> emptyList() }, enrichment = com.greatwall.callring.application.callers.CallerEnrichmentService(store.sessions, coordinator) { true })
@@ -400,10 +399,12 @@ class ToolBusinessIntegrationTest {
                 if(f.foreground.beginLaunch(ticket.requestId,token)) f.foreground.deliver(ticket.requestId,ForegroundHostResult(ForegroundResultStatus.VERIFIED))
             } }
             try {
+                val retained=f.recordingStore.get(f.recordingId)
                 val deleted=call(OperationId.CALLERS_DELETE_NUMBER,aiObject("number" to aiString("31234")))
                 assertEquals(VerificationStatus.VERIFIED,deleted.verification)
                 assertTrue(f.backend.callers.getEditor("31234").requiredValue().draft.name.isEmpty())
-                assertTrue(f.recordingStore.isDeleted(f.recordingId))
+                assertFalse(f.recordingStore.isDeleted(f.recordingId))
+                assertEquals(retained,f.recordingStore.get(f.recordingId))
                 assertTrue(engine.complete)
                 assertEquals(setOf(OperationId.DISCOVER_TOOLS,OperationId.DATA_QUERY,OperationId.DATA_GET,OperationId.DATA_AGGREGATE,OperationId.DATA_READ_TEXT,OperationId.TASK_PREPARE,OperationId.CALLERS_SAVE_PROFILES,OperationId.CALLERS_GET_CALL_DETAIL,OperationId.CALLERS_DELETE_NUMBER),covered)
             } finally {host.cancelAndJoin()}

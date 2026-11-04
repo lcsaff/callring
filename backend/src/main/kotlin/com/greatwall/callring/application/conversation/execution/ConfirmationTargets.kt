@@ -25,8 +25,8 @@ internal suspend fun confirmationTarget(api: CallringUiApi, operation: Operation
         OperationId.CALLERS_DELETE_NUMBER -> {
             val impact = api.numberDeletion.impact(arguments.s("number")).requiredValue()
             ConfirmationTarget.NumberDeletion(
-                impact.number, impact.profileExists, impact.callCount, impact.archiveCount,
-                impact.audioBytes, impact.widgetBindingCount,
+                impact.number, impact.profileExists, impact.callCount, 0,
+                0L, impact.widgetBindingCount,
             )
         }
         else -> throw IllegalArgumentException("action.confirmation_unsupported")

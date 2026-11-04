@@ -101,9 +101,8 @@ internal class CoreAssembly(
             HolidayCalendarSource(configuration.clock),
             coordinator,
             store,
-            object : com.greatwall.callring.application.callers.NumberDeletionRecordings {
+            object : com.greatwall.callring.application.callers.NumberDeletionRecordingReads {
                 override suspend fun archives(number: String) = recordings().service.numberArchives(number)
-                override suspend fun delete(callId: Long, expectedGeneration: Long, command: CommandContext) = recordings().service.delete(callId, expectedGeneration, command)
             },
             operationActive,
             conversationProvider = { conversation().service },

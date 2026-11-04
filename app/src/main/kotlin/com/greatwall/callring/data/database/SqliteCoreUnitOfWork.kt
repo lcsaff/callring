@@ -285,6 +285,8 @@ internal class SqliteCoreUnitOfWork(private val db: SQLiteDatabase, private val 
         override fun callerPositions(ids: Set<Long>) = callers.callerPositions(ids)
 
         override fun caller(number: String) = callers.caller(number)
+        override fun callerDeletedAt(number: String) = callers.callerDeletedAt(number)
+        override fun markCallerDeleted(number: String, at: Long) = callers.markCallerDeleted(number,at)
 
         override fun callerCount() = callers.callerCount()
 

@@ -41,7 +41,7 @@ class RecordingService(
     private val captureBusy: () -> Boolean,
     private val discovery: com.greatwall.callring.application.ports.recording.SystemRecordingDiscoveryRunner,
     private val networkAvailable: () -> Boolean,
-) : RecordingApi, com.greatwall.callring.application.callers.NumberDeletionRecordings,
+) : RecordingApi, com.greatwall.callring.application.callers.NumberDeletionRecordingReads,
     com.greatwall.callring.application.ports.storage.StorageArchiveAccess {
     private val playbackGeneration = AtomicLong()
     private suspend fun <T> result(block: suspend () -> T): ApiResult<T> = withContext(Dispatchers.IO) {
@@ -99,7 +99,6 @@ class RecordingService(
         reads.numberMetadata(number) { caller?.isActive == false }
     }
     override suspend fun archives(number: String) = numberArchives(number)
-    override suspend fun delete(callId: Long, expectedGeneration: Long, command: CommandContext) = deleteWith(callId, command, expectedGeneration)
     override suspend fun getArchive(callId: Long) = result { state.get(archiveId(callId)) }
     override suspend fun importRecording(callId: Long, number: String, startedAt: Long, document: DocumentRef, source: RecordingSource) = result {
         val caller = currentCoroutineContext()

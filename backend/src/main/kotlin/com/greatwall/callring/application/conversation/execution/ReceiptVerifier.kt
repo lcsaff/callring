@@ -34,7 +34,7 @@ class ReceiptVerifier(private val q:QueryService,private val catalog:OperationCa
         fun compare(actual:AiJson.Obj,expected:AiJson.Obj=a,aliases:Map<String,String> = emptyMap()):Boolean = expected.fields.filterKeys{it !in setOf("taskId","dependsOn")}.all{(key,value)->sameValue(actual[aliases[key]?:key],value,key)}
         fun receiptObject()=receipt.value as? AiJson.Obj?:aiObject()
         try {
-            val readbackDomains = when(operation) { OperationId.CALLERS_DELETE_NUMBER -> setOf(AiDomain.D01,AiDomain.D03,AiDomain.D16,AiDomain.D18); OperationId.RECORDINGS_SAVE_SETTINGS -> setOf(AiDomain.D13,AiDomain.D14); else -> emptySet() }
+            val readbackDomains = when(operation) { OperationId.CALLERS_DELETE_NUMBER -> setOf(AiDomain.D01,AiDomain.D03,AiDomain.D18); OperationId.RECORDINGS_SAVE_SETTINGS -> setOf(AiDomain.D13,AiDomain.D14); else -> emptySet() }
             val matches=q.coherent(readbackDomains){when(operation) {
                 OperationId.CALLERS_SAVE_PROFILE ->{val v=get(AiDomain.D01,a.s("number"));sameValue(v["stored"],aiBool(true))&&compare(v,expected=AiJson.Obj(a.fields.filterKeys { it != "disputedFields" }),aliases=mapOf("positionId" to "position_id")) &&
                     ((a["disputedFields"] as? AiJson.Arr)?.let { wanted ->
@@ -84,9 +84,8 @@ class ReceiptVerifier(private val q:QueryService,private val catalog:OperationCa
                     val filter = QueryFilter(number = a.s("number"))
                     val profileGone = absent(AiDomain.D01, a.s("number"))
                     val callsGone = page(AiDomain.D03, f = filter).isEmpty()
-                    val archivesGone = page(AiDomain.D16, f = filter).isEmpty()
                     val bindingsGone = page(AiDomain.D18, "bindings", filter).isEmpty()
-                    receipt.error == null && profileGone && callsGone && archivesGone && bindingsGone
+                    receipt.error == null && profileGone && callsGone && bindingsGone
                 }
                 else->false
             }

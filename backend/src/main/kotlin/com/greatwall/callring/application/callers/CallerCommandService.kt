@@ -20,6 +20,7 @@ internal class CallerCommandService(
     private val patchWhitelist: (String, Boolean) -> Unit,
     private val command: CommandContext? = null,
     private val operationActive: () -> Boolean,
+    private val now: () -> Long = System::currentTimeMillis,
 ) {
     private val runner = UseCaseRunner(dispatcher)
     private val committer = CommandCommitter(coordinator, operationActive)
@@ -207,6 +208,7 @@ internal class CallerCommandService(
                     }
                     writer.removeCallerCalls(variants, count)
                     if (old != null) writer.removeCaller(n)
+                    writer.markCallerDeleted(n,maxOf(now(),writer.callerDeletedAt(n) ?: 0L))
                     val keys =
                         keys(old, null, n) +
                             callKeys +

@@ -33,10 +33,11 @@ class DeletionVerificationRegressionTest {
             ToolReceipt("op", "c", ToolStatus.COMMITTED, error = error, commitRevision = RevisionVector("test", emptyMap())))
     }
 
-    @Test fun residualCallsArchivesOrBindingsMustNotBeVerified() = runBlocking {
-        for (domain in listOf(AiDomain.D03, AiDomain.D16, AiDomain.D18))
+    @Test fun residualCallsOrBindingsMustNotBeVerified() = runBlocking {
+        for (domain in listOf(AiDomain.D03, AiDomain.D18))
             assertEquals(domain.name, VerificationStatus.COMMITTED_UNVERIFIED, verify(domain).verification)
     }
+    @Test fun retainedArchivesDoNotPreventVerifiedNumberDeletion() = runBlocking { assertEquals(VerificationStatus.VERIFIED,verify(AiDomain.D16).verification) }
     @Test fun completeAbsenceIsVerified() = runBlocking { assertEquals(VerificationStatus.VERIFIED, verify().verification) }
     @Test fun partialReadbackMustNotBeVerified() = runBlocking { assertEquals(VerificationStatus.COMMITTED_UNVERIFIED, verify(partial = true).verification) }
     @Test fun unavailableSourcesAreNotEvidenceOfAbsence() = runBlocking {

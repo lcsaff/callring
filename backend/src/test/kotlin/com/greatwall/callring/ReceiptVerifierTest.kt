@@ -22,6 +22,24 @@ class ReceiptVerifierTest {
         override fun query(spec:QuerySpec,after:String?)=SourcePage(listOf(SourceRow("31234",value)),1)
         override fun get(domain:AiDomain,key:String,projection:String)=SourceRow(key,value)
     }))
+    @Test fun numberDeletionReadbackRetainsRecordingsAndDoesNotReadTheirDomain() = runBlocking {
+        val readDomains=mutableListOf<AiDomain>()
+        val q=QueryService(listOf(object:ScopedReadPort {
+            override val domains=AiDomain.entries.toSet()
+            override fun version(domain:AiDomain)=0L
+            override fun query(spec:QuerySpec,after:String?):SourcePage {
+                check(spec.domain!=AiDomain.D16) { "recordings are retained" }
+                readDomains+=spec.domain
+                return SourcePage(emptyList(),0)
+            }
+            override fun get(domain:AiDomain,key:String,projection:String):SourceRow? { readDomains+=domain; return null }
+        }))
+        val receipt=ToolReceipt("op","c",ToolStatus.COMMITTED,commitRevision=RevisionVector("test",emptyMap()))
+        val result=ReceiptVerifier(q).verify(OperationId.CALLERS_DELETE_NUMBER,
+            ConversationToolCall("c","callers_deleteNumber",aiObject("number" to aiString("31234"))),receipt)
+        assertEquals(VerificationStatus.VERIFIED,result.verification)
+        assertFalse(AiDomain.D16 in readDomains)
+    }
     @Test fun actualReadbackMustMatchEveryRequestedField()=runBlocking {
         val call=ConversationToolCall("c","callers_saveProfile",aiObject("number" to aiString("31234"),"name" to aiString("合成测试"),"department" to aiString("test")))
         val receipt=ToolReceipt("op","c",ToolStatus.COMMITTED,commitRevision=RevisionVector("test",emptyMap()))

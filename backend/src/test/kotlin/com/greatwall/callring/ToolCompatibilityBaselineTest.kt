@@ -35,7 +35,7 @@ class ToolCompatibilityBaselineTest {
         }
         val golden = aiObject(
             "formatVersion" to aiNumber(1),
-            "catalogVersion" to aiString("3"),
+            "catalogVersion" to aiString("4"),
             "schemaDefaultsNote" to aiString("Registry schemas declare no JSON Schema default keywords. runtimeDefaults records omission behavior from ToolExecutor, ScopedToolReader, CapabilityCatalog and ToolBatchEngine; preserved values are not constant defaults."),
             "operations" to AiJson.Arr(operations),
         ).encode() + "\n"

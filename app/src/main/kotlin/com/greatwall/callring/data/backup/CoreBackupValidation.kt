@@ -24,11 +24,13 @@ internal object CoreBackupValidation {
             db.rawQuery("SELECT id,effective,snapshot FROM config_versions ORDER BY id", null).use { rows ->
                 while (rows.moveToNext()) { check(); WorkConfigCodec.decode(rows.getString(2), rows.getLong(0), rows.getLong(1)) }
             }
-            db.rawQuery("SELECT key,value FROM settings WHERE key IN ('number_rule','quiet_windows','quiet_mode','off_weight','repeat_weight','repeat_minutes','score_days','my_position','leave_revision')", null).use { rows ->
+            db.rawQuery("SELECT key,value FROM settings WHERE key IN ('number_rule','quiet_windows','quiet_mode','off_weight','repeat_weight','repeat_minutes','score_days','my_position','leave_revision') OR key GLOB 'caller_deleted_at:*'", null).use { rows ->
                 while (rows.moveToNext()) {
                     check()
                     val value = if (rows.isNull(1)) null else rows.getString(1)
-                    when (rows.getString(0)) {
+                    val key=rows.getString(0)
+                    if(key.startsWith(com.greatwall.callring.data.codec.CallerDeletionCodec.PREFIX)) com.greatwall.callring.data.codec.CallerDeletionCodec.validate(key,value)
+                    when (key) {
                         "number_rule" -> NumberRuleCodec.decode(value)
                         "quiet_windows" -> WorkConfigCodec.weekly(JSONObject(value ?: "{}"))
                         "quiet_mode" -> com.greatwall.callring.domain.model.QuietMode.valueOf(requireNotNull(value))

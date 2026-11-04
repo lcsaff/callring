@@ -379,6 +379,6 @@ class RecordingApplicationServiceTest {
 }
 
 private val testEnrichment = object : com.greatwall.callring.application.ports.recording.RecordingIdentityEnrichment {
-    override fun capture(number: String) = CallerIdentityBaseline("test", emptyMap())
+    override fun capture(number: String, recordedAt: Long) = CallerIdentityBaseline("test", emptyMap())
     override fun apply(number: String, baseline: CallerIdentityBaseline, archiveId: Long, generation: Long, candidates: Map<String, Pair<String, String>>) = Unit
 }

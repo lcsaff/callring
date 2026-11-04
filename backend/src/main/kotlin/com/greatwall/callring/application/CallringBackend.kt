@@ -47,7 +47,7 @@ class CallringBackend(
     private val calendarSource: CalendarSource,
     val coordinator: BusinessRevisionCoordinator = BusinessRevisionCoordinator(),
     private val coreTransactions: com.greatwall.callring.application.ports.store.CoreUnitOfWork,
-    private val numberRecordings: com.greatwall.callring.application.callers.NumberDeletionRecordings,
+    private val numberRecordings: com.greatwall.callring.application.callers.NumberDeletionRecordingReads,
     private val operationActive: () -> Boolean,
     private val persistenceActive: () -> Boolean,
     private val conversationProvider: () -> ConversationApi,
@@ -86,7 +86,7 @@ class CallringBackend(
             coordinator,
             dispatcher,
             decisions::whitelist,
-            commandContext, operationActive = operationActive)
+            commandContext, operationActive = operationActive, now = clock::millis)
     private val callersApi =
         com.greatwall.callring.application.callers.callersApi(callerQueries, callerCommands)
     private val calendarService =

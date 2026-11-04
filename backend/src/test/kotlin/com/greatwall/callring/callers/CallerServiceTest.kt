@@ -39,7 +39,10 @@ class CallerServiceTest {
             return block(this)
         }
 
+        private val deleted=mutableMapOf<String,Long>()
         override fun caller(number: String) = rows[number]
+        override fun callerDeletedAt(number: String) = deleted[number]
+        override fun markCallerDeleted(number: String, at: Long) { deleted[number]=at }
 
         override fun callerCount() = rows.size.toLong()
 
@@ -98,14 +101,14 @@ class CallerServiceTest {
     @Test fun unsupportedRecordingNumberDoesNotCreateOrReadProfile() {
         val p = Profiles(); val c = BusinessRevisionCoordinator()
         val service = CallerEnrichmentService(p, c) { true }
-        assertNotNull(service.capture("１２３"))
+        assertNotNull(service.capture("１２３",0L))
         assertEquals(0, p.writes); assertEquals(0, p.reads)
     }
 
     @Test fun lateAnalysisPreservesManualRegionAndFillsAnotherEligibleField() = runBlocking {
         val p = Profiles(); val c = BusinessRevisionCoordinator()
         val enrichment = CallerEnrichmentService(p, c) { true }
-        val baseline = enrichment.capture("(3-1234)")
+        val baseline = enrichment.capture("(3-1234)",0L)
         val commands = CallerCommandService(p, c, Dispatchers.Unconfined, { _, _ -> }, operationActive = { true })
         commands.save(SaveCallerProfile("31234", "A", "D", null, region = "南京")).requiredValue()
         enrichment.apply("31-234", baseline, -1, 3, mapOf("region" to ("杭州" to "在杭州"), "selfReportedPosition" to ("经理" to "我是经理")))
@@ -119,9 +122,9 @@ class CallerServiceTest {
     @Test fun deletionAndRecreationInvalidateOldBaseline() {
         val p = Profiles(); val c = BusinessRevisionCoordinator()
         val enrichment = CallerEnrichmentService(p, c) { true }
-        val baseline = enrichment.capture("31234")
+        val baseline = enrichment.capture("31234",0L)
         p.rows.remove("31234")
-        val replacement = enrichment.capture("31234")
+        val replacement = enrichment.capture("31234",System.currentTimeMillis()+10_000)
         assertNotEquals(baseline.epoch, replacement.epoch)
         enrichment.apply("31234", baseline, -1, 3, mapOf("name" to ("old" to "old")))
         assertEquals("", p.rows.getValue("31234").name)
@@ -136,7 +139,7 @@ class CallerServiceTest {
         assertTrue(p.rows.getValue("31234").identityMetadata.getValue("department").disputed)
         commands.save(SaveCallerProfile("31234", "", "D", null)).requiredValue()
         val enrichment = CallerEnrichmentService(p, c) { true }
-        val baseline = enrichment.capture("31234")
+        val baseline = enrichment.capture("31234",0L)
         enrichment.apply("31234", baseline, -1, 3, mapOf("name" to ("new" to "new")))
         assertEquals("new", p.rows.getValue("31234").name)
     }
@@ -145,7 +148,7 @@ class CallerServiceTest {
         val p = Profiles(); val c = BusinessRevisionCoordinator()
         p.rows["31234"] = p.rows.getValue("31234").copy(positionId = 4, whitelisted = true)
         val enrichment = CallerEnrichmentService(p, c) { true }
-        val baseline = enrichment.capture("31234")
+        val baseline = enrichment.capture("31234",0L)
         enrichment.apply("31234", baseline, -1, 3, mapOf("positionId" to ("1" to "1"), "organization" to ("单位" to "单位"), "whitelisted" to ("false" to "false")))
         assertEquals(4L, p.rows.getValue("31234").positionId)
         assertTrue(p.rows.getValue("31234").whitelisted)
@@ -156,13 +159,13 @@ class CallerServiceTest {
         val p = Profiles()
         val c = BusinessRevisionCoordinator()
         val service = CallerEnrichmentService(p, c) { true }
-        val base = service.capture("31234")
+        val base = service.capture("31234",0L)
         service.apply("31234", base, 4, 12, mapOf("name" to ("B" to "我是B"), "region" to ("杭州" to "我在杭州工作")))
         assertEquals("A", p.rows.getValue("31234").name)
         assertEquals("杭州", p.rows.getValue("31234").region)
         val row = p.rows.getValue("31234")
         p.rows["31234"] = row.copy(identityMetadata = row.identityMetadata + ("name" to com.greatwall.callring.domain.model.IdentityFieldMetadata(1, true)))
-        val disputed = service.capture("31234")
+        val disputed = service.capture("31234",0L)
         service.apply("31234", disputed, 5, 14, mapOf("name" to ("B" to "我是B")))
         assertEquals("B", p.rows.getValue("31234").name)
         assertFalse(p.rows.getValue("31234").identityMetadata.getValue("name").disputed)

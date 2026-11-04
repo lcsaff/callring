@@ -168,7 +168,7 @@ class RecordingWorkflow(
                 var baselineSaved = false
                 val live = commands.withCurrent(current.callId, current.generation) {
                     if (isCancelled()) throw AiFailure("recording.cancelled")
-                    val baseline = enrichment.capture(current.number)
+                    val baseline = enrichment.capture(current.number,current.startedAtEpochMillis)
                     if (!isCancelled()) baselineSaved = update(current.copy(enrichmentBaseline = baseline))
                 }
                 if (!live || !baselineSaved) return

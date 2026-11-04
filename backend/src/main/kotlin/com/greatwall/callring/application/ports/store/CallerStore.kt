@@ -9,6 +9,8 @@ data class CallerSearchRow(val number: String, val name: String, val department:
 interface CallerReader {
     fun caller(number: String): ProfileRecord?
 
+    fun callerDeletedAt(number: String): Long?
+
     fun callerCount(): Long
 
     fun callerPage(offset: Long, limit: Int): List<ProfileRecord>
@@ -26,6 +28,8 @@ interface CallerReader {
 
 interface CallerWriter : CallerReader {
     fun putCaller(value: ProfileRecord, insert: Boolean)
+
+    fun markCallerDeleted(number: String, at: Long)
 
     fun removeCaller(number: String)
 

@@ -60,9 +60,7 @@ class OperationScopePlanner(private val queries:QueryService,private val coordin
                     val n=a.s("number")
                     observe(AiDomain.D01,n,setOf("profile:$n", "profile:$n:exists"),filter=QueryFilter(number=n))
                     observe(AiDomain.D04,null,setOf("calls:$n"),filter=QueryFilter(number=n))
-                    // Collection guards also cover records added or rebound after confirmation.
-                    // Deletion intentionally rejects intervening archive/preference writes.
-                    observe(AiDomain.D16,null,setOf("recording"),filter=QueryFilter(number=n))
+                    // Bindings are deleted; recordings are retained and do not guard this command.
                     observe(AiDomain.D18,null,setOf("preferences"),"bindings",QueryFilter(number=n))
                 }
                 OperationId.SETTINGS_SAVE_NUMBER_RULE ->config(setOf("numberRule"))

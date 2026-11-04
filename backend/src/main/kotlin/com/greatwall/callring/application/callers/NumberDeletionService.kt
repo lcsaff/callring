@@ -10,20 +10,19 @@ import com.greatwall.callring.application.ports.BackendFailure
 import com.greatwall.callring.contracts.callers.*
 import com.greatwall.callring.contracts.command.*
 import com.greatwall.callring.contracts.common.*
-import com.greatwall.callring.contracts.recording.ArchiveStatus
 import com.greatwall.callring.contracts.widget.WidgetBinding
 import java.util.UUID
 
-interface NumberDeletionRecordings {
+/** Read-only summary of recordings which are retained when deleting a number. */
+interface NumberDeletionRecordingReads {
     suspend fun archives(number: String): ApiResult<List<NumberRecordingMetadata>>
-    suspend fun delete(callId: Long, expectedGeneration: Long, command: CommandContext): ApiResult<Unit>
 }
 
-/** One plan, one continuation, strictly archives -> core transaction -> stored bindings. */
+/** Number deletion mutates only core data and stored bindings; recordings are retained. */
 class NumberDeletionService(
     private val coreImpact: suspend (String) -> ApiResult<NumberCoreImpact>,
     private val deleteCore: suspend (String, Int, CommandContext) -> ApiResult<Unit>,
-    private val recordings: NumberDeletionRecordings,
+    private val recordings: NumberDeletionRecordingReads,
     private val bindings: suspend (String) -> ApiResult<List<WidgetBinding>>,
     private val removeBinding: suspend (WidgetBinding, CommandContext) -> ApiResult<Unit>,
     private val coordinator: BusinessRevisionCoordinator,
@@ -36,14 +35,14 @@ class NumberDeletionService(
         val n = callerNumber(number)
         val caller = kotlinx.coroutines.currentCoroutineContext()[kotlinx.coroutines.Job]
         return coordinator.guard(command) {
-            val scopes = coordinator.expect(setOf("profile:$n", "profile:$n:exists", "calls:$n", "recording", "preferences"))
+            val scopes = coordinator.expect(setOf("profile:$n", "profile:$n:exists", "calls:$n", "preferences"))
             command?.copy(continueOwnCommits = true, active = { command.active() && active() && caller?.isActive != false },
                 expectedScopes = command.expectedScopes?.let { scopes + it }) ?: CommandContext(
                 UUID.randomUUID().toString(), coordinator.capture(), 0, expectedScopes = scopes,
                 continueOwnCommits = true, active = { active() && caller?.isActive != false })
         }
     }
-    private data class Plan(val impact: NumberDeletionImpact, val archives: List<NumberRecordingMetadata>, val bindings: List<WidgetBinding>)
+    private data class Plan(val impact: NumberDeletionImpact, val bindings: List<WidgetBinding>)
     private suspend fun plan(number: String, context: CommandContext): Plan {
         coordinator.check(context)
         val core = coreImpact(number).requiredValue()
@@ -53,21 +52,19 @@ class NumberDeletionService(
         coordinator.check(context)
         return Plan(NumberDeletionImpact(core.number, core.profileExists, core.callCount, archives.size,
             archives.sumOf { it.audioBytes }, widgets.size,
-            archives.any { it.status in setOf(ArchiveStatus.QUEUED, ArchiveStatus.TRANSCRIBING, ArchiveStatus.ANALYZING, ArchiveStatus.ENRICHING) }), archives, widgets)
+            false), widgets)
     }
     override suspend fun impact(number: String) = result { plan(number, baseline(number)).impact }
     override suspend fun delete(command: DeleteNumberCommand) = result {
         val context = baseline(command.number)
         val plan = plan(command.number, context)
         val current = plan.impact
-        if (!current.profileExists && current.callCount == 0 && current.archiveCount == 0 && current.widgetBindingCount == 0)
+        if (!current.profileExists && current.callCount == 0 && current.widgetBindingCount == 0)
             throw BackendFailure(ApiError(ErrorCode.NOT_FOUND, "number.not_found"))
-        if (current.callCount != command.expectedCallCount || current.archiveCount != command.expectedArchiveCount ||
+        if (current.callCount != command.expectedCallCount ||
             current.widgetBindingCount != command.expectedWidgetBindingCount)
             throw BackendFailure(ApiError(ErrorCode.CONFLICT, "number.delete_conflict", retryable = true))
-        if (current.busy) throw BackendFailure(ApiError(ErrorCode.CONFLICT, "number.delete_busy", retryable = true))
-        for (archive in plan.archives) recordings.delete(archive.callId, archive.generation, context).requiredValue()
-        // Recheck even for archive-only remnants: a new profile/call must not authorize later deletion.
+        // Recordings are informational only and never authorize or block number deletion.
         coordinator.check(context)
         if (current.profileExists || current.callCount > 0)
             deleteCore(current.number, command.expectedCallCount, context).requiredValue()

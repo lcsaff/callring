@@ -83,6 +83,6 @@ class RecordingAssemblyDrainTest {
 }
 
 private val testEnrichment = object : com.greatwall.callring.application.ports.recording.RecordingIdentityEnrichment {
-    override fun capture(number: String) = com.greatwall.callring.contracts.recording.CallerIdentityBaseline("test", emptyMap())
+    override fun capture(number: String, recordedAt: Long) = com.greatwall.callring.contracts.recording.CallerIdentityBaseline("test", emptyMap())
     override fun apply(number: String, baseline: com.greatwall.callring.contracts.recording.CallerIdentityBaseline, archiveId: Long, generation: Long, candidates: Map<String, Pair<String, String>>) = Unit
 }

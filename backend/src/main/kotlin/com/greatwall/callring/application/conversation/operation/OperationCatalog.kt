@@ -761,7 +761,7 @@ private object OperationSchemas {
         OperationDefinition(
             id = OperationId.CALLERS_DELETE_NUMBER, name = "callers_deleteNumber", operationCode = "X09", legacyIndex = 81, displayOrder = 81,
             schema = shape("number" to string),
-            description = "删除号码及其全部关联数据（档案、应用内通话记录、录音归档与音频、小组件绑定）；执行前必须前台两次确认，不可恢复；不改系统通话记录。",
+            description = "删除号码档案、应用内通话记录和小组件绑定；保留录音归档、音频、转写及分析；执行前必须前台两次确认，不可恢复；不改系统通话记录。",
             runtimeDefaults = "No optional business arguments; required fields must be supplied. Extensions do not automatically inherit dependsOn/taskId schema fields.",
             write = true, sharedApi = "callers.deleteNumber", receiptPolicy = ReceiptPolicy.PERSISTED_READBACK,
             confirmation = ConfirmationPolicy.AUTHORITATIVE_TARGET_DOUBLE_CONFIRM, execution = ExecutionStrategy.DIRECT_WRITE,
