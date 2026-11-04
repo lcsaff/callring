@@ -24,7 +24,11 @@ class ConversationProgressReviewTest {
         compose.waitUntil(5000){runCatching{compose.onNodeWithText("LATEST-ANSWER").assertIsDisplayed();true}.getOrDefault(false)}
         compose.onNodeWithText("LATEST-ANSWER").assertIsDisplayed()
         compose.onNodeWithText("姓名：Synthetic-1").assertDoesNotExist()
-        compose.onNodeWithText("查看 10 项已核验操作").assertExists().performScrollTo().performClick()
+        // The list is following asynchronously measured Markdown. Activate the receipt control
+        // through its semantic action so a layout shift cannot move a coordinate tap elsewhere.
+        compose.onNodeWithText("查看 10 项已核验操作").assertExists().performScrollTo().assertIsEnabled()
+            .performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.OnClick) { check(it()) }
+        compose.onNodeWithText("收起已核验操作").assertExists()
         compose.onNodeWithText("姓名：Synthetic-1").assertExists()
     }
     @Test fun activeHistoryReadingKeepsItsPositionUntilReturnToLatest(){
