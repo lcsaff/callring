@@ -1,5 +1,8 @@
 package com.greatwall.callring
 
+import com.greatwall.callring.domain.calling.NumberRule
+import com.greatwall.callring.domain.calling.NumberRuleSnapshot
+import com.greatwall.callring.domain.calling.PrefixLengthNumberMatcher
 import android.content.Intent
 import android.provider.DocumentsContract
 import android.test.InstrumentationTestCase
@@ -31,7 +34,7 @@ class SystemRecordingImportDeviceTest : InstrumentationTestCase() {
         val core = SqliteCoreStorageResource(context,"$namespace.db")
         var time = System.currentTimeMillis()
         val started = time - 60_000
-        val name = "Fixture(12345)_" + DateTimeFormatter.ofPattern("uuuuMMddHHmmss").withZone(ZoneId.systemDefault()).format(Instant.ofEpochMilli(started)) + ".wav"
+        val name = "Fixture(31234)_" + DateTimeFormatter.ofPattern("uuuuMMddHHmmss").withZone(ZoneId.systemDefault()).format(Instant.ofEpochMilli(started)) + ".wav"
         val expectedTranscript = "Synthetic system recording."
         var transcriptions = 0; var analyses = 0
         val client = object : AiClient {
@@ -50,7 +53,7 @@ class SystemRecordingImportDeviceTest : InstrumentationTestCase() {
             }
         }
         fun assembly() = RecordingAssembly(context,namespace,{null},{null},{},coordinator=coordinator,
-            clientFactory={client},operationActive={true},findCalls={_,_->emptyList()},now={time},
+            clientFactory={client},operationActive={true},numberRules = { NumberRuleSnapshot(listOf(NumberRule.DEFAULT),0) }, numberMatcher = PrefixLengthNumberMatcher, findCalls={_,_->emptyList()},now={time},
             enrichment=CallerEnrichmentService(core.sessions,coordinator){true})
         var runtime = assembly()
         var granted = false
@@ -67,10 +70,19 @@ class SystemRecordingImportDeviceTest : InstrumentationTestCase() {
             assertTrue(context.contentResolver.persistedUriPermissions.any { it.uri == tree && it.isReadPermission })
             val connection = AiConnection(url="https://fixture.invalid/v1",apiKey="fixture",model="fixture")
             runtime.store.persistSettings(RecordingSettings(recordingEnabled=true,automaticAnalysis=true,analysis=connection,transcription=connection,systemFolder=tree.toString()))
+            // A valid date/filename inside the window is insufficient without a number-rule match.
+            SystemRecordingQaProvider.recordingName = name.replace("31234","12345")
+            runtime.service.runScheduled { false }; time += 10_000; runtime.service.runScheduled { false }
+            assertNull(runtime.store.sourceBinding(SystemRecordingScanner.sourceKey(authority,"valid")))
+            assertTrue((runtime.service.queryArchives() as com.greatwall.callring.contracts.common.ApiResult.Success).value.items.isEmpty())
+            assertEquals(0,SystemRecordingQaProvider.opens.get())
+            assertEquals(0,transcriptions); assertEquals(0,analyses)
+            SystemRecordingQaProvider.recordingName = name
+            val rowsBefore = SystemRecordingQaProvider.rowsEmitted.get()
             val firstDue = runtime.service.runScheduled { false }
             assertNotNull(firstDue)
             assertEquals(0,SystemRecordingQaProvider.opens.get())
-            assertEquals(2001,SystemRecordingQaProvider.rowsEmitted.get())
+            assertEquals(2001,SystemRecordingQaProvider.rowsEmitted.get() - rowsBefore)
             time += 10_000
             runtime.service.runScheduled { false }
             runtime.workflow.processPending()

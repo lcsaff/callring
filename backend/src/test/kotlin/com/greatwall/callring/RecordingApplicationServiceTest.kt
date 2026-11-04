@@ -137,6 +137,14 @@ class RecordingApplicationServiceTest {
         assertEquals(1,f.transcriptions)
         assertEquals(ArchiveStatus.COMPLETE,f.entries[-1]!!.status)
     }
+    @Test fun invalidatedDiscoveryWithoutPendingWorkRequestsAnotherScan() {
+        val f = Fixture()
+        f.discoveryInvalidated = true
+        val before = System.currentTimeMillis()
+        assertTrue(requireNotNull(f.service.runScheduled { false }) >= before + 1000)
+        assertEquals(0,f.transcriptions)
+        assertNull(f.service.runScheduled { true })
+    }
     @Test fun cancelledScheduledDiscoveryCannotAttachPreparedAudio() {
         val f = Fixture().seed()
         val now = System.currentTimeMillis() / 1000 * 1000

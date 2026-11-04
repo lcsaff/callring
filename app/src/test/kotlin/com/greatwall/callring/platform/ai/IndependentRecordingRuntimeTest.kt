@@ -1,5 +1,8 @@
 package com.greatwall.callring.platform.ai
 
+import com.greatwall.callring.domain.calling.NumberRule
+import com.greatwall.callring.domain.calling.NumberRuleSnapshot
+import com.greatwall.callring.domain.calling.PrefixLengthNumberMatcher
 import com.greatwall.callring.data.recording.AndroidRecordingStore
 import com.greatwall.callring.data.recording.RecordingCipher
 
@@ -63,7 +66,7 @@ class IndependentRecordingRuntimeTest {
         ShadowContentResolver.registerProviderInternal("recording-fixture", provider)
         context.contentResolver.takePersistableUriPermission(Uri.parse("content://recording-fixture/tree/root"),android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION)
         val runtime = RecordingAssembly(context, namespace, findCall = { error("statistics must not be read") },
-            activeCallId = { null }, schedule = {}, storeFactory = { store }, metadataReader = { 1000L to "wav" }, operationActive = { true }, findCalls = { _, _ -> emptyList() }, enrichment = testEnrichment, now = { scanTime })
+            activeCallId = { null }, schedule = {}, storeFactory = { store }, metadataReader = { 1000L to "wav" }, operationActive = { true }, numberRules = { NumberRuleSnapshot(listOf(NumberRule.DEFAULT),0) }, numberMatcher = PrefixLengthNumberMatcher, findCalls = { _, _ -> emptyList() }, enrichment = testEnrichment, now = { scanTime })
         val call = runtime.service.observeIncoming("folder-call", "31234", now, null)!!
         val available = (runtime.service.systemRecordings() as ApiResult.Success).value
         assertEquals(listOf(displayName), available.map { it.name })
@@ -101,7 +104,7 @@ class IndependentRecordingRuntimeTest {
         val saved = CallArchive(42, "31234", 1000, generation = 7, transcript = "saved", analysis = CallAnalysis(summary = "legacy"))
         assertTrue(store.compareAndSet(42, null, saved))
         val runtime = RecordingAssembly(context, "legacy_independent", findCall = { error("statistics unavailable") },
-            activeCallId = { null }, schedule = {}, storeFactory = { store }, operationActive = { true }, findCalls = { _, _ -> emptyList() }, enrichment = testEnrichment)
+            activeCallId = { null }, schedule = {}, storeFactory = { store }, operationActive = { true }, numberRules = { NumberRuleSnapshot(listOf(NumberRule.DEFAULT),0) }, numberMatcher = PrefixLengthNumberMatcher, findCalls = { _, _ -> emptyList() }, enrichment = testEnrichment)
         assertEquals(saved, (runtime.service.getArchive(42) as ApiResult.Success).value)
         runtime.close()
     }
@@ -109,7 +112,7 @@ class IndependentRecordingRuntimeTest {
         val store = AndroidRecordingStore(context, "toggle_links", cipher, recordingVersion = { 0L })
         store.persistSettings(RecordingSettings(recordingEnabled = true))
         val runtime = RecordingAssembly(context, "toggle_links", findCall = { error("statistics lookup") },
-            activeCallId = { null }, schedule = {}, storeFactory = { store }, operationActive = { true }, findCalls = { _, _ -> emptyList() }, enrichment = testEnrichment)
+            activeCallId = { null }, schedule = {}, storeFactory = { store }, operationActive = { true }, numberRules = { NumberRuleSnapshot(listOf(NumberRule.DEFAULT),0) }, numberMatcher = PrefixLengthNumberMatcher, findCalls = { _, _ -> emptyList() }, enrichment = testEnrichment)
         val call = runtime.service.observeIncoming("session", "31234", 1000, null)!!
         store.persistSettings(RecordingSettings(recordingEnabled = false))
         runtime.service.linkStatistics("session", 42)
@@ -125,7 +128,7 @@ class IndependentRecordingRuntimeTest {
         val store = AndroidRecordingStore(context, "independent", cipher, recordingVersion = { 0L })
         store.persistSettings(RecordingSettings(recordingEnabled = true))
         val runtime = RecordingAssembly(context, "independent", findCall = { error("statistics must not be read") },
-            activeCallId = { null }, schedule = {}, storeFactory = { store }, operationActive = { true }, findCalls = { _, _ -> emptyList() }, enrichment = testEnrichment)
+            activeCallId = { null }, schedule = {}, storeFactory = { store }, operationActive = { true }, numberRules = { NumberRuleSnapshot(listOf(NumberRule.DEFAULT),0) }, numberMatcher = PrefixLengthNumberMatcher, findCalls = { _, _ -> emptyList() }, enrichment = testEnrichment)
         val call = requireNotNull(runtime.service.observeIncoming("session", "31234", 1000, null))
         assertTrue(call.id < 0)
         val archived = (runtime.service.getArchive(call.id) as ApiResult.Success).value!!
@@ -140,7 +143,7 @@ class IndependentRecordingRuntimeTest {
     @Test fun disablingRecordingDoesNotCreateIndependentEvents() {
         val store = AndroidRecordingStore(context, "disabled_recording", cipher, recordingVersion = { 0L })
         val runtime = RecordingAssembly(context, "disabled_recording", findCall = { error("statistics lookup") },
-            activeCallId = { null }, schedule = {}, storeFactory = { store }, operationActive = { true }, findCalls = { _, _ -> emptyList() }, enrichment = testEnrichment)
+            activeCallId = { null }, schedule = {}, storeFactory = { store }, operationActive = { true }, numberRules = { NumberRuleSnapshot(listOf(NumberRule.DEFAULT),0) }, numberMatcher = PrefixLengthNumberMatcher, findCalls = { _, _ -> emptyList() }, enrichment = testEnrichment)
         assertNull(runtime.service.observeIncoming("session", "31234", 1000, null))
         assertTrue(store.queryArchives(ArchiveListQuery()) { false }.items.isEmpty())
         runtime.close()

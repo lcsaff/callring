@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking. 如用户选择子代理执行，再使用 superpowers:subagent-driven-development。
 
-**Goal:** 系统录音按可配置的滚动日期窗口发现并导入安装前后的文件，默认最近 7 天，支持大目录、持久去重及安全重试，不改变通话记录同步行为。
+**Goal:** 系统录音先满足正式号码规则，再按可配置的滚动日期窗口发现并导入安装前后的文件，默认最近 7 天，支持大目录、持久去重及安全重试，不改变通话记录同步行为。
 
 **Architecture:** contracts 承载录音设置；backend/domain 实现文件名解析和时间窗口，backend/application 编排发现、关联、稳定性检查和正式导入。app/platform 流式枚举授权目录，app/data 持久化来源身份和扫描状态；复用现有负数录音身份、归档事务、累计失效和 RecordingWorkflow。UI 只调用正式设置接口，系统 Job 保持组件身份。
 
@@ -245,3 +245,13 @@ git diff --check
 - **证据**：`app/build/qa/backend-refactor/summary.json` 绑定上述源码 SHA；专项记录为 `app/build/qa/system-import/device-summary.json`、`emulator-final-import.log`，红绿阶段保留各自日志。测试组织按实际代码：窗口测试在 SystemRecordingNameParserTest，发现/扫描/存储/调度集成在 app Robolectric，不新增计划中没有实际职责的空测试类。
 - **未测范围**：真机本轮离线，未访问真实厂商目录；真实 SIM、厂商后台/Job 自动唤起、真实在线 AI，以及新字段窄屏/键盘/字号/旋转设备专项未测。设备专项使用固定 WAV 与模拟模型，不涉及付费服务，不修改生产安装或权限。
 - **交付**：本次不发包、不递增版本。合并推送与最终文档提交 CI 状态由收尾读回记录补充。
+
+## 号码规则准入修正（2026-11-05）
+
+- [x] 复现窗口内不匹配号码被登记/导入的回归用例。
+- [x] 唯一发现服务强制注入正式规则快照与生产 matcher；号码匹配先于临时观察、身份登记及音频复制。
+- [x] 同批冻结规则，规则精确作用域变化取消旧扫描和复制提交；签名隔离不同规则版本。
+- [x] 覆盖默认规则、多条 OR、前导零、错误前缀/长度、空列表、扫描/复制期间规则变化及旧候选。
+- [ ] 最终统一门、隔离设备验证与该提交远端 CI。
+
+已导入数据保持原样，不自动删除。

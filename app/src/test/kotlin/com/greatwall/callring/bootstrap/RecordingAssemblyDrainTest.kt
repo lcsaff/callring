@@ -1,5 +1,8 @@
 package com.greatwall.callring.bootstrap
 
+import com.greatwall.callring.domain.calling.NumberRule
+import com.greatwall.callring.domain.calling.NumberRuleSnapshot
+import com.greatwall.callring.domain.calling.PrefixLengthNumberMatcher
 import com.greatwall.callring.application.ports.recording.*
 import com.greatwall.callring.application.recording.model.*
 import com.greatwall.callring.contracts.ai.AiSlot
@@ -32,7 +35,7 @@ class RecordingAssemblyDrainTest {
             override fun analyze(connection: AiConnection, transcript: String): CallAnalysis = error("Unexpected analysis")
             override fun test(connection: AiConnection, transcription: Boolean) { entered.countDown(); check(release.await(5, TimeUnit.SECONDS)) }
         }
-        val assembly = RecordingAssembly(context, "root-drain", { null }, { null }, {}, storeFactory = { store }, clientFactory = { client }, operationActive = { true }, findCalls = { _, _ -> emptyList() }, enrichment = testEnrichment)
+        val assembly = RecordingAssembly(context, "root-drain", { null }, { null }, {}, storeFactory = { store }, clientFactory = { client }, operationActive = { true }, numberRules = { NumberRuleSnapshot(listOf(NumberRule.DEFAULT),0) }, numberMatcher = PrefixLengthNumberMatcher, findCalls = { _, _ -> emptyList() }, enrichment = testEnrichment)
         val api = assembly.aiSettings
         val executor = Executors.newSingleThreadExecutor()
         val result = executor.submit<ApiResult<Unit>> { runBlocking { api.testSlot(AiSlot.ANALYSIS) } }
@@ -61,7 +64,7 @@ class RecordingAssemblyDrainTest {
             }
             override fun test(connection: AiConnection, transcription: Boolean) = error("Unexpected connection test")
         }
-        val assembly = RecordingAssembly(context, "seal-drain", { null }, { null }, {}, storeFactory = { store }, coordinator = coordinator, clientFactory = { client }, operationActive = { true }, findCalls = { _, _ -> emptyList() }, enrichment = testEnrichment)
+        val assembly = RecordingAssembly(context, "seal-drain", { null }, { null }, {}, storeFactory = { store }, coordinator = coordinator, clientFactory = { client }, operationActive = { true }, numberRules = { NumberRuleSnapshot(listOf(NumberRule.DEFAULT),0) }, numberMatcher = PrefixLengthNumberMatcher, findCalls = { _, _ -> emptyList() }, enrichment = testEnrichment)
         val workflow = assembly.workflow
         val attached = workflow.attach(1, "31234", 1, "/private/audio.m4a", com.greatwall.callring.contracts.recording.RecordingSource.IMPORTED, 1000, null, false)
         assertTrue(assembly.archiveCommands.compareAndSet(1, attached.generation, attached.copy(generation = attached.generation + 1, transcript = "retained transcript"), null, false))

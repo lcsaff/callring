@@ -34,6 +34,8 @@ class RecordingAssembly(
     private val operationActive: () -> Boolean,
     private val enrichment: com.greatwall.callring.application.ports.recording.RecordingIdentityEnrichment,
     findCalls: (String, Long) -> List<RecordingCall>,
+    numberRules: () -> com.greatwall.callring.domain.calling.NumberRuleSnapshot,
+    numberMatcher: com.greatwall.callring.domain.calling.NumberMatcher,
     private val now: () -> Long = System::currentTimeMillis,
 ) : AutoCloseable {
     private val lifetime = Any()
@@ -48,7 +50,7 @@ class RecordingAssembly(
     private val sources by lazy { SystemRecordingSource(context.contentResolver) }
     private val scannerDelegate = lazy { com.greatwall.callring.platform.recording.SystemRecordingScanner(context.contentResolver) }
     private val discoveryDelegate = lazy { SystemRecordingDiscovery(store,store,store::settings,
-        { coordinator.capture().values.getValue("recordingConfig") },scannerDelegate.value,coordinator,operationActive,activeCallId,findCalls,now,
+        { coordinator.capture().values.getValue("recordingConfig") },scannerDelegate.value,coordinator,operationActive,activeCallId,findCalls,numberRules,numberMatcher,now,
         importAudio = { call,candidate,validate,inspect -> service.importDiscovered(call,candidate,validate,inspect) }) }
     private val clientAccess = com.greatwall.callring.platform.ownership.OwnedFileAccess()
     private val clientDelegate = lazy {

@@ -1,5 +1,8 @@
 package com.greatwall.callring.bootstrap
 
+import com.greatwall.callring.domain.calling.NumberRule
+import com.greatwall.callring.domain.calling.NumberRuleSnapshot
+import com.greatwall.callring.domain.calling.PrefixLengthNumberMatcher
 import com.greatwall.callring.application.conversation.context.ContextBudget
 import com.greatwall.callring.application.conversation.execution.ConversationService
 import com.greatwall.callring.application.conversation.execution.json
@@ -66,7 +69,7 @@ class CompleteSnapshotAssemblyTest {
         val store = AndroidRecordingStore(context, "small_recording", cipher, recordingVersion = { graph.coordinator.capture().values.getValue("recording") })
         val connection = AiConnection(url = "https://example.com/v1", model = "model", apiKey = "unique-secret-sentinel")
         store.persistSettings(RecordingSettings(analysis = connection))
-        val runtime = RecordingAssembly(context, "small_recording", { null }, { null }, {}, { store }, coordinator = graph.coordinator, operationActive = { true }, findCalls = { _, _ -> emptyList() }, enrichment = testEnrichment)
+        val runtime = RecordingAssembly(context, "small_recording", { null }, { null }, {}, { store }, coordinator = graph.coordinator, operationActive = { true }, numberRules = { NumberRuleSnapshot(listOf(NumberRule.DEFAULT),0) }, numberMatcher = PrefixLengthNumberMatcher, findCalls = { _, _ -> emptyList() }, enrichment = testEnrichment)
         graph.backend.callers.saveProfile(SaveCallerProfile("999", "person", "unit", null, false))
         val call = com.greatwall.callring.application.recording.RecordingRegistrationService(store, com.greatwall.callring.application.coordination.BusinessRevisionCoordinator()).registerIncoming("session", "999", 1, null, null)
         val old = store.get(call.id)!!

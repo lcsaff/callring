@@ -1,5 +1,8 @@
 package com.greatwall.callring.platform.ai
 
+import com.greatwall.callring.domain.calling.NumberRule
+import com.greatwall.callring.domain.calling.NumberRuleSnapshot
+import com.greatwall.callring.domain.calling.PrefixLengthNumberMatcher
 import com.greatwall.callring.application.ports.platform.CalendarSource
 import com.greatwall.callring.application.ports.platform.RuntimeProbe
 import com.greatwall.callring.application.ports.platform.SyncScheduler
@@ -115,7 +118,7 @@ class ToolBusinessIntegrationTest {
             override suspend fun delete(callId: Long, expectedGeneration: Long, command: CommandContext) = runtime.service.delete(callId, expectedGeneration, command)
         }, operationActive = { true }, conversationProvider = { com.greatwall.callring.testing.FixtureConversationApi }, aiSettingsProvider = { com.greatwall.callring.testing.FixtureAiSettingsApi }, updateProvider = { com.greatwall.callring.testing.FixtureAppUpdateApi }, snapshotsProvider = { com.greatwall.callring.testing.FixtureAiSnapshotApi }, storageProvider = { com.greatwall.callring.testing.FixtureStorageApi }, backupProvider = { com.greatwall.callring.testing.FixtureBackupApi }, recordingsProvider = { com.greatwall.callring.testing.FixtureRecordingApi }, persistenceActive = { true })
         val recordingStore = AndroidRecordingStore(context,namespace,object : RecordingCipher { override fun encrypt(value: String) = java.util.Base64.getEncoder().encodeToString(value.toByteArray()); override fun decrypt(value: String) = String(java.util.Base64.getDecoder().decode(value)) }, recordingVersion = { coordinator.capture().values.getValue("recording") })
-        val runtime = RecordingAssembly(context,namespace,{ null },{ null },{}, { recordingStore },metadataReader = { 1000L to "wav" },coordinator = coordinator,clientFactory = { client }, operationActive = { true }, findCalls = { _, _ -> emptyList() }, enrichment = com.greatwall.callring.application.callers.CallerEnrichmentService(store.sessions, coordinator) { true })
+        val runtime = RecordingAssembly(context,namespace,{ null },{ null },{}, { recordingStore },metadataReader = { 1000L to "wav" },coordinator = coordinator,clientFactory = { client }, operationActive = { true }, numberRules = { NumberRuleSnapshot(listOf(NumberRule.DEFAULT),0) }, numberMatcher = PrefixLengthNumberMatcher, findCalls = { _, _ -> emptyList() }, enrichment = com.greatwall.callring.application.callers.CallerEnrichmentService(store.sessions, coordinator) { true })
         val diagnostics = AndroidDiagnosticsStore(context.getSharedPreferences("${namespace}_diagnostics",0),Clock.fixed(Instant.ofEpochMilli(now),ZoneOffset.UTC),coordinator)
         val queriedDomains = linkedSetOf<AiDomain>()
         private fun traced(port:ScopedReadPort)=object:ScopedReadPort by port {

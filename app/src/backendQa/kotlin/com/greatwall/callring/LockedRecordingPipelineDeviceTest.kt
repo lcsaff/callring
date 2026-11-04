@@ -1,5 +1,8 @@
 package com.greatwall.callring
 
+import com.greatwall.callring.domain.calling.NumberRule
+import com.greatwall.callring.domain.calling.NumberRuleSnapshot
+import com.greatwall.callring.domain.calling.PrefixLengthNumberMatcher
 import android.app.KeyguardManager
 import android.test.InstrumentationTestCase
 import com.greatwall.callring.application.ports.recording.*
@@ -34,7 +37,7 @@ class LockedRecordingPipelineDeviceTest : InstrumentationTestCase() {
             }
         }
         fun assembly() = RecordingAssembly(context, namespace, findCall = { error("No statistics dependency") },
-            activeCallId = { null }, schedule = {}, clientFactory = { client }, operationActive = { true }, findCalls = { _, _ -> emptyList() }, enrichment = testEnrichment)
+            activeCallId = { null }, schedule = {}, clientFactory = { client }, operationActive = { true }, numberRules = { NumberRuleSnapshot(listOf(NumberRule.DEFAULT),0) }, numberMatcher = PrefixLengthNumberMatcher, findCalls = { _, _ -> emptyList() }, enrichment = testEnrichment)
         var runtime = assembly()
         try {
             val connection = AiConnection(url = "https://fixture.invalid/v1", apiKey = "synthetic-device-test", model = "fixture")

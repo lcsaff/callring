@@ -1,5 +1,8 @@
 package com.greatwall.callring
 
+import com.greatwall.callring.domain.calling.NumberRule
+import com.greatwall.callring.domain.calling.NumberRuleSnapshot
+import com.greatwall.callring.domain.calling.PrefixLengthNumberMatcher
 import android.content.ComponentName
 import android.content.pm.PackageManager
 import android.test.InstrumentationTestCase
@@ -37,7 +40,7 @@ class SilentCallEnrichmentDeviceTest : InstrumentationTestCase() {
         val coordinator = BusinessRevisionCoordinator()
         var core = SqliteCoreStorageResource(context, "$namespace.db")
         fun assembly() = RecordingAssembly(context, namespace, { null }, { null }, {}, coordinator = coordinator,
-            clientFactory = { client }, operationActive = { true }, findCalls = { _, _ -> emptyList() }, enrichment = CallerEnrichmentService(core.sessions, coordinator) { true })
+            clientFactory = { client }, operationActive = { true }, numberRules = { NumberRuleSnapshot(listOf(NumberRule.DEFAULT),0) }, numberMatcher = PrefixLengthNumberMatcher, findCalls = { _, _ -> emptyList() }, enrichment = CallerEnrichmentService(core.sessions, coordinator) { true })
         var runtime = assembly()
         try {
             val connection = AiConnection(url = "https://fixture.invalid/v1", apiKey = "fixture", model = "fixture")

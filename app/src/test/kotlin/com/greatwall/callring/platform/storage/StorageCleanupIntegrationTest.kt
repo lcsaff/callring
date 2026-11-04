@@ -1,5 +1,8 @@
 package com.greatwall.callring.platform.storage
 
+import com.greatwall.callring.domain.calling.NumberRule
+import com.greatwall.callring.domain.calling.NumberRuleSnapshot
+import com.greatwall.callring.domain.calling.PrefixLengthNumberMatcher
 import com.greatwall.callring.bootstrap.RecordingAssembly
 import com.greatwall.callring.application.storage.StorageManagementService
 import com.greatwall.callring.data.recording.AndroidRecordingStore
@@ -26,7 +29,7 @@ class StorageCleanupIntegrationTest {
             override fun encrypt(value:String)=value
             override fun decrypt(value:String)=value
         },recordingVersion={0})
-        val runtime=RecordingAssembly(context,namespace,findCall={error("statistics must not be read")},activeCallId={null},schedule={},storeFactory={store},operationActive={true}, findCalls = { _, _ -> emptyList() }, enrichment = testEnrichment)
+        val runtime=RecordingAssembly(context,namespace,findCall={error("statistics must not be read")},activeCallId={null},schedule={},storeFactory={store},operationActive={true}, numberRules = { NumberRuleSnapshot(listOf(NumberRule.DEFAULT),0) }, numberMatcher = PrefixLengthNumberMatcher, findCalls = { _, _ -> emptyList() }, enrichment = testEnrichment)
         runtime.directory.mkdirs()
         val original=File(context.cacheDir,"external-original.wav").apply { writeBytes(ByteArray(100)) }
         val file=File(runtime.directory,"owned.wav").apply { writeBytes(ByteArray(50)) }

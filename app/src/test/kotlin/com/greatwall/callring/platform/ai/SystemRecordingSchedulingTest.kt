@@ -1,5 +1,8 @@
 package com.greatwall.callring.platform.ai
 
+import com.greatwall.callring.domain.calling.NumberRule
+import com.greatwall.callring.domain.calling.NumberRuleSnapshot
+import com.greatwall.callring.domain.calling.PrefixLengthNumberMatcher
 import com.greatwall.callring.application.coordination.BusinessRevisionCoordinator
 import com.greatwall.callring.application.mapping.requiredValue
 import com.greatwall.callring.application.ports.recording.RecordingIdentityEnrichment
@@ -33,7 +36,7 @@ class SystemRecordingSchedulingTest {
             override fun apply(number: String, baseline: CallerIdentityBaseline, archiveId: Long, generation: Long, candidates: Map<String,Pair<String,String>>) = Unit
         }
         val runtime = RecordingAssembly(context,namespace,{null},{null},{schedules += it},storeFactory={store},
-            coordinator=coordinator,operationActive={true},enrichment=enrichment,findCalls={_,_->emptyList()})
+            coordinator=coordinator,operationActive={true},enrichment=enrichment,numberRules = { NumberRuleSnapshot(listOf(NumberRule.DEFAULT),0) }, numberMatcher = PrefixLengthNumberMatcher, findCalls={_,_->emptyList()})
         try {
             val api = runtime.aiSettings
             api.setSystemFolder("content://fixture/tree/first")

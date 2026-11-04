@@ -7,6 +7,9 @@ import com.greatwall.callring.application.recording.model.RecordingSettings
 import com.greatwall.callring.contracts.change.DataDomain
 import com.greatwall.callring.contracts.recording.CallArchive
 import com.greatwall.callring.contracts.recording.RecordingSource
+import com.greatwall.callring.domain.calling.NumberMatcher
+import com.greatwall.callring.domain.calling.NumberRuleSnapshot
+import com.greatwall.callring.application.mapping.checkNumber
 import com.greatwall.callring.domain.calling.RecordingCall
 import com.greatwall.callring.domain.model.sameRecordingNumber
 import com.greatwall.callring.domain.recording.*
@@ -24,6 +27,8 @@ class SystemRecordingDiscovery(
     private val operationActive: () -> Boolean,
     private val activeCallId: () -> Long?,
     private val findCalls: (String, Long) -> List<RecordingCall>,
+    private val numberRules: () -> NumberRuleSnapshot,
+    private val numberMatcher: NumberMatcher,
     private val now: () -> Long = System::currentTimeMillis,
     private val zone: () -> ZoneId = ZoneId::systemDefault,
     private val importAudio: (RecordingCall, SystemRecordingCandidate, () -> Unit, () -> com.greatwall.callring.contracts.recording.RecordingFile?) -> Unit,
@@ -51,7 +56,12 @@ class SystemRecordingDiscovery(
     }
 
     private fun run(cancelled: () -> Boolean): Long? {
-        val (config, revision) = coordinator.guard { settings() to settingsRevision() }
+        val ruleKeys = setOf("numberRule")
+        val (frozen, ruleRevision) = coordinator.guard {
+            Triple(settings(), settingsRevision(), numberRules()) to coordinator.lastChange(ruleKeys)
+        }
+        val (config, revision, rules) = frozen
+        fun rulesChanged() = coordinator.lastChange(ruleKeys) != ruleRevision
         val folder = config.systemFolder
         if(!config.recordingEnabled || folder == null) return null
         fun active() {
@@ -59,7 +69,7 @@ class SystemRecordingDiscovery(
                 throw CancellationException("recording.cancelled")
             // All production settings commits publish this revision under the same fence;
             // restore seals/replaces the owner. Never decrypt settings for every directory row.
-            if(settingsRevision() != revision)
+            if(settingsRevision() != revision || rulesChanged())
                 throw CancellationException("recording.configuration_changed")
         }
         fun <T> commit(block: () -> T): T = coordinator.guard { active(); block() }
@@ -76,7 +86,7 @@ class SystemRecordingDiscovery(
             }
         }
         val zoneId = zone()
-        val signature = folder.length.toString() + ":" + folder + ":" + config.systemImportDays + ":" + zoneId.id + ":" + revision
+        val signature = folder.length.toString() + ":" + folder + ":" + config.systemImportDays + ":" + zoneId.id + ":" + revision + ":rules:" + rules.revision + ":" + ruleRevision
         val scan = commit { store.beginSystemScan(signature, now(), config.systemImportDays, zoneId.id) }
         val window = SystemRecordingWindow(scan.at, scan.days)
         var next: Long? = null
@@ -100,10 +110,10 @@ class SystemRecordingDiscovery(
             }
         }
         try {
-            scanner.scan(folder, { sealed || cancelled() || !operationActive() || settingsRevision() != revision }) { entry ->
+            scanner.scan(folder, { sealed || cancelled() || !operationActive() || settingsRevision() != revision || rulesChanged() }) { entry ->
                 active()
                 val parsed = SystemRecordingNameParser.parse(entry.file.name, ZoneId.of(scan.zone))
-                if(parsed != null && (window.contains(parsed.startedAtEpochMillis) || store.acceptedSystemFile(signature,entry.sourceKey,parsed)))
+                if(parsed != null && checkNumber(parsed.number,rules,numberMatcher).matchesRule && (window.contains(parsed.startedAtEpochMillis) || store.acceptedSystemFile(signature,entry.sourceKey,parsed)))
                     commit { store.observeSystemFile(scan.id,entry,parsed,now()) }
             }
             commit { store.finishSystemScan(scan.id) }
@@ -162,7 +172,7 @@ class SystemRecordingDiscovery(
                         active()
                         if(activeCallId() != null) throw CancellationException("recording.call_active")
                     }
-                    importAudio(call,candidate,::importActive) { scanner.inspect(folder,com.greatwall.callring.contracts.common.DocumentRef(file.uri)) { sealed || cancelled() || !operationActive() || settingsRevision() != revision } }
+                    importAudio(call,candidate,::importActive) { scanner.inspect(folder,com.greatwall.callring.contracts.common.DocumentRef(file.uri)) { sealed || cancelled() || !operationActive() || settingsRevision() != revision || rulesChanged() } }
                     complete(key)
                 } catch(cancel: CancellationException) { throw cancel }
                 catch(_: SecurityException) { return null }

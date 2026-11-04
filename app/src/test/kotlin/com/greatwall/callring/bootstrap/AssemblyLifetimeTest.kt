@@ -1,5 +1,8 @@
 package com.greatwall.callring.bootstrap
 
+import com.greatwall.callring.domain.calling.NumberRule
+import com.greatwall.callring.domain.calling.NumberRuleSnapshot
+import com.greatwall.callring.domain.calling.PrefixLengthNumberMatcher
 import android.app.Notification
 import android.app.PendingIntent
 import android.content.Intent
@@ -136,7 +139,7 @@ class AssemblyLifetimeTest {
             entered.countDown()
             check(release.await(5, java.util.concurrent.TimeUnit.SECONDS))
             store
-        }, operationActive = { true }, findCalls = { _, _ -> emptyList() }, enrichment = testEnrichment)
+        }, operationActive = { true }, numberRules = { NumberRuleSnapshot(listOf(NumberRule.DEFAULT),0) }, numberMatcher = PrefixLengthNumberMatcher, findCalls = { _, _ -> emptyList() }, enrichment = testEnrichment)
         val failures = java.util.concurrent.ConcurrentLinkedQueue<Throwable>()
         val reader = Thread { try { assembly.store } catch (e: Throwable) { failures.add(e) } }.apply { start() }
         assertTrue(entered.await(5, java.util.concurrent.TimeUnit.SECONDS))

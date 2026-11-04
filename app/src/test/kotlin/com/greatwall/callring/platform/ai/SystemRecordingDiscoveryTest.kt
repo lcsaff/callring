@@ -6,6 +6,7 @@ import com.greatwall.callring.application.recording.SystemRecordingDiscovery
 import com.greatwall.callring.application.recording.model.RecordingSettings
 import com.greatwall.callring.contracts.recording.*
 import com.greatwall.callring.data.recording.*
+import com.greatwall.callring.domain.calling.*
 import org.junit.Assert.*
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -62,8 +63,8 @@ class SystemRecordingDiscoveryTest {
     @Test fun outOfWindowAndFutureFilesNeverReachCopy() {
         Fixture("window").use { f ->
             f.files.clear()
-            f.files += ScannedSystemRecording("old", RecordingFile("content://old", "示例(12345)_20261001120000.mp3", 1, 128))
-            f.files += ScannedSystemRecording("future", RecordingFile("content://future", "示例(12345)_20261105120000.mp3", 1, 128))
+            f.files += ScannedSystemRecording("old", RecordingFile("content://old", "示例(31234)_20261001120000.mp3", 1, 128))
+            f.files += ScannedSystemRecording("future", RecordingFile("content://future", "示例(31234)_20261105120000.mp3", 1, 128))
             assertNull(f.discovery.discover { false }); f.time += 10_000; assertNull(f.discovery.discover { false })
             assertEquals(0, f.imports)
         }
@@ -100,7 +101,7 @@ class SystemRecordingDiscoveryTest {
     @Test fun changingAssociationBetweenLookupAndCommitCannotCreateAnOrphan() {
         Fixture("target-race").use { f ->
             f.discovery.discover { false }; f.time += 10_000
-            f.calls = listOf(com.greatwall.callring.domain.calling.RecordingCall(42,"12345",Instant.parse("2026-11-04T04:00:00Z").toEpochMilli(),null))
+            f.calls = listOf(com.greatwall.callring.domain.calling.RecordingCall(42,"31234",Instant.parse("2026-11-04T04:00:00Z").toEpochMilli(),null))
             f.onFind = { f.calls = emptyList() }
             f.discovery.discover { false }
             assertNull(f.store.sourceBinding("a")); assertEquals(0,f.imports)
@@ -135,7 +136,7 @@ class SystemRecordingDiscoveryTest {
     @Test fun legacyArchiveIndexIsPreparedBeforeAllocatingANewIdentity() {
         Fixture("legacy-index").use { f ->
             val started = Instant.parse("2026-11-04T04:00:00Z").toEpochMilli()
-            f.store.compareAndSet(42,null,CallArchive(42,"12345",started,generation=1,status=ArchiveStatus.COMPLETE,audioPath="owned",transcript="already analyzed"))
+            f.store.compareAndSet(42,null,CallArchive(42,"31234",started,generation=1,status=ArchiveStatus.COMPLETE,audioPath="owned",transcript="already analyzed"))
             android.database.sqlite.SQLiteDatabase.openDatabase(RuntimeEnvironment.getApplication().getDatabasePath("discovery-legacy-index_recording.db").path,null,android.database.sqlite.SQLiteDatabase.OPEN_READWRITE).use { db ->
                 db.execSQL("DELETE FROM archive_projection")
                 db.execSQL("UPDATE archive_list_state SET ready=0")
@@ -145,7 +146,60 @@ class SystemRecordingDiscoveryTest {
             assertEquals(0,f.imports)
         }
     }
+    @Test fun inWindowNumberOutsideConfiguredRulesCreatesNoSourceOrAudio() {
+        Fixture("number-rejected").use { f ->
+            f.files[0] = f.files.single().copy(file = f.files.single().file.copy(name = "示例(12345)_20261104120000.mp3"))
+            f.discovery.discover { false }; f.time += 10_000; f.discovery.discover { false }
+            assertNull("unmatched number must not register a source", f.store.sourceBinding("a"))
+            assertEquals(0, f.imports)
+            assertTrue(f.store.systemSourcePage(null,64).isEmpty())
+        }
+    }
+    @Test fun emptyRulesRejectEveryNumberAndOrRulesAcceptOnlyMatches() {
+        Fixture("number-or").use { f ->
+            f.installRules(emptyList())
+            f.discovery.discover { false }; f.time += 10_000; f.discovery.discover { false }
+            assertNull(f.store.sourceBinding("a")); assertEquals(0,f.imports)
+            f.installRules(listOf(NumberRule("00",5),NumberRule("31",5)))
+            f.files += ScannedSystemRecording("leading-zero",RecordingFile("content://zero","示例(00123)_20261104120000.mp3",1,128))
+            f.files += ScannedSystemRecording("wrong-prefix",RecordingFile("content://prefix","示例(12345)_20261104120000.mp3",1,128))
+            f.files += ScannedSystemRecording("wrong-length",RecordingFile("content://length","示例(312345)_20261104120000.mp3",1,128))
+            f.discovery.discover { false }; f.time += 10_000; f.discovery.discover { false }
+            assertEquals(2,f.imports)
+            assertNotNull(f.store.sourceBinding("a")); assertNotNull(f.store.sourceBinding("leading-zero"))
+            assertNull(f.store.sourceBinding("wrong-prefix")); assertNull(f.store.sourceBinding("wrong-length"))
+        }
+    }
+    @Test fun changingRulesDuringEnumerationCancelsBeforeIdentityRegistration() {
+        Fixture("rule-enumeration-race").use { f ->
+            f.discovery.discover { false }; f.time += 10_000
+            f.scanEnd = { f.installRules(emptyList()) }
+            assertThrows(CancellationException::class.java) { f.discovery.discover { false } }
+            assertNull(f.store.sourceBinding("a")); assertEquals(0,f.imports)
+            f.scanEnd = {}
+            f.discovery.discover { false }
+            assertNull(f.store.sourceBinding("a")); assertEquals(0,f.imports)
+        }
+    }
+    @Test fun changingRulesDuringCopyCannotCommitPreparedAudio() {
+        Fixture("rule-copy-race").use { f ->
+            f.discovery.discover { false }; f.time += 10_000
+            f.beforeCommit = { f.installRules(emptyList()) }
+            assertThrows(CancellationException::class.java) { f.discovery.discover { false } }
+            assertEquals(0,f.imports)
+            assertNull(f.store.get(f.store.sourceBinding("a")!!.id)!!.audioPath)
+            f.beforeCommit = {}
+            f.discovery.discover { false }; f.time += 10_000; f.discovery.discover { false }
+            assertEquals(0,f.imports)
+        }
+    }
     private class Fixture(name: String) : AutoCloseable {
+        var rules = NumberRuleSnapshot(listOf(NumberRule.DEFAULT),0)
+        val coordinator = BusinessRevisionCoordinator()
+        fun installRules(values: List<NumberRule>) = coordinator.guard {
+            rules = NumberRuleSnapshot(values,rules.revision + 1)
+            coordinator.publishCore(setOf("numberRule"),com.greatwall.callring.application.coordination.ChangeImpact(emptyMap()))
+        }
         var time = Instant.parse("2026-11-04T05:00:00Z").toEpochMilli()
         var imports = 0
         var beforeCommit: () -> Unit = {}
@@ -157,7 +211,7 @@ class SystemRecordingDiscoveryTest {
         var decryptions = 0
         var onInspect: () -> Unit = {}
         var onCancel: () -> Unit = {}
-        val files = mutableListOf(ScannedSystemRecording("a", RecordingFile("content://a", "示例(12345)_20261104120000.mp3", 1, 128)))
+        val files = mutableListOf(ScannedSystemRecording("a", RecordingFile("content://a", "示例(31234)_20261104120000.mp3", 1, 128)))
         val cipher = object : RecordingCipher { override fun encrypt(value: String) = value; override fun decrypt(value: String) = value.also { decryptions++ } }
         val store = AndroidRecordingStore(RuntimeEnvironment.getApplication(), "discovery-$name", cipher) { 0 }
         private val scan = object : SystemRecordingScanPort {
@@ -174,7 +228,7 @@ class SystemRecordingDiscoveryTest {
             }
         }
         val discovery = SystemRecordingDiscovery(store, store, store::settings, { revision }, scan,
-            coordinator = BusinessRevisionCoordinator(), operationActive = { true }, activeCallId = { null },
+            coordinator = coordinator, numberRules = { rules }, numberMatcher = PrefixLengthNumberMatcher, operationActive = { true }, activeCallId = { null },
             findCalls = { _, _ -> calls.also { onFind() } }, now = { time }, zone = { ZoneId.of("Asia/Shanghai") },
             importAudio = { call, _, validate, inspect ->
                 inspect()

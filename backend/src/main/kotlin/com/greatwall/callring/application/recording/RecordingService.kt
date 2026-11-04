@@ -285,7 +285,7 @@ class RecordingService(
     fun discoverSystemRecordings(cancelled: () -> Boolean = { false }): Long? = discovery.discover(cancelled)
     fun runScheduled(cancelled: () -> Boolean): Long? {
         val nextDiscovery = if (!cancelled()) try { discoverSystemRecordings(cancelled) }
-            catch(_: CancellationException) { if(cancelled() || !operationActive()) return null else null }
+            catch(_: CancellationException) { if(cancelled() || !operationActive()) return null else System.currentTimeMillis() + 1000 }
             catch(_: SecurityException) { null }
             catch(_: Exception) { System.currentTimeMillis() + 60_000 } else null
         val online = networkAvailable()
