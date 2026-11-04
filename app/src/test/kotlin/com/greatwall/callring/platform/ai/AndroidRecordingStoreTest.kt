@@ -16,6 +16,27 @@ import org.robolectric.annotation.Config
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [33], manifest = Config.NONE)
 class AndroidRecordingStoreTest {
+    @Test fun thirtyImportDaysPersistAcrossStoreReopen() {
+        val settings = RecordingSettings(systemImportDays = 30)
+        AndroidRecordingStore(context, "import-days-reopen", cipher, recordingVersion = { 0L }).use {
+            it.persistSettings(settings)
+        }
+        AndroidRecordingStore(context, "import-days-reopen", cipher, recordingVersion = { 0L }).use {
+            assertEquals(settings, it.settings())
+        }
+    }
+
+    @Test fun importDaysCodecDefaultsOnlyWhenMissingAndRejectsMalformedPresentValues() {
+        val settings = RecordingSettings(systemImportDays = Int.MAX_VALUE)
+        assertEquals(settings, RecordingJson.settings(RecordingJson.settings(settings)))
+        val legacy = RecordingJson.settings(settings).apply { remove("systemImportDays") }
+        assertEquals(7, RecordingJson.settings(legacy).systemImportDays)
+        for (invalid in listOf<Any>(0, -1, 2147483648L, "7", true, 1.5, org.json.JSONObject.NULL)) {
+            val json = RecordingJson.settings(settings).put("systemImportDays", invalid)
+            assertThrows(IllegalArgumentException::class.java) { RecordingJson.settings(json) }
+        }
+    }
+
     @Test fun ineligibleIdentityBaselineIsExplicitAndSurvivesCodec() {
         val entry = CallArchive(-91, "１２３", 1, enrichmentBaseline = CallerIdentityBaseline("", emptyMap(), eligible = false))
         assertEquals(entry, RecordingJson.archive(RecordingJson.archive(entry)))

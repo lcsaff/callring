@@ -48,7 +48,7 @@ class AiSettingsServiceTest {
         val store = AndroidRecordingStore(RuntimeEnvironment.getApplication(), "version-after-save", cipher, recordingVersion = { coordinator.capture().values.getValue("recording") })
         val entered = java.util.concurrent.CountDownLatch(1)
         val release = java.util.concurrent.CountDownLatch(1)
-        val api = AiSettingsService(store, coordinator, { true }, { _, _ -> }, afterSave = {
+        val api = AiSettingsService(store, coordinator, { true }, { _, _ -> }, afterSave = { _, _ ->
             entered.countDown()
             check(release.await(10, java.util.concurrent.TimeUnit.SECONDS))
         }, folderView = folder, operationActive = { true })

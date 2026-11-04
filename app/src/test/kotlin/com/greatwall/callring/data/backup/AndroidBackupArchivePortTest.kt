@@ -135,6 +135,84 @@ class AndroidBackupArchivePortTest {
             assertEquals(1L, SqliteBackupCopy.count(fixture.context.getDatabasePath(fixture.configuration.databaseName), "callers"))
         }
     }
+    @Test fun sourcePortability() = runBlocking {
+        Fixture().use { fixture ->
+            val store = fixture.graph.recordings.store
+            val parsed = com.greatwall.callring.domain.recording.ParsedSystemRecording("12345", 1000)
+            val call = store.registerSystemSource("source", parsed, null) { CallArchive(it.id, it.number, it.startedAt, status = ArchiveStatus.COMPLETE, transcript = "already analyzed") }.call
+            store.completeSystemSource("source")
+            val deleted = store.registerSystemSource("deleted", parsed.copy(startedAtEpochMillis = 20000), null) { CallArchive(it.id,it.number,it.startedAt) }.call
+            store.delete(deleted.id)
+            val scan = store.beginSystemScan("settings", 20000, 30, "UTC")
+            store.observeSystemFile(scan.id, com.greatwall.callring.application.ports.recording.ScannedSystemRecording("pending", RecordingFile("content://private/name", "private.wav", 1, 128)), parsed, 20000)
+            fixture.port.export(fixture.document, "password".toCharArray(), false) {}
+            val decoded = File(fixture.root,"decoded").apply { mkdir() }
+            fixture.archive.inputStream().use { EncryptedBackupFormat.read(it,decoded,"password".toCharArray()) }
+            SQLiteDatabase.openDatabase(File(decoded,"recording.db").path,null,SQLiteDatabase.OPEN_READONLY).use { db ->
+                for(table in listOf("system_recording_inventory","system_recording_scan")) assertEquals(0L,android.database.DatabaseUtils.longForQuery(db,"SELECT count(*) FROM $table",null))
+                assertEquals(2L,android.database.DatabaseUtils.longForQuery(db,"SELECT count(*) FROM system_recording_sources",null))
+            }
+            assertFalse(File(decoded,"recording.db").readBytes().toString(Charsets.ISO_8859_1).contains("content://private/name"))
+            // Live inventory remains intact; only private backup stages are scrubbed.
+            SQLiteDatabase.openDatabase(fixture.context.getDatabasePath(fixture.configuration.databaseName+"_recording.db").path,null,SQLiteDatabase.OPEN_READONLY).use { db ->
+                assertEquals(1L,android.database.DatabaseUtils.longForQuery(db,"SELECT count(*) FROM system_recording_inventory",null))
+            }
+            val preferences = File(decoded,"preferences.json")
+            val portable = JSONObject(preferences.readText()).apply { getJSONObject("recording").put("systemImportDays",30) }
+            preferences.writeText(portable.toString())
+            fixture.archive.outputStream().use { EncryptedBackupFormat.write(decoded,it,"password".toCharArray()) }
+            val preview=fixture.port.preview(fixture.document,"password".toCharArray()) {}
+            fixture.port.restore(preview.token) {}
+            AndroidRecordingStore(fixture.context,fixture.configuration.databaseName,fixture.cipher,recordingVersion={0}).use {
+                assertEquals(30,it.settings().systemImportDays)
+                assertTrue(it.sourceCompleted("source")); assertTrue(it.isDeleted(deleted.id))
+                val restored=it.get(call.id)!!
+                assertEquals(ArchiveStatus.COMPLETE,restored.status); assertNull(restored.audioPath)
+                assertEquals(Long.MAX_VALUE,restored.nextAttemptAt)
+            }
+        }
+    }
+
+    @Test fun badSystemSources() = runBlocking {
+        for (mutation in listOf("archive_id=999", "source_key='content://private/path'", "number='not-a-number'", "completed=2")) Fixture().use { fixture ->
+            fixture.graph.recordings.store.registerSystemSource("source", com.greatwall.callring.domain.recording.ParsedSystemRecording("12345",1000),null) { CallArchive(it.id,it.number,it.startedAt) }
+            fixture.port.export(fixture.document,"password".toCharArray(),false) {}
+            val decoded=File(fixture.root,"decoded").apply { mkdir() }
+            fixture.archive.inputStream().use { EncryptedBackupFormat.read(it,decoded,"password".toCharArray()) }
+            SQLiteDatabase.openDatabase(File(decoded,"recording.db").path,null,SQLiteDatabase.OPEN_READWRITE).use { it.execSQL("UPDATE system_recording_sources SET $mutation") }
+            fixture.archive.outputStream().use { EncryptedBackupFormat.write(decoded,it,"password".toCharArray()) }
+            assertThrows(BackupFormatException::class.java) { fixture.port.preview(fixture.document,"password".toCharArray()) {} }
+            assertFalse(fixture.ownerClosed)
+        }
+    }
+
+    @Test fun legacyRecordingPreview() = runBlocking {
+        Fixture().use { fixture ->
+            val call = fixture.graph.recordings.registrations.registerIncoming("legacy", "12345", 1000, null, null)
+            fixture.port.export(fixture.document,"password".toCharArray(),false) {}
+            val decoded=File(fixture.root,"legacy").apply { mkdir() }
+            fixture.archive.inputStream().use { EncryptedBackupFormat.read(it,decoded,"password".toCharArray()) }
+            SQLiteDatabase.openDatabase(File(decoded,"recording.db").path,null,SQLiteDatabase.OPEN_READWRITE).use { db ->
+                listOf("system_recording_sources", "system_recording_inventory", "system_recording_scan").forEach { db.execSQL("DROP TABLE $it") }
+                db.execSQL("DROP INDEX recording_events_time")
+                db.version = 5
+            }
+            val prefs=File(decoded,"preferences.json")
+            prefs.writeText(JSONObject(prefs.readText()).apply { getJSONObject("recording").remove("systemImportDays") }.toString())
+            fixture.archive.outputStream().use { EncryptedBackupFormat.write(decoded,it,"password".toCharArray()) }
+            val original = fixture.archive.readBytes()
+            val preview=fixture.port.preview(fixture.document,"password".toCharArray()) {}
+            assertArrayEquals(original,fixture.archive.readBytes())
+            assertEquals(1L,preview.summary.archives)
+            fixture.port.restore(preview.token) {}
+            AndroidRecordingStore(fixture.context,fixture.configuration.databaseName,fixture.cipher,recordingVersion={0}).use {
+                assertEquals(7,it.settings().systemImportDays)
+                assertNotNull(it.get(call.id))
+                assertNull(it.sourceBinding("missing"))
+            }
+        }
+    }
+
     private class Fixture : AutoCloseable {
         val base = RuntimeEnvironment.getApplication()
         val root = File(base.cacheDir, "b-${UUID.randomUUID().toString().take(6)}").apply { mkdir() }

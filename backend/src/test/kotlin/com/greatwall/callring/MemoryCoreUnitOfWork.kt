@@ -92,6 +92,7 @@ internal class MemoryCoreUnitOfWork : CoreUnitOfWork {
             override fun callingCall(id: Long) = calls[id]
 
             override fun visibleRecordingLinks(screenId: Long) = calls.values.filter { !it.hidden && it.linkedScreenId == screenId }.take(2)
+            override fun systemRecordingCalls(number: String, from: Long, to: Long) = calls.values.filter { !it.hidden && it.number == number && it.time in from..to }.take(2)
 
             override fun providerCalls(logIds: Set<String>) =
                 calls.values.filter { it.logId in logIds }

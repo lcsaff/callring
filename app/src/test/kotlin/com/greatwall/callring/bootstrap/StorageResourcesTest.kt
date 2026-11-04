@@ -85,6 +85,7 @@ class StorageResourcesTest {
                         override fun callingCall(id: Long): RawCallRecord? = error("unused")
 
                         override fun visibleRecordingLinks(screenId: Long): List<RawCallRecord> = error("unused")
+                        override fun systemRecordingCalls(number: String, from: Long, to: Long): List<RawCallRecord> = error("unused")
 
                         override fun providerCalls(logIds: Set<String>): List<RawCallRecord> =
                             error("unused")

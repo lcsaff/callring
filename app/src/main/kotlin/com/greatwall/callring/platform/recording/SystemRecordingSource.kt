@@ -16,11 +16,11 @@ class SystemRecordingSource(private val resolver: ContentResolver, private val r
             resolver.query(DocumentsContract.buildChildDocumentsUriUsingTree(Uri.parse(root),id),arrayOf(DocumentsContract.Document.COLUMN_DOCUMENT_ID,DocumentsContract.Document.COLUMN_DISPLAY_NAME,DocumentsContract.Document.COLUMN_MIME_TYPE,DocumentsContract.Document.COLUMN_LAST_MODIFIED,DocumentsContract.Document.COLUMN_SIZE),null,null,null)
                 ?:throw java.io.IOException("recording.directory_unavailable")
         },::inspect)
-    fun inspect(folder:String,document:DocumentRef):RecordingFile? {
+    fun inspect(folder:String,document:DocumentRef, cancellation: android.os.CancellationSignal? = null):RecordingFile? {
         val root=Uri.parse(folder);val uri=Uri.parse(document.uri)
         require(uri.authority==root.authority&&DocumentsContract.getTreeDocumentId(uri)==DocumentsContract.getTreeDocumentId(root))
         if(!readGranted(root))throw SecurityException("recording.permission_required")
-        return resolver.query(uri,arrayOf(DocumentsContract.Document.COLUMN_DISPLAY_NAME,DocumentsContract.Document.COLUMN_LAST_MODIFIED,DocumentsContract.Document.COLUMN_SIZE),null,null,null)?.use{c->if(!c.moveToFirst())null else RecordingFile(document.uri,c.getString(0),if(c.isNull(1))0 else c.getLong(1),if(c.isNull(2))null else c.getLong(2),!c.isNull(1))}
+        return resolver.query(uri,arrayOf(DocumentsContract.Document.COLUMN_DISPLAY_NAME,DocumentsContract.Document.COLUMN_LAST_MODIFIED,DocumentsContract.Document.COLUMN_SIZE),null,null,null,cancellation)?.use{c->if(!c.moveToFirst())null else RecordingFile(document.uri,c.getString(0),if(c.isNull(1))0 else c.getLong(1),if(c.isNull(2))null else c.getLong(2),!c.isNull(1))}
     }
     fun describe(folder: String?): RecordingFolderView {
         if(folder == null) return RecordingFolderView(null,AccessState.NOT_REQUIRED)

@@ -100,6 +100,7 @@ fun safeValue(v: Any?): AiJson {
         is AiConnectionView -> obj("protocol" to v.protocol,"url" to v.url,"model" to v.model,"keyConfigured" to v.keyConfigured,"resolvedProfile" to v.resolvedProfile,"thinkingMode" to v.thinkingMode,"thinkingSupport" to v.thinkingSupport,"thinkingNotice" to v.thinkingNotice)
         is ConversationBudget -> obj("context" to v.context,"output" to v.output)
         is AiSettingsView -> obj("analysis" to v.analysis,"transcription" to v.transcription,"budget" to v.budget,"revision" to v.revision,"compatibility" to v.compatibility)
+        // D13 retains its reviewed external shape; local import-window preferences are not AI write fields.
         is RecordingSettingsView -> obj("recordingEnabled" to v.recordingEnabled,"automaticAnalysis" to v.automaticAnalysis,"captureMode" to v.captureMode,"folderConfigured" to v.folderConfigured,"revision" to v.revision,"folderDisplayName" to v.folderDisplayName,"folderAccess" to v.folderAccess)
         is StatisticsInterval -> obj("startMillis" to v.startMillis,"endMillis" to v.endMillis)
         is LeaveRecord -> obj("id" to v.id,"startMillis" to v.startMillis,"endMillis" to v.endMillis,"note" to v.note)

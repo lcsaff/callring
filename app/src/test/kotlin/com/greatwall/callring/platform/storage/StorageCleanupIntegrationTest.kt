@@ -26,7 +26,7 @@ class StorageCleanupIntegrationTest {
             override fun encrypt(value:String)=value
             override fun decrypt(value:String)=value
         },recordingVersion={0})
-        val runtime=RecordingAssembly(context,namespace,findCall={error("statistics must not be read")},activeCallId={null},schedule={},storeFactory={store},operationActive={true}, enrichment = testEnrichment)
+        val runtime=RecordingAssembly(context,namespace,findCall={error("statistics must not be read")},activeCallId={null},schedule={},storeFactory={store},operationActive={true}, findCalls = { _, _ -> emptyList() }, enrichment = testEnrichment)
         runtime.directory.mkdirs()
         val original=File(context.cacheDir,"external-original.wav").apply { writeBytes(ByteArray(100)) }
         val file=File(runtime.directory,"owned.wav").apply { writeBytes(ByteArray(50)) }

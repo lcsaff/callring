@@ -1,6 +1,9 @@
 package com.greatwall.callring
 
 import com.greatwall.callring.application.ports.recording.AiClient
+import com.greatwall.callring.application.ports.recording.SystemRecordingDiscoveryRunner
+import com.greatwall.callring.application.ports.recording.SystemRecordingCandidate
+import com.greatwall.callring.application.ports.recording.ScannedSystemRecording
 import com.greatwall.callring.application.ports.recording.AudioReference
 import com.greatwall.callring.application.ports.recording.NumberRecordingMetadata
 import com.greatwall.callring.application.ports.recording.RecordingArchiveMetadata
@@ -105,6 +108,34 @@ class RecordingApplicationServiceTest {
         f.service.runScheduled { false }
         assertEquals(1, f.transcriptions)
         assertEquals(ArchiveStatus.COMPLETE, f.entries[-1]?.status)
+    }
+    @Test fun offlineQueuedAudioResumesExactlyOnceWhenOnline() {
+        val f = Fixture().seed()
+        f.config = f.config.copy(recordingEnabled = true, automaticAnalysis = true,
+            analysis = AiConnection(url = "https://example.test/v1", apiKey = "key", model = "model"),
+            transcription = AiConnection(url = "https://example.test/v1", apiKey = "key", model = "model"))
+        f.entries[-1] = f.entries.getValue(-1).copy(status = ArchiveStatus.QUEUED)
+        f.online = false
+        f.service.runScheduled { false }
+        assertEquals(0, f.transcriptions)
+        assertEquals(ArchiveStatus.QUEUED, f.entries[-1]!!.status)
+        f.online = true
+        f.service.runScheduled { false }
+        assertEquals(1, f.transcriptions)
+        assertEquals(ArchiveStatus.COMPLETE, f.entries[-1]!!.status)
+        f.service.runScheduled { false }
+        assertEquals(1, f.transcriptions)
+    }
+    @Test fun configurationInvalidationDoesNotDropDurableAudioProcessing() {
+        val f = Fixture().seed()
+        f.config = f.config.copy(recordingEnabled=true,systemFolder="content://folder",automaticAnalysis=true,
+            analysis=AiConnection(url="https://example.test/v1",apiKey="key",model="model"),
+            transcription=AiConnection(url="https://example.test/v1",apiKey="key",model="model"))
+        f.entries[-1] = f.entries.getValue(-1).copy(status=ArchiveStatus.QUEUED)
+        f.discoveryInvalidated = true
+        f.service.runScheduled { false }
+        assertEquals(1,f.transcriptions)
+        assertEquals(ArchiveStatus.COMPLETE,f.entries[-1]!!.status)
     }
     @Test fun cancelledScheduledDiscoveryCannotAttachPreparedAudio() {
         val f = Fixture().seed()
@@ -216,6 +247,13 @@ class RecordingApplicationServiceTest {
         val denied = f.service.importRecording(-1, "31234", 1, DocumentRef("content://audio")) as ApiResult.Failure
         assertEquals(ErrorCode.PERMISSION_REQUIRED, denied.error.code)
     }
+    @Test fun reauthorizingSameFolderRestartsDiscoveryWithoutSettingsVersionChange() = runBlocking {
+        val f = Fixture()
+        f.config = f.config.copy(recordingEnabled=true,systemFolder="content://folder")
+        f.service.setSystemFolder(DocumentRef("content://folder")).requiredValue()
+        assertEquals(listOf(0L),f.scheduled)
+        assertEquals(0L,f.coordinator.marker())
+    }
 
     private class Fixture : RecordingIdentityReads, RecordingArchiveState, RecordingArchiveMutations,
         RecordingWorkflowReads, RecordingSettingsStore, RecordingRegistrationStore, RecordingAudioFiles, RecordingPlayback, RecordingDirectory {
@@ -230,6 +268,8 @@ class RecordingApplicationServiceTest {
         var config = RecordingSettings()
         var directoryFiles = emptyList<RecordingFile>()
         var failDirectory = false
+        var discoveryInvalidated = false
+        var online = true
         var transcriptions = 0
         var playing = false
         var playingCallId: Long? = -1
@@ -240,6 +280,7 @@ class RecordingApplicationServiceTest {
         var fullReads = 0
         var capturing=false
         var prepareFailure: Exception? = null
+        val scheduled = mutableListOf<Long>()
         var beforePrepared: () -> Unit = {}
         private val commands = RecordingArchiveCommands(this, this, coordinator)
         private val client = object : AiClient {
@@ -251,8 +292,21 @@ class RecordingApplicationServiceTest {
         }
         private val workflow = RecordingWorkflow(this, commands, client, enrichment = testEnrichment)
         private val ai = AiSettingsService(this, coordinator, { true }, { _, _ -> }, folderView = { error("unused") }, operationActive = { true })
-        val service = RecordingService(this, this, ::settings, { workflow }, commands, RecordingRegistrationService(this, coordinator), ai,
-            this, this, this, { legacyReads += it; legacy }, { -1 }, {}, coordinator, operationActive = { true }, captureBusy = { capturing })
+        val service: RecordingService = RecordingService(this, this, ::settings, { workflow }, commands, RecordingRegistrationService(this, coordinator), ai,
+            this, this, this, { legacyReads += it; legacy }, { -1 }, { scheduled += it }, coordinator, operationActive = { true }, captureBusy = { capturing }, networkAvailable = { online },
+            discovery = object : SystemRecordingDiscoveryRunner {
+                override fun discover(cancelled: () -> Boolean): Long? {
+                    if(discoveryInvalidated) throw kotlinx.coroutines.CancellationException("recording.configuration_changed")
+                    if(!config.recordingEnabled || config.systemFolder == null) return null
+                    if(failDirectory) throw SecurityException()
+                    val file = directoryFiles.singleOrNull() ?: return null
+                    val call = events.values.singleOrNull() ?: return null
+                    service.importDiscovered(call,SystemRecordingCandidate(ScannedSystemRecording("fixture",file),
+                        com.greatwall.callring.domain.recording.ParsedSystemRecording(call.number,call.startedAt),0,0),
+                        validate = { if(cancelled()) throw kotlinx.coroutines.CancellationException() }, inspect = { inspect(config.systemFolder!!,DocumentRef(file.uri)) })
+                    return null
+                }
+            })
         fun seed() = apply {
             events[-1] = RecordingCall(-1, "31234", 1, null)
             entries[-1] = CallArchive(-1, "31234", 1, 1, audioPath = "old")
@@ -279,7 +333,6 @@ class RecordingApplicationServiceTest {
         override fun ownedBytes(reference: AudioReference): Long? = 10
         override fun queryArchives(query: ArchiveListQuery, cancelled: () -> Boolean) = ArchiveListPage(entries.values.sortedWith(compareByDescending<CallArchive> { it.startedAtEpochMillis }.thenBy { it.callId }).take(query.limit).map { ArchiveListItem(it.callId,it.generation,it.number,it.startedAtEpochMillis,it.status,it.source,it.durationMillis,it.audioPath!=null, it.analysis?.summary.orEmpty()) }, null, true)
         override fun numberMetadata(number: String, cancelled: () -> Boolean) = emptyList<NumberRecordingMetadata>()
-        override fun recentMetadata(since: Long, cancelled: () -> Boolean) = entries.values.filter { it.startedAtEpochMillis >= since }.mapNotNull { metadata(it.callId, cancelled) }
         override fun earliestPendingAt(cancelled: () -> Boolean): Long? = null
         override fun dueCandidates(at: Long, afterId: Long?, limit: Int, cancelled: () -> Boolean) = entries.values
             .filter { it.status == ArchiveStatus.QUEUED && (afterId == null || it.callId > afterId) }.take(limit).map { RecordingCandidate(it.callId, it.generation) }
@@ -313,7 +366,7 @@ class RecordingApplicationServiceTest {
         override fun observation() = com.greatwall.callring.application.ports.recording.RecordingPlaybackObservation(status(), if(playing) playingCallId else null)
         override fun authorize(document: DocumentRef) = Unit
         override fun list(folder: String): List<RecordingFile> { if (failDirectory) throw SecurityException(); return directoryFiles }
-        override fun inspect(folder: String, document: DocumentRef): RecordingFile? = null
+        override fun inspect(folder: String, document: DocumentRef): RecordingFile? = directoryFiles.singleOrNull { it.uri == document.uri }
     }
 }
 

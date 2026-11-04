@@ -112,6 +112,21 @@ class RecordingScreensTest {
         compose.runOnIdle { assertEquals(true, enabled) }
     }
 
+    @Test fun importDaysInputPreservesInvalidDraftAndExplainsRecentWindow() {
+        val draft = mutableStateOf("7")
+        val view = RecordingSettingsView(false, false, CaptureMode.SYSTEM_ONLY, false, 1)
+        compose.setContent { CallringTheme(DefaultAppearance.rememberAppearanceThemeSpec(androidx.compose.foundation.isSystemInDarkTheme())) {
+            RecordingSettingsScreen(LoadState(view, loaded = true), MutationState(), {}, {}, {}, {}, {}, {},
+                draft.value, { draft.value = it })
+        } }
+        compose.onNodeWithText("系统录音自动导入天数").performScrollTo().performTextReplacement("0")
+        compose.onNodeWithText("请输入大于 0 的整数天数").assertExists()
+        compose.onNodeWithText("仅影响之后的系统录音自动导入，不更改已有录音和通话记录。").assertExists()
+        compose.runOnIdle { assertEquals("0", draft.value) }
+        compose.onNodeWithText("系统录音自动导入天数").performTextReplacement("2147483647")
+        compose.onNodeWithText("自动导入最近这些天内的系统录音，默认 7 天").assertExists()
+    }
+
     @Test fun deletingArchiveRequiresExplicitConfirmation() {
         var deletes = 0
         compose.setContent { CallringTheme(DefaultAppearance.rememberAppearanceThemeSpec(androidx.compose.foundation.isSystemInDarkTheme())) {

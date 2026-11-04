@@ -2,6 +2,12 @@
     <instrumentation android:name="android.test.InstrumentationTestRunner"
         android:targetPackage="${applicationId}" android:label="Backend device verification" />
     <application android:name=".BackendQaApplication" android:label="Callring Backend QA" tools:replace="android:name,android:label">
+        <provider android:name=".SystemRecordingQaProvider"
+            android:authorities="${applicationId}.systemrecording.qa"
+            android:exported="true" android:grantUriPermissions="true"
+            android:permission="android.permission.MANAGE_DOCUMENTS">
+            <intent-filter><action android:name="android.content.action.DOCUMENTS_PROVIDER" /></intent-filter>
+        </provider>
         <uses-library android:name="android.test.runner" android:required="false" />
         <uses-library android:name="android.test.base" android:required="false" />
     </application>

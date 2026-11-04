@@ -23,7 +23,7 @@ class AiSettingsService(
     private val microphoneGranted: () -> Boolean,
     private val testConnection: (AiConnection, Boolean) -> Unit,
     private val command: CommandContext? = null,
-    private val afterSave: (RecordingSettings) -> Unit = {},
+    private val afterSave: (RecordingSettings, RecordingSettings) -> Unit = { _, _ -> },
     private val folderView: (String?) -> RecordingFolderView,
     private val operationActive: () -> Boolean,
     private val folderObservations: RecordingFolderObservation = RecordingFolderObservation(coordinator),
@@ -33,7 +33,7 @@ class AiSettingsService(
         folderObservations.reobserve(folderView) { caller.ensureActive(); operationActive() }
     }
     fun bound(command: CommandContext) = AiSettingsService(store, coordinator, microphoneGranted, testConnection, command, afterSave, folderView, operationActive = operationActive, folderObservations = folderObservations)
-    private data class CommittedSettings(val settings: RecordingSettings, val recordingRevision: Long, val aiRevision: Long)
+    private data class CommittedSettings(val before: RecordingSettings, val settings: RecordingSettings, val recordingRevision: Long, val aiRevision: Long)
 
     private suspend fun updateSettings(transform: (RecordingSettings) -> RecordingSettings): CommittedSettings {
         val caller = currentCoroutineContext()
@@ -56,13 +56,17 @@ class AiSettingsService(
                 coordinator.publishResources(resources, keys, ChangeImpact.wide(domains))
             }
             coordinator.record(command)
-            CommittedSettings(next, revision("recordingConfig"), revision("aiConfig"))
+            CommittedSettings(old, next, revision("recordingConfig"), revision("aiConfig"))
         }
     }
 
     /** Provider permission acquisition is platform preparation; this is its sole settings commit. */
     suspend fun setSystemFolder(uri: String) {
-        updateSettings { it.copy(systemFolder = uri) }
+        notifySaved(updateSettings { it.copy(systemFolder = uri) })
+    }
+
+    private fun notifySaved(saved: CommittedSettings) {
+        if (saved.before != saved.settings) runCatching { afterSave(saved.before, saved.settings) }
     }
 
     private fun conflict(): Nothing = throw BackendFailure(ApiError(ErrorCode.CONFLICT, "settings.conflict", retryable = true))
@@ -79,7 +83,7 @@ class AiSettingsService(
     private fun RecordingSettings.aiView(version: Long) = AiSettingsView(analysis.view(conversationCompatibility), transcription.view(), conversationBudget, version, conversationCompatibility)
     private fun RecordingSettings.recordingView(version: Long): RecordingSettingsView {
         val folder = folderObservations.observed(systemFolder, folderView(systemFolder))
-        return RecordingSettingsView(recordingEnabled, automaticAnalysis, captureMode, systemFolder != null, version,folder.displayName,folder.access)
+        return RecordingSettingsView(recordingEnabled, automaticAnalysis, captureMode, systemFolder != null, version,folder.displayName,folder.access,systemImportDays)
     }
     private suspend fun <T> result(block: suspend () -> T): ApiResult<T> = withContext(Dispatchers.IO) {
         try { requireOperationActive(operationActive); ApiResult.Success(block()) }
@@ -101,9 +105,9 @@ class AiSettingsService(
         val saved = updateSettings { old ->
             val mode = field(base.captureMode, old.captureMode, patch.captureMode)
             if (mode == CaptureMode.MICROPHONE_EXPERIMENTAL && !microphoneGranted()) throw BackendFailure(ApiError(ErrorCode.PERMISSION_REQUIRED, "capability.required", requiredCapabilities = setOf(Capability.MICROPHONE)))
-            old.copy(recordingEnabled = field(base.recordingEnabled, old.recordingEnabled, patch.recordingEnabled), automaticAnalysis = field(base.automaticAnalysis, old.automaticAnalysis, patch.automaticAnalysis), captureMode = mode)
+            old.copy(recordingEnabled = field(base.recordingEnabled, old.recordingEnabled, patch.recordingEnabled), automaticAnalysis = field(base.automaticAnalysis, old.automaticAnalysis, patch.automaticAnalysis), captureMode = mode, systemImportDays = field(base.systemImportDays, old.systemImportDays, patch.systemImportDays))
         }
-        afterSave(saved.settings)
+        notifySaved(saved)
         saved.settings.recordingView(saved.recordingRevision)
     }
     private fun connection(base: AiConnectionView, current: AiConnection, patch: ConnectionPatch, secret: LocalSecretChange, baseRevision: Long,slot:AiSlot): AiConnection {
@@ -147,13 +151,13 @@ class AiSettingsService(
         val saved = updateSettings { old ->
             val mode = field(recordingBase.captureMode, old.captureMode, recording.captureMode)
             if(mode == CaptureMode.MICROPHONE_EXPERIMENTAL && !microphoneGranted()) throw BackendFailure(ApiError(ErrorCode.PERMISSION_REQUIRED, "capability.required", requiredCapabilities = setOf(Capability.MICROPHONE)))
-            old.copy(recordingEnabled = field(recordingBase.recordingEnabled, old.recordingEnabled, recording.recordingEnabled), automaticAnalysis = field(recordingBase.automaticAnalysis, old.automaticAnalysis, recording.automaticAnalysis), captureMode = mode,
+            old.copy(recordingEnabled = field(recordingBase.recordingEnabled, old.recordingEnabled, recording.recordingEnabled), automaticAnalysis = field(recordingBase.automaticAnalysis, old.automaticAnalysis, recording.automaticAnalysis), captureMode = mode, systemImportDays = field(recordingBase.systemImportDays, old.systemImportDays, recording.systemImportDays),
                 analysis = connection(aiBase.analysis, old.analysis, ai.analysis, analysisSecret, aiBase.revision,AiSlot.ANALYSIS),
                 transcription = connection(aiBase.transcription, old.transcription, ai.transcription, transcriptionSecret, aiBase.revision,AiSlot.TRANSCRIPTION),
                 conversationBudget = field(aiBase.budget, old.conversationBudget, ai.budget),
                 conversationCompatibility = field(aiBase.compatibility,old.conversationCompatibility,ai.compatibility).normalized())
         }
-        runCatching { afterSave(saved.settings) }
+        notifySaved(saved)
         Unit
     }
 }

@@ -13,6 +13,13 @@ import org.junit.Assert.*
 import org.junit.Test
 
 class CoreSnapshotProjectionTest {
+    @Test fun recordingImportDaysRemainsLocalWithoutChangingD13Protocol() {
+        val view = com.greatwall.callring.contracts.recording.RecordingSettingsView(false, false,
+            com.greatwall.callring.contracts.recording.CaptureMode.SYSTEM_ONLY, false, 1)
+        assertEquals(com.greatwall.callring.application.conversation.query.safeValue(view),
+            com.greatwall.callring.application.conversation.query.safeValue(view.copy(systemImportDays = 30)))
+    }
+
     @Test fun numberRuleSettingsHaveExactSafeProjection() {
         val saved = com.greatwall.callring.contracts.settings.NumberRuleSettings(listOf(com.greatwall.callring.contracts.settings.NumberRuleEntry("8",6)),17)
         assertEquals(aiObject("rules" to AiJson.Arr(listOf(aiObject("prefix" to aiString("8"), "length" to aiNumber(6)))), "revision" to aiNumber(17)),

@@ -26,13 +26,15 @@ class RecordingAssembly(
     namespace: String,
     findCall: (Long) -> RecordingCall?,
     activeCallId: () -> Long?,
-    schedule: (Long) -> Unit,
+    private val schedule: (Long) -> Unit,
     storeFactory: (() -> AndroidRecordingStore)? = null,
     metadataReader: ((File) -> Pair<Long, String>)? = null,
     private val coordinator: BusinessRevisionCoordinator = BusinessRevisionCoordinator(),
     clientFactory: (() -> AiClient)? = null,
     private val operationActive: () -> Boolean,
     private val enrichment: com.greatwall.callring.application.ports.recording.RecordingIdentityEnrichment,
+    findCalls: (String, Long) -> List<RecordingCall>,
+    private val now: () -> Long = System::currentTimeMillis,
 ) : AutoCloseable {
     private val lifetime = Any()
     private var closed = false
@@ -44,6 +46,10 @@ class RecordingAssembly(
     val store get() = owned { storeDelegate.value }
     val directory = File(context.filesDir, namespace + "_recordings")
     private val sources by lazy { SystemRecordingSource(context.contentResolver) }
+    private val scannerDelegate = lazy { com.greatwall.callring.platform.recording.SystemRecordingScanner(context.contentResolver) }
+    private val discoveryDelegate = lazy { SystemRecordingDiscovery(store,store,store::settings,
+        { coordinator.capture().values.getValue("recordingConfig") },scannerDelegate.value,coordinator,operationActive,activeCallId,findCalls,now,
+        importAudio = { call,candidate,validate,inspect -> service.importDiscovered(call,candidate,validate,inspect) }) }
     private val clientAccess = com.greatwall.callring.platform.ownership.OwnedFileAccess()
     private val clientDelegate = lazy {
         val instance = clientFactory?.invoke() ?: CompatibleAiClient(testAudio = {
@@ -58,9 +64,19 @@ class RecordingAssembly(
     private val aiSettingsDelegate = lazy { AiSettingsService(store, coordinator,
         { context.checkSelfPermission(android.Manifest.permission.RECORD_AUDIO) == android.content.pm.PackageManager.PERMISSION_GRANTED },
         { connection, transcription -> clientAccess.acquire().use { client.test(connection, transcription); clientAccess.checkOpen() } },
-        afterSave = { if (!it.recordingEnabled) context.stopService(android.content.Intent(context, com.greatwall.callring.CallCaptureService::class.java)) }, folderView = sources::describe, operationActive = operationActive) }
+        afterSave = { old, next ->
+            if(old.recordingEnabled != next.recordingEnabled || old.systemFolder != next.systemFolder || old.systemImportDays != next.systemImportDays) cancelDiscovery()
+            if (!next.recordingEnabled) context.stopService(android.content.Intent(context, com.greatwall.callring.CallCaptureService::class.java))
+            if (next.recordingEnabled && next.systemFolder != null && (old.recordingEnabled != next.recordingEnabled || old.systemFolder != next.systemFolder || old.systemImportDays != next.systemImportDays)) schedule(0)
+        }, folderView = sources::describe, operationActive = operationActive) }
     val aiSettings get() = owned { aiSettingsDelegate.value }
-    suspend fun reobserveFolder() { if (aiSettingsDelegate.isInitialized()) aiSettingsDelegate.value.reobserveFolder() }
+    suspend fun reobserveFolder() {
+        if (aiSettingsDelegate.isInitialized()) {
+            aiSettingsDelegate.value.reobserveFolder()
+            val config = store.settings()
+            if(operationActive() && config.recordingEnabled && config.systemFolder != null) runCatching { schedule(0) }
+        }
+    }
     private val archiveCommandsDelegate = lazy { RecordingArchiveCommands(store, store, coordinator) }
     private val registrationsDelegate = lazy { RecordingRegistrationService(store, coordinator) }
     private val workflowDelegate = lazy { RecordingWorkflow(store, archiveCommands, AndroidAudioTranscriber(client, File(context.cacheDir, namespace + "_ai_audio")), enrichment = enrichment) }
@@ -73,7 +89,11 @@ class RecordingAssembly(
             override fun authorize(document: DocumentRef) = sources.authorize(document.uri)
             override fun list(folder: String) = sources.list(folder)
             override fun inspect(folder: String, document: DocumentRef) = sources.inspect(folder, document)
-        }, findCall, activeCallId, schedule, coordinator, operationActive = operationActive, captureBusy = { com.greatwall.callring.entrypoint.recording.CaptureServiceActivity.busy() }) }
+        }, findCall, activeCallId, schedule, coordinator, operationActive = operationActive, captureBusy = { com.greatwall.callring.entrypoint.recording.CaptureServiceActivity.busy() },
+        discovery = discoveryDelegate.value, networkAvailable = {
+            val manager = context.getSystemService(android.net.ConnectivityManager::class.java)
+            manager.getNetworkCapabilities(manager.activeNetwork)?.hasCapability(android.net.NetworkCapabilities.NET_CAPABILITY_INTERNET) == true
+        }) }
     val archiveCommands get() = owned { archiveCommandsDelegate.value }
     val registrations get() = owned { registrationsDelegate.value }
     val workflow get() = owned { workflowDelegate.value }
@@ -83,6 +103,7 @@ class RecordingAssembly(
         return if (context.contentResolver.persistedUriPermissions.any { it.uri.toString() == folder && it.isReadPermission }) AccessState.GRANTED else AccessState.DENIED
     }
     fun cancelPendingWork() {
+        if(discoveryDelegate.isInitialized()) discoveryDelegate.value.seal()
         clientAccess.seal()
         val resources = synchronized(lifetime) {
             (if (workflowDelegate.isInitialized()) workflowDelegate.value else null) to
@@ -100,6 +121,7 @@ class RecordingAssembly(
                 if (playbackDelegate.isInitialized()) playbackDelegate.value else null,
                 if (audioDelegate.isInitialized()) audioDelegate.value else null,
                 if (storeDelegate.isInitialized()) storeDelegate.value else null,
+                if (discoveryDelegate.isInitialized()) discoveryDelegate.value else null,
             )
         }
         val workflow = resources[0] as? RecordingWorkflow
@@ -107,11 +129,14 @@ class RecordingAssembly(
         val playback = resources[2] as? AndroidRecordingPlayback
         val audio = resources[3] as? AndroidRecordingAudio
         val store = resources[4] as? AndroidRecordingStore
+        val discovery = resources[5] as? SystemRecordingDiscovery
+        discovery?.seal()
         clientAccess.seal(); audio?.seal(); playback?.seal()
         client?.cancel()
-        try { workflow?.close() }
+        try { discovery?.close(); workflow?.close() }
         finally { try { clientAccess.close() }
             finally { try { playback?.close() }
                 finally { try { audio?.close() } finally { store?.close() } } } }
     }
+    fun cancelDiscovery() { if(discoveryDelegate.isInitialized()) discoveryDelegate.value.cancel() }
 }

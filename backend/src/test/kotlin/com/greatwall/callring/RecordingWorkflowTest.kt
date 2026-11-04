@@ -303,7 +303,7 @@ class RecordingWorkflowTest {
         }
         val resumable = RecordingWorkflow(store, commands, cancellable, enrichment = testEnrichment)
         resumable.attach(1, "31234", 100, "/private/test.m4a", RecordingSource.IMPORTED, 1000, null, false)
-        resumable.processPending { stopped }
+        resumable.processPending(cancelled = { stopped })
         assertEquals(ArchiveStatus.QUEUED, store.get(1)!!.status)
         assertEquals(0, store.get(1)!!.attempts)
         assertEquals(0L, store.get(1)!!.nextAttemptAt)
@@ -321,7 +321,7 @@ class RecordingWorkflowTest {
         }
         val resumable = RecordingWorkflow(store, commands, late, enrichment = testEnrichment)
         resumable.attach(1, "31234", 100, "/private/test.m4a", RecordingSource.IMPORTED, 1000, null, false)
-        resumable.processPending { stopped }
+        resumable.processPending(cancelled = { stopped })
         assertEquals(ArchiveStatus.QUEUED, store.get(1)!!.status)
         assertNull(store.get(1)!!.analysis)
         assertEquals(0, store.get(1)!!.attempts)

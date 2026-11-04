@@ -20,7 +20,10 @@ class SyncJobService : JobService() {
         CallLogSyncJobController<JobParameters>(
             { graph.backend.statisticsStart() },
             { since, until, stopped -> graph.callLogSource.read(since, until) { stopped() || !graph.acceptsOperations() } },
-            { graph.backend.importSystemCalls(it) },
+            {
+                graph.backend.importSystemCalls(it)
+                if(graph.acceptsOperations()) runCatching { RecordingJobService.schedule(this,0) }
+            },
             { graph.backend.hasRecentPending(it) },
             { permitted(this) },
             { graph.syncScheduler.cancelObserver() },

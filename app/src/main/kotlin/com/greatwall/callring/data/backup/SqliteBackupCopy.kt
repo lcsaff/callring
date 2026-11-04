@@ -47,6 +47,23 @@ internal object SqliteBackupCopy {
         if (version == 3) com.greatwall.callring.data.database.CallringDatabase(context, candidate.path).use { it.writableDatabase }
     }
 
+    /** The decrypted candidate is private; never pass the installed/source database here. */
+    fun upgradeRecordingCandidate(candidate: File, check: () -> Unit = {}) {
+        check()
+        SQLiteDatabase.openDatabase(candidate.absolutePath, null, SQLiteDatabase.OPEN_READWRITE).use { db ->
+            val old = db.version
+            ensure(old in 1..6)
+            if (old == 6) return
+            db.beginTransaction()
+            try {
+                com.greatwall.callring.data.recording.RecordingSchema.upgrade(db, old)
+                check()
+                db.version = 6
+                db.setTransactionSuccessful()
+            } finally { db.endTransaction() }
+        }
+    }
+
     private fun normalized(schema: Schema): Schema {
         if (schema.type != "table" || schema.name != "callers") return schema
         var sql = schema.sql.replace(Regex("\\s+"), "").replace("\"callers\"", "callers")

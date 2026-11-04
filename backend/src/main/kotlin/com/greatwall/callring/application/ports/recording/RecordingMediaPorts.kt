@@ -16,7 +16,6 @@ interface RecordingIdentityReads {
     fun metadata(callId: Long, cancelled: () -> Boolean): RecordingArchiveMetadata?
     fun queryArchives(query: ArchiveListQuery, cancelled: () -> Boolean): ArchiveListPage
     fun numberMetadata(number: String, cancelled: () -> Boolean): List<NumberRecordingMetadata>
-    fun recentMetadata(since: Long, cancelled: () -> Boolean): List<RecordingArchiveMetadata>
 }
 
 /** Prepared audio owns its scratch/new file until retained after a durable attachment. */

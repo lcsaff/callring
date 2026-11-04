@@ -26,6 +26,7 @@ import com.greatwall.callring.ui.feature.ai.ScopedRecordingSettingsViewModel
     val model: ScopedRecordingSettingsViewModel = uiViewModel { ScopedRecordingSettingsViewModel(api) }
     val state by model.state.collectAsStateWithLifecycle()
     val mutation by model.mutation.collectAsStateWithLifecycle()
+    val importDaysDraft by model.importDaysDraft.collectAsStateWithLifecycle()
     var permissionError by remember { mutableStateOf<String?>(null) }
     val folder = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri ->
         if (uri != null) model.folder(DocumentRef(uri.toString()))
@@ -36,7 +37,7 @@ import com.greatwall.callring.ui.feature.ai.ScopedRecordingSettingsViewModel
     }
     RecordingSettingsScreen(state, mutation, onBack, model::refresh, model::enabled, model::captureMode,
         { try { folder.launch(null) } catch (_: ActivityNotFoundException) { permissionError = "系统没有可用的目录选择器" } },
-        { microphone.launch(Manifest.permission.RECORD_AUDIO) })
+        { microphone.launch(Manifest.permission.RECORD_AUDIO) }, importDaysDraft, model::systemImportDays)
     permissionError?.let { message -> androidx.compose.material3.AlertDialog(onDismissRequest = { permissionError = null },
         title = { androidx.compose.material3.Text("权限提示") }, text = { androidx.compose.material3.Text(message) },
         confirmButton = { androidx.compose.material3.TextButton(onClick = { permissionError = null }) { androidx.compose.material3.Text("知道了") } }) }

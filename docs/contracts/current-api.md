@@ -14,6 +14,8 @@ The architecture guard rejects operation dispatch through numeric index/ordinal,
 
 ## Approved internal signature changes
 
+System recording import window (2026-11-04): RecordingSettingsView appends systemImportDays=7 and RecordingSettingsPatch appends PatchField<Int>. Validation and field conflicts remain in AiSettingsService; external D13 projection and AI write schemas retain their reviewed shapes. Internal CallingReader.systemRecordingCalls adds a bounded number/time lookup; recording discovery uses explicit scan/import ports without widening CallringUiApi.
+
 T11 makes `ChangeFeed.snapshots(): StateFlow<InvalidationSnapshot>` mandatory and removes `DataChange`, `observe()` and nullable/default feed implementations. Every production consumer uses cumulative tokens. `ChangeSubscription.entities` is a domain-local map of nonempty entity sets; each selected domain token is the maximum of its selected entity/wide revisions. Missing selectors mean the actual whole domain, while empty selectors are rejected. All selected domains must belong to the subscription. Epoch/incarnation invalidate every token. No single-string overload or legacy notification bridge remains. External tool schemas, D identities and persisted formats are unchanged.
 
 
@@ -273,7 +275,7 @@ CallAnalysis adds department, region and fieldEvidence; CallArchive adds the dur
     ]
   },
   "recording/RecordingSettingsView.kt": {
-    "sha256": "73978a216255befd5c8dafb1f3eedacff101bbc676a6e49ab44bd7192ff3ed62",
+    "sha256": "db33e8f4b1c6cf57b0c3f3b492f005014febb5b3a6677186da90ec282db38637",
     "declarations": [
       "RecordingFolderView",
       "RecordingSettingsView",

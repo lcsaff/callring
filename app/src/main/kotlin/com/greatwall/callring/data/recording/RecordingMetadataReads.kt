@@ -171,14 +171,6 @@ internal class RecordingMetadataReads(private val db: SQLiteDatabase, private va
         cold(after) { if (accept(it.metadata)) coldDue++; coldDue < limit }
         result.values.toList()
     }
-    fun recentMetadata(since: Long): List<RecordingArchiveMetadata> = read {
-        buildList {
-            db.rawQuery("SELECT p.metadata FROM $joined WHERE p.started>=? ORDER BY p.call_id", arrayOf(since.toString())).use { c ->
-                while (c.moveToNext()) { active(); counters.add("warmMetadataRows"); add(warm(c.getString(0))) }
-            }
-            cold { if (it.metadata.startedAtEpochMillis >= since) add(it.metadata); true }
-        }.sortedBy { it.callId }
-    }
     fun numberMetadata(number: String): List<NumberRecordingMetadata> = read {
         buildList {
             fun accept(row: Minimal) {

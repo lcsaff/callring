@@ -18,7 +18,7 @@ class RecordingJobService : JobService() {
     private fun controller(graph: com.greatwall.callring.bootstrap.BackendGraph) =
         com.greatwall.callring.entrypoint.jobs.RecordingJobController(
             { stopped -> graph.recordings.service.runScheduled { stopped() || !graph.acceptsOperations() } },
-            { graph.recordings.workflow.cancelProcessing() },
+            { graph.recordings.cancelDiscovery(); graph.recordings.workflow.cancelProcessing() },
             System::currentTimeMillis, { if (graph.acceptsOperations()) schedule(this, it) }, worker,
             { Handler(Looper.getMainLooper()).post(it) },
         )
@@ -35,7 +35,6 @@ class RecordingJobService : JobService() {
         fun schedule(context: Context, delayMillis: Long = 0) {
             val scheduler = context.getSystemService(JobScheduler::class.java)
             val info = JobInfo.Builder(JOB_ID, ComponentName(context, RecordingJobService::class.java))
-                .setRequiredNetworkType(JobInfo.NETWORK_TYPE_ANY)
                 .setMinimumLatency(delayMillis.coerceAtLeast(0)).setPersisted(true)
                 .setBackoffCriteria(60_000, JobInfo.BACKOFF_POLICY_EXPONENTIAL).build()
             check(scheduler.schedule(info) == JobScheduler.RESULT_SUCCESS)

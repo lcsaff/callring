@@ -55,6 +55,7 @@ class BackendGraph(
         ensureOpen()
         RecordingAssembly(application, configuration.databaseName,
             findCall = { id -> findRecordingCall(store, id) },
+            findCalls = { number, at -> com.greatwall.callring.application.recording.findSystemRecordingCalls(store,number,at) },
             activeCallId = { recordingSession.activeCandidate(configuration.clock.millis()) },
             schedule = { delay -> RecordingJobService.schedule(application, delay) }, coordinator = coordinator, operationActive = { !closed }, enrichment = com.greatwall.callring.application.callers.CallerEnrichmentService(store, coordinator) { !closed })
     }

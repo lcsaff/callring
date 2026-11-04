@@ -37,7 +37,7 @@ class SilentCallEnrichmentDeviceTest : InstrumentationTestCase() {
         val coordinator = BusinessRevisionCoordinator()
         var core = SqliteCoreStorageResource(context, "$namespace.db")
         fun assembly() = RecordingAssembly(context, namespace, { null }, { null }, {}, coordinator = coordinator,
-            clientFactory = { client }, operationActive = { true }, enrichment = CallerEnrichmentService(core.sessions, coordinator) { true })
+            clientFactory = { client }, operationActive = { true }, findCalls = { _, _ -> emptyList() }, enrichment = CallerEnrichmentService(core.sessions, coordinator) { true })
         var runtime = assembly()
         try {
             val connection = AiConnection(url = "https://fixture.invalid/v1", apiKey = "fixture", model = "fixture")

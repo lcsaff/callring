@@ -51,6 +51,13 @@ internal class SqliteCallStore(
     }
 
     override fun correlationCalls(number: String) = rows("number=?", arrayOf(number))
+    override fun systemRecordingCalls(number: String, from: Long, to: Long): List<RawCallRecord> {
+        checkActive(false)
+        return sql.rawQuery(QueryTag.SCOPED_ROWS,setOf(SqlTable.CALLS),
+            "SELECT * FROM calls WHERE number=? AND time>=? AND time<=? AND hidden=0 ORDER BY time,id LIMIT 2",args(number,from,to)).use { cursor ->
+            buildList { while(cursor.moveToNext()) add(CallingRowCodec.decode(cursor)) }
+        }
+    }
 
     override fun statisticsContains(at: Long): Boolean {
         checkActive(false)

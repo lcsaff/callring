@@ -78,6 +78,9 @@ class RecordingArchivePagingTest {
             db.execSQL("DELETE FROM archive_projection")
             db.execSQL("DELETE FROM archive_text_chunks")
             db.execSQL("DELETE FROM archive_text_fields")
+            // Recreate the historical schema rather than retaining future import tables.
+            listOf("system_recording_sources", "system_recording_inventory", "system_recording_scan").forEach { db.execSQL("DROP TABLE $it") }
+            db.execSQL("DROP INDEX recording_events_time")
             db.version = 4
         }
         AndroidRecordingStore(context, namespace, cipher, recordingVersion = { 0 }).use { store ->

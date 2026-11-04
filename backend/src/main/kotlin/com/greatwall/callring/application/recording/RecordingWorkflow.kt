@@ -96,7 +96,7 @@ class RecordingWorkflow(
     fun nextRunAt(): Long? { check(!closed) { "recording.closed" }; return store.earliestPendingAt { closed } }
 
     /** Candidate pages are consumed before network work; no storage cursor spans an AI request. */
-    fun processPending(cancelled: () -> Boolean = { false }) {
+    fun processPending(cancelled: () -> Boolean = { false }, allowNetwork: Boolean = true) {
         val cutoff = now()
         var after: Long? = null
         while (!cancelled() && !closed) {
@@ -105,7 +105,7 @@ class RecordingWorkflow(
             for (item in candidates) {
                 if (cancelled() || closed) return
                 after = item.callId
-                if (synchronized(activityFence) { !closed && running.add(item.callId) }) try { process(item, cancelled) } finally {
+                if (synchronized(activityFence) { !closed && running.add(item.callId) }) try { process(item, cancelled, allowNetwork) } finally {
                     cancelledOperations.remove(item.callId); activeClients.remove(item.callId)
                     synchronized(activityFence) { running.remove(item.callId); activityFence.notifyAll() }
                 }
@@ -113,7 +113,7 @@ class RecordingWorkflow(
         }
     }
 
-    private fun process(initial: RecordingCandidate, cancelled: () -> Boolean) {
+    private fun process(initial: RecordingCandidate, cancelled: () -> Boolean, allowNetwork: Boolean) {
         var current = store.get(initial.callId) ?: return
         if (current.generation != initial.generation) return
         val config = store.settings()
@@ -121,6 +121,7 @@ class RecordingWorkflow(
         cancelledOperations[current.callId] = cancellation
         val isCancelled = { closed || cancelled() || cancellation.get() }
         val localOnly = current.status in setOf(ArchiveStatus.ENRICHING, ArchiveStatus.ENRICHMENT_FAILED)
+        if(!localOnly && !allowNetwork) return
         val operation by lazy { client.operation(isCancelled).also { activeClients[current.callId] = it } }
         fun update(value: CallArchive): Boolean {
             if (closed) return false

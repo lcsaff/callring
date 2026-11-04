@@ -7,6 +7,7 @@ internal fun recordingSettingsScopeValues(v: RecordingSettings): Map<String, Any
     put("recordingConfig:recordingEnabled", v.recordingEnabled)
     put("recordingConfig:automaticAnalysis", v.automaticAnalysis)
     put("recordingConfig:captureMode", v.captureMode)
+    put("recordingConfig:systemImportDays", v.systemImportDays)
     put("recordingConfig:systemFolder", v.systemFolder)
     listOf(AiSlot.ANALYSIS to v.analysis, AiSlot.TRANSCRIPTION to v.transcription).forEach {
         (slot, c) ->

@@ -22,6 +22,8 @@ interface CallingReader {
     fun providerCalls(logIds: Set<String>): List<RawCallRecord>
 
     fun correlationCalls(number: String): List<RawCallRecord>
+    /** At most two identities are enough to reject an ambiguous recording association. */
+    fun systemRecordingCalls(number: String, from: Long, to: Long): List<RawCallRecord>
 }
 
 interface CallingWriter : CallingReader {

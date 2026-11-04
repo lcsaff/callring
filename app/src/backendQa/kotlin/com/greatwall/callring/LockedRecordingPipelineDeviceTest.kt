@@ -34,7 +34,7 @@ class LockedRecordingPipelineDeviceTest : InstrumentationTestCase() {
             }
         }
         fun assembly() = RecordingAssembly(context, namespace, findCall = { error("No statistics dependency") },
-            activeCallId = { null }, schedule = {}, clientFactory = { client }, operationActive = { true }, enrichment = testEnrichment)
+            activeCallId = { null }, schedule = {}, clientFactory = { client }, operationActive = { true }, findCalls = { _, _ -> emptyList() }, enrichment = testEnrichment)
         var runtime = assembly()
         try {
             val connection = AiConnection(url = "https://fixture.invalid/v1", apiKey = "synthetic-device-test", model = "fixture")

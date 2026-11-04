@@ -228,30 +228,101 @@ class AiSettingsViewModel(
     }
 }
 
-/** Recording settings edited outside the AI page; every change is an immediate single-field patch. */
+/** Recording controls share a serial writer; numeric drafts coalesce after 500 ms. */
 class ScopedRecordingSettingsViewModel(
     private val api: CallringUiApi,
     testScope: CoroutineScope? = null,
 ) : UiViewModel(testScope) {
     private var base: RecordingSettingsView? = null
+    private val draft = MutableStateFlow<String?>(null)
+    val importDaysDraft = draft.asStateFlow()
+    private var dirty = false
+    private var draftBase: RecordingSettingsView? = null
+    private var rebaseDraftOnLoad = false
+    private var debounce: Job? = null
+    private val mutableMutation = MutableStateFlow(MutationState())
+    val mutation = mutableMutation.asStateFlow()
+    private data class Pending(val patch: RecordingSettingsPatch = RecordingSettingsPatch(), val text: String? = null, val folder: DocumentRef? = null)
+    private val queue = ArrayDeque<Pending>()
+    private var writing = false
     private val loader = ObservedQuery(scope, api.changes, ChangeSubscription(setOf(DataDomain.RECORDING_SETTINGS, DataDomain.RUNTIME), mapOf(DataDomain.RUNTIME to setOf("recordingFolder"))),
-        load = { api.aiSettings.getRecordingView() }, onSuccess = { base = it })
+        load = { api.aiSettings.getRecordingView() }, onSuccess = {
+            if (base == null || it.revision >= base!!.revision) base = it
+            if(rebaseDraftOnLoad) { draftBase = base; rebaseDraftOnLoad = false }
+            if (!dirty) draft.value = base!!.systemImportDays.toString()
+        })
     val state = loader.state
-    private val writer = MutationRunner(scope)
-    val mutation = writer.state
     init { loader.start(scope) }
-    fun refresh() = loader.request(force = true)
+    fun refresh() { rebaseDraftOnLoad = true; loader.request(force = true) }
 
     fun enabled(value: Boolean) = patch(RecordingSettingsPatch(recordingEnabled = PatchField.Set(value)))
-
     fun captureMode(mode: CaptureMode) = patch(RecordingSettingsPatch(captureMode = PatchField.Set(mode)))
 
-    private fun patch(patch: RecordingSettingsPatch) {
-        val original = base ?: return
-        writer.run({ api.aiSettings.patchRecording(original, patch) }, "录音设置已更新") {
-            base = it
+    fun systemImportDays(text: String) {
+        if(!dirty) draftBase = base
+        draft.value = text
+        dirty = true
+        debounce?.cancel()
+        val days = text.takeIf { it.isNotEmpty() && it.all { c -> c in '0'..'9' } }?.toIntOrNull()?.takeIf { it > 0 }
+        if (days == null) {
+            mutableMutation.value = mutableMutation.value.copy(error = ApiError(ErrorCode.VALIDATION, "请输入大于 0 的整数天数"))
+            return
+        }
+        mutableMutation.value = mutableMutation.value.copy(error = null)
+        debounce = scope.launch {
+            delay(500)
+            // Keep at most the latest numeric draft behind any in-flight write.
+            queue.removeAll { it.text != null }
+            patch(RecordingSettingsPatch(systemImportDays = PatchField.Set(days)), text)
         }
     }
 
-    fun folder(document: DocumentRef) = writer.run({ api.recordings.setSystemFolder(document) }, "系统录音目录已授权")
+    private fun patch(patch: RecordingSettingsPatch, submittedDraft: String? = null) {
+        enqueue(Pending(patch, submittedDraft))
+    }
+
+    private fun enqueue(pending: Pending) {
+        if (base == null) return
+        queue.addLast(pending)
+        if (writing) return
+        writing = true
+        scope.launch {
+            try {
+                while (queue.isNotEmpty()) {
+                    val (next, text, folder) = queue.removeFirst()
+                    // A later invalid draft must never cause an older queued numeric edit to commit.
+                    if (text != null && text != draft.value) continue
+                    val original = (if(text != null) draftBase else base) ?: continue
+                    mutableMutation.value = mutableMutation.value.copy(busy = true, error = null, message = null)
+                    val result = try {
+                        if (folder == null) api.aiSettings.patchRecording(original, next)
+                        else when (val saved = api.recordings.setSystemFolder(folder)) {
+                            is ApiResult.Success -> api.aiSettings.getRecordingView()
+                            is ApiResult.Failure -> saved
+                        }
+                    }
+                    catch (cancelled: CancellationException) { throw cancelled }
+                    catch (_: Exception) { ApiResult.Failure(ApiError(ErrorCode.INTERNAL, "录音设置保存失败", retryable = true)) }
+                    when (result) {
+                        is ApiResult.Success -> {
+                            if(base == null || result.value.revision >= base!!.revision) base = result.value
+                            if(text != null) draftBase = result.value
+                            if (text != null && text == draft.value) { dirty = false; draftBase = null; draft.value = base!!.systemImportDays.toString() }
+                            mutableMutation.value = mutableMutation.value.copy(error = null, message = null)
+                        }
+                        is ApiResult.Failure -> {
+                            val error = if (result.error.code == ErrorCode.CONFLICT) result.error.copy(message = "设置已更新，当前输入已保留，请重新加载后修改。") else result.error
+                            mutableMutation.value = mutableMutation.value.copy(error = error, message = null)
+                            if (error.code == ErrorCode.CONFLICT) loader.request(force = true)
+                        }
+                    }
+                }
+            } finally {
+                writing = false
+                mutableMutation.value = mutableMutation.value.copy(busy = false)
+            }
+        }
+    }
+
+    fun folder(document: DocumentRef) = enqueue(Pending(folder = document))
 }

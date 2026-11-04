@@ -39,6 +39,8 @@ class RecordingService(
     private val coordinator: BusinessRevisionCoordinator,
     private val operationActive: () -> Boolean,
     private val captureBusy: () -> Boolean,
+    private val discovery: com.greatwall.callring.application.ports.recording.SystemRecordingDiscoveryRunner,
+    private val networkAvailable: () -> Boolean,
 ) : RecordingApi, com.greatwall.callring.application.callers.NumberDeletionRecordings,
     com.greatwall.callring.application.ports.storage.StorageArchiveAccess {
     private val playbackGeneration = AtomicLong()
@@ -104,7 +106,7 @@ class RecordingService(
         importFile(callId, number, startedAt, document, source, callerActive = { caller.isActive })
     }
     private fun importFile(callId: Long, number: String, startedAt: Long, document: DocumentRef,
-        source: RecordingSource, automatic: Boolean = false, command: CommandContext? = null, callerActive: () -> Boolean = { true }): CallArchive {
+        source: RecordingSource, automatic: Boolean = false, command: CommandContext? = null, callerActive: () -> Boolean = { true }, validatePrepared: () -> Unit = {}): CallArchive {
         val saved = reads.metadata(callId) { false }?.takeIf { it.number == number && it.startedAtEpochMillis == startedAt }
         val request = requireNotNull(if (callId < 0) reads.findRecording(callId) else saved?.let {
             RecordingCall(it.callId, it.number, it.startedAtEpochMillis, it.durationMillis?.div(1000))
@@ -117,6 +119,7 @@ class RecordingService(
         fun checkCaller() { if (!callerActive()) throw CancellationException("recording.cancelled") }
         checkCaller()
         audio.prepareImport(document) { !callerActive() || (command != null && !command.active()) }.use { prepared ->
+            validatePrepared()
             val archive = coordinator.guard(command) {
                 requireOperationActive(operationActive)
                 checkCaller()
@@ -126,6 +129,18 @@ class RecordingService(
             scheduleArchive(archive)
             return archive
         }
+    }
+    /** The discovery runner supplies the same frozen source/settings checks before and after copy. */
+    fun importDiscovered(call: RecordingCall, candidate: com.greatwall.callring.application.ports.recording.SystemRecordingCandidate, validate: () -> Unit, inspect: () -> RecordingFile?) {
+        val file = candidate.entry.file
+        fun current() {
+            validate()
+            val observed = inspect() ?: throw java.io.IOException("recording.file_missing")
+            check(observed.size == file.size && observed.modifiedKnown && observed.modifiedAt == file.modifiedAt && observed.name == file.name) { "recording.file_changed" }
+        }
+        current()
+        importFile(call.id,call.number,call.startedAt,DocumentRef(file.uri),RecordingSource.SYSTEM,automatic=true,
+            callerActive={ try { validate(); true } catch(_: CancellationException) { false } }, validatePrepared=::current)
     }
     fun attachCapture(call: RecordingCall, reference: AudioReference): CallArchive {
         val initialGeneration = state.generation(call.id)
@@ -248,8 +263,12 @@ class RecordingService(
     } }
     override suspend fun setSystemFolder(document: DocumentRef) = folderWith(document, null)
     private suspend fun folderWith(document: DocumentRef, command: CommandContext?) = result {
+        val previousFolder = settings().systemFolder
         directory.authorize(document)
         (if (command == null) aiSettings else aiSettings.bound(command)).setSystemFolder(document.uri)
+        // Regranting the same tree can restore permission without changing a stored setting.
+        runCatching { aiSettings.reobserveFolder() }
+        if(previousFolder == document.uri && settings().recordingEnabled) runCatching { schedule(0) }
         Unit
     }
     fun bound(command: CommandContext): RecordingApi = object : RecordingApi by this {
@@ -263,44 +282,16 @@ class RecordingService(
     override suspend fun systemRecordings() = result { settings().systemFolder?.let(directory::list).orEmpty() }
     override suspend fun inspectSystemRecording(document:DocumentRef)=result {val folder=settings().systemFolder?:throw BackendFailure(ApiError(ErrorCode.NOT_FOUND,"recording.folder_required"));directory.inspect(folder,document)?:throw BackendFailure(ApiError(ErrorCode.NOT_FOUND,"recording.file_missing"))}
 
-    /** Called after phone state settles. Unknown filename formats stay available for manual selection. */
-    fun discoverSystemRecordings(cancelled: () -> Boolean = { false }) {
-        val config = settings()
-        val folder = config.systemFolder
-        if (!config.recordingEnabled || folder == null) return
-        val since = System.currentTimeMillis() - 12 * 60 * 60 * 1000L
-        val metadata = reads.recentMetadata(since, cancelled)
-        val calls = metadata.map {
-            RecordingCall(it.callId, it.number, it.startedAtEpochMillis, it.durationMillis?.div(1000))
-        }
-        if (cancelled()) return
-        val files = directory.list(folder)
-        calls.forEach { call ->
-            if (cancelled()) return
-            val existing = reads.metadata(call.id, cancelled)
-            if ((existing?.hasAudio == true && existing.source != RecordingSource.MICROPHONE) || state.isDeleted(call.id)) return@forEach
-            noteMissing(call)
-            // A file's modified timestamp cannot establish the call's start or number. Require
-            // an explicit filename number and timestamp; reject ambiguous candidates both ways.
-            val candidates = files.filter { matches(it, call) }
-            val candidate = candidates.singleOrNull() ?: return@forEach
-            if (calls.count { matches(candidate, it) } != 1) return@forEach
-            try { importFile(call.id, call.number, call.startedAt, DocumentRef(candidate.uri), RecordingSource.SYSTEM, automatic = true, callerActive = { !cancelled() }) }
-            catch (_: Exception) { /* Keep unmatched or inaccessible audio available for explicit association. */ }
-        }
-    }
-    private fun matches(file: RecordingFile, call: RecordingCall): Boolean {
-        val number = Regex("(?<![0-9])" + Regex.escape(call.number) + "(?![0-9])")
-        if (!number.containsMatchIn(file.name)) return false
-        val timestamp = Regex("(?<![0-9])(20[0-9]{6})[_-]([0-9]{6})(?![0-9])").find(file.name) ?: return false
-        val instant = runCatching { java.time.LocalDateTime.parse(timestamp.groupValues[1] + timestamp.groupValues[2],
-            java.time.format.DateTimeFormatter.ofPattern("yyyyMMddHHmmss")).atZone(java.time.ZoneId.systemDefault()).toInstant().toEpochMilli() }.getOrNull() ?: return false
-        return kotlin.math.abs(instant - call.startedAt) <= 3000
-    }
+    fun discoverSystemRecordings(cancelled: () -> Boolean = { false }): Long? = discovery.discover(cancelled)
     fun runScheduled(cancelled: () -> Boolean): Long? {
-        // Directory access is independent of already imported durable work.
-        if (!cancelled()) runCatching { discoverSystemRecordings(cancelled) }
-        if (!cancelled()) workflow().processPending(cancelled)
-        return workflow().nextRunAt()
+        val nextDiscovery = if (!cancelled()) try { discoverSystemRecordings(cancelled) }
+            catch(_: CancellationException) { if(cancelled() || !operationActive()) return null else null }
+            catch(_: SecurityException) { null }
+            catch(_: Exception) { System.currentTimeMillis() + 60_000 } else null
+        val online = networkAvailable()
+        if (!cancelled()) workflow().processPending(cancelled, allowNetwork = online)
+        if(cancelled()) return null
+        val pending = workflow().nextRunAt()?.let { if(online) it else maxOf(it,System.currentTimeMillis() + 60_000) }
+        return listOfNotNull(nextDiscovery,pending).minOrNull()
     }
 }

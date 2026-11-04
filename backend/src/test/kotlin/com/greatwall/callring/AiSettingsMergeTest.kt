@@ -44,6 +44,63 @@ class AiSettingsMergeTest {
     private fun ApiResult<*>.failure() = (this as ApiResult.Failure).error
     private fun valid() = AiConnection(url = "https://example.com/v1", model = "fixture", apiKey = "private-fixture")
 
+    @Test fun systemImportDaysUsesFieldConflictsValidationAndPreciseNoop() = runBlocking {
+        val f = Fixture()
+        val base = f.service.getRecordingView().ok()
+        assertEquals(7, base.systemImportDays)
+        val changed = f.service.patchRecording(base, RecordingSettingsPatch(systemImportDays = PatchField.Set(Int.MAX_VALUE))).ok()
+        assertEquals(Int.MAX_VALUE, changed.systemImportDays)
+        assertEquals(Int.MAX_VALUE, f.settings.current.systemImportDays)
+        assertEquals(1L, f.coordinator.marker())
+        f.service.patchRecording(changed, RecordingSettingsPatch(systemImportDays = PatchField.Set(Int.MAX_VALUE))).ok()
+        assertEquals(1, f.settings.writes)
+        val kept = f.service.patchRecording(base, RecordingSettingsPatch(recordingEnabled = PatchField.Set(true))).ok()
+        assertEquals(Int.MAX_VALUE, kept.systemImportDays)
+        assertEquals(ErrorCode.CONFLICT, f.service.patchRecording(base, RecordingSettingsPatch(systemImportDays = PatchField.Set(14))).failure().code)
+        assertEquals(ErrorCode.CONFLICT, f.service.patchCombined(base, RecordingSettingsPatch(systemImportDays = PatchField.Set(14)), f.service.getAiView().ok(), AiSettingsPatch(), LocalSecretChange.Keep, LocalSecretChange.Keep).failure().code)
+        for (invalid in listOf(0, -1, Int.MIN_VALUE)) {
+            assertEquals(ErrorCode.VALIDATION, f.service.patchRecording(kept, RecordingSettingsPatch(systemImportDays = PatchField.Set(invalid))).failure().code)
+        }
+        f.service.patchCombined(kept, RecordingSettingsPatch(systemImportDays = PatchField.Set(1)), f.service.getAiView().ok(), AiSettingsPatch(), LocalSecretChange.Keep, LocalSecretChange.Keep).ok()
+        assertEquals(1, f.settings.current.systemImportDays)
+    }
+
+    @Test fun saveCallbackReceivesOnlyActualTransitionsIncludingFolderAndIgnoresFailure() = runBlocking {
+        val f = Fixture()
+        val transitions = mutableListOf<Pair<RecordingSettings, RecordingSettings>>()
+        val service = AiSettingsService(f.settings, f.coordinator, { true }, { _, _ -> },
+            afterSave = { old, next -> transitions += old to next; error("scheduling.failed") },
+            folderView = { RecordingFolderView(null, AccessState.NOT_REQUIRED) }, operationActive = { true })
+        val base = service.getRecordingView().ok()
+        service.patchRecording(base, RecordingSettingsPatch()).ok()
+        assertTrue(transitions.isEmpty())
+        service.patchRecording(base, RecordingSettingsPatch(systemImportDays = PatchField.Set(14))).ok()
+        assertEquals(7, transitions.single().first.systemImportDays)
+        assertEquals(14, transitions.single().second.systemImportDays)
+        service.setSystemFolder("content://folder")
+        service.setSystemFolder("content://folder")
+        assertEquals(2, transitions.size)
+        assertEquals("content://folder", transitions.last().second.systemFolder)
+    }
+
+    @Test fun importDaysPublishesOnlyRecordingSettingsAndRepeatedValuePreservesFeedAndRevision() = runBlocking {
+        val f = Fixture()
+        val feed: com.greatwall.callring.contracts.change.ChangeFeed = object : com.greatwall.callring.contracts.change.ChangeFeed {
+            override fun snapshots() = f.coordinator.invalidations.snapshots
+        }
+        val before = feed.snapshots().value
+        val saved = f.service.patchRecording(f.service.getRecordingView().ok(), RecordingSettingsPatch(systemImportDays = PatchField.Set(30))).ok()
+        val changed = feed.snapshots().value
+        assertEquals(before.revision + 1, changed.revision)
+        assertEquals(setOf(com.greatwall.callring.contracts.change.DataDomain.RECORDING_SETTINGS), changed.domains.keys)
+        assertEquals(changed.revision, f.coordinator.lastChange(setOf("recordingConfig:systemImportDays")))
+        assertEquals(0L, f.coordinator.lastChange(setOf("ai:budget", "recordingConfig:captureMode")))
+        val repeated = f.service.patchRecording(saved, RecordingSettingsPatch(systemImportDays = PatchField.Set(30))).ok()
+        assertEquals(saved.revision, repeated.revision)
+        assertEquals(changed, feed.snapshots().value)
+        assertEquals(1, f.settings.writes)
+    }
+
     @Test fun platformFolderReobserveUsesExistingUriWithoutReReadingOrDecryptingConfiguration() = runBlocking {
         val settings = Settings().apply { current = current.copy(systemFolder = "content://fixture/tree") }
         val coordinator = BusinessRevisionCoordinator(); var probes = 0; var access = AccessState.GRANTED
@@ -140,10 +197,10 @@ class AiSettingsMergeTest {
         } finally { release.countDown() }
     }
 
-    @Test fun recordingAfterSaveFailureReportsExistingFailureAfterCommitButCombinedIsBestEffort() = runBlocking {
+    @Test fun recordingAndCombinedAfterSaveAreBestEffortAfterCommit() = runBlocking {
         val f = Fixture()
-        val service = AiSettingsService(f.settings, f.coordinator, { true }, { _, _ -> }, afterSave = { error("fixture.after_save") }, folderView = { RecordingFolderView(null, AccessState.NOT_REQUIRED) }, operationActive = { true })
-        assertEquals(ErrorCode.STORAGE_FAILURE, service.patchRecording(service.getRecordingView().ok(), RecordingSettingsPatch(recordingEnabled = PatchField.Set(true))).failure().code)
+        val service = AiSettingsService(f.settings, f.coordinator, { true }, { _, _ -> }, afterSave = { _, _ -> error("fixture.after_save") }, folderView = { RecordingFolderView(null, AccessState.NOT_REQUIRED) }, operationActive = { true })
+        service.patchRecording(service.getRecordingView().ok(), RecordingSettingsPatch(recordingEnabled = PatchField.Set(true))).ok()
         assertTrue(f.settings.current.recordingEnabled)
         assertEquals(1L, f.coordinator.marker())
         service.patchCombined(service.getRecordingView().ok(), RecordingSettingsPatch(recordingEnabled = PatchField.Set(false)), service.getAiView().ok(), AiSettingsPatch(), LocalSecretChange.Keep, LocalSecretChange.Keep).ok()

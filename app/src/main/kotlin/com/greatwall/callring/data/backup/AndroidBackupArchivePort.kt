@@ -107,11 +107,12 @@ internal class AndroidBackupArchivePort(
             val created = manifest.getLong("created")
             val includeAudio = manifest.getBoolean("audio")
             SqliteBackupCopy.upgradeCoreCandidate(context, File(stage, "core.db"))
+            SqliteBackupCopy.upgradeRecordingCandidate(File(stage, "recording.db"), checkCancellation)
             checkCancellation()
             SqliteBackupCopy.validate(File(stage, "core.db"), sourceCore)
             SqliteBackupCopy.validate(File(stage, "recording.db"), sourceRecording)
             CoreBackupValidation.validate(File(stage, "core.db"), checkCancellation)
-            validateReferences(stage)
+            validateReferences(stage, checkCancellation)
             val prefs = readSmallJson(File(stage, "preferences.json"))
             validatePreferences(prefs)
             val custom = prefs.getJSONObject("ringtone").optBoolean("custom", false)
@@ -211,6 +212,9 @@ internal class AndroidBackupArchivePort(
     private fun transformArchives(file: File, stage: File, includeAudio: Boolean, exporting: Boolean, check: () -> Unit): Pair<Long, Long> {
         var files = 0L; var bytes = 0L
         SQLiteDatabase.openDatabase(file.absolutePath, null, SQLiteDatabase.OPEN_READWRITE).use { db ->
+            // Scrub private provider URIs from the portable file, including freed SQLite pages.
+            db.rawQuery("PRAGMA secure_delete=ON", null).use { ensure(it.moveToFirst() && it.getInt(0) == 1) }
+            com.greatwall.callring.data.recording.SystemRecordingImports.clearTransient(db)
             db.execSQL("CREATE TEMP TABLE backup_audio_references(path TEXT PRIMARY KEY)")
             eachArchive(db, check) { id, fields ->
                 ensure(fields.getValue("id").scalar?.toLongOrNull() == id)
@@ -276,7 +280,7 @@ internal class AndroidBackupArchivePort(
         }
     }
 
-    private fun validateReferences(stage: File) {
+    private fun validateReferences(stage: File, check: () -> Unit) {
         SQLiteDatabase.openDatabase(File(stage, "recording.db").absolutePath, null, SQLiteDatabase.OPEN_READWRITE).use { db ->
             db.execSQL("ATTACH DATABASE ? AS backup_core", arrayOf(File(stage, "core.db").absolutePath))
             try {
@@ -286,8 +290,27 @@ internal class AndroidBackupArchivePort(
                     "SELECT 1 FROM archives a WHERE a.call_id>0 AND NOT EXISTS(SELECT 1 FROM backup_core.calls c WHERE c.id=a.call_id) LIMIT 1",
                     "SELECT 1 FROM recording_statistics_links WHERE statistics_id<=0 OR length(session_id)=0 LIMIT 1",
                     "SELECT 1 FROM recording_events WHERE id<=0 LIMIT 1",
+                    "SELECT 1 FROM system_recording_sources WHERE typeof(source_key)<>'text' OR length(trim(source_key))=0 OR typeof(archive_id)<>'integer' OR archive_id=0 OR archive_id=-9223372036854775808 OR typeof(number)<>'text' OR length(number)=0 OR typeof(started)<>'integer' OR typeof(completed)<>'integer' OR completed NOT IN (0,1) LIMIT 1",
+                    "SELECT 1 FROM system_recording_sources s WHERE NOT EXISTS(SELECT 1 FROM archives a WHERE a.call_id=s.archive_id) AND NOT EXISTS(SELECT 1 FROM deleted_archives d WHERE d.call_id=s.archive_id) LIMIT 1",
+                    "SELECT 1 FROM system_recording_sources s WHERE s.archive_id<0 AND NOT EXISTS(SELECT 1 FROM recording_events e WHERE e.id=-s.archive_id) LIMIT 1",
+                    "SELECT 1 FROM system_recording_sources s WHERE s.archive_id>0 AND NOT EXISTS(SELECT 1 FROM backup_core.calls c WHERE c.id=s.archive_id) LIMIT 1",
                 )
                 checks.forEach { sql -> db.rawQuery(sql, null).use { ensure(!it.moveToFirst()) } }
+                db.rawQuery("SELECT source_key,archive_id,number,started FROM system_recording_sources ORDER BY source_key", null).use { rows ->
+                    while (rows.moveToNext()) {
+                        check()
+                        val key = rows.getString(0)
+                        ensure(key.isNotBlank() && key.none { it == ':' || it == '/' || it == '\\' })
+                        val number = rows.getString(2)
+                        ensure(number.length in 1..30 && number.all { it in '0'..'9' })
+                        val id = rows.getLong(1)
+                        val sql = if (id < 0) "SELECT number,started FROM recording_events WHERE id=?" else "SELECT number,time FROM backup_core.calls WHERE id=?"
+                        db.rawQuery(sql, arrayOf((if (id < 0) -id else id).toString())).use { target ->
+                            ensure(target.moveToFirst())
+                            ensure(target.getString(0).filter(Char::isDigit) == number && target.getLong(1) == rows.getLong(3))
+                        }
+                    }
+                }
             } finally { db.execSQL("DETACH DATABASE backup_core") }
         }
     }

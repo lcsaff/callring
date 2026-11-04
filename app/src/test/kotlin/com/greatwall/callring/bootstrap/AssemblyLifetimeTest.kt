@@ -136,7 +136,7 @@ class AssemblyLifetimeTest {
             entered.countDown()
             check(release.await(5, java.util.concurrent.TimeUnit.SECONDS))
             store
-        }, operationActive = { true }, enrichment = testEnrichment)
+        }, operationActive = { true }, findCalls = { _, _ -> emptyList() }, enrichment = testEnrichment)
         val failures = java.util.concurrent.ConcurrentLinkedQueue<Throwable>()
         val reader = Thread { try { assembly.store } catch (e: Throwable) { failures.add(e) } }.apply { start() }
         assertTrue(entered.await(5, java.util.concurrent.TimeUnit.SECONDS))

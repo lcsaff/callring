@@ -28,8 +28,10 @@ data class RecordingSettings(
     val systemFolder: String? = null,
     val conversationBudget: ConversationBudget = ConversationBudget(),
     val conversationCompatibility: ConversationCompatibility = ConversationCompatibility.AUTO,
+    val systemImportDays: Int = 7,
 ) {
     fun validate() {
+        require(systemImportDays > 0) { "recording.invalid_import_days" }
         conversationBudget.validate()
         require(transcription.protocol == AiProtocol.OPENAI) { "ai.transcription_requires_openai" }
         require(transcription.thinkingMode == ThinkingMode.DISABLED) { "ai.transcription_thinking_disabled" }

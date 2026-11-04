@@ -34,6 +34,12 @@ class RecordingCallAccessTest {
         val context = RuntimeEnvironment.getApplication()
         val name = "recording-target-$size"
         SqliteCoreStorageResource(context, name).use { LocalAccessFixture.seed(it, size) }
+        val lookupProbe = SqlAccessProbe()
+        SqliteCoreStorageResource(context,name,lookupProbe).use { resource ->
+            val matches = com.greatwall.callring.application.recording.findSystemRecordingCalls(resource.sessions,LocalAccessFixture.TARGET,LocalAccessFixture.at)
+            assertEquals(listOf(1L),matches.map { it.id })
+            assertEquals(1L,lookupProbe.snapshot().sumOf { it.consumedRows })
+        }
         val probe = SqlAccessProbe()
         val config = BackendConfiguration(AppearanceSettings(ThemeSelection.PRESET, "default", null, ColorMode.FOLLOW_SYSTEM),
             databaseName = name, sqlAccessProbe = probe)
