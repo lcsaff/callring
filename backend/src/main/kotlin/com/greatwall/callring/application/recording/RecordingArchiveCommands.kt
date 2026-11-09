@@ -34,6 +34,12 @@ class RecordingArchiveCommands(
         else { block(); true }
     }
 
+    fun offlineStateChanged(callId: Long) {
+        coordinator.publishRuntime(setOf("runtime:offlineTranscription:$callId"))
+    }
+
+    fun <T> guardOfflineState(block: () -> T): T = coordinator.guard(block = block)
+
     fun delete(callId: Long, command: CommandContext?, playbackStopped: Boolean): Boolean = coordinator.guard(command) {
         val deleted = state.isDeleted(callId)
         val previous = mutations.delete(callId)

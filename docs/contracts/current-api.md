@@ -62,6 +62,8 @@ CallerProfile/CallerDraft expose selfReportedPosition, region and four-field ide
 
 CallAnalysis adds department, region and fieldEvidence; CallArchive adds the durable identity baseline/source generation. The baseline explicitly marks ineligible recording numbers; these bypass profile storage while transcription and analysis continue, and legacy baselines default to eligible. ENRICHING/ENRICHMENT_FAILED distinguish local completion from paid analysis. Old JSON reads with empty new claims/evidence and no baseline, so it is not silently backfilled. Database version 4 upgrades legacy callers without changing department/position/whitelist, and historical core backups migrate in private staging before schema and content verification.
 
+Offline transcription adds the internal `RecordingApi.transcribeOffline` and `cancelOfflineTranscription` commands. The detail projection carries transient run state, and `importRecording` accepts a default-false offline-only intent. These changes retain the stored archive encoding and external AI operation schema.
+
 <!-- contract-inventory -->
 ```json
 {
@@ -257,11 +259,13 @@ CallAnalysis adds department, region and fieldEvidence; CallArchive adds the dur
     ]
   },
   "recording/RecordingApi.kt": {
-    "sha256": "73042ca00ffb2a40fee3c288c9acd8411ee6bf85805ce2e9383d0441fa5e545e",
+    "sha256": "070c06628aadc41c01d2496070b2d8360163c38849a973bb187d3cd83b12a3d0",
     "declarations": [
       "CaptureMode",
       "ArchiveStatus",
       "RecordingSource",
+      "OfflineTranscriptionPhase",
+      "OfflineTranscriptionRun",
       "CallerIdentityBaseline",
       "CallAnalysis",
       "CallArchive",

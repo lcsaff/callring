@@ -16,8 +16,8 @@ class ArchiveViewModel(private val api: RecordingApi, private val callId: Long,
     val state = mutableState.asStateFlow()
     private var canonicalId = callId
     private var requestedToken: InvalidationToken? = null
-    private fun subscription(id: Long = canonicalId) = ChangeSubscription(setOf(DataDomain.RECORDING_ARCHIVES),
-        mapOf(DataDomain.RECORDING_ARCHIVES to buildSet {
+    private fun subscription(id: Long = canonicalId) = ChangeSubscription(setOf(DataDomain.RECORDING_ARCHIVES, DataDomain.RUNTIME),
+        mapOf(DataDomain.RUNTIME to setOf("offlineTranscription:$id"), DataDomain.RECORDING_ARCHIVES to buildSet {
             add(id.toString())
             if (callId > 0) add("statistics:$callId")
         }))
@@ -61,11 +61,19 @@ class ArchiveViewModel(private val api: RecordingApi, private val callId: Long,
     }
     fun refresh() = loader.request(force = true)
     fun listSystem() = fileLoader.load { api.systemRecordings() }
-    fun import(document: DocumentRef, source: RecordingSource = RecordingSource.IMPORTED) = writer.run(
-        { api.importRecording(callId, number, startedAt, document, source) }, "录音已导入") {}
+    fun import(document: DocumentRef, source: RecordingSource = RecordingSource.IMPORTED, offlineOnly: Boolean = false) = writer.run(
+        { api.importRecording(callId, number, startedAt, document, source, offlineOnly) }, "录音已导入") {}
+    fun transcribeOffline() = writer.run({ api.transcribeOffline(callId) }, "") {}
+    fun cancelOffline(runId: Long) = writer.run({ api.cancelOfflineTranscription(callId, runId) }, "") {}
     fun retry() {
         val local = state.value.data?.status in setOf(ArchiveStatus.ENRICHING, ArchiveStatus.ENRICHMENT_FAILED)
-        writer.run({ api.retry(callId) }, if (local) "已提交档案补全；不调用模型" else "已提交分析；录音和文字将发送到配置的服务") {}
+        val hasTranscript = !state.value.data?.transcript.isNullOrBlank()
+        val message = when {
+            local -> "已提交档案补全（不调用模型）"
+            hasTranscript -> "已提交分析，文字将发送到配置的服务"
+            else -> "已提交分析，录音和文字将发送到配置的服务"
+        }
+        writer.run({ api.retry(callId) }, message) {}
     }
     fun delete() = writer.run({ api.delete(callId) }, "本次归档已删除") {}
     fun play() = writer.run({ api.play(callId) }, "正在播放")

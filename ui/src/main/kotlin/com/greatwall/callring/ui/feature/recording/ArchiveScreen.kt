@@ -17,7 +17,8 @@ import com.greatwall.callring.ui.state.*
 @Composable fun ArchiveScreen(state: LoadState<CallArchive?>, files: LoadState<List<RecordingFile>>, mutation: MutationState,
     onBack: () -> Unit, onRefresh: () -> Unit, onImport: () -> Unit, onList: () -> Unit, onSelect: (RecordingFile) -> Unit,
     onRetry: () -> Unit, onDelete: () -> Unit, onPlay: () -> Unit, onStop: () -> Unit, onEdit: () -> Unit,
-    zone: LoadState<java.time.ZoneId> = LoadState(), onRetryZone: () -> Unit = {}) {
+    zone: LoadState<java.time.ZoneId> = LoadState(), onRetryZone: () -> Unit = {},
+    onImportOffline: () -> Unit = {}, onTranscribeOffline: () -> Unit = {}, onCancelOffline: (Long) -> Unit = {}) {
     var deletion by remember { mutableStateOf(false) }
     ScreenFrame("通话录音归档", onBack) {
         Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -27,6 +28,7 @@ import com.greatwall.callring.ui.state.*
             TextButton(onClick = onRefresh) { Text("刷新状态") }
             Text("可导入已有录音，或选择授权目录内的系统录音；请核对文件与本次通话相符。")
             OutlinedButton(onClick = onImport, enabled = !mutation.busy) { Text("导入音频文件") }
+            OutlinedButton(onClick = onImportOffline, enabled = !mutation.busy) { Text("导入用于离线转写") }
             OutlinedButton(onClick = onList, enabled = !mutation.busy) { Text("选择系统录音") }
             if (files.loading) Text("正在读取目录…")
             files.data?.let { entries ->
@@ -44,11 +46,32 @@ import com.greatwall.callring.ui.state.*
                 if (item.status == ArchiveStatus.COMPLETE && item.enrichmentBaseline?.eligible == false)
                     Text("此号码暂不支持建立档案，转写与分析已保留。")
                 item.error?.let { Text(recordingMessage(it), color = MaterialTheme.colorScheme.error) }
+                val offline = item.offlineTranscription
+                val offlineActive = offline != null && offline.phase != OfflineTranscriptionPhase.FAILED
+                if (offlineActive && offline != null) {
+                    Text(when (offline.phase) {
+                        OfflineTranscriptionPhase.PREPARING -> "准备离线模型"
+                        OfflineTranscriptionPhase.TRANSCRIBING -> "正在离线转写"
+                        OfflineTranscriptionPhase.CANCELLING -> "正在取消离线转写"
+                        OfflineTranscriptionPhase.FAILED -> ""
+                    })
+                    LinearProgressIndicator(Modifier.fillMaxWidth())
+                    TextButton(onClick = { onCancelOffline(offline.id) },
+                        enabled = offline.phase != OfflineTranscriptionPhase.CANCELLING) { Text("取消离线转写") }
+                } else if (item.transcript.isBlank()) {
+                    offline?.error?.let { Text(recordingMessage(it), color = MaterialTheme.colorScheme.error) }
+                    val queued = item.status in setOf(ArchiveStatus.QUEUED, ArchiveStatus.TRANSCRIBING,
+                        ArchiveStatus.ANALYZING, ArchiveStatus.ENRICHING)
+                    Button(onClick = onTranscribeOffline, enabled = item.audioPath != null && !queued && !mutation.busy) {
+                        Text(if (offline == null) "离线转写" else "重试离线转写")
+                    }
+                }
                 if (item.audioPath != null) {
                     Row { TextButton(onClick = onPlay, enabled = !mutation.busy) { Text("播放") }; TextButton(onClick = onStop) { Text("停止播放") } }
-                    Text("分析会将录音发送到配置的转写服务，将文字发送到配置的分析服务，可能按服务商价格收费。")
+                    Text(if (item.transcript.isBlank()) "分析会将录音发送到配置的转写服务，将文字发送到配置的分析服务，可能按服务商价格收费。"
+                        else "分析会将已有文字发送到配置的分析服务，可能按服务商价格收费。")
                     if (item.status !in setOf(ArchiveStatus.ENRICHING, ArchiveStatus.ENRICHMENT_FAILED))
-                        Button(onClick = onRetry, enabled = !mutation.busy) { Text("分析 / 重试") }
+                        Button(onClick = onRetry, enabled = !mutation.busy && !offlineActive) { Text("分析 / 重试") }
                 }
                 if (item.status == ArchiveStatus.ENRICHMENT_FAILED)
                     Button(onClick = onRetry, enabled = !mutation.busy) { Text("重试档案补全（不调用模型）") }

@@ -23,6 +23,30 @@ import org.robolectric.annotation.Config
 @Config(sdk = [35])
 class RecordingScreensTest {
     @get:Rule val compose = createComposeRule()
+    @Test fun offlineActionReflectsAudioAndCurrentRun() {
+        val archive = mutableStateOf(CallArchive(-7, "31234", 0, status = ArchiveStatus.READY))
+        var starts = 0
+        var cancelled: Long? = null
+        compose.setContent { ArchiveScreen(state = LoadState(archive.value, loaded = true), files = LoadState(),
+            mutation = MutationState(), onBack = {}, onRefresh = {}, onImport = {}, onList = {}, onSelect = {},
+            onRetry = {}, onDelete = {}, onPlay = {}, onStop = {}, onEdit = {},
+            onTranscribeOffline = { starts++ }, onCancelOffline = { cancelled = it }) }
+        compose.onNodeWithText("离线转写").assertIsNotEnabled()
+        compose.runOnIdle { archive.value = archive.value.copy(audioPath = "/owned/fixture.wav") }
+        compose.onNodeWithText("离线转写").performScrollTo().performClick()
+        assertEquals(1, starts)
+        compose.runOnIdle { archive.value = archive.value.copy(
+            offlineTranscription = OfflineTranscriptionRun(7, OfflineTranscriptionPhase.TRANSCRIBING)) }
+        compose.onNodeWithText("正在离线转写").assertExists()
+        compose.onNodeWithText("取消离线转写").performScrollTo().performClick()
+        assertEquals(7L, cancelled)
+        compose.runOnIdle { archive.value = archive.value.copy(
+            offlineTranscription = OfflineTranscriptionRun(7, OfflineTranscriptionPhase.FAILED, "recording.silent_audio")) }
+        compose.onNodeWithText("重试离线转写").assertIsEnabled()
+        compose.runOnIdle { archive.value = archive.value.copy(transcript = "本地全文", offlineTranscription = null) }
+        compose.onNodeWithText("本地全文").assertExists()
+        compose.onNodeWithText("分析 / 重试").assertIsEnabled()
+    }
     @Test fun localEnrichmentRetryDoesNotRequireAudioAndHasNoAdoptionAction() {
         var retries = 0
         val archive = CallArchive(-7, "31234", 0, status = ArchiveStatus.ENRICHMENT_FAILED, analysis = CallAnalysis(summary = "已整理"))

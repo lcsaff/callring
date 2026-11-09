@@ -3,6 +3,7 @@ package com.greatwall.callring.application.recording
 import com.greatwall.callring.application.ports.recording.AiClient
 import com.greatwall.callring.application.ports.recording.AiFailure
 import com.greatwall.callring.application.ports.recording.AudioReference
+import com.greatwall.callring.application.ports.recording.OfflineTranscriber
 import com.greatwall.callring.application.ports.recording.RecordingCandidate
 import com.greatwall.callring.application.ports.recording.RecordingWorkflowReads
 
@@ -14,6 +15,10 @@ import com.greatwall.callring.contracts.command.CommandContext
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicLong
 import java.util.concurrent.atomic.AtomicBoolean
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.launch
 
 /** Durable state transitions; Android supplies files, networking and scheduling. */
 class RecordingWorkflow(
@@ -22,6 +27,7 @@ class RecordingWorkflow(
     private val client: AiClient,
     private val now: () -> Long = System::currentTimeMillis,
     private val enrichment: com.greatwall.callring.application.ports.recording.RecordingIdentityEnrichment,
+    private val offlineTranscriber: OfflineTranscriber? = null,
 ) {
     private val running = ConcurrentHashMap.newKeySet<Long>()
     private val activityFence = Object()
@@ -29,6 +35,91 @@ class RecordingWorkflow(
     private val cancelledOperations = ConcurrentHashMap<Long, AtomicBoolean>()
     private val activeClients = ConcurrentHashMap<Long, AiClient>()
     private val versions = AtomicLong(System.currentTimeMillis() * 1000)
+    private val offlineScope = CoroutineScope(Dispatchers.IO)
+    private val offlineStates = ConcurrentHashMap<Long, OfflineTranscriptionRun>()
+    private var offlineWork: Pair<Long, AtomicBoolean>? = null
+    fun offlineState(callId: Long): OfflineTranscriptionRun? = offlineStates[callId]
+
+    fun startOffline(callId: Long): Long = commands.guardOfflineState {
+        val transcriber = offlineTranscriber ?: throw AiFailure("recording.offline_model_unavailable")
+        val archive = store.get(callId) ?: throw AiFailure("recording.not_found")
+        val audio = archive.audioPath ?: throw AiFailure("recording.missing_audio")
+        if (archive.status in setOf(ArchiveStatus.QUEUED, ArchiveStatus.TRANSCRIBING,
+                ArchiveStatus.ANALYZING, ArchiveStatus.ENRICHING) ||
+            (archive.status == ArchiveStatus.FAILED && archive.nextAttemptAt != Long.MAX_VALUE)) {
+            throw AiFailure("recording.offline_busy", retryable = true)
+        }
+        check(archive.transcript.isBlank()) { "recording.transcript_exists" }
+        val run = OfflineTranscriptionRun(version(), OfflineTranscriptionPhase.PREPARING)
+        val cancelled = AtomicBoolean(false)
+        synchronized(activityFence) {
+            check(!closed && offlineWork == null && running.add(callId)) { "recording.busy" }
+            offlineWork = callId to cancelled
+            offlineStates[callId] = run
+            commands.offlineStateChanged(callId)
+        }
+        offlineScope.launch {
+            var error: String? = null
+            try {
+                val transcript = transcriber.transcribe(AudioReference(audio), { closed || cancelled.get() }) {
+                    commands.withCurrent(callId, archive.generation) {
+                        synchronized(activityFence) {
+                            if (!closed && !cancelled.get()) {
+                                offlineStates[callId] = run.copy(phase = OfflineTranscriptionPhase.TRANSCRIBING)
+                                commands.offlineStateChanged(callId)
+                            }
+                        }
+                    }
+                }
+                if (transcript.text.isBlank()) throw AiFailure("recording.silent_audio")
+                commands.withCurrent(callId, archive.generation) {
+                    synchronized(activityFence) {
+                        if (!closed && !cancelled.get()) {
+                            commands.compareAndSet(callId, archive.generation, archive.copy(
+                                generation = version(archive.generation), status = ArchiveStatus.READY,
+                                transcript = transcript.text, transcriptionModel = transcript.model,
+                                error = null, nextAttemptAt = 0,
+                            ), null, false)
+                            offlineStates.remove(callId)
+                        }
+                    }
+                }
+            } catch (failure: AiFailure) {
+                error = failure.reason
+            } catch (_: Exception) {
+                error = "recording.offline_failed"
+            } finally {
+                commands.guardOfflineState {
+                    synchronized(activityFence) {
+                        try {
+                            offlineStates.remove(callId)
+                            if (!closed) {
+                                if (!cancelled.get() && error != null) commands.withCurrent(callId, archive.generation) {
+                                    offlineStates[callId] = run.copy(phase = OfflineTranscriptionPhase.FAILED, error = error)
+                                }
+                                commands.offlineStateChanged(callId)
+                            }
+                        } finally {
+                            offlineWork = null
+                            running.remove(callId)
+                            activityFence.notifyAll()
+                        }
+                    }
+                }
+            }
+        }
+        run.id
+    }
+
+    fun cancelOffline(callId: Long, runId: Long) = commands.guardOfflineState {
+        synchronized(activityFence) {
+            val run = offlineStates[callId] ?: return@guardOfflineState
+            if (closed || run.id != runId || run.phase !in setOf(OfflineTranscriptionPhase.PREPARING, OfflineTranscriptionPhase.TRANSCRIBING)
+                || offlineWork?.second?.compareAndSet(false, true) != true) return@guardOfflineState
+            offlineStates[callId] = run.copy(phase = OfflineTranscriptionPhase.CANCELLING)
+            commands.offlineStateChanged(callId)
+        }
+    }
     fun isRunning(callId: Long): Boolean = callId in running
     /** Cleanup holds this only for local deletion. Candidate admission never retains it for IO. */
     fun <T> withIdle(callId: Long, block: () -> T): T = synchronized(activityFence) {
@@ -39,19 +130,33 @@ class RecordingWorkflow(
     fun activityObservation() = RecordingActivityObservation(running.size.toLong(), activeClients.size.toLong(), cancelledOperations.values.count{it.get()}.toLong())
     private fun version(previous: Long = 0): Long = versions.updateAndGet { maxOf(it + 1, previous + 1) }
 
-    fun attach(callId: Long, number: String, startedAt: Long, path: String, source: RecordingSource, duration: Long, command: CommandContext?, playbackStopped: Boolean): CallArchive {
+    private fun invalidateOffline(callId: Long) = synchronized(activityFence) {
+        offlineWork?.takeIf { it.first == callId }?.second?.set(true)
+        offlineStates.remove(callId)
+    }
+
+    fun attach(callId: Long, number: String, startedAt: Long, path: String, source: RecordingSource, duration: Long, command: CommandContext?, playbackStopped: Boolean, offlineOnly: Boolean = false): CallArchive {
         check(!closed) { "recording.closed" }
         require(callId != 0L && number.isNotBlank() && duration > 0) { "recording.invalid_attachment" }
         val previousGeneration = store.generation(callId)
         cancelledOperations[callId]?.set(true)
+        invalidateOffline(callId)
         activeClients[callId]?.cancel()
         val settings = store.settings()
         val value = CallArchive(callId, number, startedAt, version(previousGeneration ?: 0),
-            if (settings.automaticAnalysis) ArchiveStatus.QUEUED else ArchiveStatus.READY,
+            if (!offlineOnly && settings.automaticAnalysis) ArchiveStatus.QUEUED else ArchiveStatus.READY,
             source, path, if (source == RecordingSource.MICROPHONE) "recording.microphone_unverified" else "recording.unverified",
             duration)
         check(commands.compareAndSet(callId, previousGeneration, value, command, playbackStopped)) { "recording.changed" }
         return value
+    }
+
+    private fun validateConnections(archive: CallArchive, config: com.greatwall.callring.application.recording.model.RecordingSettings) {
+        config.analysis.validate()
+        if (archive.transcript.isBlank()) {
+            config.transcription.validate()
+            require(config.transcription.protocol == AiProtocol.OPENAI) { "ai.transcription_requires_openai" }
+        }
     }
 
     fun retry(callId: Long, command: CommandContext?) {
@@ -64,8 +169,7 @@ class RecordingWorkflow(
         }
         require(value.audioPath != null) { "recording.missing_audio" }
         val config = store.settings()
-        config.analysis.validate(); config.transcription.validate()
-        require(config.transcription.protocol == AiProtocol.OPENAI) { "ai.transcription_requires_openai" }
+        validateConnections(value, config)
         check(commands.compareAndSet(callId, value.generation, value.copy(generation = version(value.generation),
             status = ArchiveStatus.QUEUED, attempts = 0, nextAttemptAt = 0, error = null, manualAnalysis = true, enrichmentBaseline = null, enrichmentSourceGeneration = null), command, false)) { "recording.changed" }
     }
@@ -73,6 +177,7 @@ class RecordingWorkflow(
     fun delete(callId: Long, command: CommandContext?, playbackStopped: Boolean): Boolean {
         check(!closed) { "recording.closed" }
         cancelledOperations[callId]?.set(true)
+        invalidateOffline(callId)
         activeClients[callId]?.cancel()
         return commands.delete(callId, command, playbackStopped)
     }
@@ -90,6 +195,7 @@ class RecordingWorkflow(
         synchronized(activityFence) {
             while (running.isNotEmpty()) try { activityFence.wait() } catch (_: InterruptedException) { interrupted = true }
         }
+        offlineScope.cancel()
         if (interrupted) Thread.currentThread().interrupt()
     }
 
@@ -162,8 +268,7 @@ class RecordingWorkflow(
             if (!config.automaticAnalysis && !current.manualAnalysis) {
                 update(current.copy(status = ArchiveStatus.READY, nextAttemptAt = 0)); return
             }
-            config.analysis.validate(); config.transcription.validate()
-            require(config.transcription.protocol == AiProtocol.OPENAI) { "ai.transcription_requires_openai" }
+            validateConnections(current, config)
             if (current.enrichmentBaseline == null) {
                 var baselineSaved = false
                 val live = commands.withCurrent(current.callId, current.generation) {

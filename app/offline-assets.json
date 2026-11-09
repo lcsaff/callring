@@ -1,0 +1,42 @@
+[
+  {
+    "name": "sherpa-onnx-2.0.1.aar",
+    "url": "https://api.github.com/repos/k2-fsa/sherpa-onnx/releases/assets/678742021?download=1",
+    "sha256": "a8d09d1d32f3eb8520482c6d3d43fae674681c5b050385967c70a3c2c9bf0ee7"
+  },
+  {
+    "name": "model.int8.onnx",
+    "url": "https://huggingface.co/csukuangfj/sherpa-onnx-sense-voice-zh-en-ja-ko-yue-2024-07-17/resolve/6a65851692da9706cbddfac66ea9b96ebb1dee21/model.int8.onnx",
+    "sha256": "c71f0ce00bec95b07744e116345e33d8cbbe08cef896382cf907bf4b51a2cd51"
+  },
+  {
+    "name": "tokens.txt",
+    "url": "https://huggingface.co/csukuangfj/sherpa-onnx-sense-voice-zh-en-ja-ko-yue-2024-07-17/resolve/6a65851692da9706cbddfac66ea9b96ebb1dee21/tokens.txt",
+    "sha256": "f449eb28dc567533d7fa59be34e2abca8784f771850c78a47fb731a31429a1dc"
+  },
+  {
+    "name": "LICENSE",
+    "url": "https://huggingface.co/csukuangfj/sherpa-onnx-sense-voice-zh-en-ja-ko-yue-2024-07-17/resolve/6a65851692da9706cbddfac66ea9b96ebb1dee21/LICENSE",
+    "sha256": "221c6df10b0931a5629adad671ea48fb7747e034c414b6d2bfa275bc3dd4ea17"
+  },
+  {
+    "name": "SENSEVOICE-MODEL-LICENSE",
+    "url": "https://raw.githubusercontent.com/modelscope/FunASR/main/MODEL_LICENSE",
+    "sha256": "7dba975a2069691db4992b0592d70828b330d2f8a30a71450f4e152a554e84f8"
+  },
+  {
+    "name": "SHERPA-ONNX-LICENSE",
+    "url": "https://raw.githubusercontent.com/k2-fsa/sherpa-onnx/v2.0.1/LICENSE",
+    "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30"
+  },
+  {
+    "name": "ONNXRUNTIME-LICENSE",
+    "url": "https://raw.githubusercontent.com/microsoft/onnxruntime/v1.28.2/LICENSE",
+    "sha256": "2f07c72751aed99790b8a4869cf2311df85a860b22ded05fa22803587a48922c"
+  },
+  {
+    "name": "ONNXRUNTIME-NOTICES",
+    "url": "https://raw.githubusercontent.com/microsoft/onnxruntime/v1.28.2/ThirdPartyNotices.txt",
+    "sha256": "0e07b95f3a8d6230037707c5c4a2b554d12c4cb67369669ac255635528ffcee2"
+  }
+]

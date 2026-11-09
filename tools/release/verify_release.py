@@ -24,8 +24,11 @@ from __future__ import annotations
 import argparse
 import json
 import re
+import hashlib
+import struct
 import subprocess
 import sys
+import zipfile
 from pathlib import Path
 
 from apk_info import ApkInfoError, ToolNotFoundError, find_tool, read_apk_info, sha256_file
@@ -165,12 +168,55 @@ def verify_signature(apk: Path, expected_cert_sha256: str, apksigner: str | None
 def verify_alignment(apk: Path, zipalign: str | None) -> None:
     tool = find_tool("zipalign", zipalign)
     completed = subprocess.run(
-        [str(tool), "-c", "-v", "4", str(apk)],
+        [str(tool), "-c", "-P", "16", "-v", "4", str(apk)],
         capture_output=True, text=True, encoding="utf-8", errors="replace", check=False,
     )
     if completed.returncode != 0:
         tail = "\n".join((completed.stdout or "").strip().splitlines()[-5:])
-        raise ReleaseCheckError(f"zipalign -c -v 4 failed for {apk} (exit {completed.returncode}):\n{tail}")
+        raise ReleaseCheckError(f"zipalign -c -P 16 -v 4 failed for {apk} (exit {completed.returncode}):\n{tail}")
+
+
+def verify_offline_payload(apk: Path) -> None:
+    manifest = json.loads((ROOT / "app/offline-assets.json").read_text(encoding="utf-8"))
+    assets = {asset["name"]: asset["sha256"] for asset in manifest if not asset["name"].endswith(".aar")}
+    try:
+        with zipfile.ZipFile(apk) as archive:
+            names = archive.namelist()
+            for asset, expected in assets.items():
+                name = f"assets/offline/{asset}"
+                require(names.count(name) == 1, f"APK must contain exactly one {name}")
+                digest = hashlib.sha256()
+                with archive.open(name) as source:
+                    for chunk in iter(lambda: source.read(1024 * 1024), b""):
+                        digest.update(chunk)
+                require(digest.hexdigest() == expected, f"APK asset checksum mismatch: {name}")
+            libraries = [name for name in names if name.startswith("lib/") and name.endswith(".so")]
+            for abi in ("arm64-v8a", "armeabi-v7a", "x86", "x86_64"):
+                for library in ("libonnxruntime.so", "libsherpa-onnx-jni.so"):
+                    name = f"lib/{abi}/{library}"
+                    require(libraries.count(name) == 1, f"APK must contain exactly one {name}")
+            for name in libraries:
+                with archive.open(name) as source:
+                    header = source.read(64)
+                    require(header[:4] == b"\x7fELF" and header[4:6] in (b"\x01\x01", b"\x02\x01"),
+                            f"Invalid native library ELF header: {name}")
+                    wide = header[4] == 2
+                    table = struct.unpack_from("<Q" if wide else "<I", header, 32 if wide else 28)[0]
+                    stride, count = struct.unpack_from("<HH", header, 54 if wide else 42)
+                    require(stride >= (56 if wide else 32), f"Invalid ELF program header: {name}")
+                    source.seek(table)
+                    loads = 0
+                    for _ in range(count):
+                        segment = source.read(stride)
+                        if struct.unpack_from("<I", segment)[0] == 1:
+                            loads += 1
+                            offset, address = struct.unpack_from("<QQ" if wide else "<II", segment, 8 if wide else 4)
+                            align = struct.unpack_from("<Q" if wide else "<I", segment, 48 if wide else 28)[0]
+                            require(align >= 16384 and (offset - address) % 16384 == 0,
+                                    f"ELF LOAD segment is not 16 KiB aligned: {name}")
+                    require(loads > 0, f"ELF has no LOAD segments: {name}")
+    except (OSError, zipfile.BadZipFile, struct.error) as error:
+        raise ReleaseCheckError(f"Invalid APK payload: {error}") from error
 
 
 def verify(args: argparse.Namespace) -> dict:
@@ -210,6 +256,7 @@ def verify(args: argparse.Namespace) -> dict:
         verify_signature(apk, args.expected_cert_sha256, args.apksigner)
     if args.check_alignment:
         verify_alignment(apk, args.zipalign)
+        verify_offline_payload(apk)
     if args.latest_tag is not None:
         require(args.latest_tag == args.tag,
                 f"/releases/latest tag {args.latest_tag!r} != released tag {args.tag!r}")
@@ -239,7 +286,7 @@ def main(argv=None) -> int:
                         help="require this signer certificate SHA-256 digest")
     parser.add_argument("--apksigner", default=None, help="path to apksigner (default: auto-discover)")
     parser.add_argument("--check-alignment", action="store_true",
-                        help="also require zipalign -c -v 4 to pass")
+                        help="also require 16 KiB APK/ELF alignment and the bundled offline assets")
     parser.add_argument("--zipalign", default=None, help="path to zipalign (default: auto-discover)")
     parser.add_argument("--latest-tag", default=None,
                         help="post-publish check: /releases/latest tag_name must equal --tag")
@@ -258,7 +305,7 @@ def main(argv=None) -> int:
     if args.expected_cert_sha256:
         print(f"[OK] signer certificate SHA-256 = {args.expected_cert_sha256}")
     if args.check_alignment:
-        print("[OK] zipalign -c -v 4 passed")
+        print("[OK] 16 KiB APK and ELF alignment and offline payload verified")
     if args.latest_tag is not None:
         print(f"[OK] /releases/latest tag = {args.latest_tag}")
     return 0

@@ -52,8 +52,9 @@ import com.greatwall.callring.ui.feature.ai.ScopedRecordingSettingsViewModel
     val timeZone: RecordingTimeZoneViewModel = uiViewModel { RecordingTimeZoneViewModel(api.settings, api.changes) }
     val zone by timeZone.state.collectAsStateWithLifecycle()
     val picker = rememberImportPicker(arrayOf("audio/*")) { model.import(it) }
+    val offlinePicker = rememberImportPicker(arrayOf("audio/*")) { model.import(it, offlineOnly = true) }
     DisposableEffect(model) { onDispose { model.stopForExit() } }
     ArchiveScreen(state, files, mutation, onBack, model::refresh, picker, model::listSystem,
         { model.import(DocumentRef(it.uri), RecordingSource.SYSTEM) }, model::retry, model::delete, model::play, model::stop,
-        onEdit, zone, timeZone::refresh)
+        onEdit, zone, timeZone::refresh, offlinePicker, model::transcribeOffline, model::cancelOffline)
 }

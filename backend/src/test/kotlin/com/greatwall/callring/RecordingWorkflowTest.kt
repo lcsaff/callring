@@ -2,6 +2,7 @@ package com.greatwall.callring
 
 import com.greatwall.callring.application.ports.recording.AiClient
 import com.greatwall.callring.application.ports.recording.AiFailure
+import com.greatwall.callring.application.ports.recording.OfflineTranscript
 import com.greatwall.callring.application.ports.recording.RecordingCandidate
 
 import com.greatwall.callring.application.coordination.BusinessRevisionCoordinator
@@ -204,6 +205,70 @@ class RecordingWorkflowTest {
     private val workflow = RecordingWorkflow(store, commands, client, { 1000L }, enrichment = localEnrichment)
     private fun configure(auto: Boolean = true) {
         store.seedSettings(RecordingSettings(automaticAnalysis = auto, analysis = connection, transcription = connection))
+    }
+    @Test fun offlineImportAndTranscriptionNeverRequireAnOnlineConnection() {
+        val local = RecordingWorkflow(store, commands, client, { 1000L }, enrichment = localEnrichment,
+            offlineTranscriber = { _, _, decoding ->
+                decoding()
+                OfflineTranscript("本地全文", "fixture-offline")
+            })
+        try {
+            configure()
+            assertEquals(ArchiveStatus.READY, local.attach(1, "31234", 100, "/private/test.wav",
+                RecordingSource.IMPORTED, 1000, null, false, offlineOnly = true).status)
+            store.seedSettings(RecordingSettings())
+            local.startOffline(1)
+            waitForOffline(local)
+            val saved = requireNotNull(store.get(1))
+            assertEquals("本地全文", saved.transcript)
+            assertEquals("fixture-offline", saved.transcriptionModel)
+            assertEquals(0, transcriptions)
+            assertEquals(0, analyses)
+            store.seedSettings(RecordingSettings(analysis = connection))
+            local.retry(1, null)
+            local.processPending()
+            assertEquals(0, transcriptions)
+            assertEquals(1, analyses)
+            assertEquals(ArchiveStatus.COMPLETE, store.get(1)?.status)
+        } finally {
+            local.close()
+        }
+    }
+
+    @Test fun offlineCancellationDiscardsLateResultsAndDoesNotAffectTheNextRun() {
+        val entered = CountDownLatch(1)
+        val release = CountDownLatch(1)
+        val local = RecordingWorkflow(store, commands, client, { 1000L }, enrichment = localEnrichment,
+            offlineTranscriber = { _, _, decoding ->
+                decoding()
+                entered.countDown()
+                check(release.await(5, TimeUnit.SECONDS))
+                OfflineTranscript("本地全文", "fixture-offline")
+            })
+        try {
+            local.attach(1, "31234", 100, "/private/test.wav", RecordingSource.IMPORTED, 1000, null, false)
+            val first = local.startOffline(1)
+            assertTrue(entered.await(5, TimeUnit.SECONDS))
+            local.cancelOffline(1, first)
+            assertEquals(OfflineTranscriptionPhase.CANCELLING, local.offlineState(1)?.phase)
+            release.countDown()
+            waitForOffline(local)
+            assertEquals("", store.get(1)?.transcript)
+            val second = local.startOffline(1)
+            assertNotEquals(first, second)
+            local.cancelOffline(1, first)
+            waitForOffline(local)
+            assertEquals("本地全文", store.get(1)?.transcript)
+        } finally {
+            release.countDown()
+            local.close()
+        }
+    }
+
+    private fun waitForOffline(workflow: RecordingWorkflow) {
+        val deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(5)
+        while (workflow.isRunning(1) && System.nanoTime() < deadline) Thread.sleep(5)
+        assertFalse("Offline task did not drain", workflow.isRunning(1))
     }
     @Test fun disabledAutomaticAnalysisRetainsAudioWithoutSendingIt() {
         configure(false)

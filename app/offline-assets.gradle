@@ -1,0 +1,60 @@
+import java.nio.file.Files
+import java.nio.file.StandardCopyOption
+import java.security.MessageDigest
+
+def manifest = file('offline-assets.json')
+def cache = new File(gradle.gradleUserHomeDir, 'callring/offline-assets')
+def entries = new groovy.json.JsonSlurper().parse(manifest)
+def aar = new File(cache, entries.find { it.name.endsWith('.aar') }.name)
+def assets = layout.buildDirectory.dir('generated/offlineAssets')
+def pinned = entries.collect { [new File(cache, it.name), it.url, it.sha256] }
+def sha256 = { File file ->
+    def digest = MessageDigest.getInstance('SHA-256')
+    file.withInputStream { input ->
+        byte[] buffer = new byte[65536]
+        for (int count; (count = input.read(buffer)) >= 0;) digest.update(buffer, 0, count)
+    }
+    digest.digest().encodeHex().toString()
+}
+def prepare = tasks.register('prepareOfflineAssets') {
+    inputs.file(manifest)
+    outputs.file(aar)
+    outputs.dir(assets)
+    outputs.upToDateWhen { false }
+    doLast {
+        cache.mkdirs()
+        pinned.each { file, url, expected ->
+            if (file.exists() && sha256(file) != expected) {
+                throw new GradleException("Offline asset checksum mismatch: ${file}")
+            }
+            if (!file.exists()) {
+                def temp = Files.createTempFile(cache.toPath(), 'offline-', '.part')
+                try {
+                    def connection = new URI(url).toURL().openConnection()
+                    connection.connectTimeout = 30_000
+                    connection.readTimeout = 120_000
+                    connection.setRequestProperty('User-Agent', 'CallRing-build')
+                    connection.setRequestProperty('Accept', 'application/octet-stream')
+                    connection.inputStream.withCloseable { Files.copy(it, temp, StandardCopyOption.REPLACE_EXISTING) }
+                    if (sha256(temp.toFile()) != expected) throw new GradleException("Offline asset checksum mismatch: ${url}")
+                    Files.move(temp, file.toPath(), StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING)
+                } finally {
+                    Files.deleteIfExists(temp)
+                }
+            }
+        }
+        def output = assets.get().dir('offline').asFile
+        output.mkdirs()
+        pinned.findAll { file, url, digest -> file != aar }.each { file, url, expected ->
+            def target = new File(output, file.name)
+            if (!target.exists() || sha256(target) != expected) {
+                Files.copy(file.toPath(), target.toPath(), StandardCopyOption.REPLACE_EXISTING)
+            }
+        }
+    }
+}
+
+android.sourceSets.main.assets.srcDir(assets)
+android.androidResources.noCompress += ['onnx']
+dependencies.add('implementation', files(aar).builtBy(prepare))
+tasks.named('preBuild') { dependsOn(prepare) }

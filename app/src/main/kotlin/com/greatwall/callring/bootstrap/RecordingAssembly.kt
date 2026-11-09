@@ -7,6 +7,7 @@ import com.greatwall.callring.application.coordination.BusinessRevisionCoordinat
 import com.greatwall.callring.application.ports.recording.RecordingDirectory
 import com.greatwall.callring.application.recording.RecordingWorkflow
 import com.greatwall.callring.data.recording.AndroidRecordingStore
+import com.greatwall.callring.platform.recording.SherpaOfflineTranscriber
 import com.greatwall.callring.platform.recording.AndroidAudioTranscriber
 import com.greatwall.callring.platform.recording.AndroidRecordingAudio
 import com.greatwall.callring.platform.recording.AndroidRecordingPlayback
@@ -81,7 +82,7 @@ class RecordingAssembly(
     }
     private val archiveCommandsDelegate = lazy { RecordingArchiveCommands(store, store, coordinator) }
     private val registrationsDelegate = lazy { RecordingRegistrationService(store, coordinator) }
-    private val workflowDelegate = lazy { RecordingWorkflow(store, archiveCommands, AndroidAudioTranscriber(client, File(context.cacheDir, namespace + "_ai_audio")), enrichment = enrichment) }
+    private val workflowDelegate = lazy { RecordingWorkflow(store, archiveCommands, AndroidAudioTranscriber(client, File(context.cacheDir, namespace + "_ai_audio")), enrichment = enrichment, offlineTranscriber = SherpaOfflineTranscriber(context.assets)) }
     private val audioDelegate = lazy { AndroidRecordingAudio(context, directory, metadataReader) }
     private val audio get() = audioDelegate.value
     private val playbackDelegate: Lazy<AndroidRecordingPlayback> = lazy { AndroidRecordingPlayback(directory) { service.playbackFinished() } }

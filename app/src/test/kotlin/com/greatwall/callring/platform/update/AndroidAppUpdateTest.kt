@@ -266,38 +266,47 @@ class AndroidAppUpdateTest {
     }
 
     @Test fun networkInterruptionRetainsActualBytesAndRetryUsesRange() = runBlocking {
+        val candidate = System.getenv("CALLRING_UPDATE_TEST_APK")?.let(::File)
+        if (candidate != null) require(candidate.isFile)
+        val size = candidate?.length() ?: apk.size.toLong()
+        val digest = candidate?.let(::sha256File) ?: sha256Hex(apk)
+        val release = releaseJson(apkSize = size)
+        val manifest = manifestJson(apk, sizeOverride = size, shaOverride = digest)
+        fun stream() = candidate?.inputStream() ?: apk.inputStream()
         var attempts = 0
-        val cut = 90_000
+        val cut = size * 3 / 10
         val transport = FakeTransport { connection ->
             when {
                 connection.url.toString() == RELEASES_API_URL -> FakeResponse(200, release.toByteArray())
                 connection.url.toString().endsWith(UPDATE_MANIFEST_ASSET) -> FakeResponse(200, manifest.toByteArray())
                 ++attempts == 1 -> FakeResponse(200, streamFactory = {
-                    object : InputStream() {
-                        var offset = 0
-                        override fun read(): Int = error("buffered reads required")
+                    object : java.io.FilterInputStream(stream()) {
+                        var offset = 0L
                         override fun read(buffer: ByteArray, off: Int, len: Int): Int {
                             if (offset >= cut) throw java.io.IOException("connection lost")
-                            val n = minOf(len, cut - offset)
-                            apk.copyInto(buffer, off, offset, offset + n); offset += n
-                            return n
+                            val count = super.read(buffer, off, minOf(len.toLong(), cut - offset).toInt())
+                            if (count > 0) offset += count
+                            return count
                         }
                     }
                 })
                 else -> {
                     assertEquals("bytes=$cut-", connection.requestHeader("Range"))
-                    FakeResponse(206, apk.copyOfRange(cut, apk.size), mapOf("Content-Range" to "bytes $cut-${apk.lastIndex}/${apk.size}"))
+                    FakeResponse(206, headers = mapOf("Content-Range" to "bytes $cut-${size - 1}/$size"),
+                        streamFactory = { stream().apply { skipNBytes(cut) } })
                 }
             }
         }
         newApi(transport).use { api ->
             api.check().ok(); api.download().ok()
             val interrupted = awaitPhase(api, UpdatePhase.VERIFY_FAILED)
-            assertEquals(cut.toLong(), interrupted.downloadedBytes)
-            assertEquals(cut.toLong(), File(dir, "callring-0.4.0.apk.part").length())
+            assertEquals(cut, interrupted.downloadedBytes)
+            assertEquals(cut, File(dir, "callring-0.4.0.apk.part").length())
             api.download().ok()
-            awaitPhase(api, UpdatePhase.VERIFIED)
-            assertArrayEquals(apk, File(dir, "callring-0.4.0.apk").readBytes())
+            awaitPhase(api, UpdatePhase.VERIFIED, timeoutMs = 60_000)
+            val downloaded = File(dir, "callring-0.4.0.apk")
+            assertEquals(size, downloaded.length())
+            assertEquals(digest, sha256File(downloaded))
         }
     }
 

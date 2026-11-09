@@ -99,13 +99,22 @@ class RecordingService(
         reads.numberMetadata(number) { caller?.isActive == false }
     }
     override suspend fun archives(number: String) = numberArchives(number)
-    override suspend fun getArchive(callId: Long) = result { state.get(archiveId(callId)) }
-    override suspend fun importRecording(callId: Long, number: String, startedAt: Long, document: DocumentRef, source: RecordingSource) = result {
+    override suspend fun getArchive(callId: Long) = result { coordinator.guard {
+        val id = archiveId(callId)
+        state.get(id)?.copy(offlineTranscription = workflow().offlineState(id))
+    } }
+    override suspend fun transcribeOffline(callId: Long) = result {
+        coordinator.guard { workflow().startOffline(archiveId(callId)) }
+    }
+    override suspend fun cancelOfflineTranscription(callId: Long, runId: Long) = result {
+        coordinator.guard { workflow().cancelOffline(archiveId(callId), runId) }
+    }
+    override suspend fun importRecording(callId: Long, number: String, startedAt: Long, document: DocumentRef, source: RecordingSource, offlineOnly: Boolean) = result {
         val caller = currentCoroutineContext()
-        importFile(callId, number, startedAt, document, source, callerActive = { caller.isActive })
+        importFile(callId, number, startedAt, document, source, offlineOnly = offlineOnly, callerActive = { caller.isActive })
     }
     private fun importFile(callId: Long, number: String, startedAt: Long, document: DocumentRef,
-        source: RecordingSource, automatic: Boolean = false, command: CommandContext? = null, callerActive: () -> Boolean = { true }, validatePrepared: () -> Unit = {}): CallArchive {
+        source: RecordingSource, automatic: Boolean = false, command: CommandContext? = null, callerActive: () -> Boolean = { true }, validatePrepared: () -> Unit = {}, offlineOnly: Boolean = false): CallArchive {
         val saved = reads.metadata(callId) { false }?.takeIf { it.number == number && it.startedAtEpochMillis == startedAt }
         val request = requireNotNull(if (callId < 0) reads.findRecording(callId) else saved?.let {
             RecordingCall(it.callId, it.number, it.startedAtEpochMillis, it.durationMillis?.div(1000))
@@ -123,7 +132,7 @@ class RecordingService(
                 requireOperationActive(operationActive)
                 checkCaller()
                 check(state.generation(call.id) == initialGeneration && (!automatic || !state.isDeleted(call.id))) { "recording.changed" }
-                attach(call, prepared, source, command)
+                attach(call, prepared, source, command, offlineOnly)
             }
             scheduleArchive(archive)
             return archive
@@ -155,13 +164,13 @@ class RecordingService(
     private fun scheduleArchive(archive: CallArchive) {
         if (archive.status == ArchiveStatus.QUEUED) runCatching { schedule(0) }
     }
-    private fun attach(call: RecordingCall, prepared: PreparedRecordingAudio, source: RecordingSource, command: CommandContext?): CallArchive {
+    private fun attach(call: RecordingCall, prepared: PreparedRecordingAudio, source: RecordingSource, command: CommandContext?, offlineOnly: Boolean = false): CallArchive {
         val previous = state.get(call.id)
         val reference = prepared.commit()
         playbackGeneration.incrementAndGet()
         val stopped = playback.stop()
         val archive = try {
-            workflow().attach(call.id, call.number, call.startedAt, reference.location, source, prepared.durationMillis, command, stopped)
+            workflow().attach(call.id, call.number, call.startedAt, reference.location, source, prepared.durationMillis, command, stopped, offlineOnly)
         } catch (failure: Exception) {
             if (stopped) playbackFinished()
             throw failure
@@ -271,7 +280,7 @@ class RecordingService(
         Unit
     }
     fun bound(command: CommandContext): RecordingApi = object : RecordingApi by this {
-        override suspend fun importRecording(callId: Long, number: String, startedAt: Long, document: DocumentRef, source: RecordingSource) = result { val caller = currentCoroutineContext(); importFile(callId, number, startedAt, document, source, command = command, callerActive = { caller.isActive }) }
+        override suspend fun importRecording(callId: Long, number: String, startedAt: Long, document: DocumentRef, source: RecordingSource, offlineOnly: Boolean) = result { val caller = currentCoroutineContext(); importFile(callId, number, startedAt, document, source, offlineOnly = offlineOnly, command = command, callerActive = { caller.isActive }) }
         override suspend fun retry(callId: Long) = retryWith(callId, command)
         override suspend fun delete(callId: Long) = deleteWith(callId, command)
         override suspend fun play(callId: Long) = playWith(callId, command)

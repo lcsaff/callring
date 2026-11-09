@@ -102,3 +102,5 @@ dependencies {
     testImplementation 'org.robolectric:robolectric:4.16.1'
     testImplementation 'androidx.lifecycle:lifecycle-viewmodel-savedstate:2.9.4'
 }
+
+apply from: 'offline-assets.gradle'

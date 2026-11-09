@@ -9,6 +9,12 @@ enum class ArchiveStatus { WAITING_RECORDING, READY, QUEUED, TRANSCRIBING, ANALY
 
 enum class RecordingSource { SYSTEM, IMPORTED, MICROPHONE }
 
+enum class OfflineTranscriptionPhase { PREPARING, TRANSCRIBING, CANCELLING, FAILED }
+
+data class OfflineTranscriptionRun(
+    val id: Long, val phase: OfflineTranscriptionPhase, val error: String? = null,
+)
+
 /** Ineligible recording numbers retain analysis but never access caller storage. */
 data class CallerIdentityBaseline(val epoch: String, val revisions: Map<String, Long>, val eligible: Boolean = true)
 
@@ -32,6 +38,7 @@ data class CallArchive(
     val manualAnalysis: Boolean = false,
     val enrichmentBaseline: CallerIdentityBaseline? = null,
     val enrichmentSourceGeneration: Long? = null,
+    val offlineTranscription: OfflineTranscriptionRun? = null,
 )
 
 data class RecordingFile(val uri: String, val name: String, val modifiedAt: Long, val size: Long? = null, val modifiedKnown: Boolean = true)
@@ -40,7 +47,9 @@ interface RecordingApi {
     suspend fun getIdentity(callId: Long): ApiResult<RecordingIdentity>
     suspend fun queryArchives(query: ArchiveListQuery = ArchiveListQuery()): ApiResult<ArchiveListPage>
     suspend fun getArchive(callId: Long): ApiResult<CallArchive?>
-    suspend fun importRecording(callId: Long, number: String, startedAt: Long, document: DocumentRef, source: RecordingSource = RecordingSource.IMPORTED): ApiResult<CallArchive>
+    suspend fun importRecording(callId: Long, number: String, startedAt: Long, document: DocumentRef, source: RecordingSource = RecordingSource.IMPORTED, offlineOnly: Boolean = false): ApiResult<CallArchive>
+    suspend fun transcribeOffline(callId: Long): ApiResult<Long>
+    suspend fun cancelOfflineTranscription(callId: Long, runId: Long): ApiResult<Unit>
     suspend fun retry(callId: Long): ApiResult<Unit>
     suspend fun delete(callId: Long): ApiResult<Unit>
     suspend fun play(callId: Long): ApiResult<Unit>

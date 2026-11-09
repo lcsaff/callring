@@ -62,7 +62,9 @@ object FixtureRecordingApi : RecordingApi {
 
     private fun unavailable() = ApiResult.Failure(ApiError(ErrorCode.SYSTEM_UNAVAILABLE, "recording.unavailable"))
     override suspend fun getArchive(callId: Long) = unavailable()
-    override suspend fun importRecording(callId: Long, number: String, startedAt: Long, document: DocumentRef, source: RecordingSource) = unavailable()
+    override suspend fun importRecording(callId: Long, number: String, startedAt: Long, document: DocumentRef, source: RecordingSource, offlineOnly: Boolean) = unavailable()
+    override suspend fun transcribeOffline(callId: Long) = unavailable()
+    override suspend fun cancelOfflineTranscription(callId: Long, runId: Long) = unavailable()
     override suspend fun retry(callId: Long) = unavailable()
     override suspend fun delete(callId: Long) = unavailable()
     override suspend fun play(callId: Long) = unavailable()
