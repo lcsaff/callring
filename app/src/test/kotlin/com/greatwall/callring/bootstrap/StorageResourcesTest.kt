@@ -53,6 +53,8 @@ class StorageResourcesTest {
             object : CoreUnitOfWork {
                 private val session =
                     object : CoreWriteSession {
+                        override fun callerConfirmation(archiveId: Long, resultVersion: Long): String? = error("unused")
+                        override fun saveCallerConfirmation(archiveId: Long, resultVersion: Long, receipt: String): Unit = error("unused")
                         override fun numberRule(): com.greatwall.callring.contracts.settings.NumberRuleSettings = error("unused")
                         override fun saveNumberRule(value: com.greatwall.callring.contracts.settings.NumberRuleSettings): Unit = error("unused")
                         override fun visitReportCalls(
@@ -141,6 +143,10 @@ class StorageResourcesTest {
                         ): Unit = error("unused")
 
                         override fun callerCall(id: Long): RawCallRecord? = error("unused")
+
+                        override fun visibleCallHistory(after: CallHistoryBoundary?, limit: Int): List<ReportCallFact> = error("unused")
+
+                        override fun visibleCallHistoryDetail(id: Long): ReportCallFact? = error("unused")
 
                         override fun latestCallerCall(): RawCallRecord? = error("unused")
 

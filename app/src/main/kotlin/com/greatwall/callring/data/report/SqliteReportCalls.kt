@@ -4,6 +4,7 @@ import com.greatwall.callring.data.database.QueryTag
 import com.greatwall.callring.data.database.SqlAccess
 import com.greatwall.callring.data.database.SqlTable
 
+import com.greatwall.callring.application.ports.store.CallHistoryBoundary
 import com.greatwall.callring.application.ports.store.ReportCallFact
 import com.greatwall.callring.data.*
 import com.greatwall.callring.data.callers.CallerRowCodec
@@ -58,6 +59,34 @@ internal class SqliteReportCalls(private val sql: SqlAccess, private val lease: 
             "c.time $direction,c.id $direction",
             accept,
         )
+    }
+
+    fun visibleCallHistory(after: CallHistoryBoundary?, limit: Int): List<ReportCallFact> = buildList {
+        require(limit in 1..101)
+        // Seek into the two disjoint ranges without scanning the skipped prefix.
+        if (after != null) {
+            visit(
+                "AND c.time=? AND c.id<?",
+                arrayOf(after.time.toString(), after.id.toString()),
+                "c.time DESC,c.id DESC LIMIT $limit",
+                ::add,
+            )
+        }
+        val remaining = limit - size
+        if (remaining > 0) {
+            visit(
+                if (after == null) "" else "AND c.time<?",
+                after?.let { arrayOf(it.time.toString()) } ?: emptyArray(),
+                "c.time DESC,c.id DESC LIMIT $remaining",
+                ::add,
+            )
+        }
+    }
+
+    fun visibleCallHistoryDetail(id: Long): ReportCallFact? {
+        var result: ReportCallFact? = null
+        visit("AND c.id=?", arrayOf(id.toString()), "c.id") { result = it }
+        return result
     }
 
     fun latestVisibleReportCall(): ReportCallFact? {

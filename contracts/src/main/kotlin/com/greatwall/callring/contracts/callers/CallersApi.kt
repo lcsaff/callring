@@ -12,6 +12,9 @@ interface HomeApi {
 }
 
 interface CallersApi {
+    /** All visible saved calls, ordered by start time and call ID descending. */
+    suspend fun queryCallHistory(query: CallHistoryQuery = CallHistoryQuery()): ApiResult<CallHistoryPage>
+    suspend fun getCallHistoryDetail(callId: Long): ApiResult<CallHistoryEntry>
     suspend fun getCallDetail(callId: Long): ApiResult<CallDetail>
     suspend fun search(query: CallerSearch): ApiResult<Page<CallerProfile>>
     suspend fun getEditor(number: String?): ApiResult<CallerEditorData>

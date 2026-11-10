@@ -1,10 +1,14 @@
 package com.greatwall.callring.application.ports.recording
 
 import com.greatwall.callring.domain.calling.RecordingCall
-import com.greatwall.callring.contracts.recording.CallArchive
+import com.greatwall.callring.contracts.recording.*
 import com.greatwall.callring.application.recording.model.RecordingSettings
 
 interface RecordingIdentityEnrichment {
+    fun suggestions(archive: CallArchive): CallerSuggestions?
+    fun hasConfirmation(archive: CallArchive): Boolean
+    fun confirm(archive: CallArchive, command: ConfirmCallerSuggestions, checkActive: () -> Unit): CallerSuggestionConfirmation
+
     fun capture(number: String, recordedAt: Long): com.greatwall.callring.contracts.recording.CallerIdentityBaseline
     fun apply(number: String, baseline: com.greatwall.callring.contracts.recording.CallerIdentityBaseline,
               archiveId: Long, generation: Long, candidates: Map<String, Pair<String, String>>)

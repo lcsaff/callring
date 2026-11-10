@@ -13,6 +13,7 @@ import com.greatwall.callring.platform.scheduler.AndroidSyncScheduler
 
 import android.content.Context
 import com.greatwall.callring.application.CallringBackend
+import com.greatwall.callring.application.callers.CallHistoryRecordingReads
 import com.greatwall.callring.contracts.runtime.*
 import com.greatwall.callring.contracts.command.CommandContext
 import com.greatwall.callring.platform.*
@@ -105,6 +106,9 @@ internal class CoreAssembly(
                 override suspend fun archives(number: String) = recordings().service.numberArchives(number)
             },
             operationActive,
+            callHistoryRecordings = CallHistoryRecordingReads { targets, cancelled ->
+                recordings().readCallHistory(targets, cancelled)
+            },
             conversationProvider = { conversation().service },
             aiSettingsProvider = { command -> if (command == null) recordings().aiSettings else recordings().aiSettings.bound(command) },
             updateProvider = { update() },

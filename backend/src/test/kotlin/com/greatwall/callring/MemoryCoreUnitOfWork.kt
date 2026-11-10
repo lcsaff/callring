@@ -18,6 +18,7 @@ import com.greatwall.callring.domain.model.*
 internal class MemoryCoreUnitOfWork : CoreUnitOfWork {
     var numberRuleSettings = com.greatwall.callring.contracts.settings.NumberRuleSettings(listOf(com.greatwall.callring.contracts.settings.NumberRuleEntry("3", 5)), 0)
     val decision = DecisionFixture()
+    private val confirmations = mutableMapOf<Pair<Long, Long>, String>()
     val deletedCallers = linkedMapOf<String,Long>()
     val people = linkedMapOf<String, ProfileRecord>()
     val roles = linkedMapOf<Long, PositionRecord>()
@@ -57,6 +58,15 @@ internal class MemoryCoreUnitOfWork : CoreUnitOfWork {
                 decision.intervals.any { it.endMillis == null }
 
             override fun homeQuietMode() = decision.quiet.mode
+
+            override fun visibleCallHistory(after: CallHistoryBoundary?, limit: Int) =
+                calls.values.filter {
+                    !it.hidden && (after == null || it.time < after.time || (it.time == after.time && it.id < after.id))
+                }.sortedWith(compareByDescending<RawCallRecord> { it.time }.thenByDescending { it.id })
+                    .take(limit).map { ReportCallFact(it, it.linkedScreenId?.let(calls::get)) }
+
+            override fun visibleCallHistoryDetail(id: Long) =
+                calls[id]?.takeUnless { it.hidden }?.let { ReportCallFact(it, it.linkedScreenId?.let(calls::get)) }
 
             override fun latestVisibleReportCall(): ReportCallFact? =
                 calls.values
@@ -117,6 +127,8 @@ internal class MemoryCoreUnitOfWork : CoreUnitOfWork {
             }
 
             override fun caller(number: String) = people[number]
+            override fun callerConfirmation(archiveId: Long, resultVersion: Long) = confirmations[archiveId to resultVersion]
+            override fun saveCallerConfirmation(archiveId: Long, resultVersion: Long, receipt: String) { confirmations[archiveId to resultVersion] = receipt }
             override fun callerDeletedAt(number: String) = deletedCallers[number]
             override fun markCallerDeleted(number: String, at: Long) { deletedCallers[number]=at }
 
@@ -417,7 +429,7 @@ internal class MemoryCoreUnitOfWork : CoreUnitOfWork {
         fun <T> remember(list: MutableList<T>) {
             val saved = list.toList(); undo += { list.clear(); list.addAll(saved) }
         }
-        remember(deletedCallers); remember(people); remember(roles); remember(calls); remember(audits)
+        remember(confirmations); remember(deletedCallers); remember(people); remember(roles); remember(calls); remember(audits)
         remember(decision.schedules); remember(decision.calendarYears); remember(decision.holidays)
         remember(decision.overrides); remember(decision.leaves); remember(decision.intervals)
         val makeup = decision.makeupDates.toSet()

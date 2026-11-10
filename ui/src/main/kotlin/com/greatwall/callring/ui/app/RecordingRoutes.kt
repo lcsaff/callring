@@ -10,7 +10,22 @@ import com.greatwall.callring.contracts.common.*
 import com.greatwall.callring.contracts.recording.*
 import com.greatwall.callring.contracts.*
 import com.greatwall.callring.ui.feature.recording.*
+import com.greatwall.callring.ui.feature.callers.*
 import com.greatwall.callring.ui.feature.ai.ScopedRecordingSettingsViewModel
+
+@Composable internal fun CallHistoryRoute(api: CallringUiApi, onBack: () -> Unit,
+    onArchives: () -> Unit, onDetail: (Long) -> Unit) {
+    val model: CallHistoryViewModel = uiViewModel { CallHistoryViewModel(api.callers, api.recordings, api.changes) }
+    val state by model.state.collectAsStateWithLifecycle()
+    val playing by model.playback.state.collectAsStateWithLifecycle()
+    val playback by model.playback.mutation.collectAsStateWithLifecycle()
+    val transcript by model.transcript.collectAsStateWithLifecycle()
+    val selection by model.selectedTranscript.collectAsStateWithLifecycle()
+    DisposableEffect(model) { onDispose { model.playback.stopForExit() } }
+    CallHistoryScreen(state, playing, playback, onBack, model::refresh, model::more, onArchives, onDetail,
+        model.playback::toggle, model::openTranscript)
+    selection?.let { CallHistoryTranscriptDialog(it, transcript, model::retryTranscript, model::closeTranscript) }
+}
 
 @Composable internal fun RecordingArchivesRoute(api: CallringUiApi, signal: Long, onBack: () -> Unit,
     onArchive: (ArchiveListItem) -> Unit) {
@@ -43,18 +58,34 @@ import com.greatwall.callring.ui.feature.ai.ScopedRecordingSettingsViewModel
         confirmButton = { androidx.compose.material3.TextButton(onClick = { permissionError = null }) { androidx.compose.material3.Text("知道了") } }) }
 }
 
-@Composable internal fun ArchiveRoute(api: CallringUiApi, callId: Long, number: String, startedAt: Long, signal: Long,
-    onBack: () -> Unit, onEdit: () -> Unit) {
-    val model: ArchiveViewModel = uiViewModel { ArchiveViewModel(api.recordings, callId, number, startedAt, changes = api.changes) }
+@Composable internal fun ArchiveRoute(api: CallringUiApi, callId: Long, number: String?, startedAt: Long?,
+    onBack: () -> Unit, onEdit: (String) -> Unit, historyDetail: Boolean = false) {
+    val model: ArchiveViewModel = uiViewModel {
+        ArchiveViewModel(api.recordings, callId, number, startedAt, changes = api.changes,
+            callers = if (historyDetail) api.callers else null)
+    }
     val state by model.state.collectAsStateWithLifecycle()
+    val history by model.history.collectAsStateWithLifecycle()
     val files by model.files.collectAsStateWithLifecycle()
     val mutation by model.mutation.collectAsStateWithLifecycle()
+    val playback by model.playback.mutation.collectAsStateWithLifecycle()
+    val playing by model.playback.state.collectAsStateWithLifecycle()
+    val suggestions by model.suggestions.state.collectAsStateWithLifecycle()
     val timeZone: RecordingTimeZoneViewModel = uiViewModel { RecordingTimeZoneViewModel(api.settings, api.changes) }
     val zone by timeZone.state.collectAsStateWithLifecycle()
     val picker = rememberImportPicker(arrayOf("audio/*")) { model.import(it) }
     val offlinePicker = rememberImportPicker(arrayOf("audio/*")) { model.import(it, offlineOnly = true) }
-    DisposableEffect(model) { onDispose { model.stopForExit() } }
+    DisposableEffect(model) { onDispose { model.playback.stopForExit() } }
+    val isPlaying = playing.data?.callId?.let {
+        it == callId || it == state.data?.callId || it == history.data?.linkedScreeningCallId
+    } == true
     ArchiveScreen(state, files, mutation, onBack, model::refresh, picker, model::listSystem,
-        { model.import(DocumentRef(it.uri), RecordingSource.SYSTEM) }, model::retry, model::delete, model::play, model::stop,
-        onEdit, zone, timeZone::refresh, offlinePicker, model::transcribeOffline, model::cancelOffline)
+        { model.import(DocumentRef(it.uri), RecordingSource.SYSTEM) }, model::retry, model::delete,
+        model::togglePlayback, model::togglePlayback,
+        { (history.data?.call?.number ?: number)?.let(onEdit) }, zone, timeZone::refresh,
+        offlinePicker, model::transcribeOffline, model::cancelOffline,
+        history = if (historyDetail) history else null, isPlaying = isPlaying,
+        playback = playback, playbackError = playing.error,
+        onAnalyze = model::analyze, suggestions = suggestions, onRetrySuggestions = model.suggestions::refresh,
+        onConfirmSuggestions = model.suggestions::confirm)
 }

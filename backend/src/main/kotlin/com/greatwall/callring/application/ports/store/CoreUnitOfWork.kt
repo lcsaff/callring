@@ -33,7 +33,8 @@ interface CoreReadSession :
     WorkScheduleReader,
     CalendarReader,
     LeaveReader,
-    CallerOverviewReader {}
+    CallerOverviewReader,
+    CallHistoryReader {}
 
 interface CoreWriteSession :
     CoreReadSession,
@@ -63,7 +64,8 @@ interface CoreUnitOfWork :
     CalendarTransactions,
     LeaveTransactions,
     CallerTransactions,
-    CallerQueryTransactions {
+    CallerQueryTransactions,
+    CallHistoryReads {
     override fun <T> readReport(block: (ReportReader) -> T): T = readSession { block(it) }
 
     override fun <T> readHome(block: (HomeReader) -> T): T = readSession { block(it) }
@@ -83,6 +85,8 @@ interface CoreUnitOfWork :
     override fun <T> readCallerOverview(block: (CallerOverviewReader) -> T): T = readSession {
         block(it)
     }
+
+    override fun <T> readCallHistory(block: (CallHistoryReader) -> T): T = readSession { block(it) }
 
     override fun <T> readCallerCalls(block: (CallerCallReader) -> T): T = readSession { block(it) }
 

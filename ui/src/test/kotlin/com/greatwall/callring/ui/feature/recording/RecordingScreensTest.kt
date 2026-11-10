@@ -31,9 +31,9 @@ class RecordingScreensTest {
             mutation = MutationState(), onBack = {}, onRefresh = {}, onImport = {}, onList = {}, onSelect = {},
             onRetry = {}, onDelete = {}, onPlay = {}, onStop = {}, onEdit = {},
             onTranscribeOffline = { starts++ }, onCancelOffline = { cancelled = it }) }
-        compose.onNodeWithText("离线转写").assertIsNotEnabled()
+        compose.onNodeWithText("转为文本").assertDoesNotExist()
         compose.runOnIdle { archive.value = archive.value.copy(audioPath = "/owned/fixture.wav") }
-        compose.onNodeWithText("离线转写").performScrollTo().performClick()
+        compose.onNodeWithText("转为文本").performScrollTo().performClick()
         assertEquals(1, starts)
         compose.runOnIdle { archive.value = archive.value.copy(
             offlineTranscription = OfflineTranscriptionRun(7, OfflineTranscriptionPhase.TRANSCRIBING)) }
@@ -44,8 +44,9 @@ class RecordingScreensTest {
             offlineTranscription = OfflineTranscriptionRun(7, OfflineTranscriptionPhase.FAILED, "recording.silent_audio")) }
         compose.onNodeWithText("重试离线转写").assertIsEnabled()
         compose.runOnIdle { archive.value = archive.value.copy(transcript = "本地全文", offlineTranscription = null) }
+        compose.onNodeWithText("展开转写").performScrollTo().performClick()
         compose.onNodeWithText("本地全文").assertExists()
-        compose.onNodeWithText("分析 / 重试").assertIsEnabled()
+        compose.onNodeWithText("AI 分析").assertIsEnabled()
     }
     @Test fun localEnrichmentRetryDoesNotRequireAudioAndHasNoAdoptionAction() {
         var retries = 0

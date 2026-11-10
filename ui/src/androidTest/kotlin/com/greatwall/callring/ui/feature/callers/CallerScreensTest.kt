@@ -32,7 +32,8 @@ class CallerScreensTest {
         } }
         compose.onNodeWithText("正在编辑").assertExists()
         compose.onNodeWithText("名称过长").assertExists()
-        compose.onNodeWithText("保存档案").performClick()
+        compose.onNodeWithText("保存档案").performScrollTo().assertIsDisplayed()
+            .performTouchInput { click() }
         compose.runOnIdle { assertEquals(1, saveCalls) }
     }
 

@@ -39,9 +39,35 @@ data class CallArchive(
     val enrichmentBaseline: CallerIdentityBaseline? = null,
     val enrichmentSourceGeneration: Long? = null,
     val offlineTranscription: OfflineTranscriptionRun? = null,
+    val analysisIntent: ArchiveAnalysisIntent = ArchiveAnalysisIntent.AUTOMATIC,
+    val manualAnalysisState: ManualAnalysisState? = null,
+    val manualAnalysisResultVersion: Long? = null,
 )
 
+enum class ManualAnalysisState { PENDING_CONFIRMATION, CONFIRMED }
+
+enum class ArchiveAnalysisIntent { AUTOMATIC, MANUAL_TEXT, MANUAL_LEGACY, LEGACY_UNCLASSIFIED }
+
+enum class CallerSuggestionField { NAME, DEPARTMENT, POSITION, REGION }
+
+data class CallerSuggestion(
+    val field: CallerSuggestionField, val currentValue: String, val suggestedValue: String, val evidence: String,
+)
+
+data class CallerSuggestions(
+    val callId: Long, val number: String, val resultVersion: Long, val token: String, val fields: List<CallerSuggestion>,
+)
+
+data class ConfirmCallerSuggestions(val callId: Long, val token: String, val fields: Set<CallerSuggestionField>)
+
+sealed interface CallerSuggestionConfirmation {
+    data object Applied : CallerSuggestionConfirmation
+    data class Conflict(val latest: CallerSuggestions?) : CallerSuggestionConfirmation
+}
+
 data class RecordingFile(val uri: String, val name: String, val modifiedAt: Long, val size: Long? = null, val modifiedKnown: Boolean = true)
+
+data class RecordingPlaybackSession(val callId: Long, val token: String)
 
 interface RecordingApi {
     suspend fun getIdentity(callId: Long): ApiResult<RecordingIdentity>
@@ -50,8 +76,15 @@ interface RecordingApi {
     suspend fun importRecording(callId: Long, number: String, startedAt: Long, document: DocumentRef, source: RecordingSource = RecordingSource.IMPORTED, offlineOnly: Boolean = false): ApiResult<CallArchive>
     suspend fun transcribeOffline(callId: Long): ApiResult<Long>
     suspend fun cancelOfflineTranscription(callId: Long, runId: Long): ApiResult<Unit>
+    suspend fun analyzeTranscript(callId: Long): ApiResult<Unit>
+    suspend fun getCallerSuggestions(callId: Long): ApiResult<CallerSuggestions?>
+    suspend fun confirmCallerSuggestions(command: ConfirmCallerSuggestions): ApiResult<CallerSuggestionConfirmation>
     suspend fun retry(callId: Long): ApiResult<Unit>
     suspend fun delete(callId: Long): ApiResult<Unit>
+    suspend fun getPlaybackSession(): ApiResult<RecordingPlaybackSession?>
+    /** A fresh opaque token lets the page stop only this playback when it leaves. */
+    suspend fun playOwned(callId: Long, token: String): ApiResult<Unit>
+    suspend fun stopPlaybackSession(token: String): ApiResult<Unit>
     suspend fun play(callId: Long): ApiResult<Unit>
     suspend fun stop(): ApiResult<Unit>
     suspend fun setSystemFolder(document: DocumentRef): ApiResult<Unit>

@@ -7,6 +7,9 @@ import com.greatwall.callring.contracts.common.ApiError
 import com.greatwall.callring.contracts.recording.ArchiveStatus
 import com.greatwall.callring.ui.state.MutationState
 
+internal fun ArchiveStatus.processing() = this in setOf(ArchiveStatus.QUEUED, ArchiveStatus.TRANSCRIBING,
+    ArchiveStatus.ANALYZING, ArchiveStatus.ENRICHING)
+
 internal fun archiveStatusLabel(status: ArchiveStatus): String = when (status) {
     ArchiveStatus.WAITING_RECORDING -> "等待录音"
     ArchiveStatus.READY -> "录音就绪"
@@ -21,7 +24,7 @@ internal fun archiveStatusLabel(status: ArchiveStatus): String = when (status) {
 
 @Composable internal fun RecordingFeedback(error: ApiError?, mutation: MutationState) {
     (mutation.error ?: error)?.let { Text(recordingMessage(it.message), color = MaterialTheme.colorScheme.error) }
-    mutation.message?.let { Text(it) }
+    mutation.message?.takeIf(String::isNotBlank)?.let { Text(it) }
 }
 
 fun recordingMessage(key: String): String = when (key) {
@@ -46,6 +49,7 @@ fun recordingMessage(key: String): String = when (key) {
     "recording.silent_audio" -> "录音中没有识别到语音"
     "recording.offline_audio_too_long" -> "离线转写目前支持最长 10 分钟的录音"
     "ai.transcript_too_large" -> "转写结果超出保存上限"
+    "recording.transcript_required" -> "请先将录音转为文本，再进行 AI 分析"
     "recording.not_found" -> "尚无归档，请先导入录音"
     "recording.microphone_unverified", "recording.microphone_limited" -> "实验性麦克风录音，可能只有本机一方声音"
     "recording.waiting" -> "等待录音导入"

@@ -174,7 +174,14 @@ private fun AppScaffold(
                 val check by model.check.collectAsStateWithLifecycle()
                 CallerListScreen(state, query, check, model::search, model::page, { model.refresh() },
                     { open(UiDestination.EditCaller()) }, { open(UiDestination.Report(it)) },
-                    { open(UiDestination.Report(it)) }, { open(UiDestination.Positions) })
+                    { open(UiDestination.Report(it)) }, { open(UiDestination.Positions) }, { open(UiDestination.CallHistory) })
+            }
+            composable(UiDestination.CallHistory.route) {
+                CallHistoryRoute(api, back, { open(UiDestination.RecordingArchives) }, { open(UiDestination.CallHistoryDetail(it)) })
+            }
+            composable("call-history/{callId}", listOf(navArgument("callId") { type = NavType.LongType })) { record ->
+                val callId = requireNotNull(record.arguments).getLong("callId")
+                ArchiveRoute(api, callId, null, null, back, { open(UiDestination.EditCaller(it)) }, historyDetail = true)
             }
             composable("recording-archives") {
                 RecordingArchivesRoute(api, refreshSignal, back) {
@@ -214,15 +221,15 @@ private fun AppScaffold(
                 TimeRefresh(model.timeRefresh, refreshSignal, intervalMillis = 60_000, refresh = { model.refresh() })
                 ReportScreen(state, query, mutation, back, { model.refresh() }, model::range, model::filter, model::page,
                     export, { open(UiDestination.EditCaller(number)) }, onCapability,
-                    { open(UiDestination.Archive(it.id, number, it.startedAtEpochMillis)) })
+                    { open(UiDestination.CallHistoryDetail(it.id)) })
             }
             composable("archive/{callId}/{number}/{startedAt}", listOf(
                 navArgument("callId") { type = NavType.LongType }, navArgument("number") { type = NavType.StringType },
                 navArgument("startedAt") { type = NavType.LongType })) { record ->
                 val args = requireNotNull(record.arguments)
                 val number = requireNotNull(args.getString("number"))
-                ArchiveRoute(api, args.getLong("callId"), number, args.getLong("startedAt"), refreshSignal, back,
-                    { open(UiDestination.EditCaller(number)) })
+                ArchiveRoute(api, args.getLong("callId"), number, args.getLong("startedAt"), back,
+                    { open(UiDestination.EditCaller(it)) })
             }
             composable("settings") {
                 val summary by settings.state.collectAsStateWithLifecycle()

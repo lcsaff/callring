@@ -34,6 +34,10 @@ class RecordingArchiveCommands(
         else { block(); true }
     }
 
+    fun confirmationStateChanged(callId: Long) {
+        publish(callId, playbackStopped = false)
+    }
+
     fun offlineStateChanged(callId: Long) {
         coordinator.publishRuntime(setOf("runtime:offlineTranscription:$callId"))
     }

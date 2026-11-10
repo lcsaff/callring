@@ -7,6 +7,8 @@ import java.util.Locale
 sealed class UiDestination(val route: String) {
     data object Home : UiDestination("home")
     data object Callers : UiDestination("callers")
+    data object CallHistory : UiDestination("call-history")
+    data class CallHistoryDetail(val callId: Long) : UiDestination("call-history/$callId")
     data object RecordingArchives : UiDestination("recording-archives")
     data object Settings : UiDestination("settings")
     data object Conversation : UiDestination("conversation")
@@ -22,6 +24,7 @@ sealed class UiDestination(val route: String) {
     companion object {
         fun fromExternal(target: String?, number: String?, page: String? = null): UiDestination = when (target) {
             "callers" -> Callers
+            "call-history" -> CallHistory
             "recording-archives" -> RecordingArchives
             "settings" -> Settings
             "conversation" -> Conversation

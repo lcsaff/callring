@@ -38,6 +38,10 @@ class BundledOfflineTranscriptionDeviceTest : InstrumentationTestCase() {
             override fun test(connection: AiConnection, transcription: Boolean) = error("Unexpected online connection test")
         }
         val enrichment = object : RecordingIdentityEnrichment {
+    override fun suggestions(archive: com.greatwall.callring.contracts.recording.CallArchive): com.greatwall.callring.contracts.recording.CallerSuggestions? = error("unused")
+    override fun hasConfirmation(archive: com.greatwall.callring.contracts.recording.CallArchive): Boolean = error("unused")
+    override fun confirm(archive: com.greatwall.callring.contracts.recording.CallArchive, command: com.greatwall.callring.contracts.recording.ConfirmCallerSuggestions, checkActive: () -> Unit): com.greatwall.callring.contracts.recording.CallerSuggestionConfirmation = error("unused")
+
             override fun capture(number: String, recordedAt: Long): CallerIdentityBaseline = error("Unexpected enrichment")
             override fun apply(number: String, baseline: CallerIdentityBaseline, archiveId: Long,
                 generation: Long, candidates: Map<String, Pair<String, String>>) = error("Unexpected enrichment")

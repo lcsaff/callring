@@ -14,6 +14,8 @@ The architecture guard rejects operation dispatch through numeric index/ordinal,
 
 ## Approved internal signature changes
 
+Unified call history (2026-11-10) adds CallersApi.queryCallHistory and CallersApi.getCallHistoryDetail with a cursor bound to calls and recording-archive revisions. RecordingApi adds owned playback sessions (getPlaybackSession, playOwned, stopPlaybackSession), analyzeTranscript, getCallerSuggestions and confirmCallerSuggestions. Archive analysis intent and confirmation state are stored in the local archive payload. The AI operation catalog continues to use recordings.retry and exposes no caller confirmation command.
+
 System recording import window (2026-11-04): RecordingSettingsView appends systemImportDays=7 and RecordingSettingsPatch appends PatchField<Int>. Validation and field conflicts remain in AiSettingsService; external D13 projection and AI write schemas retain their reviewed shapes. Internal CallingReader.systemRecordingCalls adds a bounded number/time lookup; recording discovery uses explicit scan/import ports without widening CallringUiApi.
 
 T11 makes `ChangeFeed.snapshots(): StateFlow<InvalidationSnapshot>` mandatory and removes `DataChange`, `observe()` and nullable/default feed implementations. Every production consumer uses cumulative tokens. `ChangeSubscription.entities` is a domain-local map of nonempty entity sets; each selected domain token is the maximum of its selected entity/wide revisions. Missing selectors mean the actual whole domain, while empty selectors are rejected. All selected domains must belong to the subscription. Epoch/incarnation invalidate every token. No single-string overload or legacy notification bridge remains. External tool schemas, D identities and persisted formats are unchanged.
@@ -181,8 +183,19 @@ Offline transcription adds the internal `RecordingApi.transcribeOffline` and `ca
       "BackupApi"
     ]
   },
+  "callers/CallHistory.kt": {
+    "sha256": "1afd3f25b57df21d8f42072a552ff1a97548c624e0596af1213a27e547803803",
+    "declarations": [
+      "CallHistoryQuery",
+      "CallHistoryCursor",
+      "CallHistoryPage",
+      "CallHistoryEntry",
+      "CallArchiveAvailability",
+      "CallHistoryRecording"
+    ]
+  },
   "callers/CallersApi.kt": {
-    "sha256": "2d66488a61ec2b9ee6d87f3564570f4ec3063ceaff5de777bd53e6fb392a3939",
+    "sha256": "b5cc4876298387e3e4f78a98160f9819c07b312459791511d1abc9d98893c6f1",
     "declarations": [
       "HomeApi",
       "CallersApi",
@@ -259,7 +272,7 @@ Offline transcription adds the internal `RecordingApi.transcribeOffline` and `ca
     ]
   },
   "recording/RecordingApi.kt": {
-    "sha256": "070c06628aadc41c01d2496070b2d8360163c38849a973bb187d3cd83b12a3d0",
+    "sha256": "c9a7e088500b9a9448618a208fe9d049fd23651f1ef51603864d39eaa253684b",
     "declarations": [
       "CaptureMode",
       "ArchiveStatus",
@@ -269,7 +282,15 @@ Offline transcription adds the internal `RecordingApi.transcribeOffline` and `ca
       "CallerIdentityBaseline",
       "CallAnalysis",
       "CallArchive",
+      "ManualAnalysisState",
+      "ArchiveAnalysisIntent",
+      "CallerSuggestionField",
+      "CallerSuggestion",
+      "CallerSuggestions",
+      "ConfirmCallerSuggestions",
+      "CallerSuggestionConfirmation",
       "RecordingFile",
+      "RecordingPlaybackSession",
       "RecordingApi",
       "RecordingIdentity",
       "ArchiveListItem",

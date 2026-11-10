@@ -5,6 +5,7 @@ import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.unit.dp
 import com.greatwall.callring.contracts.callers.CallerDraft
 import com.greatwall.callring.contracts.callers.SaveCallerProfile
+import com.greatwall.callring.contracts.common.ApiResult
 import com.greatwall.callring.ui.testing.UiFakeApi
 import com.greatwall.callring.ui.testing.captureArtifact
 import com.greatwall.callring.contracts.settings.*
@@ -56,7 +57,9 @@ class AppNavigationTest {
     }
 
     @Test fun everySettingsDestinationOpensAndThemeSavesThroughApi() {
-        val api = UiFakeApi()
+        val api = object : UiFakeApi() {
+            override suspend fun stopPreview() = ApiResult.Success(Unit)
+        }
         compose.setContent { CallringApp(api, onCapability = {}, onPinWidget = {}, onAppSettings = {}) }
         compose.onNodeWithTag("tab-settings").performClick()
         compose.captureArtifact("settings")

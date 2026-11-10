@@ -43,7 +43,7 @@ internal class ArchiveStreamParser(private val db:SQLiteDatabase,private val id:
         if(mode=="atom")endAtom()
         require(done&&frames.isEmpty()&&mode.isEmpty()){"ai.archive_source_shape"}
         val parsed = root as? AiJson.Obj ?: throw IllegalArgumentException("ai.archive_source_shape")
-        val value = AiJson.Obj(parsed.fields.filterKeys { it !in setOf("enrichmentBaseline", "enrichmentSourceGeneration") })
+        val value = AiJson.Obj(parsed.fields.filterKeys { it !in setOf("enrichmentBaseline", "enrichmentSourceGeneration", "analysisIntent", "manualAnalysisState", "manualAnalysisResultVersion") })
         // RecordingJson omits a null audio path. Its absence has always meant no audio.
         return if("audioPresent" in value.fields)value else AiJson.Obj(value.fields+("audioPresent" to aiBool(false)))
     }

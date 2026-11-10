@@ -7,13 +7,24 @@ import java.io.Reader
 /** Scans one persisted JSON object in fixed pages; long transcript/analysis values are skipped. */
 internal object ArchiveBackupFields {
     data class Field(val start: Long, val end: Long, val scalar: String?, val present: Boolean = true)
-    private val selected = setOf("id", "number", "started", "generation", "status", "audio", "manual", "next", "error", "source", "protocol", "duration", "attempts", "analyzed")
+    private val selected = setOf("id", "number", "started", "generation", "status", "audio", "manual", "next", "error", "source", "protocol", "duration", "attempts", "analyzed", "analysisIntent", "manualAnalysisState", "manualAnalysisResultVersion", "analysis")
     fun fields(db: SQLiteDatabase, id: Long, check: () -> Unit): Map<String, Field> {
         try {
             val reader = PagedPayload(db, id, check)
             val fields = Scanner(reader).fields()
             validateShape(PagedPayload(db, id, check))
             if (fields.getValue("attempts").scalar?.toIntOrNull() == null || fields.getValue("next").scalar?.toLongOrNull() == null) throw BackupFormatException()
+            val intent = string(fields["analysisIntent"])?.let(com.greatwall.callring.contracts.recording.ArchiveAnalysisIntent::valueOf)
+            if (fields["analysisIntent"]?.present == true && intent == null) throw BackupFormatException()
+            val state = string(fields["manualAnalysisState"])?.let(com.greatwall.callring.contracts.recording.ManualAnalysisState::valueOf)
+            val version = fields.getValue("manualAnalysisResultVersion").scalar
+            if (state != null) {
+                if (fields["analysis"]?.scalar != null || intent == null || intent == com.greatwall.callring.contracts.recording.ArchiveAnalysisIntent.AUTOMATIC ||
+                    string(fields["status"]) !in setOf("COMPLETE", "QUEUED", "TRANSCRIBING", "ANALYZING", "FAILED") ||
+                    (version?.toLongOrNull() ?: 0) !in 1..(fields["generation"]?.scalar?.toLongOrNull() ?: 0))
+                    throw BackupFormatException()
+            } else if (version != "null") throw BackupFormatException()
+            if (fields["manual"]?.scalar !in setOf("true", "false")) throw BackupFormatException()
             return fields
         } catch (cancelled: java.util.concurrent.CancellationException) { throw cancelled }
         catch (_: Exception) { throw BackupFormatException() }
@@ -73,7 +84,11 @@ internal object ArchiveBackupFields {
                     key == "enrichmentSourceGeneration" && reader.peek() != android.util.JsonToken.NULL -> {
                         if (reader.peek() != android.util.JsonToken.NUMBER || reader.nextLong() <= 0) throw BackupFormatException()
                     }
-                    key == "analysis" && reader.peek() == android.util.JsonToken.BEGIN_OBJECT -> validateAnalysis(reader)
+                    key == "analysis" -> when (reader.peek()) {
+                        android.util.JsonToken.BEGIN_OBJECT -> validateAnalysis(reader)
+                        android.util.JsonToken.NULL -> reader.nextNull()
+                        else -> throw BackupFormatException()
+                    }
                     else -> reader.skipValue()
                 }
             }
@@ -179,7 +194,7 @@ internal object ArchiveBackupFields {
             }
             val closing = offset
             expect('}'); whitespace()
-            val optional = setOf("manual", "audio", "error", "protocol", "duration", "analyzed")
+            val optional = setOf("manual", "audio", "error", "protocol", "duration", "analyzed", "analysisIntent", "manualAnalysisState", "manualAnalysisResultVersion", "analysis")
             if (current != -1 || !output.keys.containsAll(selected - optional)) throw BackupFormatException()
             optional.forEach { key -> output.putIfAbsent(key, Field(closing, closing, if (key == "manual") "false" else "null", present = false)) }
             return output

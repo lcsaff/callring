@@ -46,6 +46,8 @@
 - 启动更新由 UI 应用级 StartupUpdateViewModel 复用 AppUpdateApi，每个主界面宿主会话只自动检查一次，旋转保留检查和关闭状态；无更新或失败静默，下载/校验/待安装状态不主动重查。新版本提示复用 designsystem 的 ConfirmationDialog（同类双按钮确认提示统一使用，关闭文案可配置），关闭只消费提示，确定进入更新页，不自动下载或安装。平台检查按 generation 与原状态快照隔离迟到响应，不能覆盖后续检查、下载或安装状态；不新增契约、偏好或失效域。
 - 更新下载片段绑定发布的 versionCode、assetName、sizeBytes 和 SHA-256；网络中断及进程关闭保留，重启只恢复可继续状态，用户取消丢弃。继续下载校验 HTTP Content-Range，200 覆盖重下，416 最多回退一次；完成后重算整包摘要并复用包名、版本、SDK、签名验证。旧检查不能覆盖下载，已终止 owner 禁止发布结果；沿用现有持久状态格式与契约。AI 仅提供 update_status / update_check 两项平台观察工具，不开放下载或安装；不新增领域失效，投影不包含可调用地址、私有路径或原始失败细节。
 - 号码规则为可空列表，每条包含号码前缀与号码总长度，任意一条命中即匹配，空列表表示全部不匹配；缺少配置时默认一条 3/5。前缀允许多位 ASCII 数字及前导零，可为空表示不限前缀，长度不得超过该条总长度（1..30）。页面每行并排编辑两项，通过 + 添加、删除，停输 500ms 后整组自动保存；长度输入留空按 5 校验和保存，不把非法值回退为默认。规则行使用紧凑单行输入框，简短提示置于框内，删除按钮与输入框本体居中对齐；保存期间继续编辑排队提交最新草稿，不覆盖迟到编辑，冲突保留草稿并提示重新加载。生产 matcher 统一注入，列表 OR 组合集中实现，页面、AI、号码检查及系统流程共用；单条长度/前缀比较最多检查 30 位，不因性能限制为一位前缀。冲突按完整列表与持久版本检查，同次来电保留首次匹配事实、同批导入用同一不可变规则快照；保存不删除或重算旧记录。同步号码检查前先等待规则加载，恢复/关闭时不接受旧结果。单条 JSON version=1 读取为一条列表且保留 revision，version=2 存 rules/revision；显式空列表不得回退默认。兼容读取仅在唯一规则编码器中实现，不保留另一套业务接口。
+- 统一通话记录以应用内可见来电为主，使用来电时间及稳定 ID 分页，合并后的来电只显示一行。分页只投影当前页的录音和转写状态，全文和播放通过录音归档入口按需读取。列表及详情订阅通话、录音归档和必要的播放状态。
+- 手动文本分析使用已有转写，保存带版本的候选结果，待用户选择字段并确认后才写档。确认复核分析版本、档案身份、字段版本及删除边界，回执和字段更新在同一核心事务提交。恢复前的确认凭证失效。后台自动补全继续按原文证据补空及纠正异议。
 - 生产接口由架构守卫核对审查后的声明摘要与内部签名变更标识；外部 AI 协议基线为 `docs/contracts/ai-operation-compatibility.json`。变更经评审后精准更新，不为通过测试直接重生成；机器校验数据不作为另一套规范入口。
 
 - 删除号码档案的正式命令只删除档案、应用内通话记录和小组件绑定，保留所有录音归档、应用自有音频、转写、分析和系统原录音。号码删除服务仅持有录音摘要只读端口；录音活动及录音变化不阻塞该命令，不写录音删除标记或发布录音失效。影响预览的 archiveCount/audioBytes 为保留项信息，兼容字段 expectedArchiveCount 不授权删除且不作冲突条件，busy 固定 false；档案、通话及组件冲突检查保留。号码核心删除事务同时在现有 settings 写入精确号码的删除时间，备份保留并校验编码；本地补全捕获时携带录音开始时间，删除前的旧录音不重建或补写已删/重建档案，删除后的新录音可正常补全。UI 与 AI 确认明确录音保留，AI 读回不要求 D16 为空；录音仅由显式录音删除/存储清理命令删除应用副本，系统目录原文件始终不删除。
@@ -107,7 +109,7 @@ python tools/verify_ui.py --device ADB_SERIAL
 - 唯一任务表在 `tools/verify_common.py`：两架构守卫及三组 Python unittest、contracts/backend/UI/app JVM、真实 UI 类路径、Debug/Release/backendQa/双 AndroidTest APK 和双 lint。代码收尾运行统一门；仅文档核对内容、链接与差异，涉及守卫调整时补对应正反例。
 - Windows 保留实际工作树路径并调用 gradlew.bat；Linux/CI 使用 PATH 中的 Gradle8.13。每次运行先覆盖本轮 summary，失败/超时也写 argv、退出码、精确任务状态和 cleanup；区分 EXECUTED、UP-TO-DATE、FROM-CACHE、NO-SOURCE，不能用旧 XML 冒充本轮执行。
 - 后端证据在 `app/build/qa/backend-refactor/`，UI 在 `ui/build/qa/`；保留匹配提交的日志、JUnit/lint、APK及摘要。contracts 无测试源码可单列 NO-SOURCE，业务模块不得以零测试或跳过冒充通过。
-- 设备仅安装各自隔离包 `com.greatwall.callring.backendqa` / `com.greatwall.callring.ui.test`；核对 APK 包名和 metadata，临时权限及 app-ops 在 finally 恢复，只停止对应测试包，不清数据、不覆盖生产安装、不改主包角色或锁屏超时、不自动解锁。
+- 设备仅安装各自隔离包 `com.greatwall.callring.backendqa` / `com.greatwall.callring.ui.test`；核对 APK 包名和 metadata，finally 中只停止对应测试包，不清数据、不覆盖生产安装、不改主包角色或锁屏超时、不自动解锁。
 - 普通 UI 测试排除 lockeddevice；旧锁屏悬浮窗专项随产品方案退役。静默补全专项为隔离包中的 `com.greatwall.callring.SilentCallEnrichmentDeviceTest`，使用固定音频及模拟 AI 验证真实解码与重开持久化；锁屏录音专项仍为 `com.greatwall.callring.LockedRecordingPipelineDeviceTest`，须手动锁屏后显式选择，不自动改变锁屏状态。
 - 真实模型及连接测试可能计费，付费执行需明确授权。`tools/verify_ai_device.py` 是验证工具，不是通用业务 CLI，不能为补历史诊断重复新增业务数据；私人截图和日志不入库或发布。
 
@@ -154,6 +156,12 @@ python tools/verify_ui.py --device ADB_SERIAL
 5. **留下可复查的取舍。** 记录采用依赖、参考实现、自研或暂缓的理由，以及对应证据。采用时说明接入模块、固定版本、许可证义务、维护责任和退出路径。后续遇到 Android 行为、许可证或上游维护状态变化时，按同一验收标准复评。
 
 ## 已有验收摘要与剩余缺口
+
+### 统一通话记录与手动确认（2026-11-10）
+
+本次统一门 backend/UI/app JVM 分别为 469/363/479 项，零失败、错误或跳过。依赖守卫、内部契约清单、外部 AI 协议基线、Gradle 门及双 lint 通过。隔离模拟器后端常规回归 31 项、UI 81 项和分析专项 1 项通过。小屏 UI 测试实触保存按钮，覆盖列表图标、全文弹窗、返回滚动及选择性确认。分析专项使用固定音频、模拟 AI 和 SQLite 重开，覆盖自动补全、纯文本手动确认及回执重放。模拟器系统有默认网络但后台隔离包受限时，专项明确报出门控原因。对该包临时放行后复验通过，测试后撤销放行并恢复模拟器网络设置。没有用真实来电或付费模型验收。
+
+原始验证日志位于 `app/build/qa/backend-refactor/`、`app/build/qa/unified-call-history/` 和 `ui/build/qa/`。
 
 ### 系统录音导入日期范围（2026-11-04）
 

@@ -21,6 +21,8 @@ import org.junit.Test
 @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
 class CallerEditorViewModelTest {
     private class CallersFake : CallersApi {
+        override suspend fun queryCallHistory(query: CallHistoryQuery): ApiResult<CallHistoryPage> = error("unused")
+        override suspend fun getCallHistoryDetail(callId: Long): ApiResult<CallHistoryEntry> = error("unused")
     override suspend fun getCallDetail(callId: Long): ApiResult<CallDetail> = throw AssertionError("Unexpected fixture operation: getCallDetail")
     override suspend fun numberDataImpact(number: String): ApiResult<NumberCoreImpact> = throw AssertionError("Unexpected fixture operation: numberDataImpact")
     override suspend fun deleteNumberCore(number: String, expectedCallCount: Int): ApiResult<Unit> = throw AssertionError("Unexpected fixture operation: deleteNumberCore")

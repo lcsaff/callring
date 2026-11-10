@@ -62,7 +62,7 @@ class RecordingTimeZoneScreenTest {
 
     @Test fun detailUsesConfiguredDaylightSavingOffsetInsteadOfDeviceZone() = withDeviceZone("Asia/Shanghai") {
         val api = Api("America/New_York")
-        compose.setContent { ArchiveRoute(api, -1, "10086", api.archive.startedAtEpochMillis, 0, {}, {}) }
+        compose.setContent { ArchiveRoute(api, -1, "10086", api.archive.startedAtEpochMillis, {}, {}) }
         compose.onNodeWithText("2026-03-08 03:30").assertIsDisplayed()
     }
 
@@ -85,7 +85,7 @@ class RecordingTimeZoneScreenTest {
 
     @Test fun configurationUpdateReformatsDetailWithoutReloadingTranscript() = withDeviceZone("UTC") {
         val api = Api("America/New_York")
-        compose.setContent { ArchiveRoute(api, -1, "10086", api.archive.startedAtEpochMillis, 0, {}, {}) }
+        compose.setContent { ArchiveRoute(api, -1, "10086", api.archive.startedAtEpochMillis, {}, {}) }
         compose.onNodeWithText("2026-03-08 03:30").assertIsDisplayed()
         val archiveReads = api.archiveReads
         val summaryReads = api.summaryReads

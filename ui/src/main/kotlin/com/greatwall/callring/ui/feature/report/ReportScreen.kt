@@ -101,7 +101,7 @@ import java.time.ZoneId
             if (!call.counted) Text("未计入汇总", color = MaterialTheme.colorScheme.onSurfaceVariant)
             if (call.corrected) Text("工作分类已更正；当时响铃处理保留原始事实", color = MaterialTheme.colorScheme.primary)
             Text(if (expanded) "收起记录详情" else "展开记录详情", style = MaterialTheme.typography.labelMedium)
-            onArchive?.let { callback -> TextButton(onClick = { callback(call) }) { Text("录音与分析") } }
+            onArchive?.let { callback -> TextButton(onClick = { callback(call) }) { Text("通话详情") } }
             if (expanded) {
                 Text("数据来源：${when (call.source) { CallSource.SCREENING -> "来电筛选"; CallSource.SYSTEM_CALL_LOG -> "系统通话记录"; CallSource.MERGED -> "已关联核对"; CallSource.UNKNOWN -> "未知" }}")
                 Text("原始工作分类：${UiFormat.workReason(call.originalClassification.reason)}")

@@ -13,6 +13,9 @@ import com.greatwall.callring.bootstrap.*
 import com.greatwall.callring.contracts.backup.*
 import com.greatwall.callring.contracts.common.*
 import com.greatwall.callring.contracts.recording.ArchiveStatus
+import com.greatwall.callring.contracts.recording.ArchiveAnalysisIntent
+import com.greatwall.callring.contracts.recording.ManualAnalysisState
+import com.greatwall.callring.data.recording.RecordingSchema
 import com.greatwall.callring.data.recording.KeystoreRecordingCipher
 import com.greatwall.callring.data.recording.RecordingJson
 import org.json.JSONObject
@@ -58,6 +61,7 @@ internal class AndroidBackupArchivePort(
             val check = { checkCancellation(); checkIdle(); requireSpace(stage, 16L * 1024 * 1024) }
             check()
             SqliteBackupCopy.copy(sourceCore, File(stage, "core.db"), check = check)
+            CoreBackupValidation.invalidateConfirmationTokens(File(stage, "core.db"))
             SqliteBackupCopy.copy(sourceRecording, File(stage, "recording.db"), check = check)
             val settings = graph.recordings.store.settings().let { it.copy(
                 automaticAnalysis = false, systemFolder = null,
@@ -112,6 +116,7 @@ internal class AndroidBackupArchivePort(
             SqliteBackupCopy.validate(File(stage, "core.db"), sourceCore)
             SqliteBackupCopy.validate(File(stage, "recording.db"), sourceRecording)
             CoreBackupValidation.validate(File(stage, "core.db"), checkCancellation)
+            CoreBackupValidation.invalidateConfirmationTokens(File(stage, "core.db"))
             validateReferences(stage, checkCancellation)
             val prefs = readSmallJson(File(stage, "preferences.json"))
             validatePreferences(prefs)
@@ -248,10 +253,21 @@ internal class AndroidBackupArchivePort(
                 if (portable != null) db.execSQL("INSERT OR IGNORE INTO backup_audio_references VALUES(?)", arrayOf(portable))
                 val pending = status in setOf(ArchiveStatus.QUEUED, ArchiveStatus.TRANSCRIBING, ArchiveStatus.ANALYZING, ArchiveStatus.WAITING_RECORDING)
                 val updates = linkedMapOf("audio" to (portable?.let(JSONObject::quote) ?: "null"), "next" to Long.MAX_VALUE.toString())
-                if ("manual" in fields) updates["manual"] = "false"
+                val legacyIntent = RecordingSchema.legacyIntent(status, fields["manual"]?.scalar == "true")
+                val legacy = fields["analysisIntent"]?.present == false
+                if (legacy && legacyIntent != ArchiveAnalysisIntent.AUTOMATIC)
+                    updates["analysisIntent"] = JSONObject.quote(legacyIntent.name)
+                updates["manual"] = "false"
                 if (status in setOf(ArchiveStatus.ENRICHING, ArchiveStatus.ENRICHMENT_FAILED)) {
-                    updates["status"] = JSONObject.quote(ArchiveStatus.ENRICHMENT_FAILED.name)
-                    updates["error"] = JSONObject.quote("recording.restore_retry_required")
+                    if (legacy && fields["analysis"]?.scalar == null) {
+                        updates["status"] = JSONObject.quote(ArchiveStatus.COMPLETE.name)
+                        updates["error"] = "null"
+                        updates["manualAnalysisState"] = JSONObject.quote(ManualAnalysisState.PENDING_CONFIRMATION.name)
+                        updates["manualAnalysisResultVersion"] = fields.getValue("generation").scalar ?: throw BackupFormatException()
+                    } else {
+                        updates["status"] = JSONObject.quote(ArchiveStatus.ENRICHMENT_FAILED.name)
+                        updates["error"] = JSONObject.quote("recording.restore_retry_required")
+                    }
                 }
                 if (pending) { updates["status"] = JSONObject.quote(ArchiveStatus.FAILED.name); updates["error"] = JSONObject.quote("recording.restore_retry_required") }
                 if (exporting && path != null && !includeAudio) updates["error"] = JSONObject.quote("recording.audio_not_restored")
