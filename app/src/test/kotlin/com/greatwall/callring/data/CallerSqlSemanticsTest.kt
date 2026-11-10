@@ -197,6 +197,67 @@ class CallerSqlSemanticsTest {
     }
 
     @Test
+    fun scopedHistorySeeksAcrossTiedTimesAndProjectsProfileInThePage() = runBlocking<Unit> {
+        val revisions = BusinessRevisionCoordinator()
+        SqliteCoreStorageResource(context, "number-history-core.db", SqlAccessProbe()).use { core ->
+            seed(core)
+            core.fixtureSql { sql ->
+                sql.seedPosition(com.greatwall.callring.domain.model.PositionRecord(1, "配置职位", 1, true))
+                sql.execSQL("UPDATE callers SET name='',position_id=1,region='上海',self_reported_position='自述职位' WHERE number='31234'")
+                val screened = sql.callFact(1)!!
+                sql.seedCall(screened.copy(hidden = true))
+                sql.seedCall(screened.copy(
+                    id = 3, logId = "merged", screeningKey = null, linkedScreenId = 1,
+                    source = com.greatwall.callring.domain.model.CallSource.SYSTEM_CALL_LOG,
+                ))
+                sql.seedCall(screened.copy(id = 4, screeningKey = null, counted = false,
+                    result = com.greatwall.callring.domain.model.CallResult.REJECTED))
+                sql.seedCall(screened.copy(id = 5, screeningKey = null, time = at - 86_400_000,
+                    result = com.greatwall.callring.domain.model.CallResult.MISSED))
+            }
+            val api = backend(core, revisions)
+            val callers = api.callers
+            val query = CallHistoryQuery(pageSize = 1, number = "31234")
+            val first = callers.queryCallHistory(query).requiredValue()
+            val firstRow = first.entries.single()
+            assertEquals(4L, firstRow.call.id)
+            assertNull(firstRow.callerName)
+            assertEquals("上海", firstRow.callerRegion)
+            assertEquals("自述职位", firstRow.callerSelfReportedPosition)
+            assertEquals("配置职位", firstRow.callerConfiguredPosition)
+            val cursor = checkNotNull(first.nextCursor)
+            for (other in listOf(null, "39999")) {
+                val rejected = callers.queryCallHistory(query.copy(number = other, cursor = cursor)) as ApiResult.Failure
+                assertEquals(ErrorCode.CONFLICT, rejected.error.code)
+            }
+            val global = callers.queryCallHistory(CallHistoryQuery(pageSize = 1)).requiredValue()
+            val rejected = callers.queryCallHistory(query.copy(cursor = global.nextCursor)) as ApiResult.Failure
+            assertEquals(ErrorCode.CONFLICT, rejected.error.code)
+            revisions.publishCore(setOf("other-number"), com.greatwall.callring.application.coordination.ChangeImpact(
+                mapOf(
+                    com.greatwall.callring.contracts.change.DataDomain.CALLS to setOf("39999"),
+                    com.greatwall.callring.contracts.change.DataDomain.CALLERS to setOf("39999"),
+                ),
+            ))
+            api.settings.savePosition(com.greatwall.callring.contracts.settings.SavePosition(
+                name = "无关职位", level = 1, active = true,
+            )).requiredValue()
+            val second = callers.queryCallHistory(query.copy(cursor = cursor)).requiredValue()
+            assertEquals(3L, second.entries.single().call.id)
+            val last = callers.queryCallHistory(query.copy(cursor = second.nextCursor)).requiredValue()
+            assertEquals(5L, last.entries.single().call.id)
+            assertNull(last.nextCursor)
+            assertNull(callers.queryCallHistory(query.copy(number = "39999")).requiredValue().entries.single().callerRegion)
+            api.settings.savePosition(com.greatwall.callring.contracts.settings.SavePosition(
+                id = 1, name = "更名职位", level = 1, active = true,
+            )).requiredValue()
+            val stale = callers.queryCallHistory(query.copy(cursor = cursor)) as ApiResult.Failure
+            assertEquals(ErrorCode.CONFLICT, stale.error.code)
+            assertEquals("更名职位", callers.queryCallHistory(query).requiredValue().entries.single().callerConfiguredPosition)
+        }
+    }
+
+    @Test
     fun searchUsesOriginalUnicodeAndLiteralRulesWithBoundedPagesAndLongOffsets() =
         runBlocking<Unit> {
             val probe = SqlAccessProbe()

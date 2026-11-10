@@ -1,5 +1,6 @@
 package com.greatwall.callring.ui.feature.callers
 
+import androidx.lifecycle.SavedStateHandle
 import com.greatwall.callring.contracts.callers.*
 import com.greatwall.callring.contracts.change.*
 import com.greatwall.callring.contracts.common.*
@@ -9,6 +10,8 @@ import com.greatwall.callring.ui.state.*
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.*
 
+private const val HistoryPageDepth = "callHistoryLoadedPageDepth"
+
 data class CallHistoryTranscript(val archiveId: Long, val number: String)
 
 class CallHistoryViewModel(
@@ -16,6 +19,9 @@ class CallHistoryViewModel(
     private val recordings: RecordingApi,
     changes: ChangeFeed,
     testScope: CoroutineScope? = null,
+    private val number: String? = null,
+    initialPageDepth: Int = 1,
+    private val saved: SavedStateHandle? = null,
 ) : UiViewModel(testScope) {
     private val mutable = MutableStateFlow(LoadState<CallHistoryPage>())
     val state = mutable.asStateFlow()
@@ -25,21 +31,30 @@ class CallHistoryViewModel(
     private val transcriptSelection = MutableStateFlow<CallHistoryTranscript?>(null)
     val selectedTranscript = transcriptSelection.asStateFlow()
     private var cursor: CallHistoryCursor? = null
-    private var pageDepth = 1
-    private val subscription = ChangeSubscription(setOf(DataDomain.CALLS, DataDomain.RECORDING_ARCHIVES, DataDomain.CALLERS))
+    private val initialDepth = (saved?.get<Int>(HistoryPageDepth) ?: initialPageDepth).coerceAtLeast(1)
+    private val mutablePageDepth = MutableStateFlow(0)
+    val loadedPageDepth = mutablePageDepth.asStateFlow()
+    private val subscription = ChangeSubscription(
+        setOf(DataDomain.CALLS, DataDomain.RECORDING_ARCHIVES, DataDomain.CALLERS),
+        number?.let { mapOf(DataDomain.CALLS to setOf(it), DataDomain.CALLERS to setOf(it)) }.orEmpty(),
+    )
     private val observer = ChangeObserver(changes, subscription)
-    private data class Read(val cursor: CallHistoryCursor?, val result: ApiResult<CallHistoryPage>)
+    private data class Window(val page: CallHistoryPage, val depth: Int)
+    private data class Read(val cursor: CallHistoryCursor?, val result: ApiResult<Window>)
     private val loader: RefreshCoordinator<Read> = RefreshCoordinator(scope, observer::token, {
         val requested = cursor
-        val result = try { readPages(requested, if (requested == null) pageDepth else 1) }
+        val depth = if (requested == null) loadedPageDepth.value.takeIf { it > 0 } ?: initialDepth else 1
+        val result = try { readPages(requested, depth) }
         catch (cancelled: CancellationException) { throw cancelled }
         catch (_: Exception) { ApiResult.Failure(ApiError(ErrorCode.INTERNAL, "无法加载通话记录，请重试", retryable = true)) }
         Read(requested, result)
     }, { read ->
         when (val result = read.result) {
             is ApiResult.Success -> {
-                val page = result.value
-                if (read.cursor != null) pageDepth++
+                val (page, depth) = result.value
+                val loadedDepth = if (read.cursor == null) depth else loadedPageDepth.value + depth
+                mutablePageDepth.value = loadedDepth
+                saved?.set(HistoryPageDepth, loadedDepth)
                 mutable.value = LoadState(if (read.cursor == null) page else
                     page.copy(entries = mutable.value.data?.entries.orEmpty() + page.entries), loaded = true)
             }
@@ -52,17 +67,19 @@ class CallHistoryViewModel(
 
     init { observer.start(scope, ::refresh) }
 
-    private suspend fun readPages(start: CallHistoryCursor?, count: Int): ApiResult<CallHistoryPage> {
+    private suspend fun readPages(start: CallHistoryCursor?, count: Int): ApiResult<Window> {
         var next = start
         val rows = mutableListOf<CallHistoryEntry>()
         repeat(count) { index ->
-            when (val result = callers.queryCallHistory(CallHistoryQuery(cursor = next))) {
+            when (val result = callers.queryCallHistory(CallHistoryQuery(pageSize = 50, cursor = next, number = number))) {
                 is ApiResult.Failure -> return result
                 is ApiResult.Success -> {
                     val page = result.value
                     rows += page.entries
                     next = page.nextCursor
-                    if (next == null || index == count - 1) return ApiResult.Success(page.copy(entries = rows.toList()))
+                    if (next == null || index == count - 1) {
+                        return ApiResult.Success(Window(page.copy(entries = rows.toList()), index + 1))
+                    }
                 }
             }
         }

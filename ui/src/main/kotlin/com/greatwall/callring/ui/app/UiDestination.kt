@@ -1,5 +1,6 @@
 package com.greatwall.callring.ui.app
 
+import com.greatwall.callring.ui.feature.callers.CallerProfileField
 import com.greatwall.callring.ui.feature.settings.SettingsPage
 import java.net.URLEncoder
 import java.util.Locale
@@ -16,7 +17,9 @@ sealed class UiDestination(val route: String) {
     data object Leaves : UiDestination("leaves")
     data object Positions : UiDestination("positions")
     data object Setup : UiDestination("setup")
-    data class EditCaller(val number: String? = null) : UiDestination("edit?number=${number?.encoded().orEmpty()}")
+    data class EditCaller(val number: String? = null, val field: CallerProfileField? = null) : UiDestination(
+        "edit?number=${number?.encoded().orEmpty()}" + (field?.let { "&field=${it.name}" } ?: ""),
+    )
     data class Report(val number: String) : UiDestination("report/${number.encoded()}")
     data class Archive(val callId: Long, val number: String, val startedAt: Long) : UiDestination("archive/$callId/${number.encoded()}/$startedAt")
     data class Setting(val page: SettingsPage) : UiDestination("settings/${page.name.lowercase(Locale.ROOT)}")

@@ -136,7 +136,7 @@ class CallingMigrationTest {
             assertEquals(1L, provider.linkedScreenId)
         }
         fixture().use { db ->
-            assertEquals(4, db.version)
+            assertEquals(5, db.version)
             assertEquals(0L, db.scalar("SELECT COUNT(*) FROM pragma_foreign_key_check"))
         }
     }

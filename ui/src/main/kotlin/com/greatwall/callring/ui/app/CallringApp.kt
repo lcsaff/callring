@@ -80,7 +80,7 @@ private val BottomBarContentHeight = 44.dp
         LaunchedEffect(requestSequence) {
             navigation.currentBackStackEntryFlow.first()
             if (navigationState.consume(requestSequence) && (requestedDestination != UiDestination.Home || requestSequence != 0L)) {
-                navigation.navigate(requestedDestination.route) { launchSingleTop = true }
+                navigation.openDestination(requestedDestination)
             }
         }
         val feedbackHost = remember { SnackbarHostState() }
@@ -137,7 +137,7 @@ private fun AppScaffold(
     onAppSettings: () -> Unit,
     startupUpdateFinished: Boolean,
 ) {
-    fun open(destination: UiDestination) { navigation.navigate(destination.route) { launchSingleTop = true } }
+    fun open(destination: UiDestination) = navigation.openDestination(destination)
     val back: () -> Unit = { navigation.popBackStack() }
     Scaffold(modifier = Modifier, snackbarHost = { FeedbackSnackbar(feedbackHost) }, bottomBar = bottomBar) { insets ->
         NavHost(navigation, UiDestination.Home.route, Modifier.padding(insets).consumeWindowInsets(insets)) {
@@ -196,32 +196,48 @@ private fun AppScaffold(
                     model.checkedNumber()?.let { open(UiDestination.Report(it)) }
                 }
             }
-            composable("edit?number={number}", listOf(navArgument("number") { type = NavType.StringType; nullable = true; defaultValue = null })) { record ->
+            composable("edit?number={number}&field={field}", listOf(
+                navArgument("number") { type = NavType.StringType; nullable = true; defaultValue = null },
+                navArgument("field") { type = NavType.StringType; nullable = true; defaultValue = null },
+            )) { record ->
                 val number = record.arguments?.getString("number")?.takeIf { it.isNotEmpty() }
-                val model: CallerEditorViewModel = uiViewModel { CallerEditorViewModel(number, api.callers, api.changes, it, saveWithBase = api.edits::profile, deletion = api.numberDeletion, onDeleted = back) }
+                val field = number?.let {
+                    val argument = record.arguments?.getString("field")
+                    CallerProfileField.entries.firstOrNull { it.name == argument }
+                }
+                val model: CallerEditorViewModel = uiViewModel {
+                    CallerEditorViewModel(number, api.callers, api.changes, it, saveWithBase = api.edits::profile,
+                        deletion = if (field == null) api.numberDeletion else null, onDeleted = back, field = field)
+                }
                 val state by model.state.collectAsStateWithLifecycle()
                 val draft by model.draft.collectAsStateWithLifecycle()
                 val mutation by model.mutation.collectAsStateWithLifecycle()
+                val dirty by model.dirty.collectAsStateWithLifecycle()
                 val impact by model.impact.collectAsStateWithLifecycle()
                 val deletionState by model.deletionState.collectAsStateWithLifecycle()
                 val deletionError by model.deletionError.collectAsStateWithLifecycle()
                 CallerEditorScreen(state, draft, mutation, number == null, back, model::refresh, { value -> model.edit { value } }, model::save,
-                    onDeleteRequest = if (number != null) model::requestDeletion else null,
+                    onDeleteRequest = if (number != null && field == null) model::requestDeletion else null,
                     impact = impact, deletionState = deletionState, deletionError = deletionError,
-                    onConfirmDelete = model::confirmDeletion, onDismissDelete = model::dismissDeletion)
+                    onConfirmDelete = model::confirmDeletion, onDismissDelete = model::dismissDeletion,
+                    field = field, onReload = model::reload, draftDirty = dirty.takeIf { field != null })
             }
             composable("report/{number}", listOf(navArgument("number") { type = NavType.StringType })) { record ->
                 val number = requireNotNull(record.arguments?.getString("number"))
                 val model: ReportViewModel = uiViewModel { ReportViewModel(number, api.reports, api.changes, it,
                     DateRange(LocalDate.now().minusDays(29), LocalDate.now())) }
-                val state by model.state.collectAsStateWithLifecycle()
-                val query by model.query.collectAsStateWithLifecycle()
-                val mutation by model.mutation.collectAsStateWithLifecycle()
+                val history: CallHistoryViewModel = uiViewModel {
+                    CallHistoryViewModel(api.callers, api.recordings, api.changes, number = number, saved = it)
+                }
                 val export = rememberExportPicker(model::export)
                 TimeRefresh(model.timeRefresh, refreshSignal, intervalMillis = 60_000, refresh = { model.refresh() })
-                ReportScreen(state, query, mutation, back, { model.refresh() }, model::range, model::filter, model::page,
-                    export, { open(UiDestination.EditCaller(number)) }, onCapability,
-                    { open(UiDestination.CallHistoryDetail(it.id)) })
+                NumberProfileScreen(
+                    model, history, back, export,
+                    onManageProfile = { open(UiDestination.EditCaller(number)) },
+                    onCapability = onCapability,
+                    onOpenCall = { open(UiDestination.CallHistoryDetail(it)) },
+                    onEditField = { open(UiDestination.EditCaller(number, it)) },
+                )
             }
             composable("archive/{callId}/{number}/{startedAt}", listOf(
                 navArgument("callId") { type = NavType.LongType }, navArgument("number") { type = NavType.StringType },
@@ -251,6 +267,20 @@ private fun AppScaffold(
             } }
         }
     }
+}
+
+private fun NavHostController.openDestination(destination: UiDestination) {
+    val arguments = currentBackStackEntry?.arguments
+    val sameSelection = when (destination) {
+        is UiDestination.Report -> arguments?.getString("number") == destination.number
+        is UiDestination.EditCaller ->
+            arguments?.getString("number").orEmpty() == destination.number.orEmpty() &&
+                arguments?.getString("field") == destination.field?.name
+        is UiDestination.CallHistoryDetail -> arguments?.getLong("callId") == destination.callId
+        else -> true
+    }
+    // Single-top navigation retains the entry's ViewModels, so only reuse the same selection.
+    navigate(destination.route) { launchSingleTop = sameSelection }
 }
 
 @Composable

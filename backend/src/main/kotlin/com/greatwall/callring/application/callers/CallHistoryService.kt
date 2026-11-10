@@ -5,6 +5,7 @@ import com.greatwall.callring.application.coordination.UseCaseRunner
 import com.greatwall.callring.application.mapping.frozenList
 import com.greatwall.callring.application.ports.BackendFailure
 import com.greatwall.callring.application.ports.store.CallHistoryBoundary
+import com.greatwall.callring.application.ports.store.CallHistoryCaller
 import com.greatwall.callring.application.ports.store.CallHistoryReads
 import com.greatwall.callring.application.ports.store.ReportCallFact
 import com.greatwall.callring.contracts.callers.*
@@ -39,40 +40,51 @@ internal class CallHistoryService(
     private val operationActive: () -> Boolean,
 ) {
     private val runner = UseCaseRunner(dispatcher)
-    private val dependencies = ChangeSubscription(setOf(DataDomain.CALLS, DataDomain.RECORDING_ARCHIVES, DataDomain.CALLERS))
+    // PositionService publishes the affected caller numbers when a configured title changes.
+    private val domains = setOf(DataDomain.CALLS, DataDomain.RECORDING_ARCHIVES, DataDomain.CALLERS)
+    private val globalDependencies = ChangeSubscription(domains)
+
+    private fun dependencies(number: String?) = if (number == null) globalDependencies else ChangeSubscription(
+        domains,
+        mapOf(DataDomain.CALLS to setOf(number), DataDomain.CALLERS to setOf(number)),
+    )
 
     suspend fun page(query: CallHistoryQuery) = runner.io {
         callerRequire(query.pageSize in 1..100, "pageSize", "page.size.invalid")
         val cursor = query.cursor
-        consistent { snapshot, cancelled ->
+        val dependencies = dependencies(query.number)
+        consistent(dependencies) { snapshot, cancelled ->
             val token = snapshot.token(dependencies)
-            if (cursor != null && (cursor.token != token || cursor.pageSize != query.pageSize)) {
+            if (cursor != null && (cursor.number != query.number || cursor.pageSize != query.pageSize || cursor.token != token)) {
                 pageChanged()
             }
             val boundary = cursor?.let { CallHistoryBoundary(it.startedAtEpochMillis, it.callId) }
-            val (rows, names) = calls.readCallHistory { reader ->
-                val page = reader.visibleCallHistory(boundary, query.pageSize + 1)
-                page to reader.callHistoryNames(page.take(query.pageSize).mapTo(linkedSetOf()) { it.current.number })
+            val (rows, callers) = calls.readCallHistory { reader ->
+                val page = reader.visibleCallHistory(query.number, boundary, query.pageSize + 1)
+                page to reader.callHistoryCallers(page.take(query.pageSize).mapTo(linkedSetOf()) { it.current.number })
             }
-            val entries = project(rows.take(query.pageSize), names, cancelled)
+            val entries = project(rows.take(query.pageSize), callers, cancelled)
             val next = if (rows.size > query.pageSize) entries.last().call.let {
-                CallHistoryCursor(token, it.startedAtEpochMillis, it.id, query.pageSize)
+                CallHistoryCursor(token, it.startedAtEpochMillis, it.id, query.pageSize, query.number)
             } else null
             CallHistoryPage(entries, next, SnapshotMeta(snapshot.revision, clock.millis()))
         }
     }
 
     suspend fun detail(callId: Long) = runner.io {
-        consistent { _, cancelled ->
-            val (row, names) = calls.readCallHistory { reader ->
+        consistent(globalDependencies) { _, cancelled ->
+            val (row, callers) = calls.readCallHistory { reader ->
                 val detail = reader.visibleCallHistoryDetail(callId)
-                detail to if (detail == null) emptyMap() else reader.callHistoryNames(setOf(detail.current.number))
+                detail to if (detail == null) emptyMap() else reader.callHistoryCallers(setOf(detail.current.number))
             }
-            row?.let { project(listOf(it), names, cancelled).single() }
+            row?.let { project(listOf(it), callers, cancelled).single() }
         } ?: callerFailure(ErrorCode.NOT_FOUND, "call.not_found")
     }
 
-    private suspend fun <T> consistent(block: (InvalidationSnapshot, () -> Boolean) -> T): T {
+    private suspend fun <T> consistent(
+        dependencies: ChangeSubscription,
+        block: (InvalidationSnapshot, () -> Boolean) -> T,
+    ): T {
         val context = currentCoroutineContext()
         val cancelled = { !context.isActive || !operationActive() }
         repeat(3) {
@@ -88,7 +100,11 @@ internal class CallHistoryService(
     // Compare publications outside either database lease. Mutation holds the fence through commit and publication.
     private fun snapshot() = coordinator.guard { coordinator.invalidations.snapshots.value }
 
-    private fun project(rows: List<ReportCallFact>, names: Map<String, String>, cancelled: () -> Boolean): List<CallHistoryEntry> {
+    private fun project(
+        rows: List<ReportCallFact>,
+        callers: Map<String, CallHistoryCaller>,
+        cancelled: () -> Boolean,
+    ): List<CallHistoryEntry> {
         if (rows.isEmpty()) return emptyList()
         if (cancelled()) throw CancellationException("call.history_cancelled")
         val targets = rows.map { (row, _) ->
@@ -96,11 +112,15 @@ internal class CallHistoryService(
         }
         val byCall = recordings.readCallHistory(targets, cancelled)
         return frozenList(rows.map { (row, screening) ->
+            val caller = callers[row.number]
             CallHistoryEntry(
                 callDetail(row, screening),
                 byCall[row.id] ?: CallHistoryRecording(null, CallArchiveAvailability.NONE, false, false),
                 row.linkedScreenId,
-                names[row.number]?.takeIf(String::isNotBlank),
+                callerName = caller?.name?.takeIf(String::isNotBlank),
+                callerRegion = caller?.region?.takeIf(String::isNotBlank),
+                callerSelfReportedPosition = caller?.selfReportedPosition?.takeIf(String::isNotBlank),
+                callerConfiguredPosition = caller?.configuredPosition?.takeIf(String::isNotBlank),
             )
         })
     }

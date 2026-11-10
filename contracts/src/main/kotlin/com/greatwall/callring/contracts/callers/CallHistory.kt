@@ -3,14 +3,15 @@ package com.greatwall.callring.contracts.callers
 import com.greatwall.callring.contracts.change.InvalidationToken
 import com.greatwall.callring.contracts.common.SnapshotMeta
 
-data class CallHistoryQuery(val pageSize: Int = 50, val cursor: CallHistoryCursor? = null)
+data class CallHistoryQuery(val pageSize: Int = 50, val cursor: CallHistoryCursor? = null, val number: String? = null)
 
-/** Pass the cursor unchanged to continue at the same page size. */
+/** Pass the cursor unchanged to continue at the same page size and number filter. */
 data class CallHistoryCursor(
     val token: InvalidationToken,
     val startedAtEpochMillis: Long,
     val callId: Long,
     val pageSize: Int,
+    val number: String? = null,
 )
 
 data class CallHistoryPage(
@@ -24,6 +25,9 @@ data class CallHistoryEntry(
     val recording: CallHistoryRecording,
     val linkedScreeningCallId: Long? = null,
     val callerName: String? = null,
+    val callerRegion: String? = null,
+    val callerSelfReportedPosition: String? = null,
+    val callerConfiguredPosition: String? = null,
 )
 
 enum class CallArchiveAvailability { NONE, AVAILABLE, INDEXING, UNREADABLE }

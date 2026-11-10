@@ -14,7 +14,7 @@ The architecture guard rejects operation dispatch through numeric index/ordinal,
 
 ## Approved internal signature changes
 
-CallHistoryEntry adds the optional callerName for the single visible row label. Call history page cursors now include caller changes.
+CallHistoryQuery and CallHistoryCursor carry the optional exact number scope. CallHistoryEntry projects the optional caller name, region, self-reported position and configured position. Cursors bind the number, page size and call, profile and archive invalidation token. This internal query and projection leave the external AI protocol unchanged.
 
 Unified call history (2026-11-10) adds CallersApi.queryCallHistory and CallersApi.getCallHistoryDetail with a cursor bound to calls and recording-archive revisions. RecordingApi adds owned playback sessions (getPlaybackSession, playOwned, stopPlaybackSession), analyzeTranscript, getCallerSuggestions and confirmCallerSuggestions. Archive analysis intent and confirmation state are stored in the local archive payload. The AI operation catalog continues to use recordings.retry and exposes no caller confirmation command.
 
@@ -186,7 +186,7 @@ Offline transcription adds the internal `RecordingApi.transcribeOffline` and `ca
     ]
   },
   "callers/CallHistory.kt": {
-    "sha256": "7e3a7ada92415dd9f825f93372f8f11bf194b738f26151eba6eaaa977f9ada9d",
+    "sha256": "353490f8fa87db72d52d3840e2c6d4bc517556df3e6a24233f88e741d97f1102",
     "declarations": [
       "CallHistoryQuery",
       "CallHistoryCursor",

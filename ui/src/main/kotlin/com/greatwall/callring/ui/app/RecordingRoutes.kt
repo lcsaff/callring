@@ -15,7 +15,7 @@ import com.greatwall.callring.ui.feature.ai.ScopedRecordingSettingsViewModel
 
 @Composable internal fun CallHistoryRoute(api: CallringUiApi, onBack: () -> Unit,
     onArchives: () -> Unit, onDetail: (Long) -> Unit) {
-    val model: CallHistoryViewModel = uiViewModel { CallHistoryViewModel(api.callers, api.recordings, api.changes) }
+    val model: CallHistoryViewModel = uiViewModel { CallHistoryViewModel(api.callers, api.recordings, api.changes, saved = it) }
     val state by model.state.collectAsStateWithLifecycle()
     val playing by model.playback.state.collectAsStateWithLifecycle()
     val playback by model.playback.mutation.collectAsStateWithLifecycle()

@@ -15,6 +15,19 @@ object UiFormat {
     private val dateTime = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm", Locale.CHINA)
     private val fullDateTime = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss", Locale.CHINA)
 
+    fun callerSummary(
+        number: String,
+        name: String?,
+        region: String?,
+        selfReportedPosition: String?,
+        configuredPosition: String?,
+    ): String = listOfNotNull(
+        name?.trim()?.takeIf(String::isNotEmpty) ?: number,
+        region?.trim()?.takeIf(String::isNotEmpty),
+        selfReportedPosition?.trim()?.takeIf(String::isNotEmpty)
+            ?: configuredPosition?.trim()?.takeIf(String::isNotEmpty),
+    ).joinToString(" · ")
+
     fun position(relation: PositionRelation): String = when (relation) {
         PositionRelation.HIGHER -> "上级"
         PositionRelation.LOWER -> "下级"

@@ -44,6 +44,7 @@ class SqliteCoreStorageResourceDeviceTest : InstrumentationTestCase() {
     }
 
     private fun stripCallerEnrichment(db: android.database.sqlite.SQLiteDatabase) {
+        db.execSQL("DROP INDEX IF EXISTS calls_visible_number_time")
         db.setForeignKeyConstraintsEnabled(false)
         db.execSQL("CREATE TABLE legacy_callers(number TEXT PRIMARY KEY,department TEXT NOT NULL DEFAULT '',name TEXT NOT NULL DEFAULT '',position_id INTEGER REFERENCES positions(id) ON DELETE RESTRICT,whitelist INTEGER NOT NULL DEFAULT 0 CHECK(whitelist IN(0,1)))")
         db.execSQL("INSERT INTO legacy_callers(number,department,name,position_id,whitelist) SELECT number,department,name,position_id,whitelist FROM callers")
@@ -258,7 +259,7 @@ class SqliteCoreStorageResourceDeviceTest : InstrumentationTestCase() {
             assertEquals(1L, provider.linkedScreenId)
         }
         fixture().use { db ->
-            assertEquals(4, db.version)
+            assertEquals(5, db.version)
             assertEquals(0L, db.scalar("SELECT COUNT(*) FROM pragma_foreign_key_check"))
         }
     }

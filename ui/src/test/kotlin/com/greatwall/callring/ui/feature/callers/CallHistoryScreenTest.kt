@@ -7,6 +7,7 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
+import org.robolectric.annotation.GraphicsMode
 
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [35], qualifiers = "w320dp-h640dp")
@@ -15,4 +16,8 @@ class CallHistoryScreenTest {
 
     @Test fun rowActionsDoNotNavigateAndReturningFromDetailPreservesScroll() =
         CallHistoryScreenCases.rowActionsDoNotNavigateAndReturningFromDetailPreservesScroll(compose)
+
+    @GraphicsMode(GraphicsMode.Mode.NATIVE)
+    @Test fun datesAndActionsRemainUsableInNarrowLargeType() =
+        CallHistoryScreenCases.datesAndActionsRemainUsableInNarrowLargeType(compose)
 }

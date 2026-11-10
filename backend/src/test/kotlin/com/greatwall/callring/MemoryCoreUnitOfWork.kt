@@ -59,11 +59,14 @@ internal class MemoryCoreUnitOfWork : CoreUnitOfWork {
 
             override fun homeQuietMode() = decision.quiet.mode
 
-            override fun callHistoryNames(numbers: Set<String>) = people.filterKeys { it in numbers }.mapValues { it.value.name }
+            override fun callHistoryCallers(numbers: Set<String>) =
+                people.filterKeys { it in numbers }.mapValues { (_, person) ->
+                    CallHistoryCaller(person.name, person.region, person.selfReportedPosition, person.positionId?.let(roles::get)?.name)
+                }
 
-            override fun visibleCallHistory(after: CallHistoryBoundary?, limit: Int) =
+            override fun visibleCallHistory(number: String?, after: CallHistoryBoundary?, limit: Int) =
                 calls.values.filter {
-                    !it.hidden && (after == null || it.time < after.time || (it.time == after.time && it.id < after.id))
+                    !it.hidden && (number == null || it.number == number) && (after == null || it.time < after.time || (it.time == after.time && it.id < after.id))
                 }.sortedWith(compareByDescending<RawCallRecord> { it.time }.thenByDescending { it.id })
                     .take(limit).map { ReportCallFact(it, it.linkedScreenId?.let(calls::get)) }
 

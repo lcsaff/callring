@@ -9,4 +9,7 @@ class CallHistoryScreenTest {
 
     @Test fun rowActionsDoNotNavigateAndReturningFromDetailPreservesScroll() =
         CallHistoryScreenCases.rowActionsDoNotNavigateAndReturningFromDetailPreservesScroll(compose)
+
+    @Test fun datesAndActionsRemainUsableInNarrowLargeType() =
+        CallHistoryScreenCases.datesAndActionsRemainUsableInNarrowLargeType(compose)
 }

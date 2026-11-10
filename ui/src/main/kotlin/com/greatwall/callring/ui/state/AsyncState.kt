@@ -61,6 +61,10 @@ class MutationRunner(private val scope: CoroutineScope) {
     private val mutable = MutableStateFlow(MutationState())
     val state: StateFlow<MutationState> = mutable.asStateFlow()
 
+    fun clearError() {
+        if (!mutable.value.busy) mutable.value = mutable.value.copy(error = null)
+    }
+
     fun <T> run(request: suspend () -> ApiResult<T>, successMessage: String = "操作已完成", onSuccess: (T) -> Unit = {}) {
         if (mutable.value.busy) return
         mutable.value = mutable.value.copy(busy = true, error = null, message = null)
