@@ -23,6 +23,7 @@ data class CallHistoryEntry(
     val call: CallDetail,
     val recording: CallHistoryRecording,
     val linkedScreeningCallId: Long? = null,
+    val callerName: String? = null,
 )
 
 enum class CallArchiveAvailability { NONE, AVAILABLE, INDEXING, UNREADABLE }

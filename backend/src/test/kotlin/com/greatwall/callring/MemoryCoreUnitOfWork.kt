@@ -59,6 +59,8 @@ internal class MemoryCoreUnitOfWork : CoreUnitOfWork {
 
             override fun homeQuietMode() = decision.quiet.mode
 
+            override fun callHistoryNames(numbers: Set<String>) = people.filterKeys { it in numbers }.mapValues { it.value.name }
+
             override fun visibleCallHistory(after: CallHistoryBoundary?, limit: Int) =
                 calls.values.filter {
                     !it.hidden && (after == null || it.time < after.time || (it.time == after.time && it.id < after.id))

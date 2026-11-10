@@ -26,7 +26,7 @@ class CallHistoryViewModel(
     val selectedTranscript = transcriptSelection.asStateFlow()
     private var cursor: CallHistoryCursor? = null
     private var pageDepth = 1
-    private val subscription = ChangeSubscription(setOf(DataDomain.CALLS, DataDomain.RECORDING_ARCHIVES))
+    private val subscription = ChangeSubscription(setOf(DataDomain.CALLS, DataDomain.RECORDING_ARCHIVES, DataDomain.CALLERS))
     private val observer = ChangeObserver(changes, subscription)
     private data class Read(val cursor: CallHistoryCursor?, val result: ApiResult<CallHistoryPage>)
     private val loader: RefreshCoordinator<Read> = RefreshCoordinator(scope, observer::token, {

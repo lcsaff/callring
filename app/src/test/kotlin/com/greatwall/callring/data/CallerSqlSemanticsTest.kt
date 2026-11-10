@@ -151,6 +151,7 @@ class CallerSqlSemanticsTest {
                 val first = callers.queryCallHistory(CallHistoryQuery(pageSize = 2)).requiredValue()
                 assertEquals(listOf(3L, 2L), first.entries.map { it.call.id })
                 val merged = first.entries.first()
+                assertEquals("A", merged.callerName)
                 assertEquals(CallSource.MERGED, merged.call.source)
                 assertEquals(1L, merged.linkedScreeningCallId)
                 assertEquals(CallHistoryRecording(1, CallArchiveAvailability.AVAILABLE, false, true), merged.recording)
@@ -164,6 +165,7 @@ class CallerSqlSemanticsTest {
                 val second = callers.queryCallHistory(CallHistoryQuery(2, next)).requiredValue()
                 assertEquals(listOf(4L), second.entries.map { it.call.id })
                 assertNull(second.nextCursor)
+                assertEquals("B", second.entries.single().callerName)
                 assertNull(second.entries.single().call.durationSeconds)
                 assertFalse(second.entries.single().call.counted)
                 revisions.publishCore(setOf("calls"), com.greatwall.callring.application.coordination.ChangeImpact(
@@ -172,12 +174,20 @@ class CallerSqlSemanticsTest {
                 val stale = callers.queryCallHistory(CallHistoryQuery(2, next)) as ApiResult.Failure
                 assertEquals(ErrorCode.CONFLICT, stale.error.code)
                 val fresh = callers.queryCallHistory(CallHistoryQuery(pageSize = 2)).requiredValue()
+                core.fixtureSql { it.seedCaller(ProfileRecord("31234", "Renamed")) }
+                revisions.publishCore(setOf("profiles"), com.greatwall.callring.application.coordination.ChangeImpact(
+                    mapOf(com.greatwall.callring.contracts.change.DataDomain.CALLERS to setOf("31234")),
+                ))
+                assertEquals(ErrorCode.CONFLICT,
+                    (callers.queryCallHistory(CallHistoryQuery(2, fresh.nextCursor)) as ApiResult.Failure).error.code)
+                val renamed = callers.queryCallHistory(CallHistoryQuery(pageSize = 2)).requiredValue()
+                assertEquals("Renamed", renamed.entries.first().callerName)
                 val registration = com.greatwall.callring.application.recording.RecordingRegistrationService(archives, revisions)
                 val incoming = registration.registerIncoming("current", "31234", at, null, null)
                 registration.linkStatistics("current", 3, null)
                 val linked = callers.getCallHistoryDetail(3).requiredValue()
                 assertEquals(CallHistoryRecording(incoming.id, CallArchiveAvailability.AVAILABLE, false, false), linked.recording)
-                val invalidated = callers.queryCallHistory(CallHistoryQuery(2, fresh.nextCursor)) as ApiResult.Failure
+                val invalidated = callers.queryCallHistory(CallHistoryQuery(2, renamed.nextCursor)) as ApiResult.Failure
                 assertEquals(ErrorCode.CONFLICT, invalidated.error.code)
                 for (counter in listOf("fullArchiveDecodes", "sourceBytes", "listIndexSourceBytes")) {
                     assertEquals(0L, archives.readCounters.snapshot()[counter] ?: 0L)

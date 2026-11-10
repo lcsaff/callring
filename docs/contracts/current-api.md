@@ -14,6 +14,8 @@ The architecture guard rejects operation dispatch through numeric index/ordinal,
 
 ## Approved internal signature changes
 
+CallHistoryEntry adds the optional callerName for the single visible row label. Call history page cursors now include caller changes.
+
 Unified call history (2026-11-10) adds CallersApi.queryCallHistory and CallersApi.getCallHistoryDetail with a cursor bound to calls and recording-archive revisions. RecordingApi adds owned playback sessions (getPlaybackSession, playOwned, stopPlaybackSession), analyzeTranscript, getCallerSuggestions and confirmCallerSuggestions. Archive analysis intent and confirmation state are stored in the local archive payload. The AI operation catalog continues to use recordings.retry and exposes no caller confirmation command.
 
 System recording import window (2026-11-04): RecordingSettingsView appends systemImportDays=7 and RecordingSettingsPatch appends PatchField<Int>. Validation and field conflicts remain in AiSettingsService; external D13 projection and AI write schemas retain their reviewed shapes. Internal CallingReader.systemRecordingCalls adds a bounded number/time lookup; recording discovery uses explicit scan/import ports without widening CallringUiApi.
@@ -184,7 +186,7 @@ Offline transcription adds the internal `RecordingApi.transcribeOffline` and `ca
     ]
   },
   "callers/CallHistory.kt": {
-    "sha256": "1afd3f25b57df21d8f42072a552ff1a97548c624e0596af1213a27e547803803",
+    "sha256": "7e3a7ada92415dd9f825f93372f8f11bf194b738f26151eba6eaaa977f9ada9d",
     "declarations": [
       "CallHistoryQuery",
       "CallHistoryCursor",

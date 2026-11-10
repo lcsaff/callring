@@ -91,6 +91,17 @@ internal class SqliteCallerStore(private val sql: SqlAccess, private val lease: 
         return profiles("WHERE number=?", arrayOf(number)).firstOrNull()
     }
 
+    fun callHistoryNames(numbers: Set<String>): Map<String, String> {
+        lease(false)
+        if (numbers.isEmpty()) return emptyMap()
+        val placeholders = numbers.joinToString(",") { "?" }
+        return sql.rawQuery(QueryTag.SCOPED_ROWS, setOf(SqlTable.CALLERS),
+            "SELECT number,name FROM callers WHERE number IN ($placeholders)", numbers.toTypedArray(),
+        ).use { cursor ->
+            buildMap { while (cursor.moveToNext()) put(cursor.getString(0), cursor.getString(1)) }
+        }
+    }
+
     override fun callerCount(): Long {
         lease(false)
         return sql.scalar(

@@ -19,16 +19,15 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.greatwall.callring.contracts.callers.*
 import com.greatwall.callring.contracts.recording.RecordingPlaybackSession
 import com.greatwall.callring.ui.designsystem.components.*
 import com.greatwall.callring.ui.feature.recording.RecordingFeedback
 import com.greatwall.callring.ui.feature.shared.LoadFeedback
-import com.greatwall.callring.ui.format.UiFormat
 import com.greatwall.callring.ui.state.LoadState
 import com.greatwall.callring.ui.state.MutationState
-import java.time.ZoneId
 
 @Composable
 internal fun CallHistoryScreen(
@@ -82,12 +81,13 @@ private fun CallHistoryRow(
                 else -> "工作时间外" to Color(0xFFD34646)
             }
             Box(Modifier.size(8.dp).background(workColor, CircleShape).semantics { contentDescription = workLabel })
-            Column(Modifier.weight(1f).padding(horizontal = 8.dp, vertical = 10.dp)) {
-                Text(UiFormat.fullTime(call.startedAtEpochMillis, ZoneId.of(call.classification.zoneId)),
-                    style = MaterialTheme.typography.titleSmall)
-                Text(call.number, style = MaterialTheme.typography.bodySmall)
-                Text(UiFormat.result(call.result), style = MaterialTheme.typography.bodySmall)
-            }
+            Text(
+                entry.callerName ?: call.number,
+                modifier = Modifier.weight(1f).padding(horizontal = 8.dp, vertical = 10.dp),
+                style = MaterialTheme.typography.titleSmall,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
             IconButton(
                 onClick = { if (archiveId != null) onPlayback(archiveId, activeId ?: call.id) },
                 enabled = available && (recording.hasAudio || activeId != null) && !busy,

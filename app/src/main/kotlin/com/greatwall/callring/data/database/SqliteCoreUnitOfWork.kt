@@ -252,6 +252,8 @@ internal class SqliteCoreUnitOfWork(private val db: SQLiteDatabase, private val 
                 reportCalls.visitReportCalls(number, start, end, ascending, accept)
             }
 
+        override fun callHistoryNames(numbers: Set<String>) = callers.callHistoryNames(numbers)
+
         override fun visibleCallHistory(after: CallHistoryBoundary?, limit: Int) =
             reportCalls.visibleCallHistory(after, limit)
 

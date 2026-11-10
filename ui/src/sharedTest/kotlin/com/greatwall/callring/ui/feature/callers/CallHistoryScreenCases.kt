@@ -20,7 +20,8 @@ internal object CallHistoryScreenCases {
                 classification, classification, false, null)
             CallHistoryEntry(call, if (id == 1L)
                 CallHistoryRecording(-71, CallArchiveAvailability.AVAILABLE, true, true)
-            else CallHistoryRecording(null, CallArchiveAvailability.NONE, false, false))
+            else CallHistoryRecording(null, CallArchiveAvailability.NONE, false, false),
+                callerName = if (id == 1L) "测试来电人" else null)
         }
         var pageReads = 0
         val playbackActions = mutableListOf<Long>()
@@ -57,6 +58,11 @@ internal object CallHistoryScreenCases {
         compose.setContent { CallringApp(api, onCapability = {}, onPinWidget = {}, onAppSettings = {}) }
         compose.onNodeWithTag("tab-callers").performClick()
         compose.onNodeWithText("通话记录").performClick()
+        compose.onNodeWithText("测试来电人").assertIsDisplayed()
+        compose.onNodeWithText("30001").assertDoesNotExist()
+        compose.onNodeWithText("1970-01-01 00:20:00").assertDoesNotExist()
+        compose.onNodeWithText("未接听").assertDoesNotExist()
+        compose.onAllNodesWithContentDescription("工作时间内").onFirst().assertExists()
         compose.onNodeWithContentDescription("播放录音").assertIsDisplayed().performTouchInput { click() }
         compose.onNodeWithContentDescription("停止录音").performTouchInput { click() }
         compose.onNodeWithContentDescription("查看转写").performTouchInput { click() }
@@ -74,6 +80,7 @@ internal object CallHistoryScreenCases {
         compose.onNodeWithText("号码：30015").assertIsDisplayed()
         compose.onNodeWithText("1970-01-01 00:06:00").assertIsDisplayed()
         compose.onNodeWithText("工作分类：工作时间").assertIsDisplayed()
+        compose.onNodeWithText("未接听").assertIsDisplayed()
         compose.runOnIdle { assertEquals(listOf(15L), detailReads) }
         compose.onNodeWithContentDescription("返回").performClick()
         compose.onNodeWithText("30015").assertIsDisplayed()

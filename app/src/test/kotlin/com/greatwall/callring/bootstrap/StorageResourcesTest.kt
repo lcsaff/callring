@@ -144,6 +144,8 @@ class StorageResourcesTest {
 
                         override fun callerCall(id: Long): RawCallRecord? = error("unused")
 
+                        override fun callHistoryNames(numbers: Set<String>): Map<String, String> = error("unused")
+
                         override fun visibleCallHistory(after: CallHistoryBoundary?, limit: Int): List<ReportCallFact> = error("unused")
 
                         override fun visibleCallHistoryDetail(id: Long): ReportCallFact? = error("unused")
