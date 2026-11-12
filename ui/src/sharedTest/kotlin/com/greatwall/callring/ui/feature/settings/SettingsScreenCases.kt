@@ -241,6 +241,8 @@ abstract class SettingsScreenCases {
                     LoadState<CallerReport>(), ReportQuery("100", range), MutationState(), {}, {}, { commands += it }, {}, {}, {}, {}, {})
             }
         }
+        compose.onNodeWithTag("report-list").performScrollToNode(hasContentDescription("展开报表信息"))
+        compose.onNodeWithContentDescription("展开报表信息").performClick()
         compose.onNodeWithText("2026-10-01 至 2026-10-15").performClick()
         compose.onNodeWithText("取消").performClick()
         compose.runOnIdle { assertTrue(commands.isEmpty()) }

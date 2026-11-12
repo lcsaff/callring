@@ -55,6 +55,10 @@ object FixtureConversationApi : ConversationApi {
 }
 
 object FixtureRecordingApi : RecordingApi {
+    override suspend fun analyzeTranscript(callId: Long): ApiResult<Unit> = error("unused")
+    override suspend fun getCallerSuggestions(callId: Long): ApiResult<com.greatwall.callring.contracts.recording.CallerSuggestions?> = error("unused")
+    override suspend fun confirmCallerSuggestions(command: com.greatwall.callring.contracts.recording.ConfirmCallerSuggestions): ApiResult<com.greatwall.callring.contracts.recording.CallerSuggestionConfirmation> = error("unused")
+
     override suspend fun getIdentity(callId: Long): ApiResult<RecordingIdentity> = throw AssertionError("Unexpected fixture operation: getIdentity")
     override suspend fun queryArchives(query: ArchiveListQuery): ApiResult<ArchiveListPage> = throw AssertionError("Unexpected fixture operation: listArchives")
 
@@ -67,6 +71,9 @@ object FixtureRecordingApi : RecordingApi {
     override suspend fun cancelOfflineTranscription(callId: Long, runId: Long) = unavailable()
     override suspend fun retry(callId: Long) = unavailable()
     override suspend fun delete(callId: Long) = unavailable()
+    override suspend fun getPlaybackSession(): ApiResult<RecordingPlaybackSession?> = ApiResult.Success(null)
+    override suspend fun playOwned(callId: Long, token: String) = unavailable()
+    override suspend fun stopPlaybackSession(token: String) = unavailable()
     override suspend fun play(callId: Long) = unavailable()
     override suspend fun stop() = unavailable()
     override suspend fun setSystemFolder(document: DocumentRef) = unavailable()

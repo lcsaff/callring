@@ -3,6 +3,7 @@ package com.greatwall.callring.data.recording
 import com.greatwall.callring.application.conversation.query.safeValue
 import com.greatwall.callring.application.ports.recording.RecordingArchiveMutations
 import com.greatwall.callring.application.ports.recording.RecordingArchiveState
+import com.greatwall.callring.application.callers.CallHistoryRecordingTarget
 import com.greatwall.callring.application.ports.recording.RecordingIdentityReads
 import com.greatwall.callring.application.ports.recording.RecordingRegistration
 import com.greatwall.callring.application.ports.recording.RecordingRegistrationStore
@@ -154,6 +155,22 @@ class AndroidRecordingStore(context: Context, namespace: String,
     }
     @Synchronized override fun get(callId: Long): CallArchive? = readableDatabase.query("archives", arrayOf("payload"),
         "call_id=?", arrayOf(callId.toString()), null, null, null).use { if (it.moveToFirst()) RecordingJson.archive(JSONObject(it.getString(0))).also { readCounters.add("fullArchiveDecodes") } else null }
+    @Synchronized internal fun readCallHistory(
+        targets: List<CallHistoryRecordingTarget>,
+        cancelled: () -> Boolean,
+    ) = RecordingArchivePages(readableDatabase, listIncarnation, readCounters, cancelled).callHistory(targets)
+
+    @Synchronized internal fun advanceCallHistoryProjection(
+        target: LegacyCallHistoryArchive,
+        cancelled: () -> Boolean,
+    ): Boolean? {
+        if (cancelled()) throw java.util.concurrent.CancellationException("recording.cancelled")
+        if (generation(target.id) != target.generation) return null
+        return ArchiveProjectionIndex(writableDatabase, cancelled) {
+            readCounters.add("historyRepairSourceBytes", it.toLong())
+        }.advance(target.id, target.generation, 64 * 1024).complete
+    }
+
     @Synchronized override fun queryArchives(query: ArchiveListQuery, cancelled: () -> Boolean): ArchiveListPage =
         RecordingArchivePages(writableDatabase, listIncarnation, readCounters, cancelled).query(query)
     @Synchronized override fun archiveStamp(): String = listIncarnation + ":" + DatabaseUtils.longForQuery(readableDatabase, "SELECT revision FROM archive_list_state WHERE id=1", null)
@@ -293,12 +310,20 @@ internal object RecordingJson {
         .put("duration", v.durationMillis).put("transcript", v.transcript).put("analysis", v.analysis?.let(::analysis)).put("error", v.error)
         .put("attempts", v.attempts).put("next", v.nextAttemptAt).put("analyzed", v.analyzedAt).put("analysisModel", v.analysisModel)
         .put("transcriptionModel", v.transcriptionModel).put("protocol", v.analysisProtocol?.name).put("manual", v.manualAnalysis).put("enrichmentBaseline", v.enrichmentBaseline?.let { JSONObject().put("epoch", it.epoch).put("revisions", JSONObject(it.revisions)).put("eligible", it.eligible) }).put("enrichmentSourceGeneration", v.enrichmentSourceGeneration)
-    fun archive(v: JSONObject) = CallArchive(v.getLong("id"), v.getString("number"), v.getLong("started"), v.getLong("generation"),
+        .put("analysisIntent", v.analysisIntent.name).put("manualAnalysisState", v.manualAnalysisState?.name)
+        .put("manualAnalysisResultVersion", v.manualAnalysisResultVersion)
+    fun archive(v: JSONObject): CallArchive {
+        val archive = CallArchive(v.getLong("id"), v.getString("number"), v.getLong("started"), v.getLong("generation"),
         ArchiveStatus.valueOf(v.getString("status")), RecordingSource.valueOf(v.getString("source")), v.nullableString("audio"), v.getString("quality"),
         v.nullableLong("duration"), v.getString("transcript"), v.optJSONObject("analysis")?.let(::analysis), v.nullableString("error"), v.getInt("attempts"),
         v.getLong("next"), v.nullableLong("analyzed"), v.getString("analysisModel"), v.getString("transcriptionModel"), v.nullableString("protocol")?.let(AiProtocol::valueOf), v.optBoolean("manual", false),
         v.optJSONObject("enrichmentBaseline")?.let { base -> val revisions = base.getJSONObject("revisions"); CallerIdentityBaseline(base.getString("epoch"), revisions.keys().asSequence().associateWith { revisions.getLong(it) }, base.optBoolean("eligible", true)) },
-        v.nullableLong("enrichmentSourceGeneration"))
+        v.nullableLong("enrichmentSourceGeneration"),
+        analysisIntent = v.nullableString("analysisIntent")?.let(ArchiveAnalysisIntent::valueOf) ?: ArchiveAnalysisIntent.AUTOMATIC,
+        manualAnalysisState = v.nullableString("manualAnalysisState")?.let(ManualAnalysisState::valueOf),
+        manualAnalysisResultVersion = v.nullableLong("manualAnalysisResultVersion"))
+        return if (v.has("analysisIntent")) archive else RecordingSchema.decodeLegacyAnalysis(archive)
+    }
     private fun JSONObject.nullableString(key: String) = if (isNull(key)) null else getString(key)
     private fun JSONObject.nullableLong(key: String) = if (isNull(key)) null else getLong(key)
 }

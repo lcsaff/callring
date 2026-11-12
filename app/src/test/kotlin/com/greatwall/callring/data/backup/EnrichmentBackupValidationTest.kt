@@ -36,6 +36,24 @@ class EnrichmentBackupValidationTest {
         }
     }
 
+    @Test fun legacyManualSavedResultsAwaitConfirmationAndCompletedHistoryRemainsReadable() {
+        val saved = CallArchive(-1, "31234", 1, generation = 5, status = ArchiveStatus.ENRICHING,
+            transcript = "I'm Ada", analysis = CallAnalysis(name = "Ada"), manualAnalysis = true)
+        val historical = RecordingJson.archive(saved.copy(status = ArchiveStatus.COMPLETE)).apply { remove("analysisIntent") }
+        val legacy = RecordingJson.archive(saved).apply { remove("analysisIntent") }
+        val migrated = RecordingJson.archive(legacy)
+        assertEquals(ArchiveStatus.COMPLETE, migrated.status)
+        assertEquals(ManualAnalysisState.PENDING_CONFIRMATION, migrated.manualAnalysisState)
+        assertEquals(5L, migrated.manualAnalysisResultVersion)
+        assertEquals(saved.analysis, migrated.analysis)
+        assertNull(RecordingJson.archive(historical).manualAnalysisState)
+
+        legacy.put("manual", false)
+        val unclassified = RecordingJson.archive(legacy)
+        assertEquals(ArchiveAnalysisIntent.LEGACY_UNCLASSIFIED, unclassified.analysisIntent)
+        assertEquals(ManualAnalysisState.PENDING_CONFIRMATION, unclassified.manualAnalysisState)
+    }
+
     @Test fun malformedEvidenceIsRejectedBeforeRestore() {
         val json = RecordingJson.archive(CallArchive(-1, "31234", 1, analysis = CallAnalysis()))
         json.getJSONObject("analysis").put("fieldEvidence", JSONObject().put("region", 42))

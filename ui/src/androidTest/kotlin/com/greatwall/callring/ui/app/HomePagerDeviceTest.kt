@@ -2,15 +2,21 @@ package com.greatwall.callring.ui.app
 
 import androidx.compose.ui.test.*
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.junit4.createAndroidComposeRule
+import androidx.activity.ComponentActivity
+import androidx.activity.enableEdgeToEdge
 import com.greatwall.callring.ui.testing.HomePagerFixture
 import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test
+import org.junit.Before
 
 /** Real input delivery in the standalone com.greatwall.callring.ui.test APK. */
 class HomePagerDeviceTest {
-    @get:Rule val compose = createComposeRule()
+    @get:Rule val compose = createAndroidComposeRule<ComponentActivity>()
+    @Before fun matchProductionWindowInsets() {
+        compose.activityRule.scenario.onActivity { it.enableEdgeToEdge() }
+    }
 
     @Test fun flingTabsVerticalScrollAndInputPriority() {
         val api = HomePagerFixture()
@@ -30,6 +36,8 @@ class HomePagerDeviceTest {
         compose.onNodeWithTag("conversation-input").performTouchInput { swipeRight() }
         compose.onNodeWithTag("conversation-input").assertExists()
         compose.onNodeWithTag("conversation-messages").performTouchInput { swipe(Offset(width * .75f, centerY), Offset(width * .25f, centerY), durationMillis = 100) }
+        // Native IME hide animation completes after Compose's page-settling frame.
+        compose.waitUntil(5_000) { compose.onAllNodesWithTag("tab-settings").fetchSemanticsNodes().isNotEmpty() }
         compose.onNodeWithTag("tab-settings").assertIsSelected()
         compose.onNodeWithTag("home-pager").performTouchInput { swipe(Offset(width * .75f, centerY), Offset(width * .25f, centerY), durationMillis = 100) }
         compose.onNodeWithTag("tab-settings").assertIsSelected()

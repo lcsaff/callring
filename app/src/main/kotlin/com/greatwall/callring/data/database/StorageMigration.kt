@@ -15,12 +15,17 @@ import com.greatwall.callring.domain.model.CallSource
 /** Migrations preserve screening IDs, original observations, profiles and audit history. */
 internal object StorageMigration {
     fun upgrade(db: SQLiteDatabase, oldVersion: Int, newVersion: Int) {
-        check(oldVersion in 1..3 && newVersion == 4) { "Database requires an explicit migration" }
+        check(oldVersion in 1 until CORE_SCHEMA_VERSION && newVersion == CORE_SCHEMA_VERSION) {
+            "Database requires an explicit migration"
+        }
         if (oldVersion < 3) upgradeToThree(db, oldVersion)
-        db.execSQL("ALTER TABLE callers ADD COLUMN self_reported_position TEXT NOT NULL DEFAULT ''")
-        db.execSQL("ALTER TABLE callers ADD COLUMN region TEXT NOT NULL DEFAULT ''")
-        db.execSQL("ALTER TABLE callers ADD COLUMN identity_metadata TEXT NOT NULL DEFAULT '{}'")
-        db.execSQL("ALTER TABLE callers ADD COLUMN identity_epoch TEXT NOT NULL DEFAULT ''")
+        if (oldVersion < 4) {
+            db.execSQL("ALTER TABLE callers ADD COLUMN self_reported_position TEXT NOT NULL DEFAULT ''")
+            db.execSQL("ALTER TABLE callers ADD COLUMN region TEXT NOT NULL DEFAULT ''")
+            db.execSQL("ALTER TABLE callers ADD COLUMN identity_metadata TEXT NOT NULL DEFAULT '{}'")
+            db.execSQL("ALTER TABLE callers ADD COLUMN identity_epoch TEXT NOT NULL DEFAULT ''")
+        }
+        db.execSQL(VISIBLE_NUMBER_HISTORY_INDEX)
     }
 
     private fun upgradeToThree(db: SQLiteDatabase, oldVersion: Int) {

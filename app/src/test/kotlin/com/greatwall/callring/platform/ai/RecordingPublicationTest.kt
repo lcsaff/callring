@@ -49,6 +49,31 @@ class RecordingPublicationTest {
         } finally { runtime.close() }
     }
 
+    @Test fun stalePlaybackSessionCannotStopNewPlaybackOfSameArchive() = runBlocking {
+        val coordinator = BusinessRevisionCoordinator()
+        val context = RuntimeEnvironment.getApplication()
+        val namespace = "owned-playback"
+        val store = AndroidRecordingStore(context, namespace, recordingVersion = { 0L })
+        val runtime = RecordingAssembly(context, namespace, { null }, { null }, {}, { store }, coordinator = coordinator,
+            operationActive = { true }, numberRules = { NumberRuleSnapshot(listOf(NumberRule.DEFAULT), 0) },
+            numberMatcher = PrefixLengthNumberMatcher, findCalls = { _, _ -> emptyList() }, enrichment = testEnrichment)
+        runtime.directory.mkdirs()
+        val audio = File(runtime.directory, "owned.wav").apply { writeBytes(ByteArray(32)) }
+        store.compareAndSet(-1, null, CallArchive(-1, "31234", 1, 1, audioPath = audio.absolutePath))
+        org.robolectric.shadows.ShadowMediaPlayer.setMediaInfoProvider { org.robolectric.shadows.ShadowMediaPlayer.MediaInfo(10000, 0) }
+        try {
+            runtime.service.playOwned(-1, "history").requiredValue()
+            runtime.service.playOwned(-1, "detail").requiredValue()
+            val before = coordinator.marker()
+            runtime.service.stopPlaybackSession("history").requiredValue()
+            assertEquals("detail", runtime.service.getPlaybackSession().requiredValue()?.token)
+            assertEquals(before, coordinator.marker())
+            runtime.service.stopPlaybackSession("detail").requiredValue()
+            assertNull(runtime.service.getPlaybackSession().requiredValue())
+            assertEquals(before + 1, coordinator.marker())
+        } finally { runtime.close() }
+    }
+
     @Test fun nativeCompletionReleasesPlayerLockBeforePublishingAndStopIsThenNoop() = runBlocking {
         val coordinator = BusinessRevisionCoordinator()
         val store = AndroidRecordingStore(RuntimeEnvironment.getApplication(), "native-completion", recordingVersion = { 0L })
@@ -269,6 +294,10 @@ class RecordingPublicationTest {
 }
 
 private val testEnrichment = object : com.greatwall.callring.application.ports.recording.RecordingIdentityEnrichment {
+    override fun suggestions(archive: com.greatwall.callring.contracts.recording.CallArchive): com.greatwall.callring.contracts.recording.CallerSuggestions? = error("unused")
+    override fun hasConfirmation(archive: com.greatwall.callring.contracts.recording.CallArchive): Boolean = error("unused")
+    override fun confirm(archive: com.greatwall.callring.contracts.recording.CallArchive, command: com.greatwall.callring.contracts.recording.ConfirmCallerSuggestions, checkActive: () -> Unit): com.greatwall.callring.contracts.recording.CallerSuggestionConfirmation = error("unused")
+
     override fun capture(number: String, recordedAt: Long) = com.greatwall.callring.contracts.recording.CallerIdentityBaseline("test", emptyMap())
     override fun apply(number: String, baseline: com.greatwall.callring.contracts.recording.CallerIdentityBaseline, archiveId: Long, generation: Long, candidates: Map<String, Pair<String, String>>) = Unit
 }

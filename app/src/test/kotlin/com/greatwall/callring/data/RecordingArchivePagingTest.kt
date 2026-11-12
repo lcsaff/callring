@@ -3,6 +3,7 @@ package com.greatwall.callring.data
 import com.greatwall.callring.data.recording.AndroidRecordingStore
 import com.greatwall.callring.data.recording.RecordingCipher
 import com.greatwall.callring.contracts.recording.*
+import kotlinx.coroutines.flow.first
 import org.junit.Assert.*
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -13,6 +14,41 @@ import org.robolectric.annotation.Config
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [33], manifest = Config.NONE)
 class RecordingArchivePagingTest {
+
+    @Test fun callHistoryRepairsLegacyMetadataWithoutReadingPayloadInTheList() = kotlinx.coroutines.runBlocking<Unit> {
+        val context = RuntimeEnvironment.getApplication()
+        val cipher = object : RecordingCipher {
+            override fun encrypt(value: String) = value
+            override fun decrypt(value: String) = value
+        }
+        val revisions = com.greatwall.callring.application.coordination.BusinessRevisionCoordinator()
+        AndroidRecordingStore(context, "history-repair", cipher, recordingVersion = { 0 }).use { store ->
+            val archive = CallArchive(8, "31234", 100, generation = 1, transcript = "旧转写😀".repeat(10000))
+            assertTrue(store.compareAndSet(archive.callId, null, archive))
+            context.openOrCreateDatabase("history-repair_recording.db", 0, null).use {
+                it.execSQL("DELETE FROM archive_projection WHERE call_id=8")
+            }
+            val targets = listOf(com.greatwall.callring.application.callers.CallHistoryRecordingTarget(8, 8))
+            val batch = store.readCallHistory(targets) { false }
+            assertEquals(com.greatwall.callring.contracts.callers.CallArchiveAvailability.INDEXING,
+                batch.recordings.getValue(8).availability)
+            assertEquals(0L, store.readCounters.snapshot()["historyRepairSourceBytes"] ?: 0)
+            com.greatwall.callring.data.recording.CallHistoryProjectionRepair(
+                store::advanceCallHistoryProjection, revisions, { true },
+            ).use { repair ->
+                repair.resolve(batch)
+                kotlinx.coroutines.withTimeout(5_000) {
+                    revisions.invalidations.snapshots.first { it.revision > 0 }
+                }
+                val resolved = store.readCallHistory(targets) { false }.recordings.getValue(8)
+                assertEquals(com.greatwall.callring.contracts.callers.CallArchiveAvailability.AVAILABLE,
+                    resolved.availability)
+                assertTrue(resolved.hasTranscript)
+                assertEquals(0L, store.readCounters.snapshot()["fullArchiveDecodes"] ?: 0)
+            }
+        }
+    }
+
     @Test fun openingListDoesNotDecodeFullTranscripts() {
         val store = AndroidRecordingStore(RuntimeEnvironment.getApplication(), "paging-red",
             object : RecordingCipher { override fun encrypt(value: String) = value; override fun decrypt(value: String) = value },

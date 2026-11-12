@@ -2,8 +2,16 @@ package com.greatwall.callring.application.callers
 
 import com.greatwall.callring.contracts.callers.*
 
-internal fun callersApi(queries: CallerQueryService, commands: CallerCommandService): CallersApi =
+internal fun callersApi(
+    queries: CallerQueryService,
+    commands: CallerCommandService,
+    history: CallHistoryService,
+): CallersApi =
     object : CallersApi {
+        override suspend fun queryCallHistory(query: CallHistoryQuery) = history.page(query)
+
+        override suspend fun getCallHistoryDetail(callId: Long) = history.detail(callId)
+
         override suspend fun search(query: CallerSearch) = queries.search(query)
 
         override suspend fun getEditor(number: String?) = queries.editor(number)

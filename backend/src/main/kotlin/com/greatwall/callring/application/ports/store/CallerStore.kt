@@ -46,9 +46,13 @@ interface CallerPositionReader {
     fun callerPositions(ids: Set<Long>): List<com.greatwall.callring.domain.model.PositionRecord>
 }
 
-interface CallerProfileReader : CallerReader, CallerPositionReader
+interface CallerProfileReader : CallerReader, CallerPositionReader {
+    fun callerConfirmation(archiveId: Long, resultVersion: Long): String?
+}
 
-interface CallerProfileWriter : CallerWriter, CallerProfileReader
+interface CallerProfileWriter : CallerWriter, CallerProfileReader {
+    fun saveCallerConfirmation(archiveId: Long, resultVersion: Long, receipt: String)
+}
 
 interface CallerReads {
     fun <T> readCaller(block: (CallerProfileReader) -> T): T

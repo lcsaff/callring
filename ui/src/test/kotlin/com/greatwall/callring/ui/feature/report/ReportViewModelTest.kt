@@ -36,14 +36,36 @@ class ReportViewModelTest {
         assertEquals(CallFilter.HOLIDAY, api.query?.filter)
     }
 
+    @Test fun configuredPositionChangesInvalidateReportProfileButAppearanceDoesNot() = runTest {
+        val api = ReportsFake()
+        val feed = TestChangeFeed()
+        val range = DateRange(LocalDate.of(2026, 10, 1), LocalDate.of(2026, 10, 15))
+        val model = ReportViewModel("100", api, feed, SavedStateHandle(), range, backgroundScope)
+        runCurrent()
+        feed.publish(setOf(DataDomain.APPEARANCE))
+        feed.publish(setOf(DataDomain.POSITIONS))
+        runCurrent()
+        assertEquals(1, api.reads)
+
+        api.position = PositionOption(1, "研发总监", 2, true, PositionRelation.HIGHER)
+        feed.publish(setOf(DataDomain.POSITIONS, DataDomain.CALLERS, DataDomain.REPORTS),
+            mapOf(DataDomain.CALLERS to setOf("100"), DataDomain.REPORTS to setOf("100")))
+        runCurrent()
+        assertEquals(2, api.reads)
+        assertEquals("研发总监", model.state.value.data?.profile?.position?.name)
+    }
+
     private class ReportsFake : ReportsApi {
+        var reads = 0
+        var position: PositionOption? = null
         var exported: ReportExportQuery? = null
         var query: ReportQuery? = null
         val time = TimeRange(0, 1, "Asia/Shanghai")
         override suspend fun load(query: ReportQuery): ApiResult<CallerReport> {
+            reads++
             this.query = query
             return ApiResult.Success(CallerReport(
-                CallerProfile("100", true, "张", "", null, PositionRelation.UNKNOWN, false), time,
+                CallerProfile("100", true, "张", "", position, PositionRelation.UNKNOWN, false), time,
                 ReportTotals(999, 100, 899, 0, 999, 1, 0, 0),
                 ScoreSummary(37, 999, 899, 1, 1, 1, 5, time),
                 Page(emptyList(), query.page.pageIndex, 50, 1000, SnapshotMeta(1, 0)),

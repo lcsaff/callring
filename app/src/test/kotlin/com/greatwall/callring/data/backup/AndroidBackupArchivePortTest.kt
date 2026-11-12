@@ -76,6 +76,60 @@ class AndroidBackupArchivePortTest {
         }
     }
 
+    @Test fun restoreSuggestions() = runBlocking {
+        Fixture().use { fixture ->
+            val graph = fixture.graph
+            val first = graph.recordings.registrations.registerIncoming("confirmed", "31234", 123, null, null)
+            val second = graph.recordings.registrations.registerIncoming("pending", "31235", 124, null, null)
+            for (call in listOf(first, second)) {
+                val before = graph.recordings.store.get(call.id)!!
+                val version = before.generation + 1
+                assertTrue(graph.recordings.store.compareAndSet(call.id, before.generation, before.copy(
+                    generation = version, status = ArchiveStatus.COMPLETE, transcript = "I'm Ada",
+                    analysis = CallAnalysis(name = "Ada", fieldEvidence = mapOf("name" to "I'm Ada")),
+                    analysisIntent = ArchiveAnalysisIntent.MANUAL_TEXT,
+                    manualAnalysisState = ManualAnalysisState.PENDING_CONFIRMATION, manualAnalysisResultVersion = version,
+                )))
+            }
+            val api = graph.backend.recordings
+            val saved = checkNotNull((api.getCallerSuggestions(first.id) as ApiResult.Success).value)
+            val pending = checkNotNull((api.getCallerSuggestions(second.id) as ApiResult.Success).value)
+            val requeued = graph.recordings.store.get(second.id)!!
+            assertTrue(graph.recordings.store.compareAndSet(second.id, requeued.generation, requeued.copy(
+                generation = requeued.generation + 1, status = ArchiveStatus.QUEUED,
+            )))
+            val selected = setOf(CallerSuggestionField.NAME)
+            val previousReceipt = ConfirmCallerSuggestions(first.id, saved.token, selected)
+            assertEquals(CallerSuggestionConfirmation.Applied, (api.confirmCallerSuggestions(previousReceipt) as ApiResult.Success).value)
+            // Model the archive state that survives if the process exits just after the core commit.
+            val archived = graph.recordings.store.get(first.id)!!
+            assertTrue(graph.recordings.store.compareAndSet(first.id, archived.generation, archived.copy(
+                generation = archived.generation + 1, manualAnalysisState = ManualAnalysisState.PENDING_CONFIRMATION,
+            )))
+
+            fixture.port.export(fixture.document, "password".toCharArray(), false) {}
+            val preview = fixture.port.preview(fixture.document, "password".toCharArray()) {}
+            fixture.port.restore(preview.token) {}
+            fixture.newGraph().use { restored ->
+                val recordings = restored.backend.recordings
+                assertEquals(CallerSuggestionConfirmation.Conflict(null),
+                    (recordings.confirmCallerSuggestions(previousReceipt) as ApiResult.Success).value)
+                assertEquals(ManualAnalysisState.CONFIRMED,
+                    (recordings.getArchive(first.id) as ApiResult.Success).value?.manualAnalysisState)
+                assertEquals(ArchiveStatus.FAILED,
+                    (recordings.getArchive(second.id) as ApiResult.Success).value?.status)
+                val conflict = (recordings.confirmCallerSuggestions(
+                    ConfirmCallerSuggestions(second.id, pending.token, selected)) as ApiResult.Success).value
+                    as CallerSuggestionConfirmation.Conflict
+                val latest = checkNotNull(conflict.latest)
+                assertEquals(pending.resultVersion, latest.resultVersion)
+                assertNotEquals(pending.token, latest.token)
+                assertEquals(CallerSuggestionConfirmation.Applied,
+                    (recordings.confirmCallerSuggestions(ConfirmCallerSuggestions(second.id, latest.token, selected)) as ApiResult.Success).value)
+            }
+        }
+    }
+
     @Test fun badPreference() = runBlocking {
         Fixture().use { fixture ->
             fixture.graph.backend.callers.saveProfile(SaveCallerProfile("31234", "retained", "", null, false))

@@ -2,10 +2,14 @@ package com.greatwall.callring.data.recording
 
 import android.database.DatabaseUtils
 import android.database.sqlite.SQLiteDatabase
+import com.greatwall.callring.application.callers.CallHistoryRecordingTarget
 import com.greatwall.callring.application.ports.BackendFailure
+import com.greatwall.callring.contracts.callers.CallArchiveAvailability
+import com.greatwall.callring.contracts.callers.CallHistoryRecording
 import com.greatwall.callring.contracts.common.ApiError
 import com.greatwall.callring.contracts.common.ErrorCode
 import com.greatwall.callring.contracts.recording.*
+import org.json.JSONException
 import org.json.JSONObject
 import java.util.Collections
 import java.util.concurrent.CancellationException
@@ -31,6 +35,74 @@ internal class RecordingArchivePages(
 
     private fun active() {
         if (cancelled() || Thread.currentThread().isInterrupted) throw CancellationException("recording.cancelled")
+    }
+
+    fun callHistory(targets: List<CallHistoryRecordingTarget>): CallHistoryArchiveBatch {
+        require(targets.size in 1..100)
+        active()
+        db.beginTransactionNonExclusive()
+        try {
+            return selectCallHistory(targets).also {
+                active()
+                db.setTransactionSuccessful()
+            }
+        } finally {
+            db.endTransaction()
+        }
+    }
+
+    private fun selectCallHistory(targets: List<CallHistoryRecordingTarget>): CallHistoryArchiveBatch {
+        val values = targets.joinToString(",") { "(?,?)" }
+        val args = targets.flatMap { listOf(it.callId.toString(), it.stableRecordingId.toString()) }.toTypedArray()
+        // The same precedence as recordingCall: current link, current archive, screening link, screening archive.
+        val missing = linkedMapOf<Long, LegacyCallHistoryArchive>()
+        val rows = db.rawQuery(
+            """
+            WITH requested(call_id,stable_id) AS (VALUES $values),
+            resolved(call_id,archive_id) AS (
+                SELECT r.call_id,COALESCE(-current_event.id,current_archive.call_id,-stable_event.id,r.stable_id)
+                FROM requested r
+                LEFT JOIN recording_statistics_links current_link ON current_link.statistics_id=r.call_id
+                LEFT JOIN recording_events current_event ON current_event.session_id=current_link.session_id
+                LEFT JOIN archives current_archive ON current_archive.call_id=r.call_id
+                LEFT JOIN recording_statistics_links stable_link ON stable_link.statistics_id=r.stable_id
+                LEFT JOIN recording_events stable_event ON stable_event.session_id=stable_link.session_id
+            )
+            SELECT r.call_id,a.call_id,p.metadata,
+                EXISTS(SELECT 1 FROM archive_text_fields t
+                    WHERE t.call_id=p.call_id AND t.generation=p.generation AND t.field='transcript' AND t.total>0),a.generation
+            FROM resolved r JOIN archives a ON a.call_id=r.archive_id
+            LEFT JOIN archive_projection p ON p.call_id=a.call_id AND p.generation=a.generation
+            """.trimIndent(),
+            args,
+        ).use { cursor ->
+            buildMap {
+                while (cursor.moveToNext()) {
+                    active()
+                    counters.add("historyMetadataRows")
+                    val audioPresent = if (cursor.isNull(2)) null else try {
+                        JSONObject(cursor.getString(2)).getBoolean("audioPresent")
+                    } catch (_: JSONException) {
+                        null
+                    }
+                    val callId = cursor.getLong(0)
+                    val archiveId = cursor.getLong(1)
+                    val availability = when {
+                        cursor.isNull(2) -> {
+                            missing[callId] = LegacyCallHistoryArchive(archiveId, cursor.getLong(4))
+                            CallArchiveAvailability.INDEXING
+                        }
+                        audioPresent == null -> CallArchiveAvailability.UNREADABLE
+                        else -> CallArchiveAvailability.AVAILABLE
+                    }
+                    put(callId, CallHistoryRecording(
+                        archiveId, availability, audioPresent == true,
+                        audioPresent != null && cursor.getInt(3) != 0,
+                    ))
+                }
+            }
+        }
+        return CallHistoryArchiveBatch(rows, missing)
     }
 
     fun query(query: ArchiveListQuery): ArchiveListPage {

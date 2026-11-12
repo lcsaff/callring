@@ -8,9 +8,13 @@ import android.database.sqlite.SQLiteDatabase
 import android.database.sqlite.SQLiteOpenHelper
 import com.greatwall.callring.domain.model.defaultWorkSchedule
 
-/** Version-4 schema with caller enrichment. Unsupported versions fail without deleting user data. */
+internal const val CORE_SCHEMA_VERSION = 5
+internal const val VISIBLE_NUMBER_HISTORY_INDEX =
+    "CREATE INDEX calls_visible_number_time ON calls(number,time DESC,id DESC) WHERE hidden=0"
+
+/** Core schema with caller enrichment and bounded call history. Unsupported versions fail without deleting user data. */
 internal class CallringDatabase(private val context: Context, name: String) :
-    SQLiteOpenHelper(context, name, null, 4) {
+    SQLiteOpenHelper(context, name, null, CORE_SCHEMA_VERSION) {
     override fun onConfigure(db: SQLiteDatabase) {
         db.setForeignKeyConstraintsEnabled(true)
     }
@@ -61,6 +65,7 @@ internal class CallringDatabase(private val context: Context, name: String) :
         )
         db.execSQL("CREATE INDEX calls_number_time ON calls(number,time)")
         db.execSQL("CREATE INDEX calls_visible_time ON calls(time DESC,id DESC) WHERE hidden=0")
+        db.execSQL(VISIBLE_NUMBER_HISTORY_INDEX)
         db.execSQL("CREATE INDEX calls_pending ON calls(number,time) WHERE log_id IS NULL")
         db.execSQL(
             "CREATE UNIQUE INDEX calls_screen_link ON calls(linked_screen_id) WHERE linked_screen_id IS NOT NULL"

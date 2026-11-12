@@ -9,6 +9,7 @@ import androidx.compose.ui.test.junit4.StateRestorationTester
 import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
 import com.greatwall.callring.ui.app.CallringApp
+import com.greatwall.callring.ui.app.UiDestination
 import com.greatwall.callring.contracts.common.*
 import com.greatwall.callring.contracts.callers.*
 import com.greatwall.callring.contracts.settings.*
@@ -26,6 +27,29 @@ import org.junit.Test
 
 abstract class InteractionCases {
     @get:Rule val compose = createComposeRule()
+
+    @Test fun incomingNumberDestinationStartsItsOwnHistoryPage() {
+        val target = mutableStateOf(UiDestination.Report("100"))
+        val sequence = mutableStateOf(1L)
+        val queriedNumbers = mutableListOf<String?>()
+        val api = object : UiFakeApi() {
+            override suspend fun queryCallHistory(query: CallHistoryQuery): ApiResult<CallHistoryPage> {
+                queriedNumbers += query.number
+                return super.queryCallHistory(query)
+            }
+        }
+        compose.setContent {
+            CallringApp(api, target.value, sequence.value, onCapability = {}, onPinWidget = {}, onAppSettings = {})
+        }
+        compose.onNodeWithText("号码档案详情").assertIsDisplayed()
+        compose.runOnIdle {
+            assertEquals(listOf("100"), queriedNumbers.distinct())
+            target.value = UiDestination.Report("200")
+            sequence.value++
+        }
+        compose.onNodeWithText("号码档案详情").assertIsDisplayed()
+        compose.runOnIdle { assertEquals(listOf("100", "200"), queriedNumbers.distinct()) }
+    }
 
     @Test fun formBackKeepsBusyAndFailedSaveInPlaceThenLeavesOnceOnCompletion() {
         val state = mutableStateOf(MutationState())
@@ -174,11 +198,13 @@ abstract class InteractionCases {
         compose.setContent { CallringApp(api, onCapability = {}, onPinWidget = {}, onAppSettings = {}) }
         compose.onNodeWithTag("tab-callers").performClick()
         compose.onNodeWithText("测试档案").performClick()
+        compose.onNodeWithContentDescription("展开号码信息").performClick()
+        compose.onNodeWithTag("report-list").performScrollToNode(hasText("编辑档案"))
         compose.onNodeWithText("编辑档案").performClick()
         compose.onNode(hasSetTextAction() and hasText("姓名")).performTextReplacement("离开前保存")
         compose.onNodeWithContentDescription("返回").performClick()
         compose.onNodeWithText("保存").performClick()
-        compose.onNodeWithText("号码报表").assertExists()
+        compose.onNodeWithText("号码档案详情").assertExists()
         compose.onNodeWithTag("feedback-snackbar").assertIsDisplayed()
         compose.onNodeWithText("档案已保存").assertIsDisplayed()
         compose.runOnIdle { assertEquals("离开前保存", api.savedProfile?.name) }

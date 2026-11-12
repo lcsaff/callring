@@ -1,5 +1,8 @@
 package com.greatwall.callring.data.backup
 
+import com.greatwall.callring.data.database.CORE_SCHEMA_VERSION
+import com.greatwall.callring.data.database.CallringDatabase
+
 import android.database.DatabaseUtils
 import android.database.sqlite.SQLiteDatabase
 import java.io.File
@@ -43,8 +46,8 @@ internal object SqliteBackupCopy {
 
     fun upgradeCoreCandidate(context: android.content.Context, candidate: File) {
         val version = SQLiteDatabase.openDatabase(candidate.path, null, SQLiteDatabase.OPEN_READONLY).use { it.version }
-        ensure(version in 3..4)
-        if (version == 3) com.greatwall.callring.data.database.CallringDatabase(context, candidate.path).use { it.writableDatabase }
+        ensure(version in 3..CORE_SCHEMA_VERSION)
+        if (version < CORE_SCHEMA_VERSION) CallringDatabase(context, candidate.path).use { it.writableDatabase }
     }
 
     /** The decrypted candidate is private; never pass the installed/source database here. */

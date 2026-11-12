@@ -1,5 +1,6 @@
 package com.greatwall.callring.bootstrap
 
+import com.greatwall.callring.application.callers.CallHistoryRecordingTarget
 import com.greatwall.callring.application.ports.recording.AiClient
 import com.greatwall.callring.domain.calling.RecordingCall
 
@@ -7,6 +8,7 @@ import com.greatwall.callring.application.coordination.BusinessRevisionCoordinat
 import com.greatwall.callring.application.ports.recording.RecordingDirectory
 import com.greatwall.callring.application.recording.RecordingWorkflow
 import com.greatwall.callring.data.recording.AndroidRecordingStore
+import com.greatwall.callring.data.recording.CallHistoryProjectionRepair
 import com.greatwall.callring.platform.recording.SherpaOfflineTranscriber
 import com.greatwall.callring.platform.recording.AndroidAudioTranscriber
 import com.greatwall.callring.platform.recording.AndroidRecordingAudio
@@ -17,6 +19,7 @@ import android.content.Context
 import com.greatwall.callring.application.*
 import com.greatwall.callring.application.recording.*
 import com.greatwall.callring.platform.ai.*
+import com.greatwall.callring.contracts.callers.CallHistoryRecording
 import com.greatwall.callring.contracts.common.DocumentRef
 import com.greatwall.callring.contracts.runtime.AccessState
 import java.io.File
@@ -47,6 +50,20 @@ class RecordingAssembly(
     }
     private val storeDelegate = lazy { storeFactory?.invoke() ?: AndroidRecordingStore(context, namespace, recordingVersion = { coordinator.capture().values.getValue("recording") }) }
     val store get() = owned { storeDelegate.value }
+    private val historyRepairDelegate = lazy {
+        CallHistoryProjectionRepair(
+            store::advanceCallHistoryProjection, coordinator, operationActive,
+        )
+    }
+    internal fun readCallHistory(
+        targets: List<CallHistoryRecordingTarget>,
+        cancelled: () -> Boolean,
+    ): Map<Long, CallHistoryRecording> {
+        val (store, repair) = owned { storeDelegate.value to historyRepairDelegate.value }
+        val batch = store.readCallHistory(targets, cancelled)
+        if (cancelled()) throw java.util.concurrent.CancellationException("recording.cancelled")
+        return repair.resolve(batch)
+    }
     val directory = File(context.filesDir, namespace + "_recordings")
     private val sources by lazy { SystemRecordingSource(context.contentResolver) }
     private val scannerDelegate = lazy { com.greatwall.callring.platform.recording.SystemRecordingScanner(context.contentResolver) }
@@ -109,6 +126,7 @@ class RecordingAssembly(
         if(discoveryDelegate.isInitialized()) discoveryDelegate.value.seal()
         clientAccess.seal()
         val resources = synchronized(lifetime) {
+            if (historyRepairDelegate.isInitialized()) historyRepairDelegate.value.close()
             (if (workflowDelegate.isInitialized()) workflowDelegate.value else null) to
                 (if (clientDelegate.isInitialized()) clientDelegate.value else null)
         }
@@ -118,6 +136,7 @@ class RecordingAssembly(
         val resources = synchronized(lifetime) {
             if (closed) return
             closed = true
+            if (historyRepairDelegate.isInitialized()) historyRepairDelegate.value.close()
             listOf(
                 if (workflowDelegate.isInitialized()) workflowDelegate.value else null,
                 if (clientDelegate.isInitialized()) clientDelegate.value else null,

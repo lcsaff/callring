@@ -47,7 +47,7 @@ Files: `PROJECT.md`、`README.md`、本计划的实际证据记录。
 
 - [x] 同步两份规范/用户文档，标明进程内 AI 继续、进程恢复仅恢复 UI 草稿的边界；记录真实验收范围。
 - [x] `git diff --check` 并按任务文件提交；不得包含原工作区其他文档和临时文件改动。
-- [ ] `python tools/verify_backend.py`，检查 summary 为 passed、全部门任务与测试计数正确。
+- [ ] `python tools/verify_ui.py --device emulator-5556`（与 verify_backend 相同完整门），检查 summary 为 passed、全部门任务与测试计数正确。
 - [ ] `adb devices -l`；可用隔离设备手动解锁后执行 `python tools/verify_ui.py --device SERIAL`，执行 Pager 专项并保留日志；不能取得设备时记录外部阻塞，不跳过合并前设备验收。
 - [ ] 具备完整验证证据后 fetch 并合入 main、推送，确认对应 SHA 的远端 CI 成功；不发布 APK/Release。
 
@@ -60,3 +60,8 @@ Files: `PROJECT.md`、`README.md`、本计划的实际证据记录。
 - 定向 HomePager/Conversation 49 项通过；中断专项 2 项通过。Markdown 回复使用正式解析结果出现作为就绪条件，避免将后台解析未完成当作回复丢失。
 - 独立需求审查和沟通代码审查通过；Pager 审查指出的半途拖动恢复、根页返回可见性及弹窗取消顺序已修正并加回归。
 - 隔离模拟器 emulator-5556 上手势/输入/后台回复专项 2 项通过，横竖屏、宿主 recreate、返回及草稿保留 1 项通过。旋转验证使用实时无障碍节点，避免 Compose 测试框架等待已销毁窗口的帧；原失败和修正日志留在 ui/build。
+
+- 已合入 origin/main `feb8f1c`，保留远端通话记录、字段编辑和同选择导航复用；合并后的 UI JVM 401 项通过。
+- 新增外部目标在弹窗期间延后处理回归，及无显式目标的任务唤起不重新启动导航加载屏障回归；显式 Home 仍生效。
+- 子控件慢速横拖的触摸阈值回归先失败再通过；保护只在累计横移越过阈值后消费，避免取消子控件手势。设备普通翻页使用中间区域，边缘专项单独验证；窗口 inset 与正式入口的 enableEdgeToEdge 对齐。
+- 实际进程恢复：隔离任务后台保存后仅对测试 UID 发 SIGKILL，再唤起原任务；PID 5591→5895 时页签、草稿及此前未激活的档案搜索读回通过。后续最终源码仍复验，日志在 ui/build/qa/home-pager-process/。

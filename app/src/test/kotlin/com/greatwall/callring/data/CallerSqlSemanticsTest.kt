@@ -44,6 +44,7 @@ class CallerSqlSemanticsTest {
     private fun backend(
         store: SqliteCoreStorageResource,
         c: BusinessRevisionCoordinator = BusinessRevisionCoordinator(),
+        callHistoryRecordings: com.greatwall.callring.application.callers.CallHistoryRecordingReads = com.greatwall.callring.application.callers.CallHistoryRecordingReads { _, _ -> emptyMap() },
     ): CallringBackend {
         fun <T : Any> unused(type: Class<T>): T =
             requireNotNull(
@@ -85,6 +86,7 @@ class CallerSqlSemanticsTest {
             Clock.fixed(Instant.ofEpochMilli(at + 60000), ZoneOffset.UTC),
             Dispatchers.Unconfined,
             coordinator = c,
+            callHistoryRecordings = callHistoryRecordings,
             coreTransactions = store.sessions, numberRecordings = com.greatwall.callring.EmptyNumberRecordings, operationActive = { true }, conversationProvider = { com.greatwall.callring.testing.FixtureConversationApi }, aiSettingsProvider = { com.greatwall.callring.testing.FixtureAiSettingsApi }, updateProvider = { com.greatwall.callring.testing.FixtureAppUpdateApi }, snapshotsProvider = { com.greatwall.callring.testing.FixtureAiSnapshotApi }, storageProvider = { com.greatwall.callring.testing.FixtureStorageApi }, backupProvider = { com.greatwall.callring.testing.FixtureBackupApi }, recordingsProvider = { com.greatwall.callring.testing.FixtureRecordingApi }, calendarSource = com.greatwall.callring.application.ports.platform.CalendarSource { throw AssertionError("Unexpected calendar source") }, persistenceActive = { true })
     }
 
@@ -110,6 +112,148 @@ class CallerSqlSemanticsTest {
             s.seedCall(s.callFact(1)!!
                     .copy(id = 2, number = "39999", logId = "b2", screeningKey = null))
             s.seedSequence("calls", 3)
+        }
+    }
+
+    @Test
+    fun callHistoryKeepsMergedFactsAndReadsOnlyBoundedArchiveMetadata() = runBlocking<Unit> {
+        val cipher = object : com.greatwall.callring.data.recording.RecordingCipher {
+            override fun encrypt(value: String) = value
+            override fun decrypt(value: String) = value
+        }
+        val revisions = BusinessRevisionCoordinator()
+        SqliteCoreStorageResource(context, "call-history-core.db", SqlAccessProbe()).use { core ->
+            com.greatwall.callring.data.recording.AndroidRecordingStore(
+                context, "call-history", cipher, recordingVersion = { 0 },
+            ).use { archives ->
+                val callers = backend(core, revisions) { targets, cancelled -> archives.readCallHistory(targets, cancelled).recordings }.callers
+                assertTrue(callers.queryCallHistory().requiredValue().entries.isEmpty())
+                seed(core)
+                core.fixtureSql { sql ->
+                    val screened = sql.callFact(1)!!
+                    sql.seedCall(screened.copy(id = 1, hidden = true))
+                    sql.seedCall(screened.copy(
+                        id = 3, logId = "merged", screeningKey = null, linkedScreenId = 1,
+                        source = com.greatwall.callring.domain.model.CallSource.SYSTEM_CALL_LOG,
+                    ))
+                    sql.seedCall(screened.copy(
+                        id = 4, time = at - 86_400_000, number = "39999", screeningKey = null,
+                        duration = null, counted = false, result = com.greatwall.callring.domain.model.CallResult.MISSED,
+                    ))
+                }
+                archives.compareAndSet(1, null, com.greatwall.callring.contracts.recording.CallArchive(
+                    1, "31234", at, generation = 1, transcript = "large transcript".repeat(20000),
+                ))
+                val single = callers.queryCallHistory(CallHistoryQuery(pageSize = 1)).requiredValue()
+                assertEquals(3L, single.entries.single().call.id)
+                val equalTime = callers.queryCallHistory(CallHistoryQuery(1, single.nextCursor)).requiredValue()
+                assertEquals(2L, equalTime.entries.single().call.id)
+                val first = callers.queryCallHistory(CallHistoryQuery(pageSize = 2)).requiredValue()
+                assertEquals(listOf(3L, 2L), first.entries.map { it.call.id })
+                val merged = first.entries.first()
+                assertEquals("A", merged.callerName)
+                assertEquals(CallSource.MERGED, merged.call.source)
+                assertEquals(1L, merged.linkedScreeningCallId)
+                assertEquals(CallHistoryRecording(1, CallArchiveAvailability.AVAILABLE, false, true), merged.recording)
+                assertEquals(CallArchiveAvailability.NONE, first.entries.last().recording.availability)
+                assertEquals(merged, callers.getCallHistoryDetail(3).requiredValue())
+                assertTrue(callers.getCallHistoryDetail(1) is ApiResult.Failure)
+                val next = checkNotNull(first.nextCursor)
+                revisions.publishCore(setOf("score"), com.greatwall.callring.application.coordination.ChangeImpact(
+                    mapOf(com.greatwall.callring.contracts.change.DataDomain.SCORE_SETTINGS to null),
+                ))
+                val second = callers.queryCallHistory(CallHistoryQuery(2, next)).requiredValue()
+                assertEquals(listOf(4L), second.entries.map { it.call.id })
+                assertNull(second.nextCursor)
+                assertEquals("B", second.entries.single().callerName)
+                assertNull(second.entries.single().call.durationSeconds)
+                assertFalse(second.entries.single().call.counted)
+                revisions.publishCore(setOf("calls"), com.greatwall.callring.application.coordination.ChangeImpact(
+                    mapOf(com.greatwall.callring.contracts.change.DataDomain.CALLS to setOf("39999")),
+                ))
+                val stale = callers.queryCallHistory(CallHistoryQuery(2, next)) as ApiResult.Failure
+                assertEquals(ErrorCode.CONFLICT, stale.error.code)
+                val fresh = callers.queryCallHistory(CallHistoryQuery(pageSize = 2)).requiredValue()
+                core.fixtureSql { it.seedCaller(ProfileRecord("31234", "Renamed")) }
+                revisions.publishCore(setOf("profiles"), com.greatwall.callring.application.coordination.ChangeImpact(
+                    mapOf(com.greatwall.callring.contracts.change.DataDomain.CALLERS to setOf("31234")),
+                ))
+                assertEquals(ErrorCode.CONFLICT,
+                    (callers.queryCallHistory(CallHistoryQuery(2, fresh.nextCursor)) as ApiResult.Failure).error.code)
+                val renamed = callers.queryCallHistory(CallHistoryQuery(pageSize = 2)).requiredValue()
+                assertEquals("Renamed", renamed.entries.first().callerName)
+                val registration = com.greatwall.callring.application.recording.RecordingRegistrationService(archives, revisions)
+                val incoming = registration.registerIncoming("current", "31234", at, null, null)
+                registration.linkStatistics("current", 3, null)
+                val linked = callers.getCallHistoryDetail(3).requiredValue()
+                assertEquals(CallHistoryRecording(incoming.id, CallArchiveAvailability.AVAILABLE, false, false), linked.recording)
+                val invalidated = callers.queryCallHistory(CallHistoryQuery(2, renamed.nextCursor)) as ApiResult.Failure
+                assertEquals(ErrorCode.CONFLICT, invalidated.error.code)
+                for (counter in listOf("fullArchiveDecodes", "sourceBytes", "listIndexSourceBytes")) {
+                    assertEquals(0L, archives.readCounters.snapshot()[counter] ?: 0L)
+                }
+            }
+        }
+    }
+
+    @Test
+    fun scopedHistorySeeksAcrossTiedTimesAndProjectsProfileInThePage() = runBlocking<Unit> {
+        val revisions = BusinessRevisionCoordinator()
+        SqliteCoreStorageResource(context, "number-history-core.db", SqlAccessProbe()).use { core ->
+            seed(core)
+            core.fixtureSql { sql ->
+                sql.seedPosition(com.greatwall.callring.domain.model.PositionRecord(1, "配置职位", 1, true))
+                sql.execSQL("UPDATE callers SET name='',position_id=1,region='上海',self_reported_position='自述职位' WHERE number='31234'")
+                val screened = sql.callFact(1)!!
+                sql.seedCall(screened.copy(hidden = true))
+                sql.seedCall(screened.copy(
+                    id = 3, logId = "merged", screeningKey = null, linkedScreenId = 1,
+                    source = com.greatwall.callring.domain.model.CallSource.SYSTEM_CALL_LOG,
+                ))
+                sql.seedCall(screened.copy(id = 4, screeningKey = null, counted = false,
+                    result = com.greatwall.callring.domain.model.CallResult.REJECTED))
+                sql.seedCall(screened.copy(id = 5, screeningKey = null, time = at - 86_400_000,
+                    result = com.greatwall.callring.domain.model.CallResult.MISSED))
+            }
+            val api = backend(core, revisions)
+            val callers = api.callers
+            val query = CallHistoryQuery(pageSize = 1, number = "31234")
+            val first = callers.queryCallHistory(query).requiredValue()
+            val firstRow = first.entries.single()
+            assertEquals(4L, firstRow.call.id)
+            assertNull(firstRow.callerName)
+            assertEquals("上海", firstRow.callerRegion)
+            assertEquals("自述职位", firstRow.callerSelfReportedPosition)
+            assertEquals("配置职位", firstRow.callerConfiguredPosition)
+            val cursor = checkNotNull(first.nextCursor)
+            for (other in listOf(null, "39999")) {
+                val rejected = callers.queryCallHistory(query.copy(number = other, cursor = cursor)) as ApiResult.Failure
+                assertEquals(ErrorCode.CONFLICT, rejected.error.code)
+            }
+            val global = callers.queryCallHistory(CallHistoryQuery(pageSize = 1)).requiredValue()
+            val rejected = callers.queryCallHistory(query.copy(cursor = global.nextCursor)) as ApiResult.Failure
+            assertEquals(ErrorCode.CONFLICT, rejected.error.code)
+            revisions.publishCore(setOf("other-number"), com.greatwall.callring.application.coordination.ChangeImpact(
+                mapOf(
+                    com.greatwall.callring.contracts.change.DataDomain.CALLS to setOf("39999"),
+                    com.greatwall.callring.contracts.change.DataDomain.CALLERS to setOf("39999"),
+                ),
+            ))
+            api.settings.savePosition(com.greatwall.callring.contracts.settings.SavePosition(
+                name = "无关职位", level = 1, active = true,
+            )).requiredValue()
+            val second = callers.queryCallHistory(query.copy(cursor = cursor)).requiredValue()
+            assertEquals(3L, second.entries.single().call.id)
+            val last = callers.queryCallHistory(query.copy(cursor = second.nextCursor)).requiredValue()
+            assertEquals(5L, last.entries.single().call.id)
+            assertNull(last.nextCursor)
+            assertNull(callers.queryCallHistory(query.copy(number = "39999")).requiredValue().entries.single().callerRegion)
+            api.settings.savePosition(com.greatwall.callring.contracts.settings.SavePosition(
+                id = 1, name = "更名职位", level = 1, active = true,
+            )).requiredValue()
+            val stale = callers.queryCallHistory(query.copy(cursor = cursor)) as ApiResult.Failure
+            assertEquals(ErrorCode.CONFLICT, stale.error.code)
+            assertEquals("更名职位", callers.queryCallHistory(query).requiredValue().entries.single().callerConfiguredPosition)
         }
     }
 

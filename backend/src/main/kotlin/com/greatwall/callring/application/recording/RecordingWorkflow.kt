@@ -12,6 +12,9 @@ import com.greatwall.callring.contracts.ai.AiProtocol
 import com.greatwall.callring.application.recording.model.RecordingActivityObservation
 import com.greatwall.callring.application.recording.policy.*
 import com.greatwall.callring.contracts.command.CommandContext
+import com.greatwall.callring.application.ports.BackendFailure
+import com.greatwall.callring.contracts.common.ApiError
+import com.greatwall.callring.contracts.common.ErrorCode
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicLong
 import java.util.concurrent.atomic.AtomicBoolean
@@ -159,6 +162,43 @@ class RecordingWorkflow(
         }
     }
 
+    fun queueTranscriptAnalysis(callId: Long, checkActive: () -> Unit) {
+        check(!closed && callId !in running) { "recording.busy" }
+        val archive = store.get(callId) ?: throw AiFailure("recording.not_found")
+        if (archive.transcript.isBlank()) throw AiFailure("recording.transcript_required")
+        queueManual(archive, ArchiveAnalysisIntent.MANUAL_TEXT, null, checkActive)
+    }
+
+    fun confirmedView(archive: CallArchive): CallArchive {
+        if (archive.manualAnalysisState == ManualAnalysisState.PENDING_CONFIRMATION && enrichment.hasConfirmation(archive))
+            return archive.copy(manualAnalysisState = ManualAnalysisState.CONFIRMED)
+        return archive
+    }
+
+    fun callerSuggestions(callId: Long): CallerSuggestions? {
+        val archive = store.get(callId) ?: return null
+        if (archive.manualAnalysisState != ManualAnalysisState.PENDING_CONFIRMATION || !archive.canReviewManualResult()) return null
+        return enrichment.suggestions(archive)
+    }
+
+    fun confirmCallerSuggestions(command: ConfirmCallerSuggestions, checkActive: () -> Unit): CallerSuggestionConfirmation {
+        val archive = store.get(command.callId) ?: return CallerSuggestionConfirmation.Conflict(null)
+        if (archive.manualAnalysisResultVersion == null || !archive.canReviewManualResult())
+            return CallerSuggestionConfirmation.Conflict(null)
+        val alreadyCommitted = enrichment.hasConfirmation(archive)
+        val result = enrichment.confirm(archive, command, checkActive)
+        if (result == CallerSuggestionConfirmation.Applied && archive.manualAnalysisState == ManualAnalysisState.PENDING_CONFIRMATION) {
+            // Core already committed. The receipt remains authoritative if archive writeback fails.
+            val saved = runCatching { commands.compareAndSet(archive.callId, archive.generation, archive.copy(
+                generation = version(archive.generation), manualAnalysisState = ManualAnalysisState.CONFIRMED,
+            ), null, false) }.getOrDefault(false)
+            if (!saved && !alreadyCommitted) commands.confirmationStateChanged(archive.callId)
+        }
+        return result
+    }
+
+    private fun CallArchive.canReviewManualResult() = status == ArchiveStatus.COMPLETE || status == ArchiveStatus.FAILED
+
     fun retry(callId: Long, command: CommandContext?) {
         check(!closed) { "recording.closed" }
         check(callId !in running) { "recording.busy" }
@@ -167,11 +207,24 @@ class RecordingWorkflow(
             check(commands.compareAndSet(callId, value.generation, value.copy(generation = version(value.generation), status = ArchiveStatus.ENRICHING, nextAttemptAt = 0, error = null), command, false)) { "recording.changed" }
             return
         }
-        require(value.audioPath != null) { "recording.missing_audio" }
-        val config = store.settings()
-        validateConnections(value, config)
-        check(commands.compareAndSet(callId, value.generation, value.copy(generation = version(value.generation),
-            status = ArchiveStatus.QUEUED, attempts = 0, nextAttemptAt = 0, error = null, manualAnalysis = true, enrichmentBaseline = null, enrichmentSourceGeneration = null), command, false)) { "recording.changed" }
+        if (value.status == ArchiveStatus.COMPLETE && value.manualAnalysisState == ManualAnalysisState.PENDING_CONFIRMATION &&
+            !enrichment.hasConfirmation(value))
+            throw BackendFailure(ApiError(ErrorCode.CONFLICT, "recording.confirmation_pending"))
+        require(value.transcript.isNotBlank() || value.audioPath != null) { "recording.missing_audio" }
+        val intent = if (value.transcript.isNotBlank()) ArchiveAnalysisIntent.MANUAL_TEXT else ArchiveAnalysisIntent.MANUAL_LEGACY
+        queueManual(value, intent, command)
+    }
+
+    private fun queueManual(
+        archive: CallArchive, intent: ArchiveAnalysisIntent, command: CommandContext?, checkActive: () -> Unit = {},
+    ) {
+        validateConnections(archive, store.settings())
+        checkActive()
+        check(commands.compareAndSet(archive.callId, archive.generation, archive.copy(
+            generation = version(archive.generation), status = ArchiveStatus.QUEUED, attempts = 0,
+            nextAttemptAt = 0, error = null, manualAnalysis = true, analysisIntent = intent,
+            enrichmentBaseline = null, enrichmentSourceGeneration = null,
+        ), command, false)) { "recording.changed" }
     }
 
     fun delete(callId: Long, command: CommandContext?, playbackStopped: Boolean): Boolean {
@@ -227,30 +280,39 @@ class RecordingWorkflow(
         cancelledOperations[current.callId] = cancellation
         val isCancelled = { closed || cancelled() || cancellation.get() }
         val localOnly = current.status in setOf(ArchiveStatus.ENRICHING, ArchiveStatus.ENRICHMENT_FAILED)
-        if(!localOnly && !allowNetwork) return
+        val manual = current.analysisIntent != ArchiveAnalysisIntent.AUTOMATIC || current.manualAnalysis
         val operation by lazy { client.operation(isCancelled).also { activeClients[current.callId] = it } }
         fun update(value: CallArchive): Boolean {
             if (closed) return false
             val generation = version(current.generation)
             val next = value.copy(generation = generation,
-                enrichmentSourceGeneration = value.enrichmentSourceGeneration ?: generation.takeIf { value.status == ArchiveStatus.ENRICHING })
+                enrichmentSourceGeneration = value.enrichmentSourceGeneration ?: generation.takeIf { value.status == ArchiveStatus.ENRICHING },
+                manualAnalysisResultVersion = value.manualAnalysisResultVersion
+                    ?: generation.takeIf { value.manualAnalysisState == ManualAnalysisState.PENDING_CONFIRMATION })
             if (!commands.compareAndSet(current.callId, current.generation, next, null, false)) return false
             current = next; return true
         }
+        if (current.status == ArchiveStatus.COMPLETE) {
+            // A compatibility-decoded local result may still have the old durable queue status.
+            if (current.manualAnalysisState == ManualAnalysisState.PENDING_CONFIRMATION && !isCancelled()) update(current)
+            return
+        }
+        if (!localOnly && !allowNetwork) return
+
         fun enrich() {
             if (isCancelled()) return
-            val analysis = current.analysis ?: error("recording.analysis_missing")
+            checkNotNull(current.analysis) { "recording.analysis_missing" }
+            if (manual) {
+                update(current.copy(status = ArchiveStatus.COMPLETE, error = null, nextAttemptAt = 0,
+                    manualAnalysisState = ManualAnalysisState.PENDING_CONFIRMATION))
+                return
+            }
             val baseline = current.enrichmentBaseline ?: error("recording.baseline_missing")
             if (!baseline.eligible) {
                 if (!isCancelled()) update(current.copy(status = ArchiveStatus.COMPLETE, error = null, nextAttemptAt = 0))
                 return
             }
-            val claims = mapOf("name" to analysis.name, "department" to analysis.department,
-                "selfReportedPosition" to analysis.position, "region" to analysis.region)
-            val candidates = claims.mapNotNull { (field, claim) ->
-                val quote = analysis.fieldEvidence[field].orEmpty()
-                if (claim.isNotBlank() && quote.isNotBlank() && current.transcript.contains(quote) && quote.contains(claim)) field to (claim to quote) else null
-            }.toMap()
+            val candidates = current.validatedCallerCandidates()
             if (!commands.withCurrent(current.callId, current.generation) {
                     if (isCancelled()) throw AiFailure("recording.cancelled")
                     enrichment.apply(current.number, baseline, current.callId, current.enrichmentSourceGeneration ?: current.generation, candidates)
@@ -265,11 +327,14 @@ class RecordingWorkflow(
             return
         }
         try {
-            if (!config.automaticAnalysis && !current.manualAnalysis) {
+            if (!config.automaticAnalysis && current.analysisIntent in setOf(
+                    ArchiveAnalysisIntent.AUTOMATIC, ArchiveAnalysisIntent.LEGACY_UNCLASSIFIED) && !current.manualAnalysis) {
                 update(current.copy(status = ArchiveStatus.READY, nextAttemptAt = 0)); return
             }
+            if (current.analysisIntent == ArchiveAnalysisIntent.MANUAL_TEXT && current.transcript.isBlank())
+                throw AiFailure("recording.transcript_required")
             validateConnections(current, config)
-            if (current.enrichmentBaseline == null) {
+            if (!manual && current.enrichmentBaseline == null) {
                 var baselineSaved = false
                 val live = commands.withCurrent(current.callId, current.generation) {
                     if (isCancelled()) throw AiFailure("recording.cancelled")
@@ -290,10 +355,13 @@ class RecordingWorkflow(
             if (isCancelled()) throw AiFailure("recording.cancelled")
             val result = operation.analyze(config.analysis, current.transcript)
             if (isCancelled()) throw AiFailure("recording.cancelled")
-            val savedAnalysis = update(current.copy(analysis = result, status = ArchiveStatus.ENRICHING, error = null,
+            val savedAnalysis = update(current.copy(analysis = result,
+                status = if (manual) ArchiveStatus.COMPLETE else ArchiveStatus.ENRICHING, error = null,
                 nextAttemptAt = 0, analyzedAt = now(), analysisModel = config.analysis.model,
-                analysisProtocol = config.analysis.protocol))
-            if (savedAnalysis) {
+                analysisProtocol = config.analysis.protocol,
+                manualAnalysisState = ManualAnalysisState.PENDING_CONFIRMATION.takeIf { manual },
+                manualAnalysisResultVersion = null))
+            if (savedAnalysis && !manual) {
                 try { enrich() } catch (_: Exception) {
                     if (!isCancelled()) update(current.copy(status = ArchiveStatus.ENRICHMENT_FAILED,
                         error = "recording.enrichment_failed", nextAttemptAt = Long.MAX_VALUE))

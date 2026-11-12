@@ -20,6 +20,7 @@ import com.greatwall.callring.contracts.command.*
 import com.greatwall.callring.contracts.common.*
 import com.greatwall.callring.contracts.recording.*
 import kotlinx.coroutines.*
+import java.util.UUID
 import java.util.concurrent.atomic.AtomicLong
 
 class RecordingService(
@@ -44,6 +45,8 @@ class RecordingService(
 ) : RecordingApi, com.greatwall.callring.application.callers.NumberDeletionRecordingReads,
     com.greatwall.callring.application.ports.storage.StorageArchiveAccess {
     private val playbackGeneration = AtomicLong()
+    // Read and updated under the coordinator fence, together with player activation.
+    private var activePlaybackToken: String? = null
     private suspend fun <T> result(block: suspend () -> T): ApiResult<T> = withContext(Dispatchers.IO) {
         try { requireOperationActive(operationActive); ApiResult.Success(block()) }
         catch (cancelled: CancellationException) { throw cancelled }
@@ -101,7 +104,9 @@ class RecordingService(
     override suspend fun archives(number: String) = numberArchives(number)
     override suspend fun getArchive(callId: Long) = result { coordinator.guard {
         val id = archiveId(callId)
-        state.get(id)?.copy(offlineTranscription = workflow().offlineState(id))
+        state.get(id)?.let { archive ->
+            workflow().confirmedView(archive).copy(offlineTranscription = workflow().offlineState(id))
+        }
     } }
     override suspend fun transcribeOffline(callId: Long) = result {
         coordinator.guard { workflow().startOffline(archiveId(callId)) }
@@ -207,6 +212,30 @@ class RecordingService(
             value.copy(generation = value.generation + 1, error = reason), null, false)
         Unit
     }
+    override suspend fun analyzeTranscript(callId: Long) = result {
+        val caller = currentCoroutineContext()
+        coordinator.guard {
+            caller.ensureActive()
+            workflow().queueTranscriptAnalysis(archiveId(callId), caller::ensureActive)
+        }
+        runCatching { schedule(0) }
+        Unit
+    }
+
+    override suspend fun getCallerSuggestions(callId: Long) = result {
+        coordinator.guard { workflow().callerSuggestions(archiveId(callId)) }
+    }
+
+    override suspend fun confirmCallerSuggestions(command: ConfirmCallerSuggestions) = result {
+        val caller = currentCoroutineContext()
+        coordinator.guard {
+            caller.ensureActive()
+            workflow().confirmCallerSuggestions(
+                command.copy(callId = archiveId(command.callId), fields = command.fields.toSet()), caller::ensureActive,
+            )
+        }
+    }
+
     override suspend fun retry(callId: Long) = retryWith(callId, null)
     private suspend fun retryWith(callId: Long, command: CommandContext?) = result {
         coordinator.guard(command) {
@@ -238,8 +267,25 @@ class RecordingService(
         if(requireInactive) workflow().withIdle(id, ::removeArchive) else removeArchive()
         Unit
     } }
+    override suspend fun getPlaybackSession(): ApiResult<RecordingPlaybackSession?> = result { coordinator.guard {
+        val id = playbackObservation().callId
+        val token = activePlaybackToken
+        if (id != null && token != null) RecordingPlaybackSession(id, token) else null
+    } }
+    override suspend fun playOwned(callId: Long, token: String): ApiResult<Unit> = playWith(callId, null, token)
+    override suspend fun stopPlaybackSession(token: String): ApiResult<Unit> = stopPlaybackSessionWith(token, null)
+    private suspend fun stopPlaybackSessionWith(token: String, command: CommandContext?) = result { coordinator.guard(command) {
+        requireOperationActive(operationActive)
+        if (activePlaybackToken == token) {
+            activePlaybackToken = null
+            if (playback.stop()) {
+                playbackFinished()
+                coordinator.record(command)
+            }
+        }
+    } }
     override suspend fun play(callId: Long): ApiResult<Unit> = playWith(callId, null)
-    private suspend fun playWith(callId: Long, command: CommandContext?): ApiResult<Unit> {
+    private suspend fun playWith(callId: Long, command: CommandContext?, token: String = UUID.randomUUID().toString()): ApiResult<Unit> {
         val ticket = playbackGeneration.incrementAndGet()
         return result {
             val caller = currentCoroutineContext()
@@ -253,7 +299,12 @@ class RecordingService(
                     caller.ensureActive()
                     check(ticket == playbackGeneration.get() && state.generation(archive.callId) == archive.generation) { "recording.changed" }
                     val stopped = playback.stop()
-                    try { playback.activate(next, callId); activated = true }
+                    activePlaybackToken = null
+                    try {
+                        playback.activate(next, callId)
+                        activePlaybackToken = token
+                        activated = true
+                    }
                     catch (failure: Exception) { if (stopped) playbackFinished(); throw failure }
                     playbackFinished()
                     coordinator.record(command)
@@ -284,6 +335,8 @@ class RecordingService(
         override suspend fun retry(callId: Long) = retryWith(callId, command)
         override suspend fun delete(callId: Long) = deleteWith(callId, command)
         override suspend fun play(callId: Long) = playWith(callId, command)
+        override suspend fun playOwned(callId: Long, token: String) = playWith(callId, command, token)
+        override suspend fun stopPlaybackSession(token: String) = stopPlaybackSessionWith(token, command)
         override suspend fun stop() = stopWith(command)
         override suspend fun setSystemFolder(document: DocumentRef) = folderWith(document, command)
     }

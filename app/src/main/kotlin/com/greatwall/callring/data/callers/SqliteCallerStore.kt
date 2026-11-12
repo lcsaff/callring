@@ -1,5 +1,6 @@
 package com.greatwall.callring.data.callers
 
+import com.greatwall.callring.data.codec.CallerConfirmationCodec
 import com.greatwall.callring.data.codec.LegacyValueCodec
 import com.greatwall.callring.data.database.QueryTag
 import com.greatwall.callring.data.database.SqlAccess
@@ -56,6 +57,21 @@ internal class SqliteCallerStore(private val sql: SqlAccess, private val lease: 
             }
     }
 
+    fun callerConfirmation(archiveId: Long, resultVersion: Long): String? {
+        lease(false)
+        val key = CallerConfirmationCodec.key(archiveId, resultVersion)
+        return sql.rawQuery(QueryTag.SCOPED_SETTING, setOf(SqlTable.SETTINGS),
+            "SELECT value FROM settings WHERE key=?", arrayOf(key)).use {
+            if (it.moveToFirst()) CallerConfirmationCodec.decode(it.getString(0)) else null
+        }
+    }
+
+    fun saveCallerConfirmation(archiveId: Long, resultVersion: Long, receipt: String) {
+        lease(true)
+        val key = CallerConfirmationCodec.key(archiveId, resultVersion)
+        sql.insert("settings", values("key" to key, "value" to CallerConfirmationCodec.decode(receipt)))
+    }
+
     override fun callerDeletedAt(number: String): Long? {
         lease(false)
         return sql.rawQuery(QueryTag.SCOPED_SETTING,setOf(SqlTable.SETTINGS),
@@ -73,6 +89,27 @@ internal class SqliteCallerStore(private val sql: SqlAccess, private val lease: 
     override fun caller(number: String): ProfileRecord? {
         lease(false)
         return profiles("WHERE number=?", arrayOf(number)).firstOrNull()
+    }
+
+    fun callHistoryCallers(numbers: Set<String>): Map<String, CallHistoryCaller> {
+        lease(false)
+        if (numbers.isEmpty()) return emptyMap()
+        val placeholders = numbers.joinToString(",") { "?" }
+        return sql.rawQuery(
+            QueryTag.SCOPED_ROWS,
+            setOf(SqlTable.CALLERS, SqlTable.POSITIONS),
+            "SELECT c.number,c.name,c.region,c.self_reported_position,p.name FROM callers c " +
+                "LEFT JOIN positions p ON p.id=c.position_id WHERE c.number IN ($placeholders)",
+            numbers.toTypedArray(),
+        ).use { cursor ->
+            buildMap {
+                while (cursor.moveToNext()) {
+                    put(cursor.getString(0), CallHistoryCaller(
+                        cursor.getString(1), cursor.getString(2), cursor.getString(3), cursor.getString(4),
+                    ))
+                }
+            }
+        }
     }
 
     override fun callerCount(): Long {

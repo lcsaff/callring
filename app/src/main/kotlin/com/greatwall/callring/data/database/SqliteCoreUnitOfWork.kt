@@ -252,6 +252,13 @@ internal class SqliteCoreUnitOfWork(private val db: SQLiteDatabase, private val 
                 reportCalls.visitReportCalls(number, start, end, ascending, accept)
             }
 
+        override fun callHistoryCallers(numbers: Set<String>) = callers.callHistoryCallers(numbers)
+
+        override fun visibleCallHistory(number: String?, after: CallHistoryBoundary?, limit: Int) =
+            reportCalls.visibleCallHistory(number, after, limit)
+
+        override fun visibleCallHistoryDetail(id: Long) = reportCalls.visibleCallHistoryDetail(id)
+
         override fun latestVisibleReportCall() =
             callingAccess("homeLatest") { reportCalls.latestVisibleReportCall() }
 
@@ -285,6 +292,9 @@ internal class SqliteCoreUnitOfWork(private val db: SQLiteDatabase, private val 
         override fun callerPositions(ids: Set<Long>) = callers.callerPositions(ids)
 
         override fun caller(number: String) = callers.caller(number)
+        override fun callerConfirmation(archiveId: Long, resultVersion: Long) = callers.callerConfirmation(archiveId, resultVersion)
+        override fun saveCallerConfirmation(archiveId: Long, resultVersion: Long, receipt: String) =
+            callers.saveCallerConfirmation(archiveId, resultVersion, receipt)
         override fun callerDeletedAt(number: String) = callers.callerDeletedAt(number)
         override fun markCallerDeleted(number: String, at: Long) = callers.markCallerDeleted(number,at)
 

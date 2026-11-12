@@ -39,8 +39,11 @@ class CallerServiceTest {
             return block(this)
         }
 
+        private val confirmations = mutableMapOf<Pair<Long, Long>, String>()
         private val deleted=mutableMapOf<String,Long>()
         override fun caller(number: String) = rows[number]
+        override fun callerConfirmation(archiveId: Long, resultVersion: Long) = confirmations[archiveId to resultVersion]
+        override fun saveCallerConfirmation(archiveId: Long, resultVersion: Long, receipt: String) { confirmations[archiveId to resultVersion] = receipt }
         override fun callerDeletedAt(number: String) = deleted[number]
         override fun markCallerDeleted(number: String, at: Long) { deleted[number]=at }
 

@@ -15,6 +15,6 @@ fun findRecordingCall(reads: com.greatwall.callring.application.ports.store.Call
 fun findSystemRecordingCalls(reads: com.greatwall.callring.application.ports.store.CallingTransactions, number: String, at: Long): List<RecordingCall> =
     reads.readCalling { reader ->
         reader.systemRecordingCalls(number.filter(Char::isDigit),at - 3000,at + 3000).map { row ->
-            RecordingCall(row.linkedScreenId ?: row.id,row.number,row.time,row.duration)
+            RecordingCall(com.greatwall.callring.domain.calling.stableRecordingCallId(row.id, row.linkedScreenId),row.number,row.time,row.duration)
         }.distinctBy { it.id }
     }

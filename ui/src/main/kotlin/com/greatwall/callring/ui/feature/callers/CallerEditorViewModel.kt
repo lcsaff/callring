@@ -19,6 +19,7 @@ class CallerEditorViewModel(
     private val saveWithBase: suspend (CallerDraft, CallerDraft) -> ApiResult<CallerProfile>,
     private val deletion: NumberDeletionApi? = null,
     private val onDeleted: () -> Unit = {},
+    private val field: CallerProfileField? = null,
 ) : UiViewModel(testScope) {
     private val writer = MutationRunner(scope)
     val mutation = writer.state
@@ -30,53 +31,71 @@ class CallerEditorViewModel(
     private val deleteWriter = MutationRunner(scope)
     val deletionState = deleteWriter.state
     private var loadedGeneration = 0L
-    private var baseline: CallerDraft? =
-        if (savedState.get<String>("baseNumber") != null) restoreBase() else null
+    private var discardOnLoad = false
+    private val baseline = MutableStateFlow(
+        if (savedState.get<String>("baseNumber") != null) restoreBase() else null,
+    )
+    val dirty = combine(baseline, draft) { base, value -> base != null && value != null && base != value }
+        .stateIn(scope, SharingStarted.Eagerly, false)
 
     private val loader = ObservedQuery(scope, changes,
         numberSubscription(setOf(DataDomain.CALLERS, DataDomain.POSITIONS), number),
         load = { api.getEditor(number) }, onSuccess = { snapshot ->
-                loadedGeneration++
+            loadedGeneration++
+            if (discardOnLoad) {
+                discardOnLoad = false
+                writer.clearError()
+                replaceDraft(snapshot.draft)
+            } else {
                 if (mutableDraft.value == null) {
-                    mutableDraft.value =
-                        if (savedState.get<Boolean>("hasDraft") == true) restore(snapshot.draft)
+                    val restored = if (savedState.get<Boolean>("hasDraft") == true) restore(snapshot.draft)
                         else snapshot.draft
+                    val base = baseline.value
+                    mutableDraft.value = if (base != null && field != null) field.applyEdit(base, restored) else restored
                 }
-                if (baseline == null || mutableDraft.value == baseline) {
-                    if (baseline != null) {
-                        mutableDraft.value = snapshot.draft
-                        persist(snapshot.draft)
-                    }
-                    setBaseline(snapshot.draft)
-                }
-        })
+                if (baseline.value == null) setBaseline(snapshot.draft)
+                else if (mutableDraft.value == baseline.value) replaceDraft(snapshot.draft)
+            }
+        }, onFailure = { discardOnLoad = false })
     val state = loader.state
     init { loader.start(scope) }
     fun refresh() = loader.request(force = true)
 
-    fun edit(change: CallerDraft.() -> CallerDraft) {
+    fun reload() {
         if (mutation.value.busy) return
+        discardOnLoad = true
+        refresh()
+    }
+
+    fun edit(change: CallerDraft.() -> CallerDraft) {
+        if (mutation.value.busy || discardOnLoad) return
         val previous = mutableDraft.value ?: return
-        val next = previous.change()
-        mutableDraft.value = next
-        persist(next)
+        val base = baseline.value ?: return
+        val changed = previous.change()
+        val next = field?.applyEdit(base, changed) ?: changed
+        if (field != null && next == base) {
+            replaceDraft(state.value.data?.draft ?: base)
+            writer.clearError()
+        } else {
+            mutableDraft.value = next
+            persist(next)
+        }
     }
 
     fun save() {
+        if (discardOnLoad) return
         val draft = mutableDraft.value ?: return
-        val base = baseline ?: return
+        val base = baseline.value ?: return
+        if (field != null && draft == base) return
         val startedGeneration = loadedGeneration
         writer.run({ saveWithBase(base, draft) }, "档案已保存") { profile ->
-            mutableDraft.value =
-                CallerDraft(
-                    profile.number,
-                    profile.name,
-                    profile.department,
-                    profile.position?.id,
-                    profile.whitelisted, profile.selfReportedPosition, profile.region, profile.identityMetadata,
-                )
-            setBaseline(mutableDraft.value!!)
-            persist(mutableDraft.value!!)
+            replaceDraft(CallerDraft(
+                profile.number,
+                profile.name,
+                profile.department,
+                profile.position?.id,
+                profile.whitelisted, profile.selfReportedPosition, profile.region, profile.identityMetadata,
+            ))
             // A delayed completion may follow an external commit already observed by the loader.
             // Reconcile that race; stable commits and no-ops use their existing feed result.
             if (
@@ -129,8 +148,14 @@ class CallerEditorViewModel(
         }
     }
 
+    private fun replaceDraft(value: CallerDraft) {
+        mutableDraft.value = value
+        setBaseline(value)
+        persist(value)
+    }
+
     private fun setBaseline(value: CallerDraft) {
-        baseline = value
+        baseline.value = value
         savedState["baseNumber"] = value.number
         savedState["baseName"] = value.name
         savedState["baseDepartment"] = value.department

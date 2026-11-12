@@ -22,6 +22,80 @@ import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 
 class RecordingWorkflowTest {
+    @Test fun transcriptOnlyAnalysisAndCoreReceiptRecoverAfterArchiveWritebackFailure() {
+        configure(auto = false)
+        val coordinator = BusinessRevisionCoordinator()
+        val archiveCommands = RecordingArchiveCommands(store, store, coordinator)
+        val core = MemoryCoreUnitOfWork()
+        fun newOwner() = RecordingWorkflow(store, archiveCommands, client, { 1000L },
+            enrichment = com.greatwall.callring.application.callers.CallerEnrichmentService(core, coordinator) { true })
+        val first = newOwner()
+        val seed = CallArchive(-1, "31234", 100, generation = 1, status = ArchiveStatus.READY,
+            transcript = "Caller says hello")
+        assertTrue(store.compareAndSet(seed.callId, null, seed))
+        analysisResult = CallAnalysis(name = "Caller", fieldEvidence = mapOf("name" to "Caller says hello"))
+        first.queueTranscriptAnalysis(seed.callId) {}
+        val afterQueue = newOwner()
+        afterQueue.processPending()
+        assertEquals(0, transcriptions)
+        assertEquals(1, analyses)
+        assertTrue(core.people.isEmpty())
+        val pending = store.get(seed.callId)!!
+        assertEquals(ManualAnalysisState.PENDING_CONFIRMATION, pending.manualAnalysisState)
+        val refused = assertThrows(com.greatwall.callring.application.ports.BackendFailure::class.java) {
+            afterQueue.retry(seed.callId, null)
+        }
+        assertEquals(com.greatwall.callring.contracts.common.ErrorCode.CONFLICT, refused.error.code)
+        assertEquals(pending, store.get(seed.callId))
+        val proposal = checkNotNull(afterQueue.callerSuggestions(seed.callId))
+        val command = ConfirmCallerSuggestions(seed.callId, proposal.token, setOf(CallerSuggestionField.NAME))
+        store.rejectConfirmationState = true
+        assertEquals(CallerSuggestionConfirmation.Applied, afterQueue.confirmCallerSuggestions(command) {})
+        assertEquals(pending, store.get(seed.callId))
+        val confirmed = core.people.getValue("31234")
+
+        store.rejectConfirmationState = false
+        val restarted = newOwner()
+        assertEquals(ManualAnalysisState.CONFIRMED, restarted.confirmedView(pending).manualAnalysisState)
+        assertEquals(CallerSuggestionConfirmation.Applied, restarted.confirmCallerSuggestions(command) {})
+        assertEquals(ManualAnalysisState.CONFIRMED, store.get(seed.callId)!!.manualAnalysisState)
+        restarted.processPending()
+        assertEquals(confirmed, core.people.getValue("31234"))
+        assertEquals(1, analyses)
+    }
+
+    @Test fun failedReanalysisKeepsPriorResultAndSuccessfulRerunReplacesIt() {
+        configure(auto = false)
+        val coordinator = BusinessRevisionCoordinator()
+        val core = MemoryCoreUnitOfWork()
+        val workflow = RecordingWorkflow(store, RecordingArchiveCommands(store, store, coordinator), client, { 1000L },
+            enrichment = com.greatwall.callring.application.callers.CallerEnrichmentService(core, coordinator) { true })
+        val seed = CallArchive(-1, "31234", 100, generation = 1, status = ArchiveStatus.READY,
+            transcript = "Caller says hello")
+        assertTrue(store.compareAndSet(seed.callId, null, seed))
+        analysisResult = CallAnalysis(name = "Caller", fieldEvidence = mapOf("name" to "Caller says hello"))
+        workflow.queueTranscriptAnalysis(seed.callId) {}
+        workflow.processPending()
+        val previous = checkNotNull(workflow.callerSuggestions(seed.callId))
+        val confirmation = ConfirmCallerSuggestions(seed.callId, previous.token, setOf(CallerSuggestionField.NAME))
+
+        workflow.queueTranscriptAnalysis(seed.callId) {}
+        assertNull(workflow.callerSuggestions(seed.callId))
+        assertEquals(CallerSuggestionConfirmation.Conflict(null), workflow.confirmCallerSuggestions(confirmation) {})
+        fail = true
+        workflow.processPending()
+        assertEquals(ArchiveStatus.FAILED, store.get(seed.callId)!!.status)
+        assertEquals(previous, workflow.callerSuggestions(seed.callId))
+
+        fail = false
+        workflow.retry(seed.callId, null)
+        workflow.processPending()
+        val replacement = checkNotNull(workflow.callerSuggestions(seed.callId))
+        assertNotEquals(previous.resultVersion, replacement.resultVersion)
+        assertEquals(CallerSuggestionConfirmation.Conflict(replacement), workflow.confirmCallerSuggestions(confirmation) {})
+        assertTrue(core.people.isEmpty())
+    }
+
     @Test fun ownerCloseCancelsAndDrainsAdmittedWorkWithoutPersistingLateResults() {
         configure()
         val entered = CountDownLatch(1)
@@ -156,15 +230,17 @@ class RecordingWorkflowTest {
     private var beforeTranscription: () -> Unit = {}
     private var analysisResult = CallAnalysis(summary = "A brief call")
     private var lastCandidates = emptyMap<String, Pair<String, String>>()
-    @Test fun explicitReanalysisCapturesFreshBaselineAndSourceGeneration() {
+    @Test fun explicitReanalysisNeverCapturesOrAppliesCallerEnrichment() {
         configure()
         workflow.attach(1, "31234", 100, "/private/test.m4a", RecordingSource.IMPORTED, 1000, null, false)
         workflow.processPending()
-        val first = store.get(1)!!.enrichmentSourceGeneration
-        workflow.retry(1, null); workflow.processPending()
-        assertEquals(2, localCaptures)
+        workflow.retry(1, null)
+        val restarted = RecordingWorkflow(store, commands, client, { 1000L }, enrichment = localEnrichment)
+        restarted.processPending()
+        assertEquals(1, localCaptures)
+        assertEquals(1, localAttempts)
         assertEquals(2, analyses)
-        assertNotEquals(first, store.get(1)!!.enrichmentSourceGeneration)
+        assertEquals(ArchiveStatus.COMPLETE, store.get(1)!!.status)
     }
     @Test fun ineligibleNumberStillTranscribesAndAnalyzesWithoutProfileWrites() {
         configure(); eligibleNumber = false
@@ -178,6 +254,10 @@ class RecordingWorkflowTest {
     private var localFailure = false
     private var localAttempts = 0
     private val localEnrichment = object : com.greatwall.callring.application.ports.recording.RecordingIdentityEnrichment {
+    override fun suggestions(archive: com.greatwall.callring.contracts.recording.CallArchive): com.greatwall.callring.contracts.recording.CallerSuggestions? = error("unused")
+    override fun hasConfirmation(archive: com.greatwall.callring.contracts.recording.CallArchive): Boolean = error("unused")
+    override fun confirm(archive: com.greatwall.callring.contracts.recording.CallArchive, command: com.greatwall.callring.contracts.recording.ConfirmCallerSuggestions, checkActive: () -> Unit): com.greatwall.callring.contracts.recording.CallerSuggestionConfirmation = error("unused")
+
         override fun capture(number: String, recordedAt: Long): CallerIdentityBaseline { localCaptures++; return CallerIdentityBaseline(if (eligibleNumber) "test" else "", emptyMap(), eligibleNumber) }
         override fun apply(number: String, baseline: CallerIdentityBaseline, archiveId: Long, generation: Long, candidates: Map<String, Pair<String, String>>) {
             localAttempts++; lastCandidates = candidates
@@ -408,8 +488,11 @@ class RecordingWorkflowTest {
             (afterId == null || it.callId > afterId) && it.status in pending && it.nextAttemptAt <= at
         }.sortedBy { it.callId }.take(limit).map { RecordingCandidate(it.callId, it.generation) }.also { candidatePageSizes += it.size; candidatesObserved() }
         private val pending = setOf(ArchiveStatus.QUEUED, ArchiveStatus.TRANSCRIBING, ArchiveStatus.ANALYZING, ArchiveStatus.FAILED, ArchiveStatus.ENRICHING, ArchiveStatus.ENRICHMENT_FAILED)
+        var rejectConfirmationState = false
         var rejectLocalFailureState = false
         @Synchronized override fun compareAndSet(callId: Long, expectedGeneration: Long?, value: CallArchive): Boolean {
+            if (rejectConfirmationState && value.manualAnalysisState == ManualAnalysisState.CONFIRMED)
+                error("synthetic archive confirmation writeback failure")
             if (rejectLocalFailureState && value.status == ArchiveStatus.ENRICHMENT_FAILED) error("synthetic failure saving local failure")
             if (entries[callId]?.generation != expectedGeneration) return false
             entries[callId] = value; return true
@@ -419,6 +502,10 @@ class RecordingWorkflowTest {
 }
 
 private val testEnrichment = object : com.greatwall.callring.application.ports.recording.RecordingIdentityEnrichment {
+    override fun suggestions(archive: com.greatwall.callring.contracts.recording.CallArchive): com.greatwall.callring.contracts.recording.CallerSuggestions? = error("unused")
+    override fun hasConfirmation(archive: com.greatwall.callring.contracts.recording.CallArchive): Boolean = error("unused")
+    override fun confirm(archive: com.greatwall.callring.contracts.recording.CallArchive, command: com.greatwall.callring.contracts.recording.ConfirmCallerSuggestions, checkActive: () -> Unit): com.greatwall.callring.contracts.recording.CallerSuggestionConfirmation = error("unused")
+
     override fun capture(number: String, recordedAt: Long) = CallerIdentityBaseline("test", emptyMap())
     override fun apply(number: String, baseline: CallerIdentityBaseline, archiveId: Long, generation: Long, candidates: Map<String, Pair<String, String>>) = Unit
 }

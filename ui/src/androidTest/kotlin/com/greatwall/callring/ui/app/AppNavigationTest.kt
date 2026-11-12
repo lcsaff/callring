@@ -5,6 +5,7 @@ import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.unit.dp
 import com.greatwall.callring.contracts.callers.CallerDraft
 import com.greatwall.callring.contracts.callers.SaveCallerProfile
+import com.greatwall.callring.contracts.common.ApiResult
 import com.greatwall.callring.ui.testing.UiFakeApi
 import com.greatwall.callring.ui.testing.captureArtifact
 import com.greatwall.callring.contracts.settings.*
@@ -26,8 +27,10 @@ class AppNavigationTest {
         compose.onNodeWithTag("tab-callers").performClick()
         compose.captureArtifact("callers")
         compose.onNodeWithText("测试档案").performClick()
-        compose.onNodeWithText("号码报表").assertExists()
+        compose.onNodeWithText("号码档案详情").assertExists()
         compose.captureArtifact("report")
+        compose.onNodeWithContentDescription("展开号码信息").performClick()
+        compose.onNodeWithTag("report-list").performScrollToNode(hasText("编辑档案"))
         compose.onNodeWithText("编辑档案").performClick()
         compose.captureArtifact("caller-editor")
         compose.onNode(hasSetTextAction() and hasText("姓名")).performTextReplacement("更新档案")
@@ -40,6 +43,22 @@ class AppNavigationTest {
             assertEquals("更新档案", api.profile.name)
             assertFalse(api.profile.whitelisted)
         }
+    }
+
+    @Test fun profileFieldEditOnlyShowsThatFieldAndReturnsToExpandedProfile() {
+        val api = UiFakeApi()
+        compose.setContent { CallringApp(api, onCapability = {}, onPinWidget = {}, onAppSettings = {}) }
+        compose.onNodeWithTag("tab-callers").performClick()
+        compose.onNodeWithText("测试档案").performClick()
+        compose.onNodeWithContentDescription("展开号码信息").performClick()
+        compose.onNodeWithContentDescription("编辑姓名").performClick()
+        compose.onNode(hasSetTextAction() and hasText("部门")).assertDoesNotExist()
+        compose.onNode(hasSetTextAction() and hasText("姓名")).performTextReplacement("新姓名")
+        compose.onNodeWithText("保存档案").performScrollTo().performClick()
+        compose.onNodeWithText("号码档案详情").assertIsDisplayed()
+        compose.onNodeWithContentDescription("收起号码信息").assertIsDisplayed()
+        compose.onNodeWithText("新姓名").assertExists()
+        compose.runOnIdle { assertEquals("示例部门", api.savedProfile?.department) }
     }
 
     @Test fun compactBottomNavigationKeeps44dpContentAndWorkingDestinations() {
@@ -56,7 +75,9 @@ class AppNavigationTest {
     }
 
     @Test fun everySettingsDestinationOpensAndThemeSavesThroughApi() {
-        val api = UiFakeApi()
+        val api = object : UiFakeApi() {
+            override suspend fun stopPreview() = ApiResult.Success(Unit)
+        }
         compose.setContent { CallringApp(api, onCapability = {}, onPinWidget = {}, onAppSettings = {}) }
         compose.onNodeWithTag("tab-settings").performClick()
         compose.captureArtifact("settings")

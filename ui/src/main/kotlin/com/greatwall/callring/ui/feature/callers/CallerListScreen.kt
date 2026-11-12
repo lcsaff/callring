@@ -28,10 +28,11 @@ import androidx.compose.ui.platform.testTag
     state: LoadState<Page<CallerProfile>>, query: CallerSearch, check: NumberCheck?,
     onSearch: (String) -> Unit, onPage: (Int) -> Unit, onRetry: () -> Unit,
     onAdd: () -> Unit, onCaller: (String) -> Unit, onReport: (String) -> Unit,
-    onPositions: () -> Unit = {},
+    onPositions: () -> Unit = {}, onHistory: () -> Unit = {},
 ) {
     val focus = LocalFocusManager.current
     ScreenFrame("号码档案", compactTitle = true, actions = {
+        TextButton(onClick = onHistory) { Text("通话记录") }
         IconButton(onClick = onPositions) {
             Icon(Icons.Filled.List, contentDescription = "职位管理")
         }

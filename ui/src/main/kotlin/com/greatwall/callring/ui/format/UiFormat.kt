@@ -13,6 +13,20 @@ import java.util.Locale
 /** Pure presentation of application API facts; no scoring or classification is performed here. */
 object UiFormat {
     private val dateTime = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm", Locale.CHINA)
+    private val fullDateTime = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss", Locale.CHINA)
+
+    fun callerSummary(
+        number: String,
+        name: String?,
+        region: String?,
+        selfReportedPosition: String?,
+        configuredPosition: String?,
+    ): String = listOfNotNull(
+        name?.trim()?.takeIf(String::isNotEmpty) ?: number,
+        region?.trim()?.takeIf(String::isNotEmpty),
+        selfReportedPosition?.trim()?.takeIf(String::isNotEmpty)
+            ?: configuredPosition?.trim()?.takeIf(String::isNotEmpty),
+    ).joinToString(" · ")
 
     fun position(relation: PositionRelation): String = when (relation) {
         PositionRelation.HIGHER -> "上级"
@@ -37,6 +51,9 @@ object UiFormat {
 
     fun time(epochMillis: Long, zoneId: ZoneId): String =
         dateTime.format(Instant.ofEpochMilli(epochMillis).atZone(zoneId))
+
+    fun fullTime(epochMillis: Long, zoneId: ZoneId): String =
+        fullDateTime.format(Instant.ofEpochMilli(epochMillis).atZone(zoneId))
 
     fun workReason(reason: WorkReason): String = when (reason) {
         WorkReason.WORKING -> "工作时间"

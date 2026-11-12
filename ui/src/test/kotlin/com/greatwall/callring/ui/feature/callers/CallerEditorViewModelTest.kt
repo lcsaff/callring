@@ -21,6 +21,8 @@ import org.junit.Test
 @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
 class CallerEditorViewModelTest {
     private class CallersFake : CallersApi {
+        override suspend fun queryCallHistory(query: CallHistoryQuery): ApiResult<CallHistoryPage> = error("unused")
+        override suspend fun getCallHistoryDetail(callId: Long): ApiResult<CallHistoryEntry> = error("unused")
     override suspend fun getCallDetail(callId: Long): ApiResult<CallDetail> = throw AssertionError("Unexpected fixture operation: getCallDetail")
     override suspend fun numberDataImpact(number: String): ApiResult<NumberCoreImpact> = throw AssertionError("Unexpected fixture operation: numberDataImpact")
     override suspend fun deleteNumberCore(number: String, expectedCallCount: Int): ApiResult<Unit> = throw AssertionError("Unexpected fixture operation: deleteNumberCore")
@@ -82,6 +84,76 @@ class CallerEditorViewModelTest {
         val events = TestChangeFeed()
 
         override fun snapshots() = events.snapshots()
+    }
+
+    @Test fun fieldModeSubmitsOnlyTheSelectedFieldAgainstTheOriginalDraft() = runTest {
+        val api = CallersFake()
+        val source = CallerFieldMetadata(revision = 7, disputed = true, archiveId = 8, evidence = "部门依据")
+        api.editor = api.editor.copy(draft = api.editor.draft.copy(identityMetadata = mapOf("department" to source)))
+        val base = api.editor.draft
+        var saved: Pair<CallerDraft, CallerDraft>? = null
+        val model = CallerEditorViewModel("100", api, ChangesFake(), SavedStateHandle(), backgroundScope,
+            saveWithBase = { before, after ->
+                saved = before to after
+                api.edit(before, after)
+            }, field = CallerProfileField.NAME)
+        runCurrent()
+        model.edit { copy(number = "200", name = "新姓名", department = "新部门", identityMetadata = emptyMap()) }
+        model.save()
+        runCurrent()
+
+        assertEquals(base to base.copy(name = "新姓名"), saved)
+    }
+
+    @Test fun revertingFieldToBaselineReconcilesAnAlreadyObservedExternalEdit() = runTest {
+        val api = CallersFake()
+        val changes = ChangesFake()
+        val model = CallerEditorViewModel("100", api, changes, SavedStateHandle(), backgroundScope,
+            api::edit, field = CallerProfileField.NAME)
+        runCurrent()
+        val initial = requireNotNull(model.draft.value).name
+        model.edit { copy(name = "本地草稿") }
+        api.editor = api.editor.copy(draft = api.editor.draft.copy(name = "外部已保存"))
+        changes.events.entity(DataDomain.CALLERS, "100")
+        runCurrent()
+        assertEquals("本地草稿", model.draft.value?.name)
+        assertTrue(model.dirty.value)
+
+        model.edit { copy(name = initial) }
+        runCurrent()
+        assertEquals("外部已保存", model.draft.value?.name)
+        assertFalse(model.dirty.value)
+        model.save()
+        runCurrent()
+        assertNull(api.saved)
+    }
+
+    @Test fun fieldConflictReloadsTheCurrentBaselineOnlyAfterExplicitDiscard() = runTest {
+        val api = CallersFake()
+        val changes = ChangesFake()
+        val model = CallerEditorViewModel("100", api, changes, SavedStateHandle(), backgroundScope,
+            api::edit, field = CallerProfileField.REGION)
+        runCurrent()
+        model.edit { copy(region = "苏州") }
+        api.editor = api.editor.copy(draft = api.editor.draft.copy(region = "杭州"))
+        changes.events.entity(DataDomain.CALLERS, "100")
+        runCurrent()
+        api.error = ApiError(ErrorCode.CONFLICT, "draft.field_changed", mapOf("region" to "draft.field_changed"))
+        model.save()
+        runCurrent()
+        assertEquals("苏州", model.draft.value?.region)
+        assertEquals(ErrorCode.CONFLICT, model.mutation.value.error?.code)
+
+        model.reload()
+        runCurrent()
+        assertEquals("杭州", model.draft.value?.region)
+        assertNull(model.mutation.value.error)
+        api.error = null
+        model.edit { copy(region = "宁波") }
+        model.save()
+        runCurrent()
+        assertEquals("杭州", api.saved?.baseline?.region)
+        assertEquals("宁波", api.saved?.region)
     }
 
     @Test fun enrichmentFieldsAndDisputeDraftSurviveHostRecreation() = runTest {
