@@ -47,9 +47,9 @@ Files: `PROJECT.md`、`README.md`、本计划的实际证据记录。
 
 - [x] 同步两份规范/用户文档，标明进程内 AI 继续、进程恢复仅恢复 UI 草稿的边界；记录真实验收范围。
 - [x] `git diff --check` 并按任务文件提交；不得包含原工作区其他文档和临时文件改动。
-- [ ] `python tools/verify_ui.py --device emulator-5556`（与 verify_backend 相同完整门），检查 summary 为 passed、全部门任务与测试计数正确。
-- [ ] `adb devices -l`；可用隔离设备手动解锁后执行 `python tools/verify_ui.py --device SERIAL`，执行 Pager 专项并保留日志；不能取得设备时记录外部阻塞，不跳过合并前设备验收。
-- [ ] 具备完整验证证据后 fetch 并合入 main、推送，确认对应 SHA 的远端 CI 成功；不发布 APK/Release。
+- [x] `python tools/verify_ui.py --device emulator-5556`（与 verify_backend 相同完整门），检查 summary 为 passed、全部门任务与测试计数正确。
+- [x] `adb devices -l`；可用隔离设备手动解锁后执行 `python tools/verify_ui.py --device SERIAL`，执行 Pager 专项并保留日志；不能取得设备时记录外部阻塞，不跳过合并前设备验收。
+交付约束：具备完整验证证据后快进合入 main、推送，并读回最终 SHA 的远端 CI；远端结果在最终交付回复中记录。
 
 ## 执行记录
 
@@ -65,3 +65,7 @@ Files: `PROJECT.md`、`README.md`、本计划的实际证据记录。
 - 新增外部目标在弹窗期间延后处理回归，及无显式目标的任务唤起不重新启动导航加载屏障回归；显式 Home 仍生效。
 - 子控件慢速横拖的触摸阈值回归先失败再通过；保护只在累计横移越过阈值后消费，避免取消子控件手势。设备普通翻页使用中间区域，边缘专项单独验证；窗口 inset 与正式入口的 enableEdgeToEdge 对齐。
 - 实际进程恢复：隔离任务后台保存后仅对测试 UID 发 SIGKILL，再唤起原任务；PID 5591→5895 时页签、草稿及此前未激活的档案搜索读回通过。后续最终源码仍复验，日志在 ui/build/qa/home-pager-process/。
+
+- 最终实现源码 `d58de25f953f64d5f7a4502ac060d1c5f0e8cc6b`：统一门 1,352 项 JVM（469/401/482）、71 项 Python 检查、双 lint 及构建通过；隔离 UI 全套 89 项通过并清理。原始摘要 ui/build/qa/summary.json，均按本轮执行/缓存状态记录。
+- 同源码真实测试进程 PID 8526→8823：页签、草稿、搜索恢复；左右边缘不带动 Pager、系统返回按键回首页通过。installed_apk_matches=true，摘要保存在 ui/build/qa/home-pager-process/summary.json。原生系统边缘处理器在该模拟器未启用，所以不声称实际边缘返回通过；无需修改系统设置。
+- 原工作区计划的六条新增内容已在合入后的文档中逐条核对保留，其他临时文件不纳入提交。后续文档收尾不改业务源码。

@@ -61,6 +61,8 @@
 - 各页用稳定键的 SaveableStateHolder 保留滚动和阅读位置，档案复用搜索及分页 SavedStateHandle；实际领域失效仍按原语义回第一页。恢复只保存 Pager 稳定页，不恢复半途拖动。沟通请求属于保留模型，进程内切页和打开详情不会 stop；历史阅读状态恢复后不因后台回复跳到底部。
 - 输入框手势持有整个手势，子控件边界不接力翻页；长按复制成立后持有手势至释放；纵向滚动由子级处理。Pager 让出 systemGestures 两侧边缘，不设置全屏手势排除。免打扰、新对话、启动更新及 AI 前台交互弹窗禁用背景滚动和页签，打断拖动回到先前稳定页。离开当前页清焦点而保留文本。
 
+本轮验收（2026-11-12）：实现源码 `d58de25` 的完整统一门通过，backend/UI/app JVM 为 469/401/482 项，零失败、错误或跳过；71 项 Python 检查、双 lint、全部构建门通过。13 项 Gradle 门中 contracts 为 NO-SOURCE，双 AndroidTest APK 为 UP-TO-DATE，其余实际执行。隔离模拟器 emulator-5556 的 UI 整套 89 项通过，测试包清理成功。后台保存任务后仅终止测试 UID 的进程，PID 8526→8823，页签、草稿和搜索恢复通过，安装包摘要与统一门 APK 相同；左右边缘不会驱动 Pager，系统返回按键正常。模拟器原生 EdgeBackGestureHandler 未启用，未把 ADB 边缘注入计为真实系统边缘返回通过。未使用真实 AI 或真实来电，未改生产安装或权限。原始证据在 ui/build/qa/ 与 ui/build/qa/home-pager-process/。
+
 ## 系统录音自动导入
 
 - `systemImportDays: Int = 7` 归录音设置，范围为 `1..Int.MAX_VALUE`；旧配置缺字段默认 7，存在但类型或范围非法时拒绝。View/Patch、字段合并及本地页面复用正式设置接口，作用域为 `recordingConfig:systemImportDays`；Keep 保留当前值，重复值不写入或推进版本。输入停顿 500ms 后串行保存最新合法草稿，编辑基线冻结，迟到回执不能覆盖较新版本；非法值和冲突保留草稿，冲突通过显式重新加载处理，保存成功静默。该字段不扩展外部 AI 写入 Schema，D13 保持原协议形状。
