@@ -20,5 +20,6 @@
 ## 任务 3：验证和交付
 
 - [x] 同步 PROJECT.md 和 README.md 的实际行为，审查差异及 `git diff --check`；独立代码审查无阻塞项。
-- [ ] 执行 `python tools/verify_backend.py`，核对本轮结果；ADB 离线如实记录。
-- [ ] 只提交本次文件，合并远端 main，若源码变更重新验证；推送并确认最终 SHA 的 CI。
+- [x] 执行 `python tools/verify_backend.py`，核对本轮结果；实现提交 `0abf764` 的 JVM 为 469/401/492 项，零失败/错误/跳过，完整统一门通过。ADB 无在线设备。
+
+后续合并、推送及最终 SHA 的 CI 按 PROJECT.md 的交付流程执行，实际结果在交付回复和机器证据中记录。
