@@ -1,5 +1,6 @@
 package com.greatwall.callring.ui.feature.conversation
 
+import androidx.lifecycle.SavedStateHandle
 import com.greatwall.callring.contracts.common.*
 import com.greatwall.callring.contracts.change.*
 import com.greatwall.callring.contracts.ai.*
@@ -9,12 +10,14 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.launch
 
-/** UI-only draft: survives page/host recreation, never persisted across process restarts. */
-private val processConversationInput = MutableStateFlow("")
-
-class ConversationViewModel(private val api: CallringUiApi, testScope: CoroutineScope? = null) : UiViewModel(testScope) {
+class ConversationViewModel(
+    private val api: CallringUiApi,
+    testScope: CoroutineScope? = null,
+    savedState: SavedStateHandle = SavedStateHandle(),
+) : UiViewModel(testScope) {
     val state = api.conversation.state
-    val input = processConversationInput
+    /** UI-only input belongs to this host; restoring it never replays a conversation action. */
+    val input = savedState.getMutableStateFlow("conversation.input", "")
     val localError = MutableStateFlow<ApiError?>(null)
     val destination = MutableStateFlow<AiConnectionView?>(null)
     /** Only an actual exchange proves connectivity. Passive observers never call a provider. */

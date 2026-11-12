@@ -11,13 +11,14 @@ import com.greatwall.callring.ui.feature.update.AppUpdateScreen
 import com.greatwall.callring.ui.feature.update.AppUpdateViewModel
 
 @Composable internal fun SettingsRoute(
-    page: SettingsPage, api: CallringUiApi, summaryModel: SettingsSummaryViewModel, appearanceModel: AppearanceViewModel,
+    page: SettingsPage, api: CallringUiApi, summary: @Composable () -> SettingsSummaryViewModel, appearanceModel: AppearanceViewModel,
     signal: Long, onBack: () -> Unit, onCapability: (Capability) -> Unit, onAppSettings: () -> Unit,
     startupUpdateFinished: Boolean = false, onSetup: () -> Unit = {},
 ) {
     when (page) {
         SettingsPage.BACKUP -> BackupRoute(api.backup, onBack)
         SettingsPage.STORAGE -> {
+            val summaryModel = summary()
             val model: com.greatwall.callring.ui.feature.storage.StorageManagementViewModel = uiViewModel { com.greatwall.callring.ui.feature.storage.StorageManagementViewModel(api) }
             val state by model.state.collectAsStateWithLifecycle()
             val cleanup by model.cleanup.collectAsStateWithLifecycle()
@@ -84,6 +85,7 @@ import com.greatwall.callring.ui.feature.update.AppUpdateViewModel
             MyPositionScreen(state, mutation, onBack, model::refresh, model::mine)
         }
         SettingsPage.CALENDAR -> {
+            val summaryModel = summary()
             val model: CalendarViewModel = uiViewModel { CalendarViewModel(api) }
             val state by model.state.collectAsStateWithLifecycle()
             val mutation by model.mutation.collectAsStateWithLifecycle()
@@ -93,6 +95,7 @@ import com.greatwall.callring.ui.feature.update.AppUpdateViewModel
             CalendarScreen(state, mutation, onBack, model::refresh, { model.synchronize(year) }, year)
         }
         SettingsPage.LEAVES -> {
+            val summaryModel = summary()
             val model: LeavesViewModel = uiViewModel { LeavesViewModel(api) }
             val state by model.state.collectAsStateWithLifecycle()
             val mutation by model.mutation.collectAsStateWithLifecycle()

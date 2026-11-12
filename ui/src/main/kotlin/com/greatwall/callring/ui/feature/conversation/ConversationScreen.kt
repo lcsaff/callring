@@ -38,12 +38,17 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.greatwall.callring.contracts.common.*
 import com.greatwall.callring.contracts.ai.*
 import com.greatwall.callring.ui.designsystem.components.LocalFeedbackHost
 import com.greatwall.callring.ui.designsystem.components.ScreenFrame
+import com.greatwall.callring.ui.designsystem.components.pagerGesturePriority
+import com.greatwall.callring.ui.designsystem.components.LocalPagerGestureGate
+import com.greatwall.callring.ui.designsystem.components.PagerGestureGate
+import androidx.compose.ui.composed
 import com.greatwall.callring.ui.feature.ai.aiErrorText
 import com.greatwall.callring.ui.state.*
 import kotlinx.coroutines.*
@@ -69,10 +74,15 @@ private fun ConversationMessage.visibleRow(index: Int): VisibleConversationMessa
     return VisibleConversationMessage(index, role, body, visibleReceipts)
 }
 
-@Composable fun ConversationScreen(state:ConversationState,input:String,target:String,localError:ApiError?,onInput:(String)->Unit,onSend:()->Unit,onStop:()->Unit,onNew:()->Unit,onContinue:(String)->Unit={},onOpenSettings:()->Unit={},connected:Boolean=true) {
+@Composable fun ConversationScreen(state:ConversationState,input:String,target:String,localError:ApiError?,onInput:(String)->Unit,onSend:()->Unit,onStop:()->Unit,onNew:()->Unit,onContinue:(String)->Unit={},onOpenSettings:()->Unit={},connected:Boolean=true,active:Boolean=true,onModalChanged:(Boolean)->Unit={}) {
     var confirmNew by remember{mutableStateOf(false)}
+    val currentModalChanged by rememberUpdatedState(onModalChanged)
+    DisposableEffect(confirmNew) {
+        currentModalChanged(confirmNew)
+        onDispose { currentModalChanged(false) }
+    }
     val listState=rememberLazyListState()
-    var readingHistory by remember(state.sessionId){mutableStateOf(false)}
+    var readingHistory by rememberSaveable(state.sessionId){mutableStateOf(false)}
     val paired=state.messages.flatMap{it.receipts}.map{it.operationId}.toSet()
     val additional=state.receipts.distinctBy{it.operationId}.filter{it.operationId !in paired&&(it.status!=ToolStatus.READ||it.error!=null)}
     val pendingAssistant = state.busy
@@ -82,13 +92,18 @@ private fun ConversationMessage.visibleRow(index: Int): VisibleConversationMessa
     val historyScroll=remember(state.sessionId) {object:NestedScrollConnection {
         override fun onPreScroll(available:Offset,source:NestedScrollSource):Offset {if(source==NestedScrollSource.UserInput&&available.y>0)readingHistory=true;return Offset.Zero}
     }}
-    LaunchedEffect(listState,state.sessionId){snapshotFlow{!listState.canScrollForward&&!listState.isScrollInProgress}.distinctUntilChanged().filter{it}.collect{readingHistory=false}}
+    // Before the restored list is measured, canScrollForward is false even at an old history position.
+    LaunchedEffect(listState,state.sessionId,active){
+        if(active)snapshotFlow{listState.layoutInfo.visibleItemsInfo.isNotEmpty()&&!listState.canScrollForward&&!listState.isScrollInProgress}
+            .distinctUntilChanged().filter{it}.collect{readingHistory=false}
+    }
     // Markdown finishes parsing after first composition; follow subsequent measured size changes too.
-    LaunchedEffect(listState,state.sessionId){
+    LaunchedEffect(listState,state.sessionId,active){
+        if(!active)return@LaunchedEffect
         snapshotFlow{val info=listState.layoutInfo;(if(readingHistory)-1 else info.totalItemsCount) to (listState.isScrollInProgress to info.visibleItemsInfo.map{it.index to (it.offset to it.size)})}
             .collect{(count,_)->if(count>0&&!readingHistory&&!listState.isScrollInProgress&&listState.canScrollForward)listState.scrollToItem(count-1)}
     }
-    LaunchedEffect(state.sessionId,visibleMessages,additional,pendingAssistant,readingHistory){if(!readingHistory){withFrameNanos{};listState.scrollToItem(latestIndex)}}
+    LaunchedEffect(state.sessionId,visibleMessages,additional,pendingAssistant,readingHistory,active){if(active&&!readingHistory){withFrameNanos{};listState.scrollToItem(latestIndex)}}
     fun send(){readingHistory=false;onSend()}
     val ready = connected
     ScreenFrame("AI 沟通", compactTitle = true, actions = {
@@ -126,7 +141,7 @@ private fun ConversationMessage.visibleRow(index: Int): VisibleConversationMessa
             if(readingHistory&&listState.canScrollForward)IconButton(onClick={readingHistory=false},modifier=Modifier.align(Alignment.CenterHorizontally).testTag("jump-to-latest").semantics{contentDescription="回到最新"}){Icon(Icons.Filled.KeyboardArrowDown,null,Modifier.size(24.dp))}
             if(!state.busy)state.continuableTasks.firstOrNull()?.let{task->OutlinedButton(onClick={onContinue(task)},enabled=target.isNotBlank()){Text("继续未完成任务")}}
             val canSend=!state.busy&&input.isNotBlank()&&target.isNotBlank()
-            Surface(Modifier.fillMaxWidth().testTag("conversation-input"),shape=RoundedCornerShape(20.dp),border=BorderStroke(1.dp,MaterialTheme.colorScheme.outline),color=MaterialTheme.colorScheme.surface) {
+            Surface(Modifier.fillMaxWidth().testTag("conversation-input").pagerGesturePriority(),shape=RoundedCornerShape(20.dp),border=BorderStroke(1.dp,MaterialTheme.colorScheme.outline),color=MaterialTheme.colorScheme.surface) {
                 Box(Modifier.fillMaxWidth().heightIn(min=112.dp)) {
                     BasicTextField(value=input,onValueChange=onInput,enabled=!state.busy,maxLines=4,textStyle=MaterialTheme.typography.bodyLarge.copy(color=MaterialTheme.colorScheme.onSurface),keyboardOptions=KeyboardOptions(imeAction=ImeAction.Send),keyboardActions=KeyboardActions(onSend={if(canSend)send()}),modifier=Modifier.fillMaxWidth().heightIn(min=100.dp,max=220.dp).padding(start=16.dp,end=16.dp,top=14.dp,bottom=52.dp),decorationBox={inner->if(input.isEmpty())Text("说说你想了解或处理什么",color=MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha=0.55f));inner()})
                     // 发送与停止合并成右下角同一个按钮。
@@ -160,14 +175,16 @@ private fun ConversationMessage.visibleRow(index: Int): VisibleConversationMessa
     } }
 }
 /** 单击不改变气泡行为；长按复制正文，并把同一动作与正文合并成同一无障碍节点。 */
-private fun Modifier.copyableMessage(text:String,copy:(String)->Unit)=this
-    .pointerInput(text,copy){detectLongPressWithoutStealing{copy(text)}}
+private fun Modifier.copyableMessage(text:String,copy:(String)->Unit)=composed {
+    val gate = LocalPagerGestureGate.current
+    this.pointerInput(text,copy,gate){detectLongPressWithoutStealing(gate){copy(text)}}
     .semantics(mergeDescendants=true){onLongClick(label="复制"){copy(text);true}}
+}
 /**
  * 只观察手势、不在长按成立前消费：链接和滚动等子级手势仍由子级处理；
  * 长按成立后消费抬手事件，避免同一次手势又把 Markdown 链接点开。
  */
-private suspend fun PointerInputScope.detectLongPressWithoutStealing(onLongPress:()->Unit) {
+private suspend fun PointerInputScope.detectLongPressWithoutStealing(gate:PagerGestureGate?,onLongPress:()->Unit) {
     awaitEachGesture {
         val down=awaitFirstDown(requireUnconsumed=false,pass=PointerEventPass.Initial)
         val releasedEarly=withTimeoutOrNull(viewConfiguration.longPressTimeoutMillis) {
@@ -179,11 +196,14 @@ private suspend fun PointerInputScope.detectLongPressWithoutStealing(onLongPress
             false
         }
         if(releasedEarly!=null)return@awaitEachGesture
-        onLongPress()
-        while(true) {
-            val change=awaitPointerEvent(PointerEventPass.Initial).changes.firstOrNull{it.id==down.id}?:break
-            if(!change.pressed){change.consume();break}
-        }
+        gate?.acquire()
+        try {
+            onLongPress()
+            while(true) {
+                val change=awaitPointerEvent(PointerEventPass.Initial).changes.firstOrNull{it.id==down.id}?:break
+                if(!change.pressed){change.consume();break}
+            }
+        } finally { gate?.release() }
     }
 }
 @Composable private fun PendingAssistant(label:String) {

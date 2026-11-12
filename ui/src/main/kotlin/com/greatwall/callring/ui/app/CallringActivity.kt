@@ -97,6 +97,8 @@ class CallringActivity : ComponentActivity() {
 
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
+        // Foregrounding a restored task is not an explicit request to select Home.
+        if (!intent.hasExtra(EXTRA_TARGET)) return
         setIntent(intent)
         if (::startupGate.isInitialized && (application as UiApiOwner).availableUiApi.value === boundApi) startupGate.open(readDestination(intent))
         requestSequence++

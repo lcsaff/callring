@@ -6,6 +6,14 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveableStateHolder
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.saveable.Saver
+import androidx.compose.foundation.pager.PagerState
+import androidx.lifecycle.viewmodel.compose.LocalViewModelStoreOwner
+import com.greatwall.callring.ui.designsystem.components.PagerGestureGate
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.flow.distinctUntilChanged
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
@@ -52,7 +60,27 @@ private val BottomBarContentHeight = 44.dp
     onPinWidget: () -> Unit, onAppSettings: () -> Unit,
     notice: UiNotice? = null, onNoticeConsumed: (Long) -> Unit = {},
 ) {
-    val settings: SettingsSummaryViewModel = uiViewModel("application-settings") { SettingsSummaryViewModel(api) }
+    val owner = checkNotNull(LocalViewModelStoreOwner.current)
+    val settings: @Composable () -> SettingsSummaryViewModel = {
+        uiViewModel("application-settings", owner) { SettingsSummaryViewModel(api) }
+    }
+    val pager = rememberSaveable(saver = Saver<PagerState, Int>(
+        save = { it.settledPage },
+        restore = { PagerState(currentPage = it.coerceIn(homeTabs.indices)) { homeTabs.size } },
+    )) { PagerState(currentPage = homeTabs.indexOf(requestedDestination).coerceAtLeast(0)) { homeTabs.size } }
+    val savedPages = rememberSaveableStateHolder()
+    var visited by remember { mutableIntStateOf(1 shl pager.currentPage) }
+    LaunchedEffect(pager) {
+        snapshotFlow { if (pager.isScrollInProgress) null else pager.settledPage }
+            .distinctUntilChanged().collect { page -> if (page != null) visited = visited or (1 shl page) }
+    }
+    val models = rememberHomePageModels(api, visited)
+    val summary = if (visited and 8 != 0) settings() else null
+    val quietOpen = models.quiet?.dialogOpen?.collectAsStateWithLifecycle()?.value == true
+    var conversationModal by remember { mutableStateOf(false) }
+    val gestures = remember { PagerGestureGate() }
+    val pending by api.conversation.foreground.pending.collectAsStateWithLifecycle()
+    val scope = rememberCoroutineScope()
     val appearanceModel: AppearanceViewModel = uiViewModel("application-appearance") { AppearanceViewModel(api, it) }
     val navigationState: UiNavigationState = uiViewModel("application-navigation") { UiNavigationState(it) }
     val startupUpdate: StartupUpdateViewModel = uiViewModel("application-startup-update") { StartupUpdateViewModel(api.update) }
@@ -65,6 +93,11 @@ private val BottomBarContentHeight = 44.dp
         val navigation = rememberNavController()
         val entry by navigation.currentBackStackEntryAsState()
         val route = entry?.destination?.route
+        val selectedRoute = homeTabs[pager.currentPage].route
+        val modal = quietOpen || conversationModal || updateRelease != null || pending?.launched == true
+        val select: (UiDestination) -> Unit = { destination ->
+            if (!modal) scope.launch { pager.scrollToPage(homeTabs.indexOf(destination)) }
+        }
         updateRelease?.let { release ->
             ConfirmationDialog(
                 title = "发现新版本", message = "新版本 ${release.versionName} 已可用，是否前往更新界面？",
@@ -77,10 +110,16 @@ private val BottomBarContentHeight = 44.dp
             )
         }
         val tabs = listOf(UiDestination.Home to "首页", UiDestination.Callers to "档案", UiDestination.Conversation to "沟通", UiDestination.Settings to "设置")
-        LaunchedEffect(requestSequence) {
+        LaunchedEffect(requestSequence, modal) {
+            // Preserve the request until the visible editor/confirmation can be dismissed.
+            if (modal) return@LaunchedEffect
             navigation.currentBackStackEntryFlow.first()
             if (navigationState.consume(requestSequence) && (requestedDestination != UiDestination.Home || requestSequence != 0L)) {
-                navigation.navigate(requestedDestination.route) { launchSingleTop = true }
+                val page = homeTabs.indexOf(requestedDestination)
+                if (page >= 0) {
+                    navigation.popBackStack(UiDestination.Home.route, false)
+                    pager.scrollToPage(page)
+                } else navigation.navigate(requestedDestination.route) { launchSingleTop = true }
             }
         }
         val feedbackHost = remember { SnackbarHostState() }
@@ -93,7 +132,7 @@ private val BottomBarContentHeight = 44.dp
         val adaptiveInfo = currentWindowAdaptiveInfo()
         val wideLayout = adaptiveInfo.windowSizeClass.isWidthAtLeastBreakpoint(WindowSizeClass.WIDTH_DP_MEDIUM_LOWER_BOUND)
         val imeVisible = WindowInsets.isImeVisible
-        val isTabRoute = tabs.any { it.first.route == route }
+        val isTabRoute = route == UiDestination.Home.route
         CompositionLocalProvider(LocalFeedbackHost provides feedbackHost, LocalFeedbackScope provides rememberCoroutineScope()) {
             if (wideLayout) {
                 NavigationSuiteScaffold(
@@ -101,24 +140,29 @@ private val BottomBarContentHeight = 44.dp
                         NavigationSuiteScaffoldDefaults.calculateFromAdaptiveInfo(adaptiveInfo) else NavigationSuiteType.None,
                     navigationSuiteItems = {
                         tabs.forEachIndexed { index, (destination, title) -> item(
-                            selected = route == destination.route,
+                            selected = selectedRoute == destination.route,
+                            enabled = !modal,
                             modifier = Modifier.testTag("tab-${destination.route}"),
-                            onClick = { selectTab(navigation, destination) },
+                            onClick = { select(destination) },
                             icon = { NavigationGlyph(index) }, label = { Text(title) },
                         ) }
                     },
                 ) {
                     AppScaffold(api, settings, appearanceModel, navigation, refreshSignal, feedbackHost, {},
-                        onCapability, onAppSettings, startupUpdateFinished)
+                        onCapability, onAppSettings, startupUpdateFinished,
+                        home = { HomePager(api, pager, savedPages, models, summary, gestures, modal, refreshSignal,
+                            { target -> navigation.navigate(target.route) { launchSingleTop = true } }, { conversationModal = it }, isTabRoute) })
                 }
             } else {
                 AppScaffold(api, settings, appearanceModel, navigation, refreshSignal, feedbackHost,
                     bottomBar = {
                         // 键盘弹出时隐藏常驻栏，只让输入区随键盘上移。
-                        if (isTabRoute && !imeVisible) CallringBottomBar(tabs, route) { destination -> selectTab(navigation, destination) }
+                        if (isTabRoute && !imeVisible) CallringBottomBar(tabs, selectedRoute, !modal, select)
                     },
                     onCapability = onCapability, onAppSettings = onAppSettings,
-                    startupUpdateFinished = startupUpdateFinished)
+                    startupUpdateFinished = startupUpdateFinished,
+                    home = { HomePager(api, pager, savedPages, models, summary, gestures, modal, refreshSignal,
+                        { target -> navigation.navigate(target.route) { launchSingleTop = true } }, { conversationModal = it }, isTabRoute) })
             }
         }
     }
@@ -127,7 +171,7 @@ private val BottomBarContentHeight = 44.dp
 @Composable
 private fun AppScaffold(
     api: CallringUiApi,
-    settings: SettingsSummaryViewModel,
+    settings: @Composable () -> SettingsSummaryViewModel,
     appearanceModel: AppearanceViewModel,
     navigation: NavHostController,
     refreshSignal: Long,
@@ -136,29 +180,13 @@ private fun AppScaffold(
     onCapability: (Capability) -> Unit,
     onAppSettings: () -> Unit,
     startupUpdateFinished: Boolean,
+    home: @Composable () -> Unit,
 ) {
     fun open(destination: UiDestination) { navigation.navigate(destination.route) { launchSingleTop = true } }
     val back: () -> Unit = { navigation.popBackStack() }
     Scaffold(modifier = Modifier, snackbarHost = { FeedbackSnackbar(feedbackHost) }, bottomBar = bottomBar) { insets ->
         NavHost(navigation, UiDestination.Home.route, Modifier.padding(insets).consumeWindowInsets(insets)) {
-            composable("home") {
-                val model: HomeViewModel = uiViewModel { HomeViewModel(api) }
-                val quiet: HomeQuietViewModel = uiViewModel { HomeQuietViewModel(api.settings, api.changes, it) }
-                val state by model.state.collectAsStateWithLifecycle()
-                val quietState by quiet.state.collectAsStateWithLifecycle()
-                val quietMutation by quiet.mutation.collectAsStateWithLifecycle()
-                val quietDraft by quiet.draft.collectAsStateWithLifecycle()
-                val quietOpen by quiet.dialogOpen.collectAsStateWithLifecycle()
-                TimeRefresh(model.timeRefresh, refreshSignal, state.data?.currentWork?.nextBoundaryEpochMillis, 60_000, model::refresh)
-                HomeScreen(state, model::refresh, { open(UiDestination.Leaves) }, quietCard = {
-                    HomeQuietCard(quietState, quietMutation, quiet::refresh, quiet::setEnabled, quiet::openEditor)
-                }, onSetup = { open(UiDestination.Setup) })
-                val saved = quietState.data
-                val draft = quietDraft
-                if (quietOpen && saved != null && draft != null) {
-                    HomeQuietDialog(saved, draft, quietMutation, quiet::edit, quiet::save, quiet::closeEditor)
-                }
-            }
+            composable("home") { home() }
             composable(UiDestination.Setup.route) {
                 val model: SetupViewModel = uiViewModel { SetupViewModel(api) }
                 val state by model.state.collectAsStateWithLifecycle()
@@ -166,15 +194,6 @@ private fun AppScaffold(
                 SetupScreen(state, back, model::refresh, onCapability, onAppSettings,
                     { open(UiDestination.Setting(SettingsPage.RECORDING)) },
                     { open(UiDestination.Setting(SettingsPage.RUNTIME)) })
-            }
-            composable("callers") {
-                val model: CallerListViewModel = uiViewModel { CallerListViewModel(api.callers::search, api::checkNumber, api.changes, it) }
-                val state by model.state.collectAsStateWithLifecycle()
-                val query by model.query.collectAsStateWithLifecycle()
-                val check by model.check.collectAsStateWithLifecycle()
-                CallerListScreen(state, query, check, model::search, model::page, { model.refresh() },
-                    { open(UiDestination.EditCaller()) }, { open(UiDestination.Report(it)) },
-                    { open(UiDestination.Report(it)) }, { open(UiDestination.Positions) })
             }
             composable("recording-archives") {
                 RecordingArchivesRoute(api, refreshSignal, back) {
@@ -224,13 +243,6 @@ private fun AppScaffold(
                 ArchiveRoute(api, args.getLong("callId"), number, args.getLong("startedAt"), refreshSignal, back,
                     { open(UiDestination.EditCaller(number)) })
             }
-            composable("settings") {
-                val summary by settings.state.collectAsStateWithLifecycle()
-                val mutation by settings.mutation.collectAsStateWithLifecycle()
-                SettingsOverviewScreen(summary, mutation, null, settings::refresh, settings::statistics,
-                    { open(UiDestination.Setting(it)) })
-            }
-            composable("conversation") { ConversationRoute(api, onOpenSettings = { open(UiDestination.Setting(SettingsPage.AI)) }) }
             composable("leaves") {
                 SettingsRoute(SettingsPage.LEAVES, api, settings, appearanceModel, refreshSignal, back, onCapability, onAppSettings)
             }
@@ -250,6 +262,7 @@ private fun AppScaffold(
 private fun CallringBottomBar(
     tabs: List<Pair<UiDestination, String>>,
     route: String?,
+    enabled: Boolean,
     onSelect: (UiDestination) -> Unit,
 ) {
     Surface(
@@ -266,7 +279,7 @@ private fun CallringBottomBar(
                 val contentColor = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
                 Column(
                     modifier = Modifier.weight(1f).fillMaxHeight().heightIn(min = BottomBarContentHeight)
-                        .selectable(selected = selected, role = Role.Tab, onClick = { onSelect(destination) })
+                        .selectable(selected = selected, enabled = enabled, role = Role.Tab, onClick = { onSelect(destination) })
                         .testTag("tab-${destination.route}"),
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.Center,
@@ -284,13 +297,6 @@ private fun CallringBottomBar(
                 }
             }
         }
-    }
-}
-
-private fun selectTab(navigation: NavHostController, destination: UiDestination) {
-    navigation.navigate(destination.route) {
-        popUpTo(navigation.graph.startDestinationId) { saveState = true }
-        launchSingleTop = true; restoreState = true
     }
 }
 

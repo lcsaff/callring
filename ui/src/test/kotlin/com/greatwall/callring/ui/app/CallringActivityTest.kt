@@ -25,6 +25,26 @@ import org.robolectric.annotation.Config
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [35], application = PermissionRecoveryApplication::class)
 class CallringActivityTest {
+    @Test fun foregroundLaunchWithoutTargetDoesNotRestartNavigationGateButExplicitHomeDoes() {
+        val application = RuntimeEnvironment.getApplication() as PermissionRecoveryApplication
+        var reads = 0
+        application.uiApi.prepareRule = {
+            reads++
+            ApiResult.Success(com.greatwall.callring.contracts.settings.NumberRuleSettings(
+                listOf(com.greatwall.callring.contracts.settings.NumberRuleEntry("3", 5)), 0))
+        }
+        val controller = Robolectric.buildActivity(CallringActivity::class.java).create().start().resume()
+        try {
+            shadowOf(Looper.getMainLooper()).idle()
+            assertEquals(1, reads)
+            controller.newIntent(android.content.Intent(application, CallringActivity::class.java))
+            shadowOf(Looper.getMainLooper()).idle()
+            assertEquals("foreground launch preserves the existing navigation request", 1, reads)
+            controller.newIntent(CallringActivity.intent(application, UiDestination.Home))
+            shadowOf(Looper.getMainLooper()).idle()
+            assertEquals("explicit home remains a navigation request", 2, reads)
+        } finally { controller.pause().stop().destroy() }
+    }
     @Test fun recreationDuringOwnerSwitchWaitsForAvailableApi() {
         val application = RuntimeEnvironment.getApplication() as PermissionRecoveryApplication
         application.availableUiApi.value = null
