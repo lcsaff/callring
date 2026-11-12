@@ -29,9 +29,10 @@ class SystemRecordingDiscovery(
     private val findCalls: (String, Long) -> List<RecordingCall>,
     private val numberRules: () -> NumberRuleSnapshot,
     private val numberMatcher: NumberMatcher,
+    private val outgoingCallCloser: (number: String, recordingStartedAt: Long, incomingStartedAt: Long, cancelled: () -> Boolean) -> Boolean,
     private val now: () -> Long = System::currentTimeMillis,
     private val zone: () -> ZoneId = ZoneId::systemDefault,
-    private val importAudio: (RecordingCall, SystemRecordingCandidate, () -> Unit, () -> com.greatwall.callring.contracts.recording.RecordingFile?) -> Unit,
+    private val importAudio: (RecordingCall, SystemRecordingCandidate, () -> Unit, () -> Boolean, () -> com.greatwall.callring.contracts.recording.RecordingFile?) -> Unit,
 ) : SystemRecordingDiscoveryRunner, AutoCloseable {
     private val lifetime = Object()
     @Volatile private var sealed = false
@@ -86,7 +87,7 @@ class SystemRecordingDiscovery(
             }
         }
         val zoneId = zone()
-        val signature = folder.length.toString() + ":" + folder + ":" + config.systemImportDays + ":" + zoneId.id + ":" + revision + ":rules:" + rules.revision + ":" + ruleRevision + ":history:1"
+        val signature = folder.length.toString() + ":" + folder + ":" + config.systemImportDays + ":" + zoneId.id + ":" + revision + ":rules:" + rules.revision + ":" + ruleRevision + ":history:2"
         val scan = commit { store.beginSystemScan(signature, now(), config.systemImportDays, zoneId.id) }
         val window = SystemRecordingWindow(scan.at, scan.days)
         fun independentEligible(key: String, parsed: ParsedSystemRecording, stableSince: Long? = null) =
@@ -97,6 +98,26 @@ class SystemRecordingDiscovery(
                     (stableSince == null || SystemRecordingWindow(stableSince,scan.days).contains(parsed.startedAtEpochMillis))))
         fun matchingCalls(parsed: ParsedSystemRecording) =
             findCalls(parsed.number,parsed.startedAtEpochMillis).map { reads.linkedRecording(it.id) ?: it }.distinctBy { it.id }
+        fun targets(parsed: ParsedSystemRecording): List<RecordingCall> {
+            val all = (store.matchingRecordingEvents(parsed) + findCalls(parsed.number,parsed.startedAtEpochMillis))
+                .map { reads.linkedRecording(it.id) ?: it }.distinctBy { it.id }
+            // Apply close-match priority across both stores together. A broader match to
+            // an earlier archive must not obscure this call's exact system-log identity.
+            return all.filter { kotlin.math.abs(it.startedAt-parsed.startedAtEpochMillis) <= SystemRecordingAssociation.CLOCK_SKEW_MILLIS }.ifEmpty { all }
+        }
+        fun outgoingConflict(number: String, recordedAt: Long, incomingAt: Long) =
+            outgoingCallCloser(number,recordedAt,incomingAt) { sealed || cancelled() || !operationActive() || settingsRevision() != revision || rulesChanged() }
+        fun blockedByOutgoing(parsed: ParsedSystemRecording, target: RecordingCall): Boolean {
+            // Keep the original core timestamp for the comparison: an independent archive's
+            // canonical start may be the recording start itself and would erase the delay.
+            val original = findCalls(parsed.number,parsed.startedAtEpochMillis).singleOrNull() ?: return false
+            val canonical = reads.linkedRecording(original.id) ?: original
+            return canonical.id == target.id && outgoingConflict(original.number,parsed.startedAtEpochMillis,original.startedAt)
+        }
+        fun releaseReservation(key: String, callId: Long) = commit {
+            if(store.releaseUnimportedSystemSource(key,callId))
+                coordinator.publishResource("recording",setOf("recordingSources"),ChangeImpact(emptyMap()))
+        }
         var next: Long? = null
         fun due(at: Long) { next = next?.let { minOf(it, at) } ?: at }
 
@@ -110,8 +131,11 @@ class SystemRecordingDiscovery(
                 active(); linkedAfter = key
                 if(call.id >= 0) continue
                 val match = findCalls(call.number,call.startedAt).singleOrNull() ?: continue
+                if(store.hasConflictingSystemLink(key,call,match) || outgoingConflict(match.number,call.startedAt,match.startedAt)) continue
                 commit {
                     if(findCalls(call.number,call.startedAt).singleOrNull() != match) return@commit
+                    if(store.hasConflictingSystemLink(key,call,match) || outgoingConflict(match.number,call.startedAt,match.startedAt)) return@commit
+                    active()
                     if(store.linkSystemStatistics(key,match.id)) coordinator.publishResource("recording",setOf("recordingLinks","recordingLink:${match.id}"),
                         ChangeImpact(mapOf(DataDomain.RECORDING_ARCHIVES to setOf(call.id.toString(),"statistics:${match.id}"))))
                 }
@@ -140,34 +164,37 @@ class SystemRecordingDiscovery(
                 active()
                 val key = candidate.entry.sourceKey
                 after = key
-                if(store.sourceCompleted(key) || store.hasConflictingSystemSource(scan.id,key,candidate.parsed)) continue
+                if(store.sourceCompleted(key)) continue
                 val independent = independentEligible(key,candidate.parsed,candidate.stableSince)
                 val historyTarget = if(independent) null else matchingCalls(candidate.parsed).singleOrNull()
                 if(!independent && historyTarget == null) continue
                 fun historyStillMatches() = independent || matchingCalls(candidate.parsed).singleOrNull() == historyTarget
                 val file = candidate.entry.file
                 if((file.size ?: 0) <= 0 || !file.modifiedKnown || file.modifiedAt <= 0 || file.modifiedAt > now()) continue
-                if(candidate.observedAt < candidate.stableSince || candidate.observedAt - candidate.stableSince < STABILITY_MILLIS) {
-                    due(maxOf(now() + 1000,candidate.stableSince + STABILITY_MILLIS)); continue
-                }
                 val existing = store.sourceBinding(key)
-                val possibilities = if(existing != null) listOf(existing) else
-                    (store.matchingRecordingEvents(candidate.parsed) + findCalls(candidate.parsed.number,candidate.parsed.startedAtEpochMillis))
-                        .map { reads.linkedRecording(it.id) ?: it }.distinctBy { it.id }
+                val possibilities = if(existing != null) listOf(existing) else targets(candidate.parsed)
                 if(possibilities.size > 1) continue
                 val target = possibilities.singleOrNull()
                 if(!independent && target?.id != historyTarget?.id) continue
+                if(target != null && blockedByOutgoing(candidate.parsed,target)) {
+                    releaseReservation(key,target.id)
+                    continue
+                }
+                if(store.hasConflictingSystemSource(scan.id,key,candidate.parsed,target)) continue
                 if(target != null && store.isDeleted(target.id)) continue
+                if(candidate.observedAt < candidate.stableSince || candidate.observedAt - candidate.stableSince < STABILITY_MILLIS) {
+                    due(maxOf(now() + 1000,candidate.stableSince + STABILITY_MILLIS)); continue
+                }
                 if(activeCallId() != null) { due(now() + STABILITY_MILLIS); continue }
                 val call = commit {
                     // A removed/replaced call must not turn an accepted history-only file
                     // into an independent recording while enumeration or copying is in flight.
                     if(!historyStillMatches()) return@commit null
+                    if(target != null && blockedByOutgoing(candidate.parsed,target)) return@commit null
+                    active()
                     val boundNow = store.sourceBinding(key)
-                    val currentTargets = if(boundNow != null) listOf(boundNow) else
-                        (store.matchingRecordingEvents(candidate.parsed) + findCalls(candidate.parsed.number,candidate.parsed.startedAtEpochMillis))
-                            .map { reads.linkedRecording(it.id) ?: it }.distinctBy { it.id }
-                    if(currentTargets.size > 1 || currentTargets.singleOrNull() != target || store.hasConflictingSystemSource(scan.id,key,candidate.parsed) ||
+                    val currentTargets = if(boundNow != null) listOf(boundNow) else targets(candidate.parsed)
+                    if(currentTargets.size > 1 || currentTargets.singleOrNull() != target || store.hasConflictingSystemSource(scan.id,key,candidate.parsed,target) ||
                         (target != null && store.isDeleted(target.id)) || activeCallId() != null) return@commit null
                     val registered = store.registerSystemSource(key,candidate.parsed,target) { value ->
                         CallArchive(value.id,value.number,value.startedAt,generation = now() * 1000)
@@ -177,7 +204,7 @@ class SystemRecordingDiscovery(
                         ChangeImpact(if(registered.eventInserted || registered.archiveInserted) mapOf(DataDomain.RECORDING_ARCHIVES to setOf(registered.call.id.toString())) else emptyMap()))
                     registered.call
                 } ?: continue
-                if(!sameRecordingNumber(call.number,candidate.parsed.number) || kotlin.math.abs(call.startedAt - candidate.parsed.startedAtEpochMillis) > 3000) continue
+                if(!sameRecordingNumber(call.number,candidate.parsed.number) || !SystemRecordingAssociation.matches(call.startedAt,candidate.parsed.startedAtEpochMillis)) continue
                 val metadata = reads.metadata(call.id) { sealed || cancelled() || !operationActive() }
                 // Restored/missing audio requires explicit same-identity file selection; a new
                 // folder grant is not permission to resume the restored processing queue.
@@ -189,16 +216,23 @@ class SystemRecordingDiscovery(
                     fun importActive() {
                         active()
                         if(!historyStillMatches()) throw CancellationException("recording.call_changed")
+                        if(blockedByOutgoing(candidate.parsed,call)) throw OutgoingRecordingConflict()
+                        active()
                         if(activeCallId() != null) throw CancellationException("recording.call_active")
                     }
-                    importAudio(call,candidate,::importActive) { scanner.inspect(folder,com.greatwall.callring.contracts.common.DocumentRef(file.uri)) { sealed || cancelled() || !operationActive() || settingsRevision() != revision || rulesChanged() } }
+                    fun copyActive(): Boolean = try { active(); activeCallId() == null } catch(_: CancellationException) { false }
+                    importAudio(call,candidate,::importActive,::copyActive) { scanner.inspect(folder,com.greatwall.callring.contracts.common.DocumentRef(file.uri)) { sealed || cancelled() || !operationActive() || settingsRevision() != revision || rulesChanged() } }
                     complete(key)
-                } catch(cancel: CancellationException) { throw cancel }
+                } catch(cancel: CancellationException) {
+                    if(cancel is OutgoingRecordingConflict) releaseReservation(key,call.id)
+                    throw cancel
+                }
                 catch(_: SecurityException) { return null }
                 catch(_: Exception) { due(now() + 60_000) }
             }
         }
         return commit { store.systemRetry(next) }
     }
+    private class OutgoingRecordingConflict : CancellationException("recording.outgoing_conflict")
     companion object { const val STABILITY_MILLIS = 10_000L }
 }

@@ -20,6 +20,129 @@ import java.util.concurrent.CancellationException
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [33], manifest = Config.NONE)
 class SystemRecordingDiscoveryTest {
+    @Test fun sealingDuringFinalOutgoingObservationCannotRegisterSource() {
+        Fixture("seal-final-outgoing").use { f ->
+            f.calls = listOf(f.knownCall())
+            f.discovery.discover { false }; f.time += 10_000
+            val sealAt = f.outgoingChecks + 2
+            f.onOutgoing = { if (it == sealAt) f.discovery.seal() }
+            assertThrows(CancellationException::class.java) { f.discovery.discover { false } }
+            assertNull(f.store.sourceBinding("a"))
+        }
+    }
+    @Test fun sealingDuringLateLinkObservationCannotWriteStatisticsLink() {
+        Fixture("seal-final-late-link").use { f ->
+            f.discovery.discover { false }; f.time += 10_000; f.discovery.discover { false }
+            f.calls = listOf(f.knownCall())
+            val sealAt = f.outgoingChecks + 2
+            f.onOutgoing = { if (it == sealAt) f.discovery.seal() }
+            assertThrows(CancellationException::class.java) { f.discovery.discover { false } }
+            assertNull(f.store.linkedRecording(42))
+        }
+    }
+    @Test fun closerOutgoingCallCannotClaimIncomingRecording() {
+        Fixture("outgoing-closer").use { f ->
+            f.calls = listOf(f.knownCall())
+            f.outgoingCloser = true
+            f.discovery.discover { false }; f.time += 10_000; f.discovery.discover { false }
+            assertEquals(0, f.imports)
+            assertNull(f.store.sourceBinding("a"))
+        }
+    }
+    @Test fun outgoingRejectionDuringCopyReleasesOnlyUnimportedReservation() {
+        Fixture("outgoing-copy-race").use { f ->
+            f.calls = listOf(f.knownCall())
+            f.discovery.discover { false }; f.time += 10_000
+            f.beforeCommit = { f.outgoingCloser = true }
+            assertThrows(CancellationException::class.java) { f.discovery.discover { false } }
+            assertNull(f.store.sourceBinding("a"))
+            assertNull(f.store.get(42)?.audioPath)
+            assertFalse(f.store.isDeleted(42))
+            f.beforeCommit = {}; f.outgoingCloser = false
+            f.discovery.discover { false }
+            assertEquals(1, f.imports)
+        }
+    }
+    @Test fun outgoingObservationUsesCoreCallTimeBeforeCanonicalRecordingTime() {
+        Fixture("outgoing-canonical-time").use { f ->
+            val call = f.knownCall()
+            f.store.insertIncoming("canonical", call.number, call.startedAt + 8_000, null) { CallArchive(it.id,it.number,it.startedAt,generation=1) }
+            f.store.insertStatisticsLink(call.id, "canonical")
+            f.calls = listOf(call)
+            f.outgoingCloser = true
+            f.files[0] = f.files.single().copy(file = f.files.single().file.copy(name = "31234_20261104120008.mp3"))
+            f.discovery.discover { false }; f.time += 10_000; f.discovery.discover { false }
+            assertEquals(0, f.imports)
+            assertEquals(call.startedAt, f.observedIncomingAt)
+        }
+    }
+    @Test fun completedIndependentOutgoingSourceCannotLinkToLaterIncomingHistory() {
+        Fixture("outgoing-late-link").use { f ->
+            f.files[0] = f.files.single().copy(file = f.files.single().file.copy(name = "31234_20261104120008.mp3"))
+            f.discovery.discover { false }; f.time += 10_000; f.discovery.discover { false }
+            assertEquals(1, f.imports)
+            f.calls = listOf(f.knownCall()); f.outgoingCloser = true
+            f.discovery.discover { false }
+            assertNull(f.store.linkedRecording(42))
+        }
+    }
+    @Test fun lateCallChoosesNearestIndependentSourceInsteadOfSourceKeyOrder() {
+        Fixture("late-dual-source").use { f ->
+            val file = f.files.single().file
+            f.files[0] = ScannedSystemRecording("a", file.copy(name = "31234_20261104120036.mp3"))
+            f.files += ScannedSystemRecording("z", file.copy(uri = "content://z", name = "31234_20261104120008.mp3"))
+            f.discovery.discover { false }; f.time += 10_000; f.discovery.discover { false }
+            assertEquals(2, f.imports)
+            val nearest = f.store.sourceBinding("z")!!.id
+            f.calls = listOf(f.knownCall())
+            f.discovery.discover { false }
+            assertEquals(nearest, f.store.linkedRecording(42)!!.id)
+            assertEquals(2, f.imports)
+        }
+    }
+    @Test fun recordingStartingAfterAnswerMatchesEarlierIncomingCall() {
+        Fixture("delayed-real-shape").use { f ->
+            f.calls = listOf(f.knownCall())
+            f.files[0] = f.files.single().copy(file = f.files.single().file.copy(name = "31234_20261104120008.mp3"))
+            f.time += 90L * 86_400_000
+            f.discovery.discover { false }; f.time += 10_000; f.discovery.discover { false }
+            assertEquals(1, f.imports)
+            assertEquals(42L, f.store.sourceBinding("a")!!.id)
+        }
+    }
+    @Test fun twoRecordingsOfOneCallSelectUniqueClosestStartAndPreserveBinding() {
+        Fixture("dual-real-shape").use { f ->
+            f.calls = listOf(f.knownCall())
+            val file = f.files.single().file
+            f.files[0] = ScannedSystemRecording("a", file.copy(name = "31234_20261104120001.mp3", size = 54432))
+            f.files += ScannedSystemRecording("z", file.copy(uri = "content://z", name = "联系人(31234)_20261104120003.mp3", size = 24768))
+            f.discovery.discover { false }; f.time += 10_000; f.discovery.discover { false }
+            assertEquals(1, f.imports)
+            assertEquals(42L, f.store.sourceBinding("a")!!.id)
+            assertNull(f.store.sourceBinding("z"))
+            // A later-discovered alternative must not replace a completed source or retry forever.
+            f.files += ScannedSystemRecording("new", file.copy(uri = "content://new"))
+            assertNull(f.discovery.discover { false })
+            f.time += 10_000; assertNull(f.discovery.discover { false })
+            assertEquals(1, f.imports)
+            assertNull(f.store.sourceBinding("new"))
+        }
+    }
+    @Test fun closestFileMustBecomeStableBeforeFartherFileCanWin() {
+        Fixture("dual-stability").use { f ->
+            f.calls = listOf(f.knownCall())
+            val file = f.files.single().file
+            f.files[0] = ScannedSystemRecording("far", file.copy(name = "31234_20261104120003.mp3"))
+            f.discovery.discover { false }; f.time += 10_000
+            f.files += ScannedSystemRecording("near", file.copy(uri = "content://near", name = "31234_20261104120001.mp3"))
+            assertNotNull(f.discovery.discover { false })
+            assertEquals(0, f.imports)
+            f.time += 10_000; f.discovery.discover { false }
+            assertEquals(1, f.imports)
+            assertEquals(42L, f.store.sourceBinding("near")!!.id)
+            assertNull(f.store.sourceBinding("far"))
+        }
+    }
     @Test fun existingHistoricalCallImportsOutsideWindowAndDoesNotReimport() {
         Fixture("historical-call").use { f ->
             f.calls = listOf(f.knownCall())
@@ -342,6 +465,10 @@ class SystemRecordingDiscoveryTest {
         var onInspect: () -> Unit = {}
         var onCancel: () -> Unit = {}
         var activeRecordingCallId: Long? = null
+        var outgoingCloser = false
+        var outgoingChecks = 0
+        var onOutgoing: (Int) -> Unit = {}
+        var observedIncomingAt: Long? = null
         val files = mutableListOf(ScannedSystemRecording("a", RecordingFile("content://a", "示例(31234)_20261104120000.mp3", 1, 128)))
         val cipher = object : RecordingCipher { override fun encrypt(value: String) = value; override fun decrypt(value: String) = value.also { decryptions++ } }
         val store = AndroidRecordingStore(RuntimeEnvironment.getApplication(), "discovery-$name", cipher) { 0 }
@@ -360,8 +487,12 @@ class SystemRecordingDiscoveryTest {
         }
         val discovery = SystemRecordingDiscovery(store, store, store::settings, { revision }, scan,
             coordinator = coordinator, numberRules = { rules }, numberMatcher = PrefixLengthNumberMatcher, operationActive = { true }, activeCallId = { activeRecordingCallId },
-            findCalls = { number, at -> calls.filter { it.number == number && kotlin.math.abs(it.startedAt - at) <= 3000 }.also { onFind() } }, now = { time }, zone = { ZoneId.of("Asia/Shanghai") },
-            importAudio = { call, _, validate, inspect ->
+            outgoingCallCloser = { _, _, at, _ -> observedIncomingAt = at; outgoingChecks++; onOutgoing(outgoingChecks); outgoingCloser },
+            findCalls = { number, at ->
+                val close = calls.filter { it.number == number && kotlin.math.abs(it.startedAt - at) <= 3000 }
+                close.ifEmpty { calls.filter { it.number == number && it.startedAt in (at - 120_000)..(at + 3000) } }.also { onFind() }
+            }, now = { time }, zone = { ZoneId.of("Asia/Shanghai") },
+            importAudio = { call, _, validate, _, inspect ->
                 inspect()
                 beforeCommit(); validate()
                 store.compareAndSet(call.id,store.generation(call.id), CallArchive(call.id,call.number,call.startedAt,2,status=ArchiveStatus.READY,audioPath="owned"))

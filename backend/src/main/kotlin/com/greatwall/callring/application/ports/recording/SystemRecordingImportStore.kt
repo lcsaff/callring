@@ -17,7 +17,9 @@ interface SystemRecordingImportStore {
     fun observeSystemFile(scanId: Long, entry: ScannedSystemRecording, parsed: ParsedSystemRecording, at: Long)
     fun finishSystemScan(scanId: Long)
     fun systemCandidates(scanId: Long, afterKey: String?, limit: Int): List<SystemRecordingCandidate>
-    fun hasConflictingSystemSource(scanId: Long, sourceKey: String, parsed: ParsedSystemRecording): Boolean
+    fun hasConflictingSystemSource(scanId: Long, sourceKey: String, parsed: ParsedSystemRecording, target: RecordingCall?): Boolean
+    fun hasConflictingSystemLink(sourceKey: String, source: RecordingCall, target: RecordingCall): Boolean
+    fun releaseUnimportedSystemSource(sourceKey: String, callId: Long): Boolean
     fun sourceBinding(sourceKey: String): RecordingCall?
     fun sourceCompleted(sourceKey: String): Boolean
     fun completeSystemSource(sourceKey: String)

@@ -4,6 +4,8 @@ import com.greatwall.callring.domain.model.RawCallRecord
 import com.greatwall.callring.domain.model.DecisionInputs
 
 interface CallingReader {
+    fun callerDeletedAt(number: String): Long?
+
     fun statisticsContains(at: Long): Boolean
 
     fun statisticsStart(): Long

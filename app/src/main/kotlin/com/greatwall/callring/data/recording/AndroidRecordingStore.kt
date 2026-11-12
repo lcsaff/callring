@@ -191,7 +191,12 @@ class AndroidRecordingStore(context: Context, namespace: String,
     @Synchronized override fun observeSystemFile(scanId: Long, entry: ScannedSystemRecording, parsed: ParsedSystemRecording, at: Long) = SystemRecordingImports(writableDatabase).observe(scanId, entry, parsed, at)
     @Synchronized override fun finishSystemScan(scanId: Long) = SystemRecordingImports(writableDatabase).finish(scanId)
     @Synchronized override fun systemCandidates(scanId: Long, afterKey: String?, limit: Int) = SystemRecordingImports(readableDatabase).candidates(scanId, afterKey, limit)
-    @Synchronized override fun hasConflictingSystemSource(scanId: Long, sourceKey: String, parsed: ParsedSystemRecording) = SystemRecordingImports(readableDatabase).conflicting(scanId, sourceKey, parsed)
+    @Synchronized override fun hasConflictingSystemSource(scanId: Long, sourceKey: String, parsed: ParsedSystemRecording, target: RecordingCall?) = SystemRecordingImports(readableDatabase).conflicting(scanId, sourceKey, parsed, target)
+    @Synchronized override fun hasConflictingSystemLink(sourceKey: String, source: RecordingCall, target: RecordingCall) = SystemRecordingImports(readableDatabase).conflictingLink(sourceKey,source,target)
+    @Synchronized override fun releaseUnimportedSystemSource(sourceKey: String, callId: Long): Boolean {
+        if (isDeleted(callId) || metadata(callId) { false }?.hasAudio == true) return false
+        return SystemRecordingImports(writableDatabase).releaseUnimported(sourceKey,callId)
+    }
     @Synchronized override fun sourceBinding(sourceKey: String): RecordingCall? {
         val bound = SystemRecordingImports(readableDatabase).binding(sourceKey) ?: return null
         return if (bound.id < 0) findRecording(bound.id) else metadata(bound.id) { false }?.let { RecordingCall(it.callId,it.number,it.startedAtEpochMillis,it.durationMillis?.div(1000)) } ?: bound
@@ -212,7 +217,7 @@ class AndroidRecordingStore(context: Context, namespace: String,
         db.beginTransaction()
         try {
             sourceBinding(sourceKey)?.let { bound ->
-                require(com.greatwall.callring.domain.model.sameRecordingNumber(bound.number, parsed.number) && kotlin.math.abs(bound.startedAt - parsed.startedAtEpochMillis) <= 3000) { "recording.source_changed" }
+                require(com.greatwall.callring.domain.model.sameRecordingNumber(bound.number, parsed.number) && com.greatwall.callring.domain.recording.SystemRecordingAssociation.matches(bound.startedAt, parsed.startedAtEpochMillis)) { "recording.source_changed" }
                 db.setTransactionSuccessful()
                 return RecordingRegistration(bound,false,false)
             }

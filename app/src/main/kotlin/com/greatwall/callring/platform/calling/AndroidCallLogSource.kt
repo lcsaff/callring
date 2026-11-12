@@ -10,6 +10,25 @@ import com.greatwall.callring.domain.model.SystemCallRecord
  * timestamps.
  */
 class AndroidCallLogSource(private val resolver: ContentResolver) {
+    /** A wider answer-time match must not steal audio from a closer outgoing call. */
+    fun hasCloserOutgoingCall(number: String, recordingStartedAt: Long, incomingStartedAt: Long, cancellation: android.os.CancellationSignal): Boolean {
+        val distance = kotlin.math.abs(recordingStartedAt - incomingStartedAt)
+        val cursor = resolver.query(CallLog.Calls.CONTENT_URI,
+            arrayOf(CallLog.Calls.NUMBER),
+            "${CallLog.Calls.TYPE}=2 AND ${CallLog.Calls.DATE}>=? AND ${CallLog.Calls.DATE}<=?",
+            arrayOf((recordingStartedAt-distance).toString(), (recordingStartedAt+distance).toString()), null, cancellation)
+            ?: throw java.io.IOException("call_log.provider_unavailable")
+        return cursor.use { rows ->
+            while (rows.moveToNext()) {
+                if (Thread.currentThread().isInterrupted) throw java.io.InterruptedIOException("call_log.cancelled")
+                val raw = rows.getString(0).orEmpty()
+                if (com.greatwall.callring.domain.model.sameRecordingNumber(
+                    com.greatwall.callring.domain.model.NumberIdentity.parse(raw).normalized, number)) return@use true
+            }
+            false
+        }
+    }
+
     @JvmOverloads
     fun read(
         startInclusiveMillis: Long,

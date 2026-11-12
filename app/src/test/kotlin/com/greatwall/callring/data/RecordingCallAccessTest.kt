@@ -28,6 +28,91 @@ import org.robolectric.annotation.Config
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [33], manifest = Config.NONE)
 class RecordingCallAccessTest {
+    private val internationalDigits = "8613800138000"
+
+    @Test fun plusStoredNumberMatchesBothRecordingSpellingsAtAssociationBoundaries() {
+        val context = RuntimeEnvironment.getApplication()
+        SqliteCoreStorageResource(context, "recording-plus-boundaries").use { resource ->
+            LocalAccessFixture.seed(resource, 1_000)
+            resource.fixtureSql { state ->
+                state.seedCaller(com.greatwall.callring.domain.model.ProfileRecord("+$internationalDigits"))
+                state.seedCall(state.callFact(1)!!.copy(number = "+$internationalDigits"))
+            }
+            for (number in listOf(internationalDigits, "+$internationalDigits")) {
+                for (offset in listOf(-3_000L, 3_000L, 8_000L, 120_000L))
+                    assertEquals("$number/$offset", listOf(1L),
+                        com.greatwall.callring.application.recording.findSystemRecordingCalls(
+                            resource.sessions, number, LocalAccessFixture.at + offset).map { it.id })
+                for (offset in listOf(-3_001L, 120_001L))
+                    assertTrue("$number/$offset", com.greatwall.callring.application.recording.findSystemRecordingCalls(
+                        resource.sessions, number, LocalAccessFixture.at + offset).isEmpty())
+            }
+        }
+    }
+
+    @Test fun nearPlusCallWinsBeforeDelayedDigitsFallbackAndUsesStableScreeningId() {
+        val context = RuntimeEnvironment.getApplication()
+        SqliteCoreStorageResource(context, "recording-plus-priority").use { resource ->
+            LocalAccessFixture.seed(resource, 1_000)
+            resource.fixtureSql { state ->
+                state.seedCaller(com.greatwall.callring.domain.model.ProfileRecord(internationalDigits))
+                state.seedCaller(com.greatwall.callring.domain.model.ProfileRecord("+$internationalDigits"))
+                state.seedCall(state.callFact(1)!!.copy(number = internationalDigits))
+                state.seedCall(state.callFact(2)!!.copy(number = "+$internationalDigits",
+                    time = LocalAccessFixture.at + 30_000, linkedScreenId = 3L))
+                state.seedCall(state.callFact(3)!!.copy(hidden = true))
+            }
+            assertEquals(listOf(3L), com.greatwall.callring.application.recording.findSystemRecordingCalls(
+                resource.sessions, internationalDigits, LocalAccessFixture.at + 31_000).map { it.id })
+        }
+    }
+
+    @Test fun plusAndDigitsCandidatesRemainAmbiguousWithBoundedReads() {
+        val context = RuntimeEnvironment.getApplication()
+        val probe = SqlAccessProbe()
+        SqliteCoreStorageResource(context, "recording-plus-ambiguous", probe).use { resource ->
+            LocalAccessFixture.seed(resource, 1_000)
+            resource.fixtureSql { state ->
+                state.seedCaller(com.greatwall.callring.domain.model.ProfileRecord(internationalDigits))
+                state.seedCaller(com.greatwall.callring.domain.model.ProfileRecord("+$internationalDigits"))
+                for (id in 1L..2L) state.seedCall(state.callFact(id)!!.copy(
+                    number = if (id % 2L == 0L) "+$internationalDigits" else internationalDigits,
+                    time = LocalAccessFixture.at))
+            }
+            assertEquals(setOf(1L, 2L), com.greatwall.callring.application.recording.findSystemRecordingCalls(
+                resource.sessions, internationalDigits, LocalAccessFixture.at).map { it.id }.toSet())
+            resource.fixtureSql { state ->
+                for (id in 3L..8L) state.seedCall(state.callFact(id)!!.copy(
+                    number = if (id % 2L == 0L) "+$internationalDigits" else internationalDigits,
+                    time = LocalAccessFixture.at))
+            }
+            val before = probe.snapshot().sumOf { it.consumedRows }
+            val matches = com.greatwall.callring.application.recording.findSystemRecordingCalls(
+                resource.sessions, internationalDigits, LocalAccessFixture.at)
+            assertEquals(2, matches.size)
+            assertEquals(2, matches.map { it.id }.distinct().size)
+            assertTrue(probe.snapshot().sumOf { it.consumedRows } - before <= 4L)
+        }
+    }
+
+    @Test fun incomingRecordingCanStartAfterRingingButCannotPrecedeTheCall() {
+        val context = RuntimeEnvironment.getApplication()
+        SqliteCoreStorageResource(context, "recording-delay").use { resource ->
+            LocalAccessFixture.seed(resource, 1_000)
+            assertEquals(listOf(1L), com.greatwall.callring.application.recording.findSystemRecordingCalls(
+                resource.sessions, LocalAccessFixture.TARGET, LocalAccessFixture.at + 8_000,
+            ).map { it.id })
+            assertEquals(listOf(1L), com.greatwall.callring.application.recording.findSystemRecordingCalls(
+                resource.sessions, LocalAccessFixture.TARGET, LocalAccessFixture.at + 120_000,
+            ).map { it.id })
+            assertTrue(com.greatwall.callring.application.recording.findSystemRecordingCalls(
+                resource.sessions, LocalAccessFixture.TARGET, LocalAccessFixture.at + 120_001,
+            ).isEmpty())
+            assertTrue(com.greatwall.callring.application.recording.findSystemRecordingCalls(
+                resource.sessions, LocalAccessFixture.TARGET, LocalAccessFixture.at - 3001,
+            ).isEmpty())
+        }
+    }
     @Test fun graphIdentityWithOneThousandUnrelatedCalls() = checkGraph(1_000)
     @Test fun graphIdentityWithTenThousandUnrelatedCalls() = checkGraph(10_000)
     private fun checkGraph(size: Int) = runBlocking {

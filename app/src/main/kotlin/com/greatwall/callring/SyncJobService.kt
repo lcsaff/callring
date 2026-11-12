@@ -18,7 +18,6 @@ class SyncJobService : JobService() {
     private var owner: com.greatwall.callring.bootstrap.BackendGraph? = null
     private fun controller(graph: com.greatwall.callring.bootstrap.BackendGraph) =
         CallLogSyncJobController<JobParameters>(
-            { graph.backend.statisticsStart() },
             { since, until, stopped -> graph.callLogSource.read(since, until) { stopped() || !graph.acceptsOperations() } },
             {
                 graph.backend.importSystemCalls(it)

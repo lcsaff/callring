@@ -71,7 +71,8 @@ class CallingSqlSemanticsTest {
                     assertEquals(accept,assessment.matched)
                     assertEquals(accept,assessment.statisticsEnabled)
                     assertEquals(accept,api.recordIncoming(n,at+i,CallDecision.NORMAL_RINGING,numberMatch=assessment.numberMatch)>0)
-                    assertEquals(if(accept) setOf(n) else emptySet<String>(),api.importSystemCalls(listOf(provider("log$i",n,at+100+i))))
+                    assertEquals(setOf(n),api.importSystemCalls(listOf(provider("log$i",n,at+100+i))))
+                    assertEquals(accept, graph.fullSnapshotReader.capture().calls.values.single { it.logId == "log$i" }.counted)
                 }
             } finally { graph.close() }
         }
@@ -242,18 +243,10 @@ class CallingSqlSemanticsTest {
             assertEquals(-1L, api.recordIncoming("31234", at - 1, CallDecision.NORMAL_RINGING))
             assertEquals(-1L, api.recordIncoming("31234", at + 100, CallDecision.NORMAL_RINGING))
             assertEquals(-1L, api.recordIncoming("invalid", at, CallDecision.NORMAL_RINGING))
-            assertTrue(
-                api.importSystemCalls(
-                        listOf(provider("", "invalid", at).copy(durationSeconds = -1)),
-                    )
-                    .isEmpty(),
-            )
-            assertTrue(
-                api.importSystemCalls(
-                        listOf(provider("", "31234", at + 100).copy(durationSeconds = -1)),
-                    )
-                    .isEmpty(),
-            )
+            assertTrue(api.importSystemCalls(listOf(provider("", "invalid", at).copy(durationSeconds = -1))).isEmpty())
+            assertThrows(BackendFailure::class.java) {
+                api.importSystemCalls(listOf(provider("", "31234", at + 100).copy(durationSeconds = -1)))
+            }
             assertEquals(0L, c.marker())
             val id = api.recordIncoming("(31234)", at, CallDecision.NORMAL_RINGING, " A ")
             val original = calls(store).getValue(id)
@@ -300,6 +293,23 @@ class CallingSqlSemanticsTest {
             assertEquals(before, calls(store))
             assertEquals(0L, c.marker())
             assertTrue(store.fullSnapshot.capture().let { it.profiles.isEmpty() })
+        }
+    }
+
+    @Test fun fullHistoryRespectsPersistedDeletionBoundaryAndSkipsUnknownNumbers() {
+        val name = "calling-full-history.db"
+        SqliteCoreStorageResource(context, name).use { store ->
+            store.sessions.writeCaller { it.markCallerDeleted("13800138000", at) }
+        }
+        SqliteCoreStorageResource(context, name).use { store ->
+            val api = backend(store)
+            api.importSystemCalls(listOf(provider("old", "13800138000", at - 1),
+                provider("boundary", "13800138000", at), provider("unknown", "", at - 1),
+                provider("restricted", "-1", at - 1), provider("nonstandard", "private", at - 1),
+                provider("new", "13800138000", at + 1)))
+            assertEquals(setOf("new"), calls(store).values.map { it.logId }.toSet())
+            assertTrue(calls(store).values.all { !it.hidden && !it.counted })
+            assertEquals(setOf("13800138000"), store.fullSnapshot.capture().profiles.keys)
         }
     }
 

@@ -14,6 +14,15 @@ internal class SqliteCallStore(
     private val sql: SqlAccess,
     private val checkActive: (Boolean) -> Unit,
 ) : CallingWriter {
+    override fun callerDeletedAt(number: String): Long? {
+        checkActive(false)
+        return sql.rawQuery(QueryTag.SCOPED_SETTING, setOf(SqlTable.SETTINGS),
+            "SELECT value FROM settings WHERE key=?",
+            arrayOf(com.greatwall.callring.data.codec.CallerDeletionCodec.key(number))).use {
+            if (it.moveToFirst()) com.greatwall.callring.data.codec.CallerDeletionCodec.decode(it.getString(0)) else null
+        }
+    }
+
     private fun rows(where: String, parameters: Array<String>): List<RawCallRecord> {
         checkActive(false)
         return sql.query(

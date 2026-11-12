@@ -132,9 +132,10 @@ class RecordingService(
         fun checkCaller() { if (!callerActive()) throw CancellationException("recording.cancelled") }
         checkCaller()
         audio.prepareImport(document) { !callerActive() || (command != null && !command.active()) }.use { prepared ->
-            validatePrepared()
             val archive = coordinator.guard(command) {
                 requireOperationActive(operationActive)
+                checkCaller()
+                validatePrepared()
                 checkCaller()
                 check(state.generation(call.id) == initialGeneration && (!automatic || !state.isDeleted(call.id))) { "recording.changed" }
                 attach(call, prepared, source, command, offlineOnly)
@@ -144,7 +145,7 @@ class RecordingService(
         }
     }
     /** The discovery runner supplies the same frozen source/settings checks before and after copy. */
-    fun importDiscovered(call: RecordingCall, candidate: com.greatwall.callring.application.ports.recording.SystemRecordingCandidate, validate: () -> Unit, inspect: () -> RecordingFile?) {
+    fun importDiscovered(call: RecordingCall, candidate: com.greatwall.callring.application.ports.recording.SystemRecordingCandidate, validate: () -> Unit, copyActive: () -> Boolean, inspect: () -> RecordingFile?) {
         val file = candidate.entry.file
         fun current() {
             validate()
@@ -153,7 +154,7 @@ class RecordingService(
         }
         current()
         importFile(call.id,call.number,call.startedAt,DocumentRef(file.uri),RecordingSource.SYSTEM,automatic=true,
-            callerActive={ try { validate(); true } catch(_: CancellationException) { false } }, validatePrepared=::current)
+            callerActive=copyActive, validatePrepared=::current)
     }
     fun attachCapture(call: RecordingCall, reference: AudioReference): CallArchive {
         val initialGeneration = state.generation(call.id)

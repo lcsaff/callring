@@ -41,6 +41,128 @@ import java.io.IOException
 
 /** No Android resource, filesystem, full backend context, or alternate archive publisher. */
 class RecordingApplicationServiceTest {
+    @Test fun discoveredCopyUsesLightweightCancellationAndOnlyTwoFullValidations() {
+        val f = Fixture().seed()
+        f.copyCancellationChecks = 640
+        val call = f.events.getValue(-1)
+        val file = RecordingFile("content://audio", "31234_19700101000001.wav", 1, 10_485_760)
+        val candidate = SystemRecordingCandidate(ScannedSystemRecording("fixture", file),
+            com.greatwall.callring.domain.recording.ParsedSystemRecording(call.number, call.startedAt), 0, 0)
+        val validationFences = mutableListOf<Boolean>()
+        var inspections = 0
+        f.service.importDiscovered(call, candidate, validate = {
+            validationFences += Thread.holdsLock(f.coordinator.fence)
+        }, copyActive = { true }, inspect = { inspections++; file })
+        assertEquals(640, f.copyCancellationChecksRun)
+        assertEquals(listOf(false, true), validationFences)
+        assertEquals(2, inspections)
+        assertEquals("new", f.entries.getValue(-1).audioPath)
+    }
+
+    @Test fun discoveredCopyCancellationStopsBeforeCommitWithoutFullValidationPerChunk() {
+        val f = Fixture().seed()
+        f.copyCancellationChecks = 640
+        val before = f.entries.getValue(-1)
+        val call = f.events.getValue(-1)
+        val candidate = discoveredCandidate(call)
+        var active = true
+        var validations = 0
+        var inspections = 0
+        f.beforePrepared = { active = false }
+        assertThrows(kotlinx.coroutines.CancellationException::class.java) {
+            f.service.importDiscovered(call, candidate, { validations++ }, { active }, {
+                inspections++; candidate.entry.file
+            })
+        }
+        assertEquals(1, validations)
+        assertEquals(1, inspections)
+        assertEquals(1, f.copyCancellationChecksRun)
+        assertEquals(before, f.entries[-1])
+        assertFalse("rename" in f.effects || "retain" in f.effects)
+        assertTrue(f.scheduled.isEmpty())
+        assertEquals(0L, f.coordinator.marker())
+    }
+
+    @Test fun cancellationDuringGuardedFinalInspectionDiscardsPreparedAudio() {
+        val f = Fixture().seed()
+        f.copyCancellationChecks = 640
+        val before = f.entries.getValue(-1)
+        val call = f.events.getValue(-1)
+        val candidate = discoveredCandidate(call)
+        var active = true
+        var validations = 0
+        var inspections = 0
+        assertThrows(kotlinx.coroutines.CancellationException::class.java) {
+            f.service.importDiscovered(call, candidate, { validations++ }, { active }, {
+                inspections++
+                if (inspections == 2) {
+                    assertTrue(Thread.holdsLock(f.coordinator.fence))
+                    active = false
+                }
+                candidate.entry.file
+            })
+        }
+        assertEquals(2, validations)
+        assertEquals(2, inspections)
+        assertEquals(before, f.entries[-1])
+        assertEquals(listOf("prepare", "discard"), f.effects)
+        assertTrue(f.scheduled.isEmpty())
+        assertEquals(0L, f.coordinator.marker())
+    }
+
+    @Test fun metadataChangesDuringCopyDiscardPreparedAudioBeforeCommit() {
+        val call = RecordingCall(-1, "31234", 1, null)
+        val candidate = discoveredCandidate(call)
+        val file = candidate.entry.file
+        for (changed in listOf(null, file.copy(size = 2), file.copy(modifiedAt = 2),
+            file.copy(modifiedKnown = false), file.copy(name = "renamed.wav"))) {
+            val f = Fixture().seed()
+            f.copyCancellationChecks = 640
+            val before = f.entries.getValue(-1)
+            var inspections = 0
+            assertThrows(Exception::class.java) {
+                f.service.importDiscovered(call, candidate, {}, { true }, {
+                    inspections++
+                    if (inspections == 1) file else changed
+                })
+            }
+            assertEquals(2, inspections)
+            assertEquals(before, f.entries[-1])
+            assertEquals(listOf("prepare", "discard"), f.effects)
+            assertTrue(f.scheduled.isEmpty())
+            assertEquals(0L, f.coordinator.marker())
+        }
+    }
+
+    @Test fun generationChangedByFinalValidationIsRecheckedBeforeAttachment() {
+        val f = Fixture().seed()
+        f.copyCancellationChecks = 640
+        val call = f.events.getValue(-1)
+        val candidate = discoveredCandidate(call)
+        var validations = 0
+        assertThrows(IllegalStateException::class.java) {
+            f.service.importDiscovered(call, candidate, {
+                validations++
+                if (validations == 2) {
+                    assertTrue(Thread.holdsLock(f.coordinator.fence))
+                    f.entries[-1] = f.entries.getValue(-1).copy(generation = 2)
+                }
+            }, { true }, { candidate.entry.file })
+        }
+        assertEquals(2, validations)
+        assertEquals(2L, f.entries.getValue(-1).generation)
+        assertEquals("old", f.entries.getValue(-1).audioPath)
+        assertEquals(listOf("prepare", "discard"), f.effects)
+        assertTrue(f.scheduled.isEmpty())
+        assertEquals(0L, f.coordinator.marker())
+    }
+
+    private fun discoveredCandidate(call: RecordingCall): SystemRecordingCandidate {
+        val file = RecordingFile("content://audio", "31234_19700101000001.wav", 1, 10_485_760)
+        return SystemRecordingCandidate(ScannedSystemRecording("fixture", file),
+            com.greatwall.callring.domain.recording.ParsedSystemRecording(call.number, call.startedAt), 0, 0)
+    }
+
     @Test fun cleanupOfAnotherArchivePreservesPlayingArchiveIncludingStatisticsAlias() = runBlocking {
         val f=Fixture()
         f.events[-3]=RecordingCall(-3,"300",3,null)
@@ -290,6 +412,8 @@ class RecordingApplicationServiceTest {
         var prepareFailure: Exception? = null
         val scheduled = mutableListOf<Long>()
         var beforePrepared: () -> Unit = {}
+        var copyCancellationChecks = 0
+        var copyCancellationChecksRun = 0
         private val commands = RecordingArchiveCommands(this, this, coordinator)
         private val client = object : AiClient {
             override fun operation(cancelled: () -> Boolean) = this
@@ -311,7 +435,7 @@ class RecordingApplicationServiceTest {
                     val call = events.values.singleOrNull() ?: return null
                     service.importDiscovered(call,SystemRecordingCandidate(ScannedSystemRecording("fixture",file),
                         com.greatwall.callring.domain.recording.ParsedSystemRecording(call.number,call.startedAt),0,0),
-                        validate = { if(cancelled()) throw kotlinx.coroutines.CancellationException() }, inspect = { inspect(config.systemFolder!!,DocumentRef(file.uri)) })
+                        validate = { if(cancelled()) throw kotlinx.coroutines.CancellationException() }, copyActive = { !cancelled() }, inspect = { inspect(config.systemFolder!!,DocumentRef(file.uri)) })
                     return null
                 }
             })
@@ -352,6 +476,10 @@ class RecordingApplicationServiceTest {
             assertFalse("Copy must be outside commit fence", Thread.holdsLock(coordinator.fence))
             effects += "prepare"
             beforePrepared()
+            repeat(copyCancellationChecks) {
+                copyCancellationChecksRun++
+                if (cancelled()) throw kotlinx.coroutines.CancellationException("recording.cancelled")
+            }
             return object : PreparedRecordingAudio {
                 override val durationMillis = 1000L
                 private var retained = false

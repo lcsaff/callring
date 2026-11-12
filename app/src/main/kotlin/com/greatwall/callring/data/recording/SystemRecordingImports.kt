@@ -5,6 +5,7 @@ import com.greatwall.callring.application.ports.recording.*
 import com.greatwall.callring.contracts.recording.RecordingFile
 import com.greatwall.callring.domain.calling.RecordingCall
 import com.greatwall.callring.domain.recording.ParsedSystemRecording
+import com.greatwall.callring.domain.recording.SystemRecordingAssociation
 
 /** Private inventory contains URIs; only source bindings are portable backup data. */
 internal class SystemRecordingImports(private val db: SQLiteDatabase) {
@@ -64,20 +65,44 @@ internal class SystemRecordingImports(private val db: SQLiteDatabase) {
                     ParsedSystemRecording(c.getString(6), c.getLong(7)), c.getLong(8), c.getLong(9)))
             } }
     }
-    fun conflicting(id: Long, key: String, parsed: ParsedSystemRecording): Boolean {
+    fun conflicting(id: Long, key: String, parsed: ParsedSystemRecording, target: RecordingCall?): Boolean {
+        if (target != null) {
+            // Keep the durable choice, including retries after a failed copy. A newly
+            // discovered alternate must not replace an already-bound recording.
+            val bound = db.rawQuery("SELECT source_key FROM system_recording_sources WHERE archive_id=? LIMIT 1", arrayOf(target.id.toString())).use { if(it.moveToFirst()) it.getString(0) else null }
+            if (bound != null) return bound != key
+            val range = SystemRecordingAssociation.recordingStarts(target.startedAt)
+            // Multiple recordings can belong to one call. Select only a uniquely closest
+            // start; an equally close file remains ambiguous. Include unstable competitors
+            // so a shorter/farther file cannot win before the preferred file settles.
+            return db.rawQuery("SELECT 1 FROM system_recording_inventory WHERE signature=(SELECT signature FROM system_recording_scan WHERE generation=?) AND source_key<>? AND number=? AND started BETWEEN ? AND ? AND known=1 AND size>0 AND ABS(started-?)<=CAST(? AS INTEGER) LIMIT 1",
+                arrayOf(id.toString(),key,normalized(parsed.number),range.first.toString(),range.last.toString(),target.startedAt.toString(),kotlin.math.abs(parsed.startedAtEpochMillis-target.startedAt).toString())).use { it.moveToFirst() }
+        }
         val args = arrayOf(id.toString(), key, normalized(parsed.number), (parsed.startedAtEpochMillis - 6000).toString(), (parsed.startedAtEpochMillis + 6000).toString())
         return db.rawQuery("SELECT 1 FROM system_recording_inventory WHERE signature=(SELECT signature FROM system_recording_scan WHERE generation=?) AND source_key<>? AND number=? AND started BETWEEN ? AND ? LIMIT 1", args).use { it.moveToFirst() } ||
             db.rawQuery("SELECT 1 FROM system_recording_sources WHERE source_key<>? AND number=? AND started BETWEEN ? AND ? LIMIT 1", args.drop(1).toTypedArray()).use { it.moveToFirst() }
     }
     fun binding(key: String): RecordingCall? = db.rawQuery("SELECT archive_id,number,started FROM system_recording_sources WHERE source_key=?", arrayOf(key)).use { if(it.moveToFirst()) RecordingCall(it.getLong(0),it.getString(1),it.getLong(2),null) else null }
     fun completed(key: String): Boolean = db.rawQuery("SELECT completed FROM system_recording_sources WHERE source_key=?", arrayOf(key)).use { it.moveToFirst() && it.getInt(0) == 1 }
+    fun conflictingLink(key: String, source: RecordingCall, target: RecordingCall): Boolean {
+        val range = SystemRecordingAssociation.recordingStarts(target.startedAt)
+        return db.rawQuery("SELECT 1 FROM system_recording_sources WHERE source_key<>? AND number=? AND started BETWEEN ? AND ? AND ABS(started-?)<=CAST(? AS INTEGER) LIMIT 1",
+            arrayOf(key,normalized(source.number),range.first.toString(),range.last.toString(),target.startedAt.toString(),kotlin.math.abs(source.startedAt-target.startedAt).toString())).use { it.moveToFirst() }
+    }
+    fun releaseUnimported(key: String, callId: Long): Boolean =
+        db.delete("system_recording_sources", "source_key=? AND archive_id=? AND completed=0", arrayOf(key,callId.toString())) > 0
     fun complete(key: String) { db.execSQL("UPDATE system_recording_sources SET completed=1 WHERE source_key=?", arrayOf(key)) }
     fun bind(key: String, call: RecordingCall) {
         check(!db.rawQuery("SELECT 1 FROM system_recording_sources WHERE archive_id=? AND source_key<>? LIMIT 1",arrayOf(call.id.toString(),key)).use { it.moveToFirst() }) { "recording.source_ambiguous" }
         db.execSQL("INSERT INTO system_recording_sources(source_key,archive_id,number,started) VALUES(?,?,?,?)", arrayOf<Any>(key, call.id, normalized(call.number), call.startedAt))
     }
     fun matching(parsed: ParsedSystemRecording): List<RecordingCall> {
-        val from = (parsed.startedAtEpochMillis - 3000).toString(); val to = (parsed.startedAtEpochMillis + 3000).toString()
+        val close = matching(parsed, parsed.startedAtEpochMillis - 3000, parsed.startedAtEpochMillis + 3000)
+        val range = SystemRecordingAssociation.callStarts(parsed.startedAtEpochMillis)
+        return close.ifEmpty { matching(parsed,range.first,range.last) }
+    }
+    private fun matching(parsed: ParsedSystemRecording, start: Long, end: Long): List<RecordingCall> {
+        val from = start.toString(); val to = end.toString()
         val result = linkedMapOf<Long, RecordingCall>()
         db.rawQuery("SELECT id,number,started FROM recording_events WHERE started BETWEEN ? AND ? ORDER BY id", arrayOf(from,to)).use { c ->
             while(c.moveToNext()) if(normalized(c.getString(1)) == normalized(parsed.number)) {

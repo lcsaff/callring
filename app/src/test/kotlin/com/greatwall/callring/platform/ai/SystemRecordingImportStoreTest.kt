@@ -59,7 +59,7 @@ class SystemRecordingImportStoreTest {
             store.observeSystemFile(next.id, file.copy(sourceKey = "b"), parsed, 110_000)
             store.finishSystemScan(next.id)
             assertEquals(100_000L, store.systemCandidates(next.id, null, 64).first().stableSince)
-            assertTrue(store.hasConflictingSystemSource(next.id, "a", parsed))
+            assertTrue(store.hasConflictingSystemSource(next.id, "a", parsed, null))
             assertEquals(1, store.systemCandidates(next.id, null, 1).size)
         }
     }

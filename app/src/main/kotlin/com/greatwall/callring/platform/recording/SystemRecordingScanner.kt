@@ -19,17 +19,19 @@ class SystemRecordingScanner(private val resolver: ContentResolver,
 ) : SystemRecordingScanPort {
     private val signals = ConcurrentHashMap.newKeySet<CancellationSignal>()
     override fun cancelScan() { signals.forEach { it.cancel() } }
-    override fun inspect(folder: String, document: com.greatwall.callring.contracts.common.DocumentRef, cancelled: () -> Boolean): RecordingFile? {
+    fun <T> withQueryCancellation(cancelled: () -> Boolean, query: (CancellationSignal) -> T): T {
         fun active() { if(cancelled() || Thread.currentThread().isInterrupted) throw CancellationException("recording.cancelled") }
         active()
         val signal = CancellationSignal()
         signals += signal
         try {
             active()
-            return SystemRecordingSource(resolver,readGranted).inspect(folder,document,signal).also { active() }
+            return query(signal).also { active() }
         } catch(_: android.os.OperationCanceledException) { throw CancellationException("recording.cancelled") }
         finally { signals -= signal }
     }
+    override fun inspect(folder: String, document: com.greatwall.callring.contracts.common.DocumentRef, cancelled: () -> Boolean): RecordingFile? =
+        withQueryCancellation(cancelled) { signal -> SystemRecordingSource(resolver,readGranted).inspect(folder,document,signal) }
 
     override fun scan(folder: String, cancelled: () -> Boolean, visit: (ScannedSystemRecording) -> Unit) {
         val root = Uri.parse(folder)

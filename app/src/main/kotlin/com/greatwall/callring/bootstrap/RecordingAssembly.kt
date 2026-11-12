@@ -68,8 +68,11 @@ class RecordingAssembly(
     private val sources by lazy { SystemRecordingSource(context.contentResolver) }
     private val scannerDelegate = lazy { com.greatwall.callring.platform.recording.SystemRecordingScanner(context.contentResolver) }
     private val discoveryDelegate = lazy { SystemRecordingDiscovery(store,store,store::settings,
-        { coordinator.capture().values.getValue("recordingConfig") },scannerDelegate.value,coordinator,operationActive,activeCallId,findCalls,numberRules,numberMatcher,now,
-        importAudio = { call,candidate,validate,inspect -> service.importDiscovered(call,candidate,validate,inspect) }) }
+        { coordinator.capture().values.getValue("recordingConfig") },scannerDelegate.value,coordinator,operationActive,activeCallId,findCalls,numberRules,numberMatcher,
+        outgoingCallCloser = { number,recordedAt,incomingAt,cancelled -> scannerDelegate.value.withQueryCancellation(cancelled) { signal ->
+            com.greatwall.callring.platform.calling.AndroidCallLogSource(context.contentResolver).hasCloserOutgoingCall(number,recordedAt,incomingAt,signal)
+        } }, now = now,
+        importAudio = { call,candidate,validate,copyActive,inspect -> service.importDiscovered(call,candidate,validate,copyActive,inspect) }) }
     private val clientAccess = com.greatwall.callring.platform.ownership.OwnedFileAccess()
     private val clientDelegate = lazy {
         val instance = clientFactory?.invoke() ?: CompatibleAiClient(testAudio = {

@@ -5,7 +5,6 @@ import com.greatwall.callring.platform.scheduler.JobRuns
 import java.util.concurrent.Executor
 
 internal class CallLogSyncJobController<P>(
-    private val statisticsStart: () -> Long,
     private val read: (Long, Long, () -> Boolean) -> List<SystemCallRecord>,
     private val import: (List<SystemCallRecord>) -> Unit,
     private val pending: (Long) -> Boolean,
@@ -28,11 +27,11 @@ internal class CallLogSyncJobController<P>(
             var retry = false
             try {
                 if (stopped.get()) return@execute
-                val since = statisticsStart()
                 if (!permitted()) cancelObserver()
-                else if (since > 0 && !stopped.get()) {
+                else if (!stopped.get()) {
                     val current = now()
-                    val records = read(since, maxOf(current + 1, since + 1)) { stopped.get() }
+                    val until = if (current == Long.MAX_VALUE) Long.MAX_VALUE else maxOf(1, current + 1)
+                    val records = read(0, until) { stopped.get() }
                     if (!stopped.get()) {
                         import(records)
                         retry = pending(current)

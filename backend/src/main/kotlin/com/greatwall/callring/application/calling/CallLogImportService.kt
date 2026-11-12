@@ -46,22 +46,23 @@ internal class CallLogImportService(
                     val affected = linkedMapOf<String, MutableSet<Long>>()
                     var history: WorkHistory? = null
                     val statistics = mutableMapOf<Long, Boolean>()
+                    val deletedAt = mutableMapOf<String, Long>()
                     for (record in records) {
+                        val rawNumber = record.number.trim()
+                        if (rawNumber in setOf("-1", "-2", "-3")) continue
                         val identity = NumberIdentity.parse(record.number)
-                        if (
-                            !batchRule.matches(identity.normalized, matcher) ||
-                                !statistics.getOrPut(record.startedAtEpochMillis) {
-                                    writer.statisticsContains(record.startedAtEpochMillis)
-                                }
-                        )
-                            continue
+                        // calls.number references a valid caller profile. Private/unknown provider
+                        // placeholders cannot be represented without inventing a caller identity.
+                        if (!identity.validProfileNumber) continue
+                        val n = identity.normalized
+                        val boundary = deletedAt.getOrPut(n) { writer.callerDeletedAt(n) ?: -1L }
+                        if (boundary >= 0 && record.startedAtEpochMillis <= boundary) continue
                         requireField(record.logId.isNotBlank(), "logId", "log_id.required")
                         requireField(
                             record.durationSeconds == null || record.durationSeconds >= 0,
                             "durationSeconds",
                             "duration.invalid",
                         )
-                        val n = identity.normalized
                         val previous = byLog[record.logId]
                         val account =
                             record.account?.trim()?.takeIf { it.isNotEmpty() } ?: previous?.account
@@ -101,7 +102,9 @@ internal class CallLogImportService(
                                             CallSource.SYSTEM_CALL_LOG,
                                             record.logId,
                                             null,
-                                            true,
+                                            batchRule.matches(n, matcher) && statistics.getOrPut(record.startedAtEpochMillis) {
+                                                writer.statisticsContains(record.startedAtEpochMillis)
+                                            },
                                             current,
                                             current,
                                             account,
@@ -141,6 +144,14 @@ internal class CallLogImportService(
                         CallCorrelation.reconcile(rows, centers).forEach { (_, after) ->
                             pending[after.id] = after
                         }
+                    }
+                    // Screening rows were admitted with their original number-match fact. A later
+                    // provider fact must retain that eligibility when it hides the screening row,
+                    // even if the current rule no longer matches. Existing provider facts keep
+                    // their stored counted value across every rescan.
+                    pending.values.toList().forEach { row ->
+                        if (row.id in created && row.linkedScreenId != null)
+                            pending[row.id] = row.copy(counted = true)
                     }
                     val changes =
                         pending.values.mapNotNull { after ->
