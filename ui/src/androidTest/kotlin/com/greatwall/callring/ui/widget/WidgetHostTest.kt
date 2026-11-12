@@ -80,7 +80,7 @@ class WidgetHostTest {
             runBlocking { UiWidgetRefresh.refresh(context, ids.toSet()) }
             compose.waitUntil(20_000) {
                 views.size == 2 && views.all {
-                    it.text("来电管理") != null && it.text("今日请假") != null && it.quietSwitch() != null
+                    it.text("扰喵簿") != null && it.text("今日请假") != null && it.quietSwitch() != null
                 }
             }
             compose.runOnIdle {
@@ -134,7 +134,7 @@ class WidgetHostTest {
             runBlocking { api.saveAppearance(appearance); UiWidgetRefresh.refresh(context) }
             val expectedColor = appearance.toThemeSpec(false).definition.light.onSurface.toArgb()
             compose.waitUntil(10_000) {
-                views.all { it.text("来电管理")?.currentTextColor == expectedColor && it.text("今日已请假") != null }
+                views.all { it.text("扰喵簿")?.currentTextColor == expectedColor && it.text("今日已请假") != null }
             }
             assertEquals("Repeated actions must not create duplicate leave", 1, api.leaveWrites.size)
             compose.runOnIdle { views.captureHosts("widget-host-global-custom-theme") }

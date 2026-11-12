@@ -1,6 +1,7 @@
 package com.greatwall.callring.ui.app.bridge
 
 import com.greatwall.callring.ui.app.CallringActivity
+import com.greatwall.callring.ui.R
 
 import android.app.*
 import android.content.Context
@@ -12,7 +13,7 @@ class UiNotifications(private val context: Context) {
     fun playback(preview: Boolean, stop: PendingIntent): Notification {
         channel("callring.playback", "铃声播放", NotificationManager.IMPORTANCE_LOW)
         return Notification.Builder(context, "callring.playback")
-            .setSmallIcon(context.applicationInfo.icon).setContentTitle(if (preview) "试听铃声" else "来电铃声")
+            .setSmallIcon(R.drawable.ic_callring_notification).setContentTitle(if (preview) "试听铃声" else "来电铃声")
             .setContentText("点击停止播放").setContentIntent(home(201)).setOngoing(true)
             .addAction(Notification.Action.Builder(null, "停止", stop).build()).build()
     }

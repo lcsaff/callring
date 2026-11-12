@@ -18,6 +18,7 @@ import androidx.glance.text.FontWeight
 import androidx.glance.text.Text
 import androidx.glance.text.TextStyle
 import androidx.glance.unit.ColorProvider
+import com.greatwall.callring.ui.R
 import com.greatwall.callring.contracts.common.*
 import com.greatwall.callring.contracts.change.*
 import com.greatwall.callring.contracts.settings.*
@@ -66,7 +67,7 @@ private fun WidgetContent(context: Context, snapshot: WidgetSnapshot, actionErro
     val muted = ColorProvider(colors.onSurfaceVariant)
     val large = LocalSize.current.width >= 280.dp && LocalSize.current.height >= 210.dp
     Column(GlanceModifier.fillMaxSize().background(ColorProvider(colors.surfaceContainer)).cornerRadius(24.dp).padding(12.dp)) {
-        Text("来电管理", style = TextStyle(color = foreground, fontSize = 16.sp, fontWeight = FontWeight.Bold))
+        Text(context.getString(R.string.callring_app_name), style = TextStyle(color = foreground, fontSize = 16.sp, fontWeight = FontWeight.Bold))
         Switch(checked = snapshot.quiet?.mode?.let { it != QuietMode.OFF } ?: false,
             onCheckedChange = if (snapshot.quiet != null) actionRunCallback<WidgetQuietAction>() else null,
             text = "免打扰", style = TextStyle(color = foreground, fontSize = 14.sp),

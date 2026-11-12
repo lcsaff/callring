@@ -1,4 +1,4 @@
-# callring（规则来电铃声）
+# callring（扰喵簿）
 
 ## 项目与文档职责
 
@@ -6,8 +6,12 @@
 
 - 根目录：`D:/Users/GreatWall/projects/callring`；发现入口：`D:/Users/GreatWall/workspace/projects/projects.json`。
 - Android 包名：`com.greatwall.callring`；应用入口及资源在 `app/`。
+- 产品名称为“扰喵簿”，关注下班时间工作来电的打扰与号码档案。显示名称唯一来源为 `ui/src/main/res/values/strings.xml` 的 `callring_app_name`，app Manifest 与桌面小组件共同引用；包名、组件身份、存储及发行文件前缀仍沿用 callring。
+- 桌面图标源图为 `app/src/main/res/drawable-nodpi/ic_launcher_art.png`（暖橙底白眼猫账本、两侧各三根胡须），由 `mipmap-anydpi-v26/ic_launcher.xml` 适配系统形状，18% inset 保留耳朵与书签的裁切空间。铃声通知独立使用 ui 的单色 `ic_callring_notification`，不复用彩色桌面图标；原 `ic_callring` 仅留给隔离 QA 通知。
 - AGENTS.md 为规则入口；本文件集中维护全部项目规则、契约约定、验证与交付要求；README.md 仅说明功能、使用和用户可见限制。
 - 有用的设计结论与验收摘要就地更新本文件，不引用其他文档作为当前规则入口。原有文档保留作历史参考，不因清理引用而删除。机器基线、测试、原始日志和产物保留各自用途。
+
+名称与图标验收（2026-11-12）：完整统一门 backend/UI/app JVM 为 469/401/492 项，零失败、错误或跳过；71 项 Python 检查、架构守卫及双 lint 通过，13 项 Gradle 门除 contracts 为 NO-SOURCE 外均实际执行。Debug/Release APK 的显示名均为“扰喵簿”，包名不变，包内图标与源图逐像素一致。320×640 隔离模拟器的小组件专项 1 项通过，核对两种尺寸及主题色；仅更新隔离 QA 包检查桌面圆形图标，猫耳与书签保留、无预览白边。未安装或改动生产包，未调用真实 AI。原始统一门及设备证据保存在 `app/build/qa/backend-refactor/`、`app/build/qa/branding-executed/` 和 `app/build/qa/branding-device/`。
 
 ## 模块与职责
 

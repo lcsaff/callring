@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
+    <background android:drawable="@color/callring_launcher_background" />
+    <foreground>
+        <!-- Keep ears and bookmark inside the adaptive icon's 66dp safe circle. -->
+        <inset android:inset="18%">
+            <bitmap android:src="@drawable/ic_launcher_art" android:gravity="fill" android:filter="true" />
+        </inset>
+    </foreground>
+</adaptive-icon>
