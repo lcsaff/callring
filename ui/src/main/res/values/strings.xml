@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <string name="callring_app_name">扰喵簿</string>
     <string name="callring_back">返回</string>
     <string name="callring_loading">正在加载…</string>
     <string name="callring_retry">重试</string>

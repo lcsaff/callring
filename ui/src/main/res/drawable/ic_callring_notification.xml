@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Status-bar icons use an alpha silhouette, independently of the full-color launcher artwork. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp" android:height="24dp"
+    android:viewportWidth="24" android:viewportHeight="24">
+    <path android:fillColor="#FFFFFFFF" android:fillType="evenOdd"
+        android:pathData="M6,3L9,5H17L20,2L22,5V19Q22,21 20,21H8Q6,21 6,19ZM9,11V12H13V11ZM16,11V12H20V11ZM13,16V17H17V16ZM3,6Q3,4 5,4V19Q5,22 8,22H18V23H6Q3,23 3,20ZM10,21H13V24L11.5,23L10,24Z" />
+</vector>
