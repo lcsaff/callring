@@ -39,9 +39,9 @@ import com.greatwall.callring.ui.state.*
                 OutlinedTextField(value = days, onValueChange = onSystemImportDays,
                     label = { Text("系统录音自动导入天数") }, singleLine = true,
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                    isError = !validDays, supportingText = { Text(if (validDays) "自动导入最近这些天内的系统录音，默认 7 天" else "请输入大于 0 的整数天数") },
+                    isError = !validDays, supportingText = { Text(if (validDays) "没有对应通话记录的录音按此范围导入，默认 7 天" else "请输入大于 0 的整数天数") },
                     modifier = Modifier.fillMaxWidth())
-                Text("仅影响之后的系统录音自动导入，不更改已有录音和通话记录。")
+                Text("已有通话记录会匹配全部历史录音，不受天数和当前号码规则限制；找不到则跳过。")
                 Text("自动分析与转写连接请前往 AI 设置。")
             }
         }

@@ -86,9 +86,17 @@ class SystemRecordingDiscovery(
             }
         }
         val zoneId = zone()
-        val signature = folder.length.toString() + ":" + folder + ":" + config.systemImportDays + ":" + zoneId.id + ":" + revision + ":rules:" + rules.revision + ":" + ruleRevision
+        val signature = folder.length.toString() + ":" + folder + ":" + config.systemImportDays + ":" + zoneId.id + ":" + revision + ":rules:" + rules.revision + ":" + ruleRevision + ":history:1"
         val scan = commit { store.beginSystemScan(signature, now(), config.systemImportDays, zoneId.id) }
         val window = SystemRecordingWindow(scan.at, scan.days)
+        fun independentEligible(key: String, parsed: ParsedSystemRecording, stableSince: Long? = null) =
+            checkNumber(parsed.number,rules,numberMatcher).matchesRule &&
+                (window.contains(parsed.startedAtEpochMillis) || (store.acceptedSystemFile(signature,key,parsed) &&
+                    // Stable history-only observations do not grant independent-import eligibility.
+                    // Only files observed inside the original window may age out while waiting.
+                    (stableSince == null || SystemRecordingWindow(stableSince,scan.days).contains(parsed.startedAtEpochMillis))))
+        fun matchingCalls(parsed: ParsedSystemRecording) =
+            findCalls(parsed.number,parsed.startedAtEpochMillis).map { reads.linkedRecording(it.id) ?: it }.distinctBy { it.id }
         var next: Long? = null
         fun due(at: Long) { next = next?.let { minOf(it, at) } ?: at }
 
@@ -113,7 +121,9 @@ class SystemRecordingDiscovery(
             scanner.scan(folder, { sealed || cancelled() || !operationActive() || settingsRevision() != revision || rulesChanged() }) { entry ->
                 active()
                 val parsed = SystemRecordingNameParser.parse(entry.file.name, ZoneId.of(scan.zone))
-                if(parsed != null && checkNumber(parsed.number,rules,numberMatcher).matchesRule && (window.contains(parsed.startedAtEpochMillis) || store.acceptedSystemFile(signature,entry.sourceKey,parsed)))
+                // Existing call history has no import-age or current-rule cutoff. Keep those
+                // settings only for files that would otherwise create independent recordings.
+                if(parsed != null && (independentEligible(entry.sourceKey,parsed) || matchingCalls(parsed).singleOrNull() != null))
                     commit { store.observeSystemFile(scan.id,entry,parsed,now()) }
             }
             commit { store.finishSystemScan(scan.id) }
@@ -131,6 +141,10 @@ class SystemRecordingDiscovery(
                 val key = candidate.entry.sourceKey
                 after = key
                 if(store.sourceCompleted(key) || store.hasConflictingSystemSource(scan.id,key,candidate.parsed)) continue
+                val independent = independentEligible(key,candidate.parsed,candidate.stableSince)
+                val historyTarget = if(independent) null else matchingCalls(candidate.parsed).singleOrNull()
+                if(!independent && historyTarget == null) continue
+                fun historyStillMatches() = independent || matchingCalls(candidate.parsed).singleOrNull() == historyTarget
                 val file = candidate.entry.file
                 if((file.size ?: 0) <= 0 || !file.modifiedKnown || file.modifiedAt <= 0 || file.modifiedAt > now()) continue
                 if(candidate.observedAt < candidate.stableSince || candidate.observedAt - candidate.stableSince < STABILITY_MILLIS) {
@@ -142,9 +156,13 @@ class SystemRecordingDiscovery(
                         .map { reads.linkedRecording(it.id) ?: it }.distinctBy { it.id }
                 if(possibilities.size > 1) continue
                 val target = possibilities.singleOrNull()
+                if(!independent && target?.id != historyTarget?.id) continue
                 if(target != null && store.isDeleted(target.id)) continue
                 if(activeCallId() != null) { due(now() + STABILITY_MILLIS); continue }
                 val call = commit {
+                    // A removed/replaced call must not turn an accepted history-only file
+                    // into an independent recording while enumeration or copying is in flight.
+                    if(!historyStillMatches()) return@commit null
                     val boundNow = store.sourceBinding(key)
                     val currentTargets = if(boundNow != null) listOf(boundNow) else
                         (store.matchingRecordingEvents(candidate.parsed) + findCalls(candidate.parsed.number,candidate.parsed.startedAtEpochMillis))
@@ -170,6 +188,7 @@ class SystemRecordingDiscovery(
                 try {
                     fun importActive() {
                         active()
+                        if(!historyStillMatches()) throw CancellationException("recording.call_changed")
                         if(activeCallId() != null) throw CancellationException("recording.call_active")
                     }
                     importAudio(call,candidate,::importActive) { scanner.inspect(folder,com.greatwall.callring.contracts.common.DocumentRef(file.uri)) { sealed || cancelled() || !operationActive() || settingsRevision() != revision || rulesChanged() } }

@@ -20,6 +20,135 @@ import java.util.concurrent.CancellationException
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [33], manifest = Config.NONE)
 class SystemRecordingDiscoveryTest {
+    @Test fun existingHistoricalCallImportsOutsideWindowAndDoesNotReimport() {
+        Fixture("historical-call").use { f ->
+            f.calls = listOf(f.knownCall())
+            f.time += 90L * 86_400_000
+            f.discovery.discover { false }; f.time += 10_000; f.discovery.discover { false }
+            assertEquals(1, f.imports)
+            assertEquals(42L, f.store.sourceBinding("a")!!.id)
+            assertTrue(f.store.systemSourcePage(null, 64).all { it.second.id > 0 })
+            f.discovery.discover { false }
+            assertEquals(1, f.imports)
+            f.store.delete(42)
+            f.discovery.discover { false }
+            assertNull(f.store.get(42)); assertEquals(1, f.imports)
+        }
+    }
+    @Test fun existingCallImportsDespiteCurrentNumberRules() {
+        Fixture("existing-rejected-rule").use { f ->
+            f.files[0] = f.files.single().copy(file = f.files.single().file.copy(name = "示例(12345)_20261104120000.mp3"))
+            f.calls = listOf(f.knownCall().copy(number = "12345"))
+            f.discovery.discover { false }; f.time += 10_000; f.discovery.discover { false }
+            assertEquals(1, f.imports)
+            assertEquals(42L, f.store.sourceBinding("a")!!.id)
+        }
+    }
+    @Test fun existingHistoricalCallImportsWithEmptyRules() {
+        Fixture("existing-empty-rules").use { f ->
+            f.installRules(emptyList())
+            f.calls = listOf(f.knownCall())
+            f.time += 90L * 86_400_000
+            f.discovery.discover { false }; f.time += 10_000; f.discovery.discover { false }
+            assertEquals(1, f.imports)
+            assertEquals(42L, f.store.sourceBinding("a")!!.id)
+        }
+    }
+    @Test fun historicalMatchReusesExistingCanonicalRecordingIdentity() {
+        Fixture("history-canonical").use { f ->
+            val known = f.knownCall()
+            val original = f.store.insertIncoming("existing-session", known.number, known.startedAt, null) {
+                CallArchive(it.id, it.number, it.startedAt, generation = 1)
+            }.call
+            assertTrue(f.store.insertStatisticsLink(known.id, "existing-session"))
+            f.calls = listOf(known)
+            f.installRules(emptyList())
+            f.time += 90L * 86_400_000
+            f.discovery.discover { false }; f.time += 10_000; f.discovery.discover { false }
+            assertEquals(1, f.imports)
+            assertEquals(original.id, f.store.sourceBinding("a")!!.id)
+            assertNotNull(f.store.get(original.id)?.audioPath)
+            assertNull(f.store.get(known.id))
+        }
+    }
+    @Test fun historicalMatchingCoversMultipleCandidatePagesAndSkipsMissingFiles() {
+        Fixture("history-pages").use { f ->
+            val start = f.knownCall().startedAt
+            val formatter = java.time.format.DateTimeFormatter.ofPattern("uuuuMMddHHmmss").withZone(ZoneId.of("Asia/Shanghai"))
+            f.files.clear()
+            f.calls = (0..130).map { RecordingCall(42L + it, "31234", start + it * 60_000L, null) }
+            f.calls.dropLast(1).forEach { call ->
+                val key = "file-${call.id}"
+                f.files += ScannedSystemRecording(key, RecordingFile("content://$key", "31234_${formatter.format(Instant.ofEpochMilli(call.startedAt))}.mp3", 1, 128))
+            }
+            f.time += 90L * 86_400_000
+            f.discovery.discover { false }; f.time += 10_000; f.discovery.discover { false }
+            assertEquals(130, f.imports)
+            f.calls.dropLast(1).forEach { assertNotNull(f.store.get(it.id)?.audioPath) }
+            assertNull(f.store.get(f.calls.last().id))
+            f.discovery.discover { false }
+            assertEquals(130, f.imports)
+        }
+    }
+    @Test fun historicalFileWithoutExistingCallIsSkipped() {
+        Fixture("history-unmatched").use { f ->
+            f.time += 90L * 86_400_000
+            f.discovery.discover { false }; f.time += 10_000; f.discovery.discover { false }
+            assertEquals(0, f.imports)
+            assertNull(f.store.sourceBinding("a"))
+        }
+    }
+    @Test fun acceptedIndependentFileCanAgeOutsideWindowWhileCallIsActive() {
+        Fixture("independent-window-edge").use { f ->
+            f.time = f.knownCall().startedAt + 7L * 86_400_000 - 15_000
+            f.activeRecordingCallId = 99
+            f.discovery.discover { false }; f.time += 10_000; f.discovery.discover { false }
+            assertEquals(0, f.imports)
+            f.time += 10_000; f.activeRecordingCallId = null
+            f.discovery.discover { false }
+            assertEquals(1, f.imports)
+            assertTrue(f.store.sourceBinding("a")!!.id < 0)
+        }
+    }
+    @Test fun historicalTargetRemovedAfterEnumerationCannotCreateIndependentArchive() {
+        Fixture("history-removed").use { f ->
+            f.calls = listOf(f.knownCall())
+            f.time += 90L * 86_400_000
+            f.discovery.discover { false }; f.time += 10_000
+            f.scanEnd = { f.calls = emptyList() }
+            f.discovery.discover { false }
+            assertEquals(0, f.imports)
+            assertNull(f.store.sourceBinding("a"))
+        }
+    }
+    @Test fun historicalTargetRemovedDuringCopyCannotCommitAudio() {
+        Fixture("history-copy-removed").use { f ->
+            f.calls = listOf(f.knownCall())
+            f.time += 90L * 86_400_000
+            f.discovery.discover { false }; f.time += 10_000
+            f.beforeCommit = { f.calls = emptyList() }
+            assertThrows(CancellationException::class.java) { f.discovery.discover { false } }
+            assertEquals(0, f.imports)
+            assertNull(f.store.get(42)?.audioPath)
+        }
+    }
+    @Test fun historicalDuplicateFilesOrCallsAreNeverGuessed() {
+        Fixture("history-ambiguous-files").use { f ->
+            f.calls = listOf(f.knownCall())
+            f.files += f.files.single().copy(sourceKey = "z")
+            f.time += 90L * 86_400_000
+            f.discovery.discover { false }; f.time += 10_000; f.discovery.discover { false }
+            assertEquals(0, f.imports)
+            assertNull(f.store.sourceBinding("a"))
+        }
+        Fixture("history-ambiguous-calls").use { f ->
+            f.calls = listOf(f.knownCall(), f.knownCall().copy(id = 43))
+            f.time += 90L * 86_400_000
+            f.discovery.discover { false }; f.time += 10_000; f.discovery.discover { false }
+            assertEquals(0, f.imports)
+            assertNull(f.store.sourceBinding("a"))
+        }
+    }
     @Test fun preInstallationFileNeedsTwoSamplesAndRepeatedScanDoesNotReimport() {
         Fixture("historical").use { f ->
             assertEquals(f.time + 10_000, f.discovery.discover { false })
@@ -206,11 +335,13 @@ class SystemRecordingDiscoveryTest {
         var enumerationFailure = false
         var scanEnd: () -> Unit = {}
         var calls = emptyList<com.greatwall.callring.domain.calling.RecordingCall>()
+        fun knownCall() = RecordingCall(42, "31234", Instant.parse("2026-11-04T04:00:00Z").toEpochMilli(), null)
         var onFind: () -> Unit = {}
         var revision = 0L
         var decryptions = 0
         var onInspect: () -> Unit = {}
         var onCancel: () -> Unit = {}
+        var activeRecordingCallId: Long? = null
         val files = mutableListOf(ScannedSystemRecording("a", RecordingFile("content://a", "示例(31234)_20261104120000.mp3", 1, 128)))
         val cipher = object : RecordingCipher { override fun encrypt(value: String) = value; override fun decrypt(value: String) = value.also { decryptions++ } }
         val store = AndroidRecordingStore(RuntimeEnvironment.getApplication(), "discovery-$name", cipher) { 0 }
@@ -228,8 +359,8 @@ class SystemRecordingDiscoveryTest {
             }
         }
         val discovery = SystemRecordingDiscovery(store, store, store::settings, { revision }, scan,
-            coordinator = coordinator, numberRules = { rules }, numberMatcher = PrefixLengthNumberMatcher, operationActive = { true }, activeCallId = { null },
-            findCalls = { _, _ -> calls.also { onFind() } }, now = { time }, zone = { ZoneId.of("Asia/Shanghai") },
+            coordinator = coordinator, numberRules = { rules }, numberMatcher = PrefixLengthNumberMatcher, operationActive = { true }, activeCallId = { activeRecordingCallId },
+            findCalls = { number, at -> calls.filter { it.number == number && kotlin.math.abs(it.startedAt - at) <= 3000 }.also { onFind() } }, now = { time }, zone = { ZoneId.of("Asia/Shanghai") },
             importAudio = { call, _, validate, inspect ->
                 inspect()
                 beforeCommit(); validate()
