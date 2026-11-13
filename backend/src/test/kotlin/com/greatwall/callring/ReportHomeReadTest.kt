@@ -166,6 +166,30 @@ class ReportHomeReadTest {
 
     private fun ApiResult<*>.error() = (this as ApiResult.Failure).error
 
+    @Test fun outgoingFactsNeverEnterReportDetailsExportOrQualityEvenWithStaleCountedFlag() = runBlocking {
+        val reads = Reads()
+        reads.rows = listOf(
+            ReportCallFact(row(1), null),
+            ReportCallFact(row(2, duration = null, result = DomainResult.UNRESOLVED,
+                classification = fact.copy(calendarVerified = false)).copy(
+                direction = com.greatwall.callring.domain.model.CallDirection.OUTGOING), null),
+        )
+        var csv = ""
+        val api = service(reads, write = { _, writer ->
+            ByteArrayOutputStream().also { writer(it); csv = it.toString("UTF-8") }
+        })
+        val report = api.load(ReportQuery("31234", dates)).value()
+        assertEquals(1L, report.details.totalItems)
+        assertEquals(listOf(1L), report.details.items.map { it.id })
+        assertEquals(1L, report.totals.totalCalls)
+        assertFalse(report.quality.hasUnknownDuration)
+        assertFalse(report.quality.hasUnresolvedRecords)
+        assertFalse(report.quality.hasUnverifiedCalendar)
+        val receipt = api.exportCsv(ReportExportQuery("31234", dates), DocumentRef("content://qa/report")).value()
+        assertEquals(1L, receipt.recordCount)
+        assertFalse(csv.contains("UNRESOLVED"))
+    }
+
     @Test
     fun rangeOwnsRepeatsTotalsQualityAndDetailsHaveIndependentFilterAndLongPage() = runBlocking {
         val reads = Reads()

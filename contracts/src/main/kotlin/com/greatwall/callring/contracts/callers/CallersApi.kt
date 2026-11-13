@@ -147,6 +147,8 @@ enum class CallDecision {
     CUSTOM_RINGTONE, SYSTEM_RINGTONE_FALLBACK, SYSTEM_LOG_ONLY, UNKNOWN
 }
 
+enum class CallDirection { INCOMING, OUTGOING, UNKNOWN }
+
 enum class CallSource { SCREENING, SYSTEM_CALL_LOG, MERGED, UNKNOWN }
 
 data class CallDetail(
@@ -162,7 +164,8 @@ data class CallDetail(
     val classification: ClassificationFact,
     val originalClassification: ClassificationFact,
     val corrected: Boolean,
-    val decisionNote: String?
+    val decisionNote: String?,
+    val direction: CallDirection = CallDirection.INCOMING,
 )
 
 data class HomeData(

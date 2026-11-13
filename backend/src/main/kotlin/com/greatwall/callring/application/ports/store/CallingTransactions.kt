@@ -25,7 +25,7 @@ interface CallingReader {
 
     fun correlationCalls(number: String): List<RawCallRecord>
     /** At most two identities are enough to reject an ambiguous recording association. */
-    fun systemRecordingCalls(number: String, from: Long, to: Long): List<RawCallRecord>
+    fun systemRecordingCalls(number: String, from: Long, to: Long, direction: com.greatwall.callring.domain.model.CallDirection?): List<RawCallRecord>
 }
 
 interface CallingWriter : CallingReader {

@@ -53,7 +53,7 @@ class SilentCallEnrichmentDeviceTest : InstrumentationTestCase() {
         try {
             val connection = AiConnection(url = "https://fixture.invalid/v1", apiKey = "fixture", model = "fixture")
             runtime.store.persistSettings(RecordingSettings(recordingEnabled = true, automaticAnalysis = true, analysis = connection, transcription = connection))
-            val call = requireNotNull(runtime.service.observeIncoming(namespace, "31234", System.currentTimeMillis(), null))
+            val call = requireNotNull(runtime.service.observeIncoming(namespace, "31234", System.currentTimeMillis(), null, com.greatwall.callring.domain.calling.NumberMatchFact(0, true)))
             runtime.directory.mkdirs()
             val audio = File(runtime.directory, "fixture.wav")
             context.assets.open("ai-test.wav").use { source -> audio.outputStream().use { source.copyTo(it) } }
@@ -65,7 +65,7 @@ class SilentCallEnrichmentDeviceTest : InstrumentationTestCase() {
             assertEquals("经理", caller.selfReportedPosition); assertEquals("杭州", caller.region)
             assertFalse(caller.whitelisted); assertNull(caller.positionId)
             assertEquals(call.id, caller.identityMetadata.getValue("region").archiveId)
-            val unsupported = requireNotNull(runtime.service.observeIncoming(namespace + "-unsupported", "１２３", System.currentTimeMillis(), null))
+            val unsupported = requireNotNull(runtime.service.observeIncoming(namespace + "-unsupported", "１２３", System.currentTimeMillis(), null, com.greatwall.callring.domain.calling.NumberMatchFact(0, true)))
             val otherAudio = File(runtime.directory, "unsupported.wav")
             context.assets.open("ai-test.wav").use { source -> otherAudio.outputStream().use { source.copyTo(it) } }
             runtime.service.attachCapture(unsupported, AudioReference(otherAudio.path))
@@ -80,6 +80,7 @@ class SilentCallEnrichmentDeviceTest : InstrumentationTestCase() {
             assertEquals(2, transcriptions); assertEquals(2, analyses)
             val manual = requireNotNull(runtime.service.observeIncoming(
                 namespace + "-manual", "32345", System.currentTimeMillis(), null,
+                com.greatwall.callring.domain.calling.NumberMatchFact(0, true),
             ))
             val waiting = requireNotNull(runtime.store.get(manual.id))
             assertTrue(runtime.store.compareAndSet(manual.id, waiting.generation, waiting.copy(

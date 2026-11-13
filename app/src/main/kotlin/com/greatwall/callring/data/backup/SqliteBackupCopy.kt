@@ -55,21 +55,22 @@ internal object SqliteBackupCopy {
         check()
         SQLiteDatabase.openDatabase(candidate.absolutePath, null, SQLiteDatabase.OPEN_READWRITE).use { db ->
             val old = db.version
-            ensure(old in 1..6)
-            if (old == 6) return
+            ensure(old in 1..8)
+            if (old == 8) return
             db.beginTransaction()
             try {
                 com.greatwall.callring.data.recording.RecordingSchema.upgrade(db, old)
                 check()
-                db.version = 6
+                db.version = 8
                 db.setTransactionSuccessful()
             } finally { db.endTransaction() }
         }
     }
 
     private fun normalized(schema: Schema): Schema {
-        if (schema.type != "table" || schema.name != "callers") return schema
-        var sql = schema.sql.replace(Regex("\\s+"), "").replace("\"callers\"", "callers")
+        if (schema.type != "table") return schema
+        var sql = schema.sql.replace(Regex("\\s+"), "").replace("\"${schema.name}\"", schema.name)
+        if (schema.name != "callers") return schema.copy(sql = sql)
         listOf("self_reported_position" to "''", "region" to "''", "identity_metadata" to "'{}'", "identity_epoch" to "''").forEach { (column, default) ->
             sql = sql.replace(",$column" + "TEXTNOTNULLDEFAULT$default", "")
         }

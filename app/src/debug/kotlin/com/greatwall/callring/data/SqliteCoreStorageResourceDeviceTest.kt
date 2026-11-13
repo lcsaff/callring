@@ -46,6 +46,30 @@ class SqliteCoreStorageResourceDeviceTest : InstrumentationTestCase() {
     private fun stripCallerEnrichment(db: android.database.sqlite.SQLiteDatabase) {
         db.execSQL("DROP INDEX IF EXISTS calls_visible_number_time")
         db.setForeignKeyConstraintsEnabled(false)
+        val columns = db.rawQuery("PRAGMA table_info(calls)", null).use { rows ->
+            buildList { while (rows.moveToNext()) add(rows.getString(1)) }
+        }
+        if ("direction" in columns) {
+            val schema = db.rawQuery("SELECT sql FROM sqlite_master WHERE type='table' AND name='calls'", null).use {
+                check(it.moveToFirst()); it.getString(0)
+            }
+            val indexes = db.rawQuery("SELECT sql FROM sqlite_master WHERE tbl_name='calls' AND type IN('index','trigger') AND sql IS NOT NULL", null).use { rows ->
+                buildList { while (rows.moveToNext()) add(rows.getString(0)) }
+            }
+            val sequence = db.rawQuery("SELECT seq FROM sqlite_sequence WHERE name='calls'", null).use { if (it.moveToFirst()) it.getLong(0) else null }
+            val previous = schema.replace(Regex(",\\s*direction\\s+TEXT\\s+NOT\\s+NULL\\s+DEFAULT\\s+'INCOMING'(?:\\s+CHECK\\(direction IN\\([^)]*\\)\\))?"), "")
+            check(previous != schema)
+            db.execSQL(previous.replaceFirst(Regex("(?i)CREATE TABLE\\s+\"?calls\"?"), "CREATE TABLE legacy_direction_calls"))
+            val retained = columns.filter { it != "direction" }.joinToString(",")
+            db.execSQL("INSERT INTO legacy_direction_calls($retained) SELECT $retained FROM calls")
+            db.execSQL("DROP TABLE calls")
+            db.execSQL("ALTER TABLE legacy_direction_calls RENAME TO calls")
+            indexes.forEach(db::execSQL)
+            if (sequence != null) {
+                db.execSQL("DELETE FROM sqlite_sequence WHERE name='calls'")
+                db.execSQL("INSERT INTO sqlite_sequence(name,seq) VALUES('calls',?)", arrayOf(sequence))
+            }
+        }
         db.execSQL("CREATE TABLE legacy_callers(number TEXT PRIMARY KEY,department TEXT NOT NULL DEFAULT '',name TEXT NOT NULL DEFAULT '',position_id INTEGER REFERENCES positions(id) ON DELETE RESTRICT,whitelist INTEGER NOT NULL DEFAULT 0 CHECK(whitelist IN(0,1)))")
         db.execSQL("INSERT INTO legacy_callers(number,department,name,position_id,whitelist) SELECT number,department,name,position_id,whitelist FROM callers")
         db.execSQL("DROP TABLE callers")
@@ -259,7 +283,7 @@ class SqliteCoreStorageResourceDeviceTest : InstrumentationTestCase() {
             assertEquals(1L, provider.linkedScreenId)
         }
         fixture().use { db ->
-            assertEquals(5, db.version)
+            assertEquals(com.greatwall.callring.data.database.CORE_SCHEMA_VERSION, db.version)
             assertEquals(0L, db.scalar("SELECT COUNT(*) FROM pragma_foreign_key_check"))
         }
     }

@@ -27,9 +27,9 @@ class NumberRuleConsumerTest {
                 assertEquals(accept, assessed.matched)
                 assertEquals(accept, assessed.statisticsEnabled)
                 assertEquals(accept, f.backend.recordIncoming(number, f.now + index, CallDecision.NORMAL_RINGING) > 0)
-                assertEquals(setOf(number), f.backend.importSystemCalls(listOf(
+                assertEquals(if (accept) setOf(number) else emptySet<String>(), f.backend.importSystemCalls(listOf(
                     SystemCallRecord("log$index", number, f.now + 100 + index, 3, com.greatwall.callring.domain.model.CallResult.ANSWERED))))
-                assertEquals(accept, f.core.calls.values.single { it.logId == "log$index" }.counted)
+                assertEquals(accept, f.core.calls.values.any { it.logId == "log$index" && it.counted })
             }
         }
     }
@@ -111,10 +111,10 @@ class NumberRuleConsumerTest {
             catch (_: TimeoutException) { }
             assertEquals(base,f.core.numberRuleSettings)
             release.countDown()
-            assertEquals(setOf("31234", "812345"),importing.get(3,TimeUnit.SECONDS))
+            assertEquals(setOf("31234"),importing.get(3,TimeUnit.SECONDS))
             assertEquals(setOf("31234"),f.core.calls.values.filter { it.counted }.map { it.number }.toSet())
             saving.get(3,TimeUnit.SECONDS)
-            assertEquals(setOf("31234", "812345"),f.backend.importSystemCalls(batch("new")))
+            assertEquals(setOf("812345"),f.backend.importSystemCalls(batch("new")))
             assertEquals(setOf("812345"),f.core.calls.values.filter { it.logId?.startsWith("new") == true && it.counted }.map { it.number }.toSet())
         } finally {
             release.countDown()
@@ -141,8 +141,8 @@ class NumberRuleConsumerTest {
         assertFalse(f.backend.decisionSnapshot().evaluate("31234",f.now+200).matched)
         assertTrue(f.backend.decisionSnapshot().evaluate("31234",f.now,fact).matched)
         assertEquals(-1L,f.backend.recordIncoming("31234",f.now+200,CallDecision.NORMAL_RINGING))
-        assertEquals(setOf("081234"),f.backend.importSystemCalls(listOf(SystemCallRecord("empty","081234",f.now+300,3,com.greatwall.callring.domain.model.CallResult.ANSWERED))))
-        assertEquals(3,f.core.calls.size)
-        assertFalse(f.core.calls.values.single { it.logId == "empty" }.counted)
+        assertEquals(emptySet<String>(),f.backend.importSystemCalls(listOf(SystemCallRecord("empty","081234",f.now+300,3,com.greatwall.callring.domain.model.CallResult.ANSWERED))))
+        assertEquals(2,f.core.calls.size)
+        assertFalse(f.core.calls.values.any { it.logId == "empty" })
     }
 }

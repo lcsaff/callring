@@ -123,10 +123,12 @@ internal class BackendApiFixture(private val base: Context) : Closeable {
             ui.close()
             provider.shutdown()
             base.deleteDatabase(configuration.databaseName)
+            base.deleteDatabase(configuration.databaseName + "_recording.db")
             listOf(
                     configuration.ringPreferencesName,
                     configuration.widgetPreferencesName,
                     configuration.appearancePreferencesName,
+                    configuration.databaseName + "_recording",
                 )
                 .forEach { base.deleteSharedPreferences(it) }
             check(root.canonicalFile.parentFile == base.cacheDir.canonicalFile)
@@ -207,7 +209,8 @@ internal class FixtureContext(
         when (name) {
             configuration.ringPreferencesName -> ring
             configuration.widgetPreferencesName,
-            configuration.appearancePreferencesName -> super.getSharedPreferences(name, mode)
+            configuration.appearancePreferencesName,
+            configuration.databaseName + "_recording" -> super.getSharedPreferences(name, mode)
             else -> throw AssertionError("Unexpected preferences access")
         }
 
@@ -219,7 +222,7 @@ internal class FixtureContext(
         mode: Int,
         factory: SQLiteDatabase.CursorFactory?,
     ): SQLiteDatabase {
-        check(name == configuration.databaseName)
+        check(name == configuration.databaseName || name == configuration.databaseName + "_recording.db")
         databaseOpens.incrementAndGet()
         return super.openOrCreateDatabase(name, mode, factory)
     }
@@ -230,7 +233,7 @@ internal class FixtureContext(
         factory: SQLiteDatabase.CursorFactory?,
         errorHandler: DatabaseErrorHandler?,
     ): SQLiteDatabase {
-        check(name == configuration.databaseName)
+        check(name == configuration.databaseName || name == configuration.databaseName + "_recording.db")
         databaseOpens.incrementAndGet()
         return super.openOrCreateDatabase(name, mode, factory, errorHandler)
     }

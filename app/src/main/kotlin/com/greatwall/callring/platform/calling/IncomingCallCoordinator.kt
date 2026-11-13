@@ -86,7 +86,7 @@ class IncomingCallCoordinator(
     private val workLease: () -> Closeable = { Closeable {} },
     private val afterCompletion: () -> Unit = {},
     private val afterRecorded: (Long, String, Long) -> Unit = { _, _, _ -> },
-    private val onIncoming: ((String, String, Long, String?) -> Unit)? = null,
+    private val onIncoming: ((String, String, Long, String?, NumberMatchFact) -> Unit)? = null,
     private val onStatisticsRecorded: ((String, Long) -> Unit)? = null,
     private val onFailure: () -> Unit,
 ) : IncomingCallOperations, Closeable {
@@ -120,7 +120,7 @@ class IncomingCallCoordinator(
         val record =
             synchronized(lifetime) {
                 check(!closed) { "backend.closed" }
-                onIncoming?.let { sink -> observe { sink(sessionId, number, at, account) } }
+                if (assessment.numberMatch.matched) onIncoming?.let { sink -> observe { sink(sessionId, number, at, account, assessment.numberMatch) } }
                 if (!assessment.statisticsEnabled) CompletableFuture.completedFuture(-1L)
                 else
                     tracked(

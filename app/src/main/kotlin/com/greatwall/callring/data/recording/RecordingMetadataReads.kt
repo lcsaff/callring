@@ -91,6 +91,8 @@ internal class RecordingMetadataReads(private val db: SQLiteDatabase, private va
         counters.add("payloadMetadataRows")
         var encodedId: Long? = null; var encodedGeneration: Long? = null
         var number: String? = null; var started: Long? = null; var status: ArchiveStatus? = null
+        var direction = com.greatwall.callring.contracts.callers.CallDirection.INCOMING
+        var resetPaused = false
         var source: RecordingSource? = null; var duration: Long? = null; var next: Long? = null; var audio: String? = null
         JsonReader(InputStreamReader(PayloadInput(id, generation), Charsets.UTF_8)).use { reader ->
             reader.beginObject()
@@ -103,6 +105,8 @@ internal class RecordingMetadataReads(private val db: SQLiteDatabase, private va
                     "started" -> started = reader.nextLong()
                     "status" -> status = ArchiveStatus.valueOf(reader.nextString())
                     "source" -> source = RecordingSource.valueOf(reader.nextString())
+                    "direction" -> direction = com.greatwall.callring.contracts.callers.CallDirection.valueOf(reader.nextString())
+                    "resetPaused" -> resetPaused = reader.nextBoolean()
                     "duration" -> if (reader.peek() == JsonToken.NULL) { reader.nextNull(); duration = null } else duration = reader.nextLong()
                     "next" -> next = reader.nextLong()
                     "audio" -> if (reader.peek() == JsonToken.NULL) { reader.nextNull(); audio = null } else {
@@ -114,14 +118,14 @@ internal class RecordingMetadataReads(private val db: SQLiteDatabase, private va
             reader.endObject()
             check(reader.peek() == JsonToken.END_DOCUMENT) { "recording.invalid_archive" }
         }
-        return Minimal(RecordingArchiveMetadata(requireNotNull(encodedId), requireNotNull(encodedGeneration), requireNotNull(number), requireNotNull(started), requireNotNull(status), requireNotNull(source), duration, audio != null, requireNotNull(next)), audio)
+        return Minimal(RecordingArchiveMetadata(requireNotNull(encodedId), requireNotNull(encodedGeneration), requireNotNull(number), requireNotNull(started), requireNotNull(status), requireNotNull(source), duration, audio != null, requireNotNull(next), direction, resetPaused), audio)
     }
-    private fun warm(text: String): RecordingArchiveMetadata {
+    private fun warm(text: String, direction: String = "INCOMING", resetPaused: Boolean = false): RecordingArchiveMetadata {
         counters.add("projectionMetadataBytes", text.toByteArray(Charsets.UTF_8).size.toLong())
         val value = org.json.JSONObject(text)
         return RecordingArchiveMetadata(value.getLong("callId"), value.getLong("generation"), value.getString("number"),
             value.getLong("startedAtEpochMillis"), ArchiveStatus.valueOf(value.getString("status")), RecordingSource.valueOf(value.getString("source")),
-            if (value.isNull("durationMillis")) null else value.getLong("durationMillis"), value.getBoolean("audioPresent"), value.getLong("nextAttemptAt"))
+            if (value.isNull("durationMillis")) null else value.getLong("durationMillis"), value.getBoolean("audioPresent"), value.getLong("nextAttemptAt"), com.greatwall.callring.contracts.callers.CallDirection.valueOf(direction),resetPaused)
     }
     private fun cold(after: Long? = null, accept: (Minimal) -> Boolean) {
         // Missing historical projection has no searchable metadata: enumerate IDs only, then stream each source.
@@ -131,9 +135,9 @@ internal class RecordingMetadataReads(private val db: SQLiteDatabase, private va
         }
     }
     fun metadata(id: Long): RecordingArchiveMetadata? = read {
-        db.rawQuery("SELECT a.generation,p.metadata FROM archives a LEFT JOIN archive_projection p ON a.call_id=p.call_id AND a.generation=p.generation WHERE a.call_id=?", arrayOf(id.toString())).use { c ->
+        db.rawQuery("SELECT a.generation,p.metadata,p.direction,p.reset_paused FROM archives a LEFT JOIN archive_projection p ON a.call_id=p.call_id AND a.generation=p.generation WHERE a.call_id=?", arrayOf(id.toString())).use { c ->
             if (!c.moveToFirst()) null else if (!c.isNull(1)) {
-                counters.add("warmMetadataRows"); warm(c.getString(1))
+                counters.add("warmMetadataRows"); warm(c.getString(1),c.getString(2),c.getInt(3)==1)
             } else payload(id, c.getLong(0)).metadata
         }
     }

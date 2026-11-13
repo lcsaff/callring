@@ -167,7 +167,7 @@ internal class SqliteScopedReadAdapter(
                     "SELECT printf('%020d',id) entity_key,${columns.joinToString(",")} FROM calls" +
                         if (domain == AiDomain.D04)
                             " WHERE hidden=0" +
-                                (if (projection == "counted") " AND counted=1" else "")
+                                (if (projection == "counted") " AND counted=1 AND direction='INCOMING'" else "")
                         else "",
                     columns,
                     setOf(
@@ -497,7 +497,8 @@ internal class SqliteScopedReadAdapter(
         val t = table(domain, "default")
         val (filter, args) = where(t, spec.filter)
         require(spec.metric == "count")
-        val effectiveFilter = if (spec.domain == AiDomain.D05) "($filter) AND counted=1" else filter
+        val effectiveFilter = if (spec.domain == AiDomain.D05)
+            "($filter) AND counted=1 AND id IN (SELECT id FROM calls WHERE direction='INCOMING')" else filter
         if (spec.groupBy == null)
             aiObject(
                 "count" to
@@ -592,7 +593,7 @@ internal class SqliteScopedReadAdapter(
                             sql.rawQuery(
                                     QueryTag.SCOPED_ROWS,
                                     t.tables,
-                                    "SELECT number,time,counted,working,duration,result,verified FROM (${t.sql}) WHERE $filter ORDER BY number,time,id",
+                                    "SELECT number,time,counted,working,duration,result,verified FROM (${t.sql}) WHERE ($filter) AND id IN (SELECT id FROM calls WHERE direction='INCOMING') ORDER BY number,time,id",
                                     args.toTypedArray(),
                                 )
                                 .use { c ->

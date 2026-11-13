@@ -43,7 +43,7 @@ class LockedRecordingPipelineDeviceTest : InstrumentationTestCase() {
             val connection = AiConnection(url = "https://fixture.invalid/v1", apiKey = "synthetic-device-test", model = "fixture")
             runtime.store.persistSettings(RecordingSettings(recordingEnabled = true, automaticAnalysis = true,
                 transcription = connection, analysis = connection))
-            val call = requireNotNull(runtime.service.observeIncoming(namespace, "100", System.currentTimeMillis(), null))
+            val call = requireNotNull(runtime.service.observeIncoming(namespace, "100", System.currentTimeMillis(), null, com.greatwall.callring.domain.calling.NumberMatchFact(0, true)))
             assertTrue(runtime.directory.mkdirs() || runtime.directory.isDirectory)
             val audio = File(runtime.directory, "fixture.wav")
             context.assets.open("ai-test.wav").use { input -> audio.outputStream().use { input.copyTo(it) } }

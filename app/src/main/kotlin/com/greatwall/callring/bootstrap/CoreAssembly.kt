@@ -109,6 +109,9 @@ internal class CoreAssembly(
             callHistoryRecordings = CallHistoryRecordingReads { targets, cancelled ->
                 recordings().readCallHistory(targets, cancelled)
             },
+            recordingHistoryReconciler = com.greatwall.callring.application.ports.recording.RecordingHistoryReconciler { records ->
+                recordings().reconcileRetainedHistory(records,store)
+            },
             conversationProvider = { conversation().service },
             aiSettingsProvider = { command -> if (command == null) recordings().aiSettings else recordings().aiSettings.bound(command) },
             updateProvider = { update() },

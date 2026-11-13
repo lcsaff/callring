@@ -46,5 +46,6 @@ internal fun callDetail(raw: RawCallRecord, screen: RawCallRecord?): CallDetail 
         original.toContract(),
         raw.classification != original,
         screen?.decisionNote ?: raw.decisionNote,
+        CallDirection.valueOf(raw.direction.name),
     )
 }

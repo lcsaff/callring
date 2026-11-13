@@ -30,6 +30,23 @@ import java.util.UUID
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [33], manifest = Config.NONE)
 class AndroidBackupArchivePortTest {
+    @Test fun resetOpaque() = runBlocking {
+        Fixture().use { f ->
+            val call=f.graph.recordings.registrations.registerIncoming("legacy-private","*",123,null,null)
+            val old=f.graph.recordings.store.get(call.id)!!
+            f.graph.recordings.store.compareAndSet(call.id,old.generation,old.copy(generation=old.generation+1,status=ArchiveStatus.COMPLETE,transcript="retained private transcript"))
+            val reset=AndroidNumberProfileResetPort(f.context,f.graph,f.configuration,f.owner,
+                {RestoreJournal(File(f.root,"reset"),f.context.dataDir,syncDirectory={})})
+            val p=reset.preview {};reset.confirm(p.token,true){}
+            f.newGraph().use { restored ->
+                val backup=AndroidBackupArchivePort(f.context,restored,f.configuration,f.owner,f.cipher,
+                    {RestoreJournal(File(f.root,"restore-opaque"),f.context.dataDir,syncDirectory={})})
+                assertEquals(1L,backup.export(f.document,"password".toCharArray(),false){}.archives)
+                val preview=backup.preview(f.document,"password".toCharArray()){}
+                assertEquals(1L,preview.summary.archives)
+            }
+        }
+    }
     @Test fun roundTrip() = runBlocking {
         for (includeAudio in listOf(false, true)) Fixture().use { fixture ->
             val graph = fixture.graph
@@ -249,6 +266,7 @@ class AndroidBackupArchivePortTest {
             SQLiteDatabase.openDatabase(File(decoded,"recording.db").path,null,SQLiteDatabase.OPEN_READWRITE).use { db ->
                 listOf("system_recording_sources", "system_recording_inventory", "system_recording_scan").forEach { db.execSQL("DROP TABLE $it") }
                 db.execSQL("DROP INDEX recording_events_time")
+                com.greatwall.callring.data.stripDirectionForFixture(db)
                 db.version = 5
             }
             val prefs=File(decoded,"preferences.json")

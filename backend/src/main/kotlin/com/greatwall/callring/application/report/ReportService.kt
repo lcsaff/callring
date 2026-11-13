@@ -106,6 +106,8 @@ internal class ReportService(
                     true,
                 ) { fact ->
                     val raw = fact.current
+                    if (raw.direction != com.greatwall.callring.domain.model.CallDirection.INCOMING)
+                        return@visitReportCalls
                     accumulator.accept(
                         raw.time,
                         raw.counted,
@@ -133,6 +135,8 @@ internal class ReportService(
                     false,
                 ) { fact ->
                     val raw = fact.current
+                    if (raw.direction != com.greatwall.callring.domain.model.CallDirection.INCOMING)
+                        return@visitReportCalls
                     val matches =
                         when (filter) {
                             CallFilter.ALL -> true

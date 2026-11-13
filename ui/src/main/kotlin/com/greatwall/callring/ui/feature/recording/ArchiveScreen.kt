@@ -42,9 +42,11 @@ import java.time.ZoneId
                         Text(UiFormat.fullTime(call.startedAtEpochMillis, ZoneId.of(call.classification.zoneId)))
                         Text("时长：${call.durationSeconds?.let(UiFormat::duration) ?: "未知"}")
                         Text("工作分类：${UiFormat.workReason(call.classification.reason)}")
+                        Text(UiFormat.direction(call.direction))
                         Text(UiFormat.result(call.result))
                     } else if (archive != null) {
                         Text("号码：${archive.number}")
+                        Text(UiFormat.direction(archive.direction))
                         zone.data?.let { Text(UiFormat.time(archive.startedAtEpochMillis, it)) }
                     }
                 }

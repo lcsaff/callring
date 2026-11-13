@@ -27,14 +27,19 @@ internal object RecordingSchema {
     }
 
     fun upgrade(db: SQLiteDatabase, old: Int) {
-        require(old in 1..6)
+        require(old in 1..8)
         if (old < 2) {
-            db.execSQL("CREATE TABLE recording_events (id INTEGER PRIMARY KEY AUTOINCREMENT, session_id TEXT NOT NULL UNIQUE, number TEXT NOT NULL, started INTEGER NOT NULL, account TEXT)")
+            db.execSQL("CREATE TABLE recording_events (id INTEGER PRIMARY KEY AUTOINCREMENT, session_id TEXT NOT NULL UNIQUE, number TEXT NOT NULL, started INTEGER NOT NULL, account TEXT,direction TEXT NOT NULL DEFAULT 'INCOMING' CHECK(direction IN('INCOMING','OUTGOING','UNKNOWN')))")
             db.execSQL("CREATE TABLE recording_statistics_links (statistics_id INTEGER PRIMARY KEY, session_id TEXT NOT NULL)")
         }
         if (old < 3) ArchiveProjectionIndex.create(db)
         if (old < 4) ArchiveProjectionIndex.createProgress(db)
         if (old < 5) RecordingArchivePages.create(db)
         if (old < 6) SystemRecordingImports.create(db)
+        if (old in 3..6) db.execSQL("ALTER TABLE archive_projection ADD COLUMN direction TEXT NOT NULL DEFAULT 'INCOMING'")
+        if (old in 2..6) db.execSQL("ALTER TABLE recording_events ADD COLUMN direction TEXT NOT NULL DEFAULT 'INCOMING' CHECK(direction IN('INCOMING','OUTGOING','UNKNOWN'))")
+        if (old == 6) db.execSQL("ALTER TABLE system_recording_sources ADD COLUMN direction TEXT NOT NULL DEFAULT 'INCOMING' CHECK(direction IN('INCOMING','OUTGOING','UNKNOWN'))")
+        if (old < 8) RetainedRecordingHistory.create(db)
+        if (old in 3..7) db.execSQL("ALTER TABLE archive_projection ADD COLUMN reset_paused INTEGER NOT NULL DEFAULT 0")
     }
 }

@@ -1,5 +1,6 @@
 package com.greatwall.callring.ui.format
 
+import com.greatwall.callring.contracts.callers.CallDirection
 import com.greatwall.callring.contracts.callers.CallDecision
 import com.greatwall.callring.contracts.callers.CallResult
 import com.greatwall.callring.contracts.settings.PositionRelation
@@ -74,6 +75,8 @@ object UiFormat {
         CallDecision.SYSTEM_LOG_ONLY -> "仅系统记录"
         CallDecision.UNKNOWN -> "处理方式未知"
     }
+
+    fun direction(value: CallDirection): String = when (value) { CallDirection.OUTGOING -> "呼出"; CallDirection.INCOMING -> "来电"; CallDirection.UNKNOWN -> "方向待确认" }
 
     fun result(result: CallResult): String = when (result) {
         CallResult.ANSWERED -> "已接听"

@@ -21,10 +21,11 @@ class CallerEnrichmentMigrationTest {
         android.database.sqlite.SQLiteDatabase.openDatabase(context.getDatabasePath(name).path, null,
             android.database.sqlite.SQLiteDatabase.OPEN_READWRITE).use { db ->
             stripCallerEnrichmentForFixture(db)
+            com.greatwall.callring.data.stripDirectionForFixture(db)
             db.version = 3
         }
         CallringDatabase(context, name).use { helper ->
-            assertEquals(5, helper.writableDatabase.version)
+            assertEquals(6, helper.writableDatabase.version)
             helper.readableDatabase.rawQuery("SELECT name,department,whitelist,self_reported_position,region,identity_metadata FROM callers", null).use { row ->
                 assertTrue(row.moveToFirst())
                 assertEquals("李明", row.getString(0)); assertEquals("财务部", row.getString(1)); assertEquals(1, row.getInt(2))
@@ -42,6 +43,7 @@ class CallerEnrichmentMigrationTest {
             val db = helper.writableDatabase
             db.execSQL("INSERT INTO callers(number,name,region) VALUES('31234','李明','上海')")
             db.execSQL("DROP INDEX IF EXISTS calls_visible_number_time")
+            com.greatwall.callring.data.stripDirectionForFixture(db)
             db.version = 4
         }
         CallringDatabase(context, name).use { helper ->
@@ -59,13 +61,31 @@ class CallerEnrichmentMigrationTest {
         context.deleteDatabase(name)
     }
 
+    @Test fun genuineVersionFiveUpgradeRetainsExistingNumberHistoryIndex() {
+        val context = RuntimeEnvironment.getApplication()
+        val name = "direction-v5.db"
+        context.deleteDatabase(name)
+        CallringDatabase(context,name).use { helper ->
+            val db = helper.writableDatabase
+            db.execSQL("INSERT INTO callers(number,name) VALUES('31234','Retained')")
+            com.greatwall.callring.data.stripDirectionForFixture(db)
+            assertEquals(1L,android.database.DatabaseUtils.longForQuery(db,"SELECT count(*) FROM sqlite_master WHERE name='calls_visible_number_time'",null))
+            db.version = 5
+        }
+        CallringDatabase(context,name).use { helper ->
+            assertEquals(6,helper.writableDatabase.version)
+            assertEquals("Retained",android.database.DatabaseUtils.stringForQuery(helper.readableDatabase,"SELECT name FROM callers WHERE number='31234'",null))
+            assertEquals(1L,android.database.DatabaseUtils.longForQuery(helper.readableDatabase,"SELECT count(*) FROM sqlite_master WHERE name='calls_visible_number_time'",null))
+        }
+    }
+
     @Test fun freshDatabaseContainsEnrichmentFields() {
         val context = RuntimeEnvironment.getApplication()
         val name = "enrichment-fresh.db"
         context.deleteDatabase(name)
         CallringDatabase(context, name).use { helper ->
             val db = helper.writableDatabase
-            assertEquals(5, db.version)
+            assertEquals(6, db.version)
             db.execSQL("INSERT INTO callers(number,name,department) VALUES('31234','李明','财务部')")
             db.rawQuery("SELECT self_reported_position,region,identity_metadata FROM callers WHERE number='31234'", null).use {
                 assertTrue(it.moveToFirst())

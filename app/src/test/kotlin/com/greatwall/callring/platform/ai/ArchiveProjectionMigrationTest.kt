@@ -34,7 +34,8 @@ class ArchiveProjectionMigrationTest {
             db.execSQL("CREATE TABLE recording_events(id INTEGER PRIMARY KEY,session_id TEXT,number TEXT,started INTEGER,account TEXT)")
             db.execSQL("CREATE TABLE recording_statistics_links(statistics_id INTEGER PRIMARY KEY,session_id TEXT)")
             db.execSQL("INSERT INTO archives VALUES(?,?,?)",arrayOf<Any>(-1,1,RecordingJson.archive(CallArchive(-1,"999",1,generation=1,transcript=transcript)).toString()))
-            db.version=2
+            com.greatwall.callring.data.stripDirectionForFixture(db)
+            db.version = 2
         }
         AndroidRecordingStore(context,namespace, cipher, recordingVersion = { 0L }).use{store->
             val page=QueryService(listOf(store.scopedReads())).query(QuerySpec(AiDomain.D16)).requiredValue()

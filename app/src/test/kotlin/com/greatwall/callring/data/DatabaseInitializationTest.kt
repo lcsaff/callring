@@ -25,7 +25,7 @@ class DatabaseInitializationTest {
         val before = System.currentTimeMillis()
         CallringDatabase(context, "initial-facts.db").use { helper ->
             val db = helper.writableDatabase
-            assertEquals(5, db.version)
+            assertEquals(6, db.version)
             assertEquals(0L, db.scalar("SELECT COUNT(*) FROM settings"))
             assertEquals(1L, db.scalar("SELECT COUNT(*) FROM config_versions"))
             assertEquals(0L, db.scalar("SELECT effective FROM config_versions"))
@@ -73,7 +73,7 @@ class DatabaseInitializationTest {
             assertEquals(0L,db.scalar("SELECT COUNT(*) FROM sqlite_master WHERE name IN ('config_versions','calendar_years','calendar_audit')"))
         }
         CallringDatabase(context,name).use { helper ->
-            assertEquals(5, helper.writableDatabase.version)
+            assertEquals(6, helper.writableDatabase.version)
             assertEquals(1L,helper.writableDatabase.scalar("SELECT COUNT(*) FROM calendar_audit"))
         }
     }

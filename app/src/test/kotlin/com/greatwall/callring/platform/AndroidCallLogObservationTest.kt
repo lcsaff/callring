@@ -59,8 +59,17 @@ class AndroidCallLogObservationTest {
             assertTrue(failure.get() is CancellationException)
         } finally { f.release.countDown(); thread.join(3_000) }
     }
+    @Test fun sourceIncludesOutgoingFactsWithExplicitDirection() {
+        val f = Fixture()
+        f.historyRow = arrayOf("out-1", "31234", 1000L, 8L, 2, null, null)
+        val facts = f.source.read(0, 2000)
+        assertEquals(1, facts.size)
+        assertEquals(com.greatwall.callring.domain.model.CallDirection.OUTGOING, facts.single().direction)
+        assertTrue(f.selection!!.contains("IN (1,2,3,5,6,7)"))
+    }
     private class Fixture {
         var number = "31234"
+        var historyRow: Array<Any?>? = null
         var unavailable = false
         var denied = false
         var blocked = false
@@ -85,7 +94,7 @@ class AndroidCallLogObservationTest {
                     if(denied) throw SecurityException("fixture")
                     if(unavailable) return null
                     selection = selected; args = values
-                    return MatrixCursor(projection).apply { addRow(arrayOf(number)) }.also { last = it }
+                    return MatrixCursor(projection).apply { addRow(historyRow ?: arrayOf(number)) }.also { last = it }
                 }
                 override fun insert(uri: Uri, values: ContentValues?): Uri? = null
                 override fun update(uri: Uri, values: ContentValues?, selection: String?, args: Array<out String>?) = 0

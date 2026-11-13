@@ -59,7 +59,7 @@ fun SettingsOverviewScreen(
         }
         SettingsCard("系统与支持") {
             SettingRow("备份与恢复", "加密导出、校验预览与替换恢复", { onNavigate(SettingsPage.BACKUP) })
-            SettingRow("存储管理", "查看占用、预览并手动清理录音归档", { onNavigate(SettingsPage.STORAGE) })
+            SettingRow("数据管理", "查看占用、清理录音及清空全部号码档案", { onNavigate(SettingsPage.STORAGE) })
             SettingRow("运行状态与权限", "权限授权与运行诊断", { onNavigate(SettingsPage.RUNTIME) })
             if (showUpdate) {
                 SettingRow("检查更新", versionName?.let { "当前版本 $it" }, { onNavigate(SettingsPage.UPDATE) })

@@ -67,7 +67,7 @@ class IndependentRecordingRuntimeTest {
         context.contentResolver.takePersistableUriPermission(Uri.parse("content://recording-fixture/tree/root"),android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION)
         val runtime = RecordingAssembly(context, namespace, findCall = { error("statistics must not be read") },
             activeCallId = { null }, schedule = {}, storeFactory = { store }, metadataReader = { 1000L to "wav" }, operationActive = { true }, numberRules = { NumberRuleSnapshot(listOf(NumberRule.DEFAULT),0) }, numberMatcher = PrefixLengthNumberMatcher, findCalls = { _, _ -> emptyList() }, enrichment = testEnrichment, now = { scanTime })
-        val call = runtime.service.observeIncoming("folder-call", "31234", now, null)!!
+        val call = runtime.service.observeIncoming("folder-call", "31234", now, null, com.greatwall.callring.domain.calling.NumberMatchFact(0, true))!!
         val available = (runtime.service.systemRecordings() as ApiResult.Success).value
         assertEquals(listOf(displayName), available.map { it.name })
         if(paused) {
@@ -113,7 +113,7 @@ class IndependentRecordingRuntimeTest {
         store.persistSettings(RecordingSettings(recordingEnabled = true))
         val runtime = RecordingAssembly(context, "toggle_links", findCall = { error("statistics lookup") },
             activeCallId = { null }, schedule = {}, storeFactory = { store }, operationActive = { true }, numberRules = { NumberRuleSnapshot(listOf(NumberRule.DEFAULT),0) }, numberMatcher = PrefixLengthNumberMatcher, findCalls = { _, _ -> emptyList() }, enrichment = testEnrichment)
-        val call = runtime.service.observeIncoming("session", "31234", 1000, null)!!
+        val call = runtime.service.observeIncoming("session", "31234", 1000, null, com.greatwall.callring.domain.calling.NumberMatchFact(0, true))!!
         store.persistSettings(RecordingSettings(recordingEnabled = false))
         runtime.service.linkStatistics("session", 42)
         assertEquals(call, store.linkedRecording(42))
@@ -129,14 +129,14 @@ class IndependentRecordingRuntimeTest {
         store.persistSettings(RecordingSettings(recordingEnabled = true))
         val runtime = RecordingAssembly(context, "independent", findCall = { error("statistics must not be read") },
             activeCallId = { null }, schedule = {}, storeFactory = { store }, operationActive = { true }, numberRules = { NumberRuleSnapshot(listOf(NumberRule.DEFAULT),0) }, numberMatcher = PrefixLengthNumberMatcher, findCalls = { _, _ -> emptyList() }, enrichment = testEnrichment)
-        val call = requireNotNull(runtime.service.observeIncoming("session", "31234", 1000, null))
+        val call = requireNotNull(runtime.service.observeIncoming("session", "31234", 1000, null, com.greatwall.callring.domain.calling.NumberMatchFact(0, true)))
         assertTrue(call.id < 0)
         val archived = (runtime.service.getArchive(call.id) as ApiResult.Success).value!!
         assertEquals(call.id, archived.callId)
         assertEquals(listOf(archived.callId), (runtime.service.queryArchives() as ApiResult.Success).value.items.map { it.callId })
         runtime.service.discoverSystemRecordings()
         runtime.service.delete(call.id)
-        runtime.service.observeIncoming("session", "31234", 1000, null)
+        runtime.service.observeIncoming("session", "31234", 1000, null, com.greatwall.callring.domain.calling.NumberMatchFact(0, true))
         assertNull((runtime.service.getArchive(call.id) as ApiResult.Success).value)
         runtime.close()
     }
@@ -144,7 +144,7 @@ class IndependentRecordingRuntimeTest {
         val store = AndroidRecordingStore(context, "disabled_recording", cipher, recordingVersion = { 0L })
         val runtime = RecordingAssembly(context, "disabled_recording", findCall = { error("statistics lookup") },
             activeCallId = { null }, schedule = {}, storeFactory = { store }, operationActive = { true }, numberRules = { NumberRuleSnapshot(listOf(NumberRule.DEFAULT),0) }, numberMatcher = PrefixLengthNumberMatcher, findCalls = { _, _ -> emptyList() }, enrichment = testEnrichment)
-        assertNull(runtime.service.observeIncoming("session", "31234", 1000, null))
+        assertNull(runtime.service.observeIncoming("session", "31234", 1000, null, com.greatwall.callring.domain.calling.NumberMatchFact(0, true)))
         assertTrue(store.queryArchives(ArchiveListQuery()) { false }.items.isEmpty())
         runtime.close()
     }

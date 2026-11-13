@@ -165,8 +165,8 @@ internal class SqliteCoreUnitOfWork(private val db: SQLiteDatabase, private val 
 
         override fun correlationCalls(number: String) =
             callingAccess("correlationCalls") { calling.correlationCalls(number) }
-        override fun systemRecordingCalls(number: String, from: Long, to: Long) =
-            callingAccess("systemRecordingCalls") { calling.systemRecordingCalls(number,from,to) }
+        override fun systemRecordingCalls(number: String, from: Long, to: Long, direction: com.greatwall.callring.domain.model.CallDirection?) =
+            callingAccess("systemRecordingCalls") { calling.systemRecordingCalls(number,from,to,direction) }
 
         override fun ensureCallingProfile(number: String) =
             callingAccess("ensureCallingProfile") { calling.ensureCallingProfile(number) }

@@ -30,8 +30,9 @@ fun projectCoreSnapshot(
     val audits = s.audits
     val numbers = (s.profiles.keys + s.calls.values.map { it.number }).toSortedSet()
     val zone = currentSchedule(s).zoneId
-    val statistics = numbers.map { number ->
-        val calls = visible(s, number)
+    val statistics = numbers.mapNotNull { number ->
+        val calls = visible(s, number).filter { it.direction == CallDirection.INCOMING }
+        if (calls.isEmpty()) return@mapNotNull null
         val min = calls.minOfOrNull { it.startedAtEpochMillis } ?: at
         val max = calls.maxOfOrNull { it.startedAtEpochMillis } ?: at
         val range = TimeRange(min, saturatedAdd(max, 1), zone)

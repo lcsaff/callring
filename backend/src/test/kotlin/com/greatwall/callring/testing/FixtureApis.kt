@@ -91,8 +91,19 @@ object FixtureBackupApi : com.greatwall.callring.contracts.backup.BackupApi {
 }
 
 object FixtureStorageApi : com.greatwall.callring.contracts.storage.StorageManagementApi {
+ override suspend fun previewNumberProfiles(): ApiResult<com.greatwall.callring.contracts.storage.NumberProfileResetPreview> = error("unused reset")
+ override suspend fun confirmNumberProfiles(token: String, keepRecordings: Boolean): ApiResult<com.greatwall.callring.contracts.storage.NumberProfileResetReceipt> = error("unused reset")
+ override suspend fun discardNumberProfiles(token: String): ApiResult<Unit> = error("unused reset")
+
  override suspend fun inventory(): ApiResult<com.greatwall.callring.contracts.storage.StorageInventory> = error("unused")
  override suspend fun preview(selection: com.greatwall.callring.contracts.storage.ArchiveCleanupSelection): ApiResult<com.greatwall.callring.contracts.storage.ArchiveCleanupPreview> = error("unused")
  override suspend fun confirm(token: String): ApiResult<com.greatwall.callring.contracts.storage.ArchiveCleanupReceipt> = error("unused")
  override fun cancel(token: String) = Unit
 }
+
+val fixtureNumberProfileResetService = com.greatwall.callring.application.storage.NumberProfileResetService(
+ object : com.greatwall.callring.application.ports.storage.NumberProfileResetPort {
+  override fun preview(checkCancellation: () -> Unit): com.greatwall.callring.contracts.storage.NumberProfileResetPreview = error("unused reset")
+  override fun confirm(token: String, keepRecordings: Boolean, checkCancellation: () -> Unit): com.greatwall.callring.contracts.storage.NumberProfileResetReceipt = error("unused reset")
+  override fun discard(token: String) { error("unused reset") }
+ }, kotlinx.coroutines.Dispatchers.Unconfined, { true })

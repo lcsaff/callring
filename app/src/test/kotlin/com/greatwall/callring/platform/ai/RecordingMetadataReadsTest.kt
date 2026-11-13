@@ -30,6 +30,25 @@ class RecordingMetadataReadsTest {
     private val testCoordinator = com.greatwall.callring.application.coordination.BusinessRevisionCoordinator()
     private val context get() = RuntimeEnvironment.getApplication()
     private val cipher = object : RecordingCipher { override fun encrypt(value: String) = value; override fun decrypt(value: String) = value }
+    @Test fun outgoingDirectionSurvivesArchiveReopenColdMetadataAndListProjection() {
+        val namespace = "metadata-outgoing"
+        val direction = com.greatwall.callring.contracts.callers.CallDirection.OUTGOING
+        AndroidRecordingStore(context,namespace,cipher,recordingVersion={0}).use { store ->
+            assertTrue(store.compareAndSet(42,null,CallArchive(42,"31234",100,generation=1,status=ArchiveStatus.READY,direction=direction)))
+            assertEquals(direction,store.metadata(42) { false }!!.direction)
+            assertEquals(direction,store.queryArchives(ArchiveListQuery()) { false }.items.single().direction)
+        }
+        context.openOrCreateDatabase(namespace+"_recording.db",0,null).use {
+            it.execSQL("DELETE FROM archive_projection")
+            it.execSQL("UPDATE archive_list_state SET ready=0")
+        }
+        AndroidRecordingStore(context,namespace,cipher,recordingVersion={0}).use { store ->
+            assertEquals(direction,store.get(42)!!.direction)
+            assertEquals(direction,store.metadata(42) { false }!!.direction)
+            assertTrue(store.prepareSystemMatches { false })
+            assertEquals(direction,store.queryArchives(ArchiveListQuery()) { false }.items.single().direction)
+        }
+    }
     @Test fun unindexedOneThousandUnrelatedArchives() = cold(1_000)
     @Test fun unindexedTenThousandUnrelatedArchives() = cold(10_000)
     private fun cold(size: Int) {
@@ -41,6 +60,7 @@ class RecordingMetadataReadsTest {
             db.execSQL("CREATE TABLE deleted_archives(call_id INTEGER PRIMARY KEY)")
             db.execSQL("CREATE TABLE recording_events(id INTEGER PRIMARY KEY,session_id TEXT,number TEXT,started INTEGER,account TEXT)")
             db.execSQL("CREATE TABLE recording_statistics_links(statistics_id INTEGER PRIMARY KEY,session_id TEXT)")
+            com.greatwall.callring.data.stripDirectionForFixture(db)
             db.version = 2
             db.beginTransaction()
             try {

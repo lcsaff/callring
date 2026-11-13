@@ -129,12 +129,15 @@ internal fun CallHistoryRow(
                         overflow = TextOverflow.Ellipsis,
                     )
                 }
-                Text(
-                    UiFormat.fullTime(call.startedAtEpochMillis, ZoneId.of(call.classification.zoneId)),
-                    modifier = Modifier.semantics { stateDescription = workLabel },
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = workColor,
-                )
+                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Text(UiFormat.direction(call.direction), style = MaterialTheme.typography.bodyMedium)
+                    Text(
+                        UiFormat.fullTime(call.startedAtEpochMillis, ZoneId.of(call.classification.zoneId)),
+                        modifier = Modifier.semantics { stateDescription = workLabel },
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = workColor,
+                    )
+                }
             }
             IconButton(
                 onClick = { if (archiveId != null) onPlayback(archiveId, activeId ?: call.id) },

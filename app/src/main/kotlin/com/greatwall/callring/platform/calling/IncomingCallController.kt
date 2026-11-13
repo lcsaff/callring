@@ -9,7 +9,7 @@ import java.time.Clock
 class IncomingCallController(
     engine: IncomingCallEngine,
     acquireLease: () -> Closeable,
-    observeIncoming: (String, String, Long, String?) -> RecordingCall?,
+    observeIncoming: (String, String, Long, String?, com.greatwall.callring.domain.calling.NumberMatchFact) -> RecordingCall?,
     linkStatistics: (String, Long) -> Unit,
     private val session: IncomingRecordingSession,
     clock: Clock,
@@ -21,8 +21,8 @@ class IncomingCallController(
         IncomingCallCoordinator(
             engine,
             workLease = { acquireLease() },
-            onIncoming = { sessionId, number, at, account ->
-                observeIncoming(sessionId, number, at, account)?.let { call ->
+            onIncoming = { sessionId, number, at, account, match ->
+                observeIncoming(sessionId, number, at, account, match)?.let { call ->
                     session.register(call.id, call.startedAt)
                     // A fast answer can precede background persistence. Recheck this same live
                     // session once its independent identity is durable; IDLE clears it first.

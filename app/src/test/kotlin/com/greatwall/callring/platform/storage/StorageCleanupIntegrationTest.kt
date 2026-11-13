@@ -38,7 +38,7 @@ class StorageCleanupIntegrationTest {
             store.compareAndSet(id,null,CallArchive(id,"31234",id,generation=1,status=ArchiveStatus.COMPLETE,audioPath=audio.absolutePath,
                 transcript="large".repeat(100000),analysis=CallAnalysis(summary="keep body detail only")))
         }
-        val api=StorageManagementService(runtime.service,AndroidStorageInventory(context,runtime.directory),operationActive={true})
+        val api=StorageManagementService(runtime.service,AndroidStorageInventory(context,runtime.directory),com.greatwall.callring.testing.fixtureNumberProfileResetService,operationActive={true})
         val preview=(api.preview(ArchiveCleanupSelection(0,10,setOf(ArchiveStatus.COMPLETE))) as ApiResult.Success).value
         assertEquals(50L,preview.audioBytes)
         val receipt=(api.confirm(preview.token) as ApiResult.Success).value

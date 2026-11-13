@@ -32,9 +32,9 @@ object CallCorrelation {
                 while (index < opposite.size && opposite[index].time <= high && found.size < 2) {
                     val candidate = opposite[index++]
                     if (
-                        row.account == null ||
+                        row.direction == candidate.direction && (row.account == null ||
                             candidate.account == null ||
-                            row.account == candidate.account
+                            row.account == candidate.account)
                     )
                         found.add(candidate)
                 }

@@ -22,11 +22,13 @@ import com.greatwall.callring.ui.feature.update.AppUpdateViewModel
             val model: com.greatwall.callring.ui.feature.storage.StorageManagementViewModel = uiViewModel { com.greatwall.callring.ui.feature.storage.StorageManagementViewModel(api) }
             val state by model.state.collectAsStateWithLifecycle()
             val cleanup by model.cleanup.collectAsStateWithLifecycle()
+            val numberReset by model.numberReset.collectAsStateWithLifecycle()
             val summary by summaryModel.state.collectAsStateWithLifecycle()
             val zone = summary.data?.workZoneId?.let { runCatching { java.time.ZoneId.of(it) }.getOrNull() }
             LaunchedEffect(signal) { model.refresh() }
             com.greatwall.callring.ui.feature.storage.StorageManagementScreen(state, cleanup, zone, onBack,
-                { model.refresh(); summaryModel.refresh() }, model::preview, model::discardPreview, model::confirm, model::cancel)
+                { model.refresh(); summaryModel.refresh() }, model::preview, model::discardPreview, model::confirm, model::cancel,
+                numberReset,model::previewNumberProfiles,model::discardNumberProfiles,model::confirmNumberProfiles)
         }
         SettingsPage.NUMBER_RULE -> {
             val model: NumberRuleViewModel = uiViewModel { NumberRuleViewModel(api, it) }

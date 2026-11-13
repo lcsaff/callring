@@ -42,6 +42,10 @@ open class UiFakeApi(private val overlayEnabled: Boolean = false) : CallringUiAp
     override val aiSettings: AiSettingsApi = FixtureAiSettingsApi
     override val numberDeletion: NumberDeletionApi = FixtureNumberDeletionApi
     override val storage: com.greatwall.callring.contracts.storage.StorageManagementApi = object : com.greatwall.callring.contracts.storage.StorageManagementApi {
+ override suspend fun previewNumberProfiles(): ApiResult<com.greatwall.callring.contracts.storage.NumberProfileResetPreview> = error("unused reset")
+ override suspend fun confirmNumberProfiles(token: String, keepRecordings: Boolean): ApiResult<com.greatwall.callring.contracts.storage.NumberProfileResetReceipt> = error("unused reset")
+ override suspend fun discardNumberProfiles(token: String): ApiResult<Unit> = error("unused reset")
+
         override suspend fun inventory(): ApiResult<com.greatwall.callring.contracts.storage.StorageInventory> = ApiResult.Success(com.greatwall.callring.contracts.storage.StorageInventory(0,0,0,0,0))
         override suspend fun preview(selection: com.greatwall.callring.contracts.storage.ArchiveCleanupSelection): ApiResult<com.greatwall.callring.contracts.storage.ArchiveCleanupPreview> = unexpected()
         override suspend fun confirm(token: String): ApiResult<com.greatwall.callring.contracts.storage.ArchiveCleanupReceipt> = unexpected()

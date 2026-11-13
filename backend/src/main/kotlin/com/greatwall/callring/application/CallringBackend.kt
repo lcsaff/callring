@@ -63,6 +63,7 @@ class CallringBackend(
     private val commandContext: CommandContext? = null,
     private val runtimeObservations: com.greatwall.callring.application.runtime.RuntimeObservationTracker = com.greatwall.callring.application.runtime.RuntimeObservationTracker(coordinator),
     private val callHistoryRecordings: com.greatwall.callring.application.callers.CallHistoryRecordingReads,
+    private val recordingHistoryReconciler: com.greatwall.callring.application.ports.recording.RecordingHistoryReconciler,
 ) : CallringUiApi {
     override val storage get() = storageProvider()
     override val backup get() = backupProvider()
@@ -246,7 +247,7 @@ class CallringBackend(
     private fun bound(command: CommandContext) = CallringBackend(preferences, documents, runtimeProbe,
         audio, syncScheduler, clock, dispatcher, calendarSource, coordinator, coreTransactions,
         numberRecordings, operationActive, persistenceActive, conversationProvider, aiSettingsProvider,
-        updateProvider, snapshotsProvider, recordingsProvider, storageProvider, backupProvider, decisions, numberRuleState, numberMatcher, command, runtimeObservations, callHistoryRecordings)
+        updateProvider, snapshotsProvider, recordingsProvider, storageProvider, backupProvider, decisions, numberRuleState, numberMatcher, command, runtimeObservations, callHistoryRecordings, recordingHistoryReconciler)
 
     override fun commandApi(context: CommandContext): CallringUiApi = bound(context)
 
@@ -272,8 +273,15 @@ class CallringBackend(
     fun updateDecision(id: Long, decision: CallDecision) =
         incomingCalls.updateDecision(id, decision)
 
-    fun importSystemCalls(records: List<SystemCallRecord>): Set<String> =
-        callLogImports.import(records)
+    fun importSystemCalls(records: List<SystemCallRecord>): Set<String> {
+        val affected=callLogImports.import(records)
+        coordinator.guard {
+            val rules=numberRuleState.prepare(coreTransactions,persistenceActive)
+            val eligible=records.filter { rules.matches(com.greatwall.callring.domain.model.NumberIdentity.parse(it.number).normalized,numberMatcher) }
+            if(eligible.isNotEmpty())recordingHistoryReconciler.reconcile(eligible)
+        }
+        return affected
+    }
 
     fun statisticsStart(): Long = decisionQueries.statisticsStart()
 

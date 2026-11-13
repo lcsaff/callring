@@ -197,6 +197,8 @@ internal class CallerQueryService(
                 var unresolved = false
                 var unverified = false
                 reader.visitVisibleCallerCalls(n) { raw ->
+                    if (raw.direction != com.greatwall.callring.domain.model.CallDirection.INCOMING)
+                        return@visitVisibleCallerCalls
                     accumulator.accept(raw.time, raw.counted, raw.working, raw.duration, raw.result)
                     if (raw.counted) count++
                     latest = raw.id

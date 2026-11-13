@@ -14,6 +14,8 @@ The architecture guard rejects operation dispatch through numeric index/ordinal,
 
 ## Approved internal signature changes
 
+Number admission, direction and profile reset (2026-11-13): `CallDetail`, `CallArchive`, `RecordingIdentity` and archive-list rows carry an explicit `CallDirection`; legacy values default to INCOMING and newly discovered independent recordings use UNKNOWN until a unique call establishes direction. `CallArchive.resetPaused` is persisted internal processing state and is excluded from external AI views. `StorageManagementApi.previewNumberProfiles/confirmNumberProfiles/discardNumberProfiles` expose a local preview and confirmed application-only reset, with snapshot counts and an explicit recording-retention choice. Storage assembly requires a narrow reset service/port; live recording admission requires the original `NumberMatchFact`, automatic workflows require an authoritative direction resolver, and call-log import requires retained-recording reconciliation. Production and test consumers migrate together. Core schema 6 and recording schema 8 retain legacy data through the shared migration paths. The frozen external AI catalog, schemas and field shapes remain unchanged.
+
 Real-device history/import correction (2026-11-12): `CallingReader.callerDeletedAt(number: String): Long?` reads the existing deletion boundary inside the calling transaction; `CallLogSyncJobController` no longer takes a statistics-start callback because history discovery is independent of score admission. `SystemRecordingImportStore.hasConflictingSystemSource` takes the nullable canonical `RecordingCall` target to distinguish independent-file ambiguity from selecting one recording for an existing call. All production/test consumers migrate together. No public contracts, external AI schemas, stored encodings or database schema change.
 
 The same correction adds `hasConflictingSystemLink` and `releaseUnimportedSystemSource` to the internal import store for durable nearest-source selection and safe release of an uncompleted audio-free reservation. Discovery requires a cancellable narrow outgoing-call observation and supplies separate full-validation and lightweight-copy callbacks to `importAudio`; `RecordingService.importDiscovered` accepts both callbacks. `SystemRecordingScanner.withQueryCancellation` owns cancellation signals for SAF and call-log observations. These are internal implementation signatures only; current public contract inventory and AI protocol are unchanged.
@@ -201,7 +203,7 @@ Offline transcription adds the internal `RecordingApi.transcribeOffline` and `ca
     ]
   },
   "callers/CallersApi.kt": {
-    "sha256": "b5cc4876298387e3e4f78a98160f9819c07b312459791511d1abc9d98893c6f1",
+    "sha256": "3aad9ebdc2e69902dbb6329f02f929e22b7eae9be637e3e14c6f16821b8a9dd9",
     "declarations": [
       "HomeApi",
       "CallersApi",
@@ -220,6 +222,7 @@ Offline transcription adds the internal `RecordingApi.transcribeOffline` and `ca
       "WorkStatus",
       "CallResult",
       "CallDecision",
+      "CallDirection",
       "CallSource",
       "CallDetail",
       "HomeData"
@@ -278,7 +281,7 @@ Offline transcription adds the internal `RecordingApi.transcribeOffline` and `ca
     ]
   },
   "recording/RecordingApi.kt": {
-    "sha256": "c9a7e088500b9a9448618a208fe9d049fd23651f1ef51603864d39eaa253684b",
+    "sha256": "32c2b42651441cf288412ea23c8495dae7b3db955b4fd1a35155cd9cbd1d2f4a",
     "declarations": [
       "CaptureMode",
       "ArchiveStatus",
@@ -399,7 +402,7 @@ Offline transcription adds the internal `RecordingApi.transcribeOffline` and `ca
     ]
   },
   "storage/StorageManagementApi.kt": {
-    "sha256": "d715d5356ac2858666623acd40fabeb98d947d4e8e1f22fd8918323f2882d693",
+    "sha256": "30568a70005cc857483730747bffbd23299243adf4794caca5f713b4c95a50a4",
     "declarations": [
       "StorageInventory",
       "ArchiveCleanupSelection",
@@ -408,6 +411,8 @@ Offline transcription adds the internal `RecordingApi.transcribeOffline` and `ca
       "CleanupItemStatus",
       "CleanupItemReceipt",
       "ArchiveCleanupReceipt",
+      "NumberProfileResetPreview",
+      "NumberProfileResetReceipt",
       "StorageManagementApi"
     ]
   },

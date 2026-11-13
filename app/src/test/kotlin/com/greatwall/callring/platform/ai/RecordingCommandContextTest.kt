@@ -89,7 +89,7 @@ class RecordingCommandContextTest {
         provider.attachInfo(context, android.content.pm.ProviderInfo().apply { authority = "import-race"; exported = true; grantUriPermissions = true })
         ShadowContentResolver.registerProviderInternal("import-race", provider)
         val runtime = RecordingAssembly(context, "import_race", { null }, { null }, {}, { store }, metadataReader = { entered.countDown(); release.await(5, TimeUnit.SECONDS); 1000L to "wav" }, coordinator = coordinator, operationActive = { true }, numberRules = { NumberRuleSnapshot(listOf(NumberRule.DEFAULT),0) }, numberMatcher = PrefixLengthNumberMatcher, findCalls = { _, _ -> emptyList() }, enrichment = testEnrichment)
-        val call = runtime.service.observeIncoming("session", "31234", 1, null)!!
+        val call = runtime.service.observeIncoming("session", "31234", 1, null, com.greatwall.callring.domain.calling.NumberMatchFact(0, true))!!
         val importing = async(Dispatchers.IO) { runtime.service.importRecording(call.id, call.number, call.startedAt, DocumentRef("content://import-race/audio")) }
         assertTrue(entered.await(3, TimeUnit.SECONDS))
         val deleting = async(Dispatchers.IO) { runtime.service.delete(call.id) }
@@ -120,7 +120,7 @@ class RecordingCommandContextTest {
         provider.attachInfo(context, android.content.pm.ProviderInfo().apply { authority = "import-race"; exported = true; grantUriPermissions = true })
         ShadowContentResolver.registerProviderInternal("import-race", provider)
         val runtime = RecordingAssembly(context, "import_cancel", { null }, { null }, {}, { store }, metadataReader = { entered.countDown(); release.await(5, TimeUnit.SECONDS); 1000L to "wav" }, coordinator = coordinator, operationActive = { true }, numberRules = { NumberRuleSnapshot(listOf(NumberRule.DEFAULT),0) }, numberMatcher = PrefixLengthNumberMatcher, findCalls = { _, _ -> emptyList() }, enrichment = testEnrichment)
-        val call = runtime.service.observeIncoming("session", "31234", 1, null)!!
+        val call = runtime.service.observeIncoming("session", "31234", 1, null, com.greatwall.callring.domain.calling.NumberMatchFact(0, true))!!
         val importing = async(Dispatchers.IO) { runtime.service.importRecording(call.id, call.number, call.startedAt, DocumentRef("content://import-race/audio")) }
         assertTrue(entered.await(3, TimeUnit.SECONDS))
         val before = store.get(call.id)
@@ -151,7 +151,7 @@ class RecordingCommandContextTest {
         provider.attachInfo(context, android.content.pm.ProviderInfo().apply { authority = "import-race"; exported = true; grantUriPermissions = true })
         ShadowContentResolver.registerProviderInternal("import-race", provider)
         val runtime = RecordingAssembly(context, "failed_import_cas", { null }, { null }, {}, { store }, metadataReader = { 1000L to "wav" }, coordinator = coordinator, operationActive = { true }, numberRules = { NumberRuleSnapshot(listOf(NumberRule.DEFAULT),0) }, numberMatcher = PrefixLengthNumberMatcher, findCalls = { _, _ -> emptyList() }, enrichment = testEnrichment)
-        val call = runtime.service.observeIncoming("session", "31234", 1, null)!!
+        val call = runtime.service.observeIncoming("session", "31234", 1, null, com.greatwall.callring.domain.calling.NumberMatchFact(0, true))!!
         runtime.directory.mkdirs()
         val oldAudio = File(runtime.directory, "old.wav").apply { writeText("retained old audio") }
         val before = store.get(call.id)!!.copy(audioPath = oldAudio.absolutePath)

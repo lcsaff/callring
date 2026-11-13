@@ -47,6 +47,7 @@ class SqliteBackupCopyTest {
             db.execSQL("INSERT INTO facts(id,payload) VALUES(71,?)", arrayOf("中😀".repeat(100_000)))
             db.execSQL("DELETE FROM facts")
             db.execSQL("INSERT INTO facts(payload) VALUES('retained')")
+            com.greatwall.callring.data.stripDirectionForFixture(db)
             db.version = 3
         }
         val target = File(temporary.root, "copy.db")

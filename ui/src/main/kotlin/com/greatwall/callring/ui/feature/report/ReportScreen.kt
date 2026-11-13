@@ -311,6 +311,7 @@ private fun rememberReportScroll(number: String, keys: List<String>, reportReady
     Card(Modifier.fillMaxWidth().clickable { expanded = !expanded }) {
         Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
             Text(UiFormat.time(call.startedAtEpochMillis, ZoneId.of(call.classification.zoneId)), style = MaterialTheme.typography.titleSmall)
+            Text(UiFormat.direction(call.direction))
             Text(UiFormat.result(call.result), style = MaterialTheme.typography.bodyLarge)
             Text(UiFormat.duration(call.durationSeconds))
             Text(UiFormat.workReason(call.classification.reason))

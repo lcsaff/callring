@@ -42,6 +42,7 @@ internal object CallingRowCodec {
             result,
             decision,
             source,
+            direction = CallDirection.valueOf(cursor.text("direction")),
         )
     }
 
@@ -50,6 +51,7 @@ internal object CallingRowCodec {
             fun field(name: String, value: Any?, previous: Any?) {
                 if (old == null || value != previous) putAll(values(name to value))
             }
+            field("direction", row.direction.name, old?.direction?.name)
             field("number", row.number, old?.number)
             field("time", row.time, old?.time)
             field("duration", row.duration, old?.duration)

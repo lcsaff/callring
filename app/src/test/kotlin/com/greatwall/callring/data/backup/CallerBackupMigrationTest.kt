@@ -26,6 +26,7 @@ class CallerBackupMigrationTest {
         android.database.sqlite.SQLiteDatabase.openDatabase(old.path, null, android.database.sqlite.SQLiteDatabase.OPEN_READWRITE).use {
             if (oldVersion == 3) stripCallerEnrichmentForFixture(it)
             else it.execSQL("DROP INDEX calls_visible_number_time")
+            com.greatwall.callring.data.stripDirectionForFixture(it)
             it.version = oldVersion
         }
         SqliteBackupCopy.upgradeCoreCandidate(context, old)

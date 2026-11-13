@@ -64,4 +64,5 @@ data class RawCallRecord(
     val legacyResult: String? = null,
     val legacyDecision: String? = null,
     val legacySource: String? = null,
+    val direction: CallDirection = CallDirection.INCOMING,
 )
