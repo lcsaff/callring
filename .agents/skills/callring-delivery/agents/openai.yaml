@@ -1,0 +1,4 @@
+interface:
+  display_name: "普通开发收尾"
+  short_description: "完成范围内验证、提交、合并推送与 CI 确认，不自动发布新版本"
+  default_prompt: "使用 $callring-delivery 完成当前开发任务的普通收尾，按项目约定验证、提交、集成、推送并核对 CI。"

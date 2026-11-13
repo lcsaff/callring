@@ -142,6 +142,7 @@ python tools/verify_ui.py --device ADB_SERIAL
 
 ## 版本与交付
 
+- 技能按任务意图区分：普通开发收尾使用 `callring-delivery`，止于验证、提交、集成、推送与 CI，不自动递增版本或发布；只有明确要求发版或续办已授权发布时使用 `publish-release`，由其全程负责发布及必要前置步骤，不重复启动普通收尾。本地打包、Release 变体编译或单独修改版本不等于发布授权。两技能均为项目级，具体参数和约束以本文件为准。
 - 根 `version.properties` 是唯一版本来源；versionName 为 MAJOR.MINOR.PATCH，标签为 vMAJOR.MINOR.PATCH。根 Gradle 注入 app，发布工具读取同一文件；不在说明中维护另一份当前版本号。
 - 版本修改使用 `python tools/release/version_tool.py set --code N --name X.Y.Z --published-max M`。修复/小改/内部重构升 PATCH，完整新能力升 MINOR 并清 PATCH；稳定验收后进1.0，之后不兼容升 MAJOR，0.x 不兼容升 MINOR 并说明迁移影响。versionCode 为已发行最高值加1，且高于目标安装；一个 Release 按最大影响定版本。纯文档/测试/开发工具/中间检查点不升版本，已分发版本不覆盖重用。
 - Debug/Release APK 位于 `app/build/outputs/apk/debug/app-debug.apk` / `app/build/outputs/apk/release/app-release.apk`。Release 优先读取 gitignored signing.properties，缺失回退本机 debug keystore；私钥和口令不入库。当前证书 SHA-256 为 `5a901cad57f5590483f362e4752ca8f4a56197340b71d2632ded0195bf8a24b4`；v0.2 密钥已丢失，新包不能覆盖它，同包名/同签名/versionCode递增才可覆盖升级，backendQa 不作正式发行。
@@ -149,7 +150,7 @@ python tools/verify_ui.py --device ADB_SERIAL
 
 ### AI 收尾流程（按序执行）
 
-1. **定范围**：检查 `git status`，只处理本次文件，保留用户改动，同步文档并审查差异。默认提交、合入 main、推送 GitHub；用户要求打包/发版时再发布 Release。复用已有 GitHub CLI 与登录，检查 `gh auth status`。
+1. **定范围**：检查 `git status`，只处理本次文件，保留用户改动，同步文档并审查差异。默认提交、合入 main、推送 GitHub；仅在用户明确要求发版或续办已授权发布时发布 Release，本地打包不自动发布。复用已有 GitHub CLI 与登录，检查 `gh auth status`。
 2. **定版本并提交**：需发版时先查询已发布及已分发版本，按上述规则更新 `version.properties`，准备发布说明；按本次文件提交，记录源码 SHA。纯文档不升版本、不发 Release。
 3. **验证最终源码**：代码运行 `python tools/verify_backend.py`，按风险补设备验证，记录未测项；纯文档只核对内容、链接及 `git diff --check`。同一 SHA 已有完整有效证据时复用，不重复构建；源码变更后重新验证。
 4. **准备发行附件（仅发版）**：使用既有证书构建 Release；运行 `tools/release/check_workflows.py`、`tools/release/selftest.py`。用 `tools/release/generate_release_metadata.py --apk APK --out-dir STAGE` 生成独立目录内的 `callring-VERSION.apk`、`update.json`、`SHA256SUMS.txt`；用 `tools/release/verify_release.py --release-dir STAGE --tag vVERSION --published-max M --expected-cert-sha256 CERT --check-alignment` 校验版本、包名、签名、对齐、大小及摘要。VERSION 为本次版本，M 为已发行最高 versionCode，STAGE 为独立产物目录，CERT 为上述证书；APK 必须来自已验证 SHA。
