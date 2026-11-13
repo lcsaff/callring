@@ -165,6 +165,12 @@ python tools/verify_ui.py --device ADB_SERIAL
 
 ## 已有验收摘要与剩余缺口
 
+### 转写错误说明与来源分区修正（2026-11-13）
+
+修复源码 `d00d586` 的统一门通过，backend/UI/app JVM 为 474/402/515 项，零失败、错误或跳过；backend 复用有效结果，UI/app 本轮实际执行。71 项 Python 检查、双架构/契约守卫、双 lint 及全部构建门通过。四个 UI 回归和一个解码器回归均先复现失败，覆盖旧本地错误文案、无全文的在线失败归分析区、当前失败覆盖历史错误和本地重试期间抑制历史错误。生产数据未迁移或改写，旧持久错误码仅兼容显示。
+
+隔离真机 `LocalRecordingErrorsDeviceTest` 1 项通过，直接用临时无效文件执行设备真实 MediaExtractor，验证返回本地录音错误码并清理成功；未读取用户实际录音、调用模型、覆盖生产包或改变其权限。因此仅凭用户原先的通用文案仍不能确认具体录音的底层失败原因。完整门在 `app/build/qa/backend-refactor/`；红绿日志在 `ui/build/qa/transcription-error-{red,green}.log`，设备证据在 `app/build/qa/transcription-error-device/`。后续交付提交仅更新本段验收说明，生产源码不变。
+
 ### 本地转写与界面整理（2026-11-13）
 
 生产源码 `72ca185` 的统一门通过：backend/UI/app JVM 为 474/398/514 项，零失败、错误或跳过；71 项 Python 检查、架构/契约守卫、双 lint 和全部构建门通过。首轮三组 JVM 实际执行，13 项 Gradle 门除 contracts 为 NO-SOURCE、app AndroidTest APK 为 UP-TO-DATE 外均执行；同 SHA 最终复核复用有效缓存，具体状态见摘要。新增回归覆盖自动流程仅本地转写、模型互斥与暂态调度、无通话录音跳过、旧配置/归档兼容、姓名精准刷新、菜单删除确认、全文展开、错误分区及缺音频就地导入。
