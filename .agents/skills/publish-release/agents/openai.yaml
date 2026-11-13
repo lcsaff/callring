@@ -1,0 +1,4 @@
+interface:
+  display_name: "明确发版"
+  short_description: "仅在明确要求发版或续办已授权发布时执行版本、附件和远端核验"
+  default_prompt: "使用 $publish-release，依据已确认的发布目标与配置发布本次 Release，核验源码、CI、适用的标签与附件以及远端状态。"
