@@ -18,7 +18,7 @@ import com.greatwall.callring.ui.state.*
 
 @Composable fun RecordingSettingsScreen(state: LoadState<RecordingSettingsView>, mutation: MutationState,
     onBack: () -> Unit, onRefresh: () -> Unit, onEnabled: (Boolean) -> Unit, onCaptureMode: (CaptureMode) -> Unit,
-    onFolder: () -> Unit, onMicrophone: () -> Unit, importDaysDraft: String? = null, onSystemImportDays: (String) -> Unit = {}) {
+    onFolder: () -> Unit, onMicrophone: () -> Unit) {
     ScreenFrame("录音设置", onBack) {
         Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             (mutation.error ?: state.error)?.let { Text(recordingMessage(it.message), color = MaterialTheme.colorScheme.error) }
@@ -34,15 +34,8 @@ import com.greatwall.callring.ui.state.*
                 Text("麦克风权限不代表设备能录制对方声音；受系统限制，可能无声或中断。")
                 OutlinedButton(onClick = onFolder, enabled = !mutation.busy) { Text("授权系统录音目录") }
                 Text(if (!value.folderConfigured) "尚未授权目录" else "已授权系统录音目录")
-                val days = importDaysDraft ?: value.systemImportDays.toString()
-                val validDays = days.isNotEmpty() && days.all { it in '0'..'9' } && days.toIntOrNull()?.let { it > 0 } == true
-                OutlinedTextField(value = days, onValueChange = onSystemImportDays,
-                    label = { Text("系统录音自动导入天数") }, singleLine = true,
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                    isError = !validDays, supportingText = { Text(if (validDays) "没有对应通话记录的录音按此范围导入，默认 7 天" else "请输入大于 0 的整数天数") },
-                    modifier = Modifier.fillMaxWidth())
-                Text("已有通话记录会匹配全部历史录音，不受天数和当前号码规则限制；找不到则跳过。")
-                Text("自动分析与转写连接请前往 AI 设置。")
+                Text("自动匹配符合当前号码规则的全部历史通话录音；无对应通话或关联不明确时跳过。")
+                Text("录音在本地转写，自动分析开关位于 AI 设置。")
             }
         }
     }

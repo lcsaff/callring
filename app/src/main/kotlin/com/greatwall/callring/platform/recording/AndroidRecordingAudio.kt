@@ -20,10 +20,6 @@ class AndroidRecordingAudio(
     private val metadataReader: ((File) -> Pair<Long, String>)? = null,
 ) : RecordingAudioFiles, AutoCloseable {
     private val fileAccess = com.greatwall.callring.platform.ownership.OwnedFileAccess()
-    override fun ownedBytes(reference: AudioReference): Long? = runCatching { fileAccess.acquire().use {
-        val file = owned(reference)
-        if (!file.exists()) 0L else { check(file.isFile && file.canRead()); file.length() }
-    } }.getOrNull()
     private fun owned(reference: AudioReference): File = File(reference.location).canonicalFile.also {
         if (it.parentFile != directory.canonicalFile) throw IOException("recording.audio_not_owned")
     }

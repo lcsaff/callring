@@ -25,7 +25,6 @@ interface PreparedRecordingAudio : AutoCloseable {
     fun retain()
 }
 interface RecordingAudioFiles {
-    fun ownedBytes(reference: AudioReference): Long?
     fun prepareImport(document: DocumentRef, cancelled: () -> Boolean): PreparedRecordingAudio
     fun prepareCapture(reference: AudioReference): PreparedRecordingAudio
     fun deleteOwned(reference: AudioReference)

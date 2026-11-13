@@ -19,9 +19,9 @@ class ToolCompatibilityBaselineTest {
     @Test fun allDiscoverableOperationsMatchCompatibilityBaseline() {
         val registry = ToolRegistry()
         val definitions = registry.definitions
-        assertEquals(81, definitions.size)
-        assertEquals(81, definitions.map { it.name }.toSet().size)
-        assertEquals((1..72).filterNot { it in setOf(13, 63, 70, 71) }.map { "O%02d".format(it) } + (1..13).map { "X%02d".format(it) }, definitions.map { it.operationCode })
+        assertEquals(80, definitions.size)
+        assertEquals(80, definitions.map { it.name }.toSet().size)
+        assertEquals((1..72).filterNot { it in setOf(13, 63, 70, 71, 72) }.map { "O%02d".format(it) } + (1..13).map { "X%02d".format(it) }, definitions.map { it.operationCode })
         val operations = definitions.map { d ->
             aiObject(
                 "toolName" to aiString(d.name), "operationCode" to aiString(d.operationCode),
@@ -35,7 +35,7 @@ class ToolCompatibilityBaselineTest {
         }
         val golden = aiObject(
             "formatVersion" to aiNumber(1),
-            "catalogVersion" to aiString("4"),
+            "catalogVersion" to aiString("5"),
             "schemaDefaultsNote" to aiString("Registry schemas declare no JSON Schema default keywords. runtimeDefaults records omission behavior from ToolExecutor, ScopedToolReader, CapabilityCatalog and ToolBatchEngine; preserved values are not constant defaults."),
             "operations" to AiJson.Arr(operations),
         ).encode() + "\n"

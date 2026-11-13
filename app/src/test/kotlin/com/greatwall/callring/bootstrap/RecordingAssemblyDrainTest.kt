@@ -31,9 +31,8 @@ class RecordingAssemblyDrainTest {
         val client = object : AiClient {
             override fun operation(cancelled: () -> Boolean): AiClient = error("Unexpected workflow")
             override fun cancel() { cancelled.countDown() }
-            override fun transcribe(connection: AiConnection, reference: AudioReference): String = error("Unexpected transcription")
             override fun analyze(connection: AiConnection, transcript: String): CallAnalysis = error("Unexpected analysis")
-            override fun test(connection: AiConnection, transcription: Boolean) { entered.countDown(); check(release.await(5, TimeUnit.SECONDS)) }
+            override fun test(connection: AiConnection) { entered.countDown(); check(release.await(5, TimeUnit.SECONDS)) }
         }
         val assembly = RecordingAssembly(context, "root-drain", { null }, { null }, {}, storeFactory = { store }, clientFactory = { client }, operationActive = { true }, numberRules = { NumberRuleSnapshot(listOf(NumberRule.DEFAULT),0) }, numberMatcher = PrefixLengthNumberMatcher, findCalls = { _, _ -> emptyList() }, enrichment = testEnrichment)
         val api = assembly.aiSettings
@@ -53,16 +52,15 @@ class RecordingAssemblyDrainTest {
         val coordinator = com.greatwall.callring.application.coordination.BusinessRevisionCoordinator()
         val store = AndroidRecordingStore(context, "seal-drain", object : RecordingCipher { override fun encrypt(value: String) = value; override fun decrypt(value: String) = value }, recordingVersion = { coordinator.capture().values.getValue("recording") })
         val connection = AiConnection(url = "https://example.com", apiKey = "secret", model = "model")
-        store.persistSettings(RecordingSettings(automaticAnalysis = true, analysis = connection, transcription = connection))
+        store.persistSettings(RecordingSettings(automaticAnalysis = true, analysis = connection))
         val entered = CountDownLatch(1); val release = CountDownLatch(1)
         val client = object : AiClient {
             override fun operation(cancelled: () -> Boolean): AiClient = this
             override fun cancel() { release.countDown() }
-            override fun transcribe(connection: AiConnection, reference: AudioReference): String = error("Unexpected transcription")
             override fun analyze(connection: AiConnection, transcript: String): CallAnalysis {
                 entered.countDown(); check(release.await(5, TimeUnit.SECONDS)); return CallAnalysis(summary = "late")
             }
-            override fun test(connection: AiConnection, transcription: Boolean) = error("Unexpected connection test")
+            override fun test(connection: AiConnection) = error("Unexpected connection test")
         }
         val assembly = RecordingAssembly(context, "seal-drain", { null }, { null }, {}, storeFactory = { store }, coordinator = coordinator, clientFactory = { client }, operationActive = { true }, numberRules = { NumberRuleSnapshot(listOf(NumberRule.DEFAULT),0) }, numberMatcher = PrefixLengthNumberMatcher, findCalls = { _, _ -> emptyList() }, enrichment = testEnrichment)
         val workflow = assembly.workflow

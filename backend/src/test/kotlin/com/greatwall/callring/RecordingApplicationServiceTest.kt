@@ -174,21 +174,6 @@ class RecordingApplicationServiceTest {
             com.greatwall.callring.domain.recording.ParsedSystemRecording(call.number, call.startedAt), 0, 0)
     }
 
-    @Test fun cleanupOfAnotherArchivePreservesPlayingArchiveIncludingStatisticsAlias() = runBlocking {
-        val f=Fixture()
-        f.events[-3]=RecordingCall(-3,"300",3,null)
-        f.events[-4]=RecordingCall(-4,"400",4,null)
-        f.entries[-3]=CallArchive(-3,"300",3,1,status=ArchiveStatus.COMPLETE,audioPath="playing")
-        f.entries[-4]=CallArchive(-4,"400",4,1,status=ArchiveStatus.COMPLETE,audioPath="selected")
-        f.links[30]=f.events.getValue(-3)
-        f.playing=true; f.playingCallId=30
-        f.service.remove(-4,1).requiredValue()
-        assertTrue("Cleaning another target must leave active playback running",f.playing)
-        assertEquals(listOf("delete:selected"),f.effects)
-        assertTrue(f.service.remove(-3,1) is ApiResult.Failure)
-        assertTrue(f.playing); assertTrue(-3L in f.entries)
-        assertEquals(0,f.fullReads)
-    }
     @Test fun deletingAnotherArchiveDoesNotInvalidatePreparedPlayback() = runBlocking {
         val f=Fixture()
         f.events[-3]=RecordingCall(-3,"300",3,null)
@@ -200,13 +185,6 @@ class RecordingApplicationServiceTest {
         assertTrue(f.playing); assertEquals(-3L,f.playingCallId)
         assertFalse("stop" in f.effects)
         assertFalse(-4L in f.entries)
-    }
-    @Test fun captureWorkerTailKeepsCleanupExcludedAfterCallIdentityClears() {
-        val f=Fixture()
-        f.entries[3]=CallArchive(3,"31234",1,1,status=ArchiveStatus.COMPLETE)
-        assertFalse(requireNotNull(f.service.snapshot(3)).active)
-        f.capturing=true
-        assertTrue(requireNotNull(f.service.snapshot(3)).active)
     }
     @Test fun lowSpaceImportReportsSpecificFailureWithoutChangingArchive() = runBlocking {
         val f=Fixture().seed()
@@ -234,8 +212,7 @@ class RecordingApplicationServiceTest {
     @Test fun inaccessibleDirectoryCannotBlockAlreadyImportedPendingWork() {
         val f = Fixture().seed()
         f.config = f.config.copy(recordingEnabled = true, systemFolder = "content://folder", automaticAnalysis = true,
-            analysis = AiConnection(url = "https://example.test/v1", apiKey = "key", model = "model"),
-            transcription = AiConnection(url = "https://example.test/v1", apiKey = "key", model = "model"))
+            analysis = AiConnection(url = "https://example.test/v1", apiKey = "key", model = "model"))
         f.entries[-1] = f.entries.getValue(-1).copy(status = ArchiveStatus.QUEUED)
         f.failDirectory = true
         f.service.runScheduled { false }
@@ -245,8 +222,7 @@ class RecordingApplicationServiceTest {
     @Test fun offlineQueuedAudioResumesExactlyOnceWhenOnline() {
         val f = Fixture().seed()
         f.config = f.config.copy(recordingEnabled = true, automaticAnalysis = true,
-            analysis = AiConnection(url = "https://example.test/v1", apiKey = "key", model = "model"),
-            transcription = AiConnection(url = "https://example.test/v1", apiKey = "key", model = "model"))
+            analysis = AiConnection(url = "https://example.test/v1", apiKey = "key", model = "model"))
         f.entries[-1] = f.entries.getValue(-1).copy(status = ArchiveStatus.QUEUED)
         f.online = false
         f.service.runScheduled { false }
@@ -262,8 +238,7 @@ class RecordingApplicationServiceTest {
     @Test fun configurationInvalidationDoesNotDropDurableAudioProcessing() {
         val f = Fixture().seed()
         f.config = f.config.copy(recordingEnabled=true,systemFolder="content://folder",automaticAnalysis=true,
-            analysis=AiConnection(url="https://example.test/v1",apiKey="key",model="model"),
-            transcription=AiConnection(url="https://example.test/v1",apiKey="key",model="model"))
+            analysis=AiConnection(url="https://example.test/v1",apiKey="key",model="model"))
         f.entries[-1] = f.entries.getValue(-1).copy(status=ArchiveStatus.QUEUED)
         f.discoveryInvalidated = true
         f.service.runScheduled { false }
@@ -429,12 +404,12 @@ class RecordingApplicationServiceTest {
         private val client = object : AiClient {
             override fun operation(cancelled: () -> Boolean) = this
             override fun cancel() = Unit
-            override fun test(connection: AiConnection, transcription: Boolean) = Unit
-            override fun transcribe(connection: AiConnection, reference: AudioReference): String { transcriptions++; return "call text" }
+            override fun test(connection: AiConnection) = Unit
+
             override fun analyze(connection: AiConnection, transcript: String) = CallAnalysis(summary = "done")
         }
-        private val workflow = RecordingWorkflow(this, commands, client, directionResolver = { it.direction }, enrichment = testEnrichment)
-        private val ai = AiSettingsService(this, coordinator, { true }, { _, _ -> }, folderView = { error("unused") }, operationActive = { true })
+        private val workflow = RecordingWorkflow(this, commands, client, directionResolver = { it.direction }, enrichment = testEnrichment, offlineTranscriber={_,_,_->transcriptions++; com.greatwall.callring.application.ports.recording.OfflineTranscript("fixture transcript","local")})
+        private val ai = AiSettingsService(this, coordinator, { true }, { _ -> }, folderView = { error("unused") }, operationActive = { true })
         val service: RecordingService = RecordingService(this, this, ::settings, { workflow }, commands, RecordingRegistrationService(this, coordinator), ai,
             this, this, this, { legacyReads += it; legacy }, { -1 }, { scheduled += it }, coordinator, operationActive = { true }, captureBusy = { capturing }, networkAvailable = { online },
             discovery = object : SystemRecordingDiscoveryRunner {
@@ -473,7 +448,6 @@ class RecordingApplicationServiceTest {
         }
         override fun archiveStamp() = "fixture:1"
         override fun ownedAudio(callId: Long, cancelled: () -> Boolean) = entries[callId]?.audioPath?.let(::AudioReference)
-        override fun ownedBytes(reference: AudioReference): Long? = 10
         override fun queryArchives(query: ArchiveListQuery, cancelled: () -> Boolean) = ArchiveListPage(entries.values.sortedWith(compareByDescending<CallArchive> { it.startedAtEpochMillis }.thenBy { it.callId }).take(query.limit).map { ArchiveListItem(it.callId,it.generation,it.number,it.startedAtEpochMillis,it.status,it.source,it.durationMillis,it.audioPath!=null, it.analysis?.summary.orEmpty()) }, null, true)
         override fun numberMetadata(number: String, cancelled: () -> Boolean) = emptyList<NumberRecordingMetadata>()
         override fun earliestPendingAt(cancelled: () -> Boolean): Long? = null

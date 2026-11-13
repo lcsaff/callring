@@ -21,15 +21,16 @@ class LockedRecordingPipelineDeviceTest : InstrumentationTestCase() {
         var transcriptions = 0
         var analyses = 0
         val transcript = "我是测试单位的测试姓名，负责测试职位，请明天回电。"
+        val localTranscriber = OfflineTranscriber { reference, _, _ ->
+            assertTrue(File(reference.location).length() > 44)
+            transcriptions++
+            OfflineTranscript(transcript,"local-qa")
+        }
         val client = object : AiClient {
             override fun operation(cancelled: () -> Boolean) = this
             override fun cancel() = Unit
-            override fun test(connection: AiConnection, transcription: Boolean) = Unit
-            override fun transcribe(connection: AiConnection, reference: AudioReference): String {
-                assertTrue(File(reference.location).length() > 44)
-                transcriptions++
-                return transcript
-            }
+            override fun test(connection: AiConnection) = Unit
+
             override fun analyze(connection: AiConnection, transcript: String): CallAnalysis {
                 assertEquals("我是测试单位的测试姓名，负责测试职位，请明天回电。", transcript)
                 analyses++
@@ -37,12 +38,12 @@ class LockedRecordingPipelineDeviceTest : InstrumentationTestCase() {
             }
         }
         fun assembly() = RecordingAssembly(context, namespace, findCall = { error("No statistics dependency") },
-            activeCallId = { null }, schedule = {}, clientFactory = { client }, operationActive = { true }, numberRules = { NumberRuleSnapshot(listOf(NumberRule.DEFAULT),0) }, numberMatcher = PrefixLengthNumberMatcher, findCalls = { _, _ -> emptyList() }, enrichment = testEnrichment)
+            activeCallId = { null }, schedule = {}, clientFactory = { client }, offlineTranscriber = localTranscriber, operationActive = { true }, numberRules = { NumberRuleSnapshot(listOf(NumberRule.DEFAULT),0) }, numberMatcher = PrefixLengthNumberMatcher, findCalls = { _, _ -> emptyList() }, enrichment = testEnrichment)
         var runtime = assembly()
         try {
             val connection = AiConnection(url = "https://fixture.invalid/v1", apiKey = "synthetic-device-test", model = "fixture")
             runtime.store.persistSettings(RecordingSettings(recordingEnabled = true, automaticAnalysis = true,
-                transcription = connection, analysis = connection))
+                analysis = connection))
             val call = requireNotNull(runtime.service.observeIncoming(namespace, "100", System.currentTimeMillis(), null, com.greatwall.callring.domain.calling.NumberMatchFact(0, true)))
             assertTrue(runtime.directory.mkdirs() || runtime.directory.isDirectory)
             val audio = File(runtime.directory, "fixture.wav")
@@ -59,7 +60,7 @@ class LockedRecordingPipelineDeviceTest : InstrumentationTestCase() {
             runtime.close()
             runtime = assembly()
             assertEquals(archive, runtime.store.get(call.id))
-            assertEquals("synthetic-device-test", runtime.store.settings().transcription.apiKey)
+            assertEquals("synthetic-device-test", runtime.store.settings().analysis.apiKey)
             runtime.service.runScheduled { false }
             assertEquals(1, transcriptions)
             assertEquals(1, analyses)

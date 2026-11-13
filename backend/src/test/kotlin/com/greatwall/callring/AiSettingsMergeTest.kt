@@ -36,7 +36,7 @@ class AiSettingsMergeTest {
         val coordinator = BusinessRevisionCoordinator()
         var permission = true
         var networkOutsideFence = false
-        val service = AiSettingsService(settings, coordinator, { permission }, { _, _ ->
+        val service = AiSettingsService(settings, coordinator, { permission }, { _ ->
             networkOutsideFence = !Thread.holdsLock(coordinator.fence)
         }, folderView = { RecordingFolderView(null, AccessState.NOT_REQUIRED) }, operationActive = { true })
     }
@@ -44,67 +44,32 @@ class AiSettingsMergeTest {
     private fun ApiResult<*>.failure() = (this as ApiResult.Failure).error
     private fun valid() = AiConnection(url = "https://example.com/v1", model = "fixture", apiKey = "private-fixture")
 
-    @Test fun systemImportDaysUsesFieldConflictsValidationAndPreciseNoop() = runBlocking {
-        val f = Fixture()
-        val base = f.service.getRecordingView().ok()
-        assertEquals(7, base.systemImportDays)
-        val changed = f.service.patchRecording(base, RecordingSettingsPatch(systemImportDays = PatchField.Set(Int.MAX_VALUE))).ok()
-        assertEquals(Int.MAX_VALUE, changed.systemImportDays)
-        assertEquals(Int.MAX_VALUE, f.settings.current.systemImportDays)
-        assertEquals(1L, f.coordinator.marker())
-        f.service.patchRecording(changed, RecordingSettingsPatch(systemImportDays = PatchField.Set(Int.MAX_VALUE))).ok()
-        assertEquals(1, f.settings.writes)
-        val kept = f.service.patchRecording(base, RecordingSettingsPatch(recordingEnabled = PatchField.Set(true))).ok()
-        assertEquals(Int.MAX_VALUE, kept.systemImportDays)
-        assertEquals(ErrorCode.CONFLICT, f.service.patchRecording(base, RecordingSettingsPatch(systemImportDays = PatchField.Set(14))).failure().code)
-        assertEquals(ErrorCode.CONFLICT, f.service.patchCombined(base, RecordingSettingsPatch(systemImportDays = PatchField.Set(14)), f.service.getAiView().ok(), AiSettingsPatch(), LocalSecretChange.Keep, LocalSecretChange.Keep).failure().code)
-        for (invalid in listOf(0, -1, Int.MIN_VALUE)) {
-            assertEquals(ErrorCode.VALIDATION, f.service.patchRecording(kept, RecordingSettingsPatch(systemImportDays = PatchField.Set(invalid))).failure().code)
-        }
-        f.service.patchCombined(kept, RecordingSettingsPatch(systemImportDays = PatchField.Set(1)), f.service.getAiView().ok(), AiSettingsPatch(), LocalSecretChange.Keep, LocalSecretChange.Keep).ok()
-        assertEquals(1, f.settings.current.systemImportDays)
-    }
+
 
     @Test fun saveCallbackReceivesOnlyActualTransitionsIncludingFolderAndIgnoresFailure() = runBlocking {
         val f = Fixture()
         val transitions = mutableListOf<Pair<RecordingSettings, RecordingSettings>>()
-        val service = AiSettingsService(f.settings, f.coordinator, { true }, { _, _ -> },
+        val service = AiSettingsService(f.settings, f.coordinator, { true }, { _ -> },
             afterSave = { old, next -> transitions += old to next; error("scheduling.failed") },
             folderView = { RecordingFolderView(null, AccessState.NOT_REQUIRED) }, operationActive = { true })
         val base = service.getRecordingView().ok()
         service.patchRecording(base, RecordingSettingsPatch()).ok()
         assertTrue(transitions.isEmpty())
-        service.patchRecording(base, RecordingSettingsPatch(systemImportDays = PatchField.Set(14))).ok()
-        assertEquals(7, transitions.single().first.systemImportDays)
-        assertEquals(14, transitions.single().second.systemImportDays)
+        service.patchRecording(base, RecordingSettingsPatch(recordingEnabled = PatchField.Set(true))).ok()
+        assertFalse(transitions.single().first.recordingEnabled)
+        assertTrue(transitions.single().second.recordingEnabled)
         service.setSystemFolder("content://folder")
         service.setSystemFolder("content://folder")
         assertEquals(2, transitions.size)
         assertEquals("content://folder", transitions.last().second.systemFolder)
     }
 
-    @Test fun importDaysPublishesOnlyRecordingSettingsAndRepeatedValuePreservesFeedAndRevision() = runBlocking {
-        val f = Fixture()
-        val feed: com.greatwall.callring.contracts.change.ChangeFeed = object : com.greatwall.callring.contracts.change.ChangeFeed {
-            override fun snapshots() = f.coordinator.invalidations.snapshots
-        }
-        val before = feed.snapshots().value
-        val saved = f.service.patchRecording(f.service.getRecordingView().ok(), RecordingSettingsPatch(systemImportDays = PatchField.Set(30))).ok()
-        val changed = feed.snapshots().value
-        assertEquals(before.revision + 1, changed.revision)
-        assertEquals(setOf(com.greatwall.callring.contracts.change.DataDomain.RECORDING_SETTINGS), changed.domains.keys)
-        assertEquals(changed.revision, f.coordinator.lastChange(setOf("recordingConfig:systemImportDays")))
-        assertEquals(0L, f.coordinator.lastChange(setOf("ai:budget", "recordingConfig:captureMode")))
-        val repeated = f.service.patchRecording(saved, RecordingSettingsPatch(systemImportDays = PatchField.Set(30))).ok()
-        assertEquals(saved.revision, repeated.revision)
-        assertEquals(changed, feed.snapshots().value)
-        assertEquals(1, f.settings.writes)
-    }
+
 
     @Test fun platformFolderReobserveUsesExistingUriWithoutReReadingOrDecryptingConfiguration() = runBlocking {
         val settings = Settings().apply { current = current.copy(systemFolder = "content://fixture/tree") }
         val coordinator = BusinessRevisionCoordinator(); var probes = 0; var access = AccessState.GRANTED
-        val service = AiSettingsService(settings, coordinator, { true }, { _, _ -> },
+        val service = AiSettingsService(settings, coordinator, { true }, { _ -> },
             folderView = { uri -> assertEquals("content://fixture/tree", uri); probes++; RecordingFolderView("folder", access) }, operationActive = { true })
         service.reobserveFolder(); assertEquals(0, settings.reads); assertEquals(0, probes)
         service.getRecordingView().ok(); assertEquals(1, settings.reads); assertEquals(1, probes)
@@ -122,7 +87,7 @@ class AiSettingsMergeTest {
         val coordinator = BusinessRevisionCoordinator()
         var cancelProbe = false
         var probe: Job? = null
-        val service = AiSettingsService(settings, coordinator, { true }, { _, _ -> },
+        val service = AiSettingsService(settings, coordinator, { true }, { _ -> },
             folderView = {
                 assertFalse("provider I/O must remain outside the publication fence", Thread.holdsLock(coordinator.fence))
                 if (cancelProbe) probe!!.cancel()
@@ -175,7 +140,7 @@ class AiSettingsMergeTest {
         val entered = java.util.concurrent.CountDownLatch(1)
         val release = java.util.concurrent.CountDownLatch(1)
         val block = java.util.concurrent.atomic.AtomicBoolean(false)
-        val service = AiSettingsService(f.settings, f.coordinator, { true }, { _, _ -> }, folderView = {
+        val service = AiSettingsService(f.settings, f.coordinator, { true }, { _ -> }, folderView = {
             assertFalse(Thread.holdsLock(f.coordinator.fence))
             if (block.compareAndSet(true, false)) {
                 entered.countDown()
@@ -199,11 +164,11 @@ class AiSettingsMergeTest {
 
     @Test fun recordingAndCombinedAfterSaveAreBestEffortAfterCommit() = runBlocking {
         val f = Fixture()
-        val service = AiSettingsService(f.settings, f.coordinator, { true }, { _, _ -> }, afterSave = { _, _ -> error("fixture.after_save") }, folderView = { RecordingFolderView(null, AccessState.NOT_REQUIRED) }, operationActive = { true })
+        val service = AiSettingsService(f.settings, f.coordinator, { true }, { _ -> }, afterSave = { _, _ -> error("fixture.after_save") }, folderView = { RecordingFolderView(null, AccessState.NOT_REQUIRED) }, operationActive = { true })
         service.patchRecording(service.getRecordingView().ok(), RecordingSettingsPatch(recordingEnabled = PatchField.Set(true))).ok()
         assertTrue(f.settings.current.recordingEnabled)
         assertEquals(1L, f.coordinator.marker())
-        service.patchCombined(service.getRecordingView().ok(), RecordingSettingsPatch(recordingEnabled = PatchField.Set(false)), service.getAiView().ok(), AiSettingsPatch(), LocalSecretChange.Keep, LocalSecretChange.Keep).ok()
+        service.patchCombined(service.getRecordingView().ok(), RecordingSettingsPatch(recordingEnabled = PatchField.Set(false)), service.getAiView().ok(), AiSettingsPatch(), LocalSecretChange.Keep).ok()
         assertFalse(f.settings.current.recordingEnabled)
         assertEquals(2L, f.coordinator.marker())
     }
@@ -212,27 +177,23 @@ class AiSettingsMergeTest {
         val f = Fixture()
         f.settings.current = RecordingSettings(analysis = valid())
         val base = f.service.getAiView().ok()
-        f.service.patchAi(base, AiSettingsPatch(), LocalSecretChange.Replace("rotated-private"), LocalSecretChange.Keep).ok()
+        f.service.patchAi(base, AiSettingsPatch(), LocalSecretChange.Replace("rotated-private")).ok()
         assertTrue(f.service.getAiView().ok().analysis.keyConfigured)
-        assertEquals(ErrorCode.CONFLICT, f.service.patchAi(base, AiSettingsPatch(), LocalSecretChange.Replace("stale-private"), LocalSecretChange.Keep).failure().code)
-        assertEquals(ErrorCode.CONFLICT, f.service.patchAi(base, AiSettingsPatch(), LocalSecretChange.Clear, LocalSecretChange.Keep).failure().code)
+        assertEquals(ErrorCode.CONFLICT, f.service.patchAi(base, AiSettingsPatch(), LocalSecretChange.Replace("stale-private")).failure().code)
+        assertEquals(ErrorCode.CONFLICT, f.service.patchAi(base, AiSettingsPatch(), LocalSecretChange.Clear).failure().code)
         assertEquals("rotated-private", f.settings.current.analysis.apiKey)
         assertEquals(1L, f.coordinator.marker())
     }
 
     @Test fun keepUsesCurrentAndOnlySetFieldsConflictAndUnrelatedBudgetAllowsCopy() = runBlocking {
         val f = Fixture()
-        f.settings.current = RecordingSettings(analysis = valid(), transcription = valid())
+        f.settings.current = RecordingSettings(analysis = valid())
         val base = f.service.getAiView().ok()
         f.service.patchAi(base, AiSettingsPatch(analysis = ConnectionPatch(model = PatchField.Set("new")))).ok()
         val changed = f.service.patchAi(base, AiSettingsPatch(budget = PatchField.Set(ConversationBudget(65536, 4096)))).ok()
         assertEquals("new", changed.analysis.model)
         assertEquals(ErrorCode.CONFLICT, f.service.patchAi(base, AiSettingsPatch(analysis = ConnectionPatch(model = PatchField.Set("stale")))).failure().code)
-        assertEquals(ErrorCode.CONFLICT, f.service.copyConnection(AiSlot.ANALYSIS, AiSlot.TRANSCRIPTION, base.revision).failure().code)
-        val copyBase = f.service.getAiView().ok()
-        f.service.patchAi(copyBase, AiSettingsPatch(budget = PatchField.Set(ConversationBudget(32768, 4096)))).ok()
-        f.service.copyConnection(AiSlot.ANALYSIS, AiSlot.TRANSCRIPTION, copyBase.revision).ok()
-        assertEquals("new", f.settings.current.transcription.model)
+
     }
 
     @Test fun combinedFailureIsAtomicNoopRecordsCommandAndOwnCommitCanContinue() = runBlocking {
@@ -241,17 +202,17 @@ class AiSettingsMergeTest {
         val recording = f.service.getRecordingView().ok()
         val command = CommandContext("combined", f.coordinator.capture(), 1, continueOwnCommits = true) { true }
         val bound = f.service.bound(command)
-        bound.patchCombined(recording, RecordingSettingsPatch(), ai, AiSettingsPatch(), LocalSecretChange.Keep, LocalSecretChange.Keep).ok()
+        bound.patchCombined(recording, RecordingSettingsPatch(), ai, AiSettingsPatch(), LocalSecretChange.Keep).ok()
         assertEquals(0L, f.coordinator.committedMarker("combined"))
         assertEquals(0, f.settings.writes)
         f.settings.fail = true
         assertEquals(ErrorCode.STORAGE_FAILURE, bound.patchCombined(recording, RecordingSettingsPatch(recordingEnabled = PatchField.Set(true)), ai,
-            AiSettingsPatch(budget = PatchField.Set(ConversationBudget(65536, 4096))), LocalSecretChange.Keep, LocalSecretChange.Keep).failure().code)
+            AiSettingsPatch(budget = PatchField.Set(ConversationBudget(65536, 4096))), LocalSecretChange.Keep).failure().code)
         assertEquals(RecordingSettings(), f.settings.current)
         assertEquals(0L, f.coordinator.marker())
         f.settings.fail = false
         bound.patchCombined(recording, RecordingSettingsPatch(recordingEnabled = PatchField.Set(true)), ai,
-            AiSettingsPatch(budget = PatchField.Set(ConversationBudget(65536, 4096))), LocalSecretChange.Keep, LocalSecretChange.Keep).ok()
+            AiSettingsPatch(budget = PatchField.Set(ConversationBudget(65536, 4096))), LocalSecretChange.Keep).ok()
         assertEquals(1L, f.coordinator.marker())
         assertEquals(1L, f.coordinator.capture().values.getValue("aiConfig"))
         assertEquals(1L, f.coordinator.capture().values.getValue("recordingConfig"))
@@ -283,26 +244,11 @@ class AiSettingsMergeTest {
             recordingEnabled = PatchField.Set(false), captureMode = PatchField.Set(CaptureMode.MICROPHONE_EXPERIMENTAL))).failure().code)
         val writes = f.settings.writes
         assertEquals(ErrorCode.VALIDATION, f.service.patchCombined(f.service.getRecordingView().ok(), RecordingSettingsPatch(automaticAnalysis = PatchField.Set(true)),
-            f.service.getAiView().ok(), AiSettingsPatch(), LocalSecretChange.Keep, LocalSecretChange.Keep).failure().code)
+            f.service.getAiView().ok(), AiSettingsPatch(), LocalSecretChange.Keep).failure().code)
         assertEquals(writes, f.settings.writes)
         assertEquals(1L, f.coordinator.marker())
     }
 
-    @Test fun copyResetsAnalysisCompatibilityAndThinkingAndForcesTranscriptionOpenAiWithoutLeakingSecrets() = runBlocking {
-        val f = Fixture()
-        f.settings.current = RecordingSettings(analysis = valid().copy(protocol = AiProtocol.ANTHROPIC, thinkingMode = ThinkingMode.ENABLED),
-            transcription = valid(), conversationCompatibility = ConversationCompatibility.STANDARD)
-        var base = f.service.getAiView().ok()
-        val intoTranscription = f.service.copyConnection(AiSlot.ANALYSIS, AiSlot.TRANSCRIPTION, base.revision).ok()
-        assertEquals(AiProtocol.OPENAI, intoTranscription.transcription.protocol)
-        assertEquals(ThinkingMode.DISABLED, intoTranscription.transcription.thinkingMode)
-        assertEquals(ConversationCompatibility.STANDARD, intoTranscription.compatibility)
-        base = f.service.getAiView().ok()
-        val intoAnalysis = f.service.copyConnection(AiSlot.TRANSCRIPTION, AiSlot.ANALYSIS, base.revision).ok()
-        assertEquals(ConversationCompatibility.AUTO, intoAnalysis.compatibility)
-        assertEquals(ThinkingMode.DISABLED, intoAnalysis.analysis.thinkingMode)
-        assertEquals(intoAnalysis.analysis.resolvedProfile, intoAnalysis.analysis.copyToAnalysisProfile)
-        assertFalse(intoAnalysis.toString().contains("private-fixture"))
-    }
+
 
 }

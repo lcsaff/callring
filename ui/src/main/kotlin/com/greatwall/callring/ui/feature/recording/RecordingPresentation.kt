@@ -35,7 +35,6 @@ fun recordingMessage(key: String): String = when (key) {
     "ai.invalid_url" -> "服务地址须为 HTTPS，不能包含账户、查询参数或片段"
     "ai.invalid_key" -> "请填写有效 API 密钥"
     "ai.invalid_model" -> "请填写模型名称（最多 256 字）"
-    "ai.transcription_requires_openai" -> "转写仅支持 OpenAI 兼容协议"
     "recording.unavailable" -> "当前设备暂不支持录音服务"
     "recording.unverified" -> "音频质量未经验证，可能缺少一方声音"
     "recording.permission_required" -> "需要文件或麦克风访问权限，请重新授权"

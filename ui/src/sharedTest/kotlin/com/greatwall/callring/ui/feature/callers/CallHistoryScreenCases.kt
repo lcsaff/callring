@@ -84,7 +84,7 @@ internal object CallHistoryScreenCases {
         }
         compose.setContent { CallringApp(api, onCapability = {}, onPinWidget = {}, onAppSettings = {}) }
         compose.onNodeWithTag("tab-callers").performClick()
-        compose.onNodeWithText("通话记录").performClick()
+        compose.onNodeWithContentDescription("通话记录").performClick()
         compose.onNodeWithText("测试来电人 · 上海 · 顾问").assertIsDisplayed()
         compose.onNodeWithText("30001").assertDoesNotExist()
         compose.onNodeWithText("1970-01-01 00:20:00").assertIsDisplayed()
@@ -104,7 +104,7 @@ internal object CallHistoryScreenCases {
         compose.onNodeWithTag("call-history-list").performScrollToKey(15L)
         compose.onNodeWithText("30015").performClick()
         compose.onNodeWithText("时长：未知").assertIsDisplayed()
-        compose.onNodeWithText("号码：30015").assertIsDisplayed()
+        compose.onNodeWithText("30015").assertIsDisplayed()
         compose.onNodeWithText("1970-01-01 00:06:00").assertIsDisplayed()
         compose.onNodeWithText("工作分类：工作时间").assertIsDisplayed()
         compose.onNodeWithText("未接听").assertIsDisplayed()

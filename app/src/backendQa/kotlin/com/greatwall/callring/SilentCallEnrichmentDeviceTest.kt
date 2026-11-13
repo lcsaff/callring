@@ -31,13 +31,14 @@ class SilentCallEnrichmentDeviceTest : InstrumentationTestCase() {
         val namespace = "silent_${System.nanoTime()}"
         val transcript = "我是李明，在财务部工作，职位是经理，所属地区是杭州。"
         var transcriptions = 0; var analyses = 0
+        val localTranscriber = OfflineTranscriber { reference, _, _ ->
+            assertTrue(File(reference.location).length() > 44); transcriptions++; OfflineTranscript(transcript,"local-qa")
+        }
         val client = object : AiClient {
             override fun operation(cancelled: () -> Boolean) = this
             override fun cancel() = Unit
-            override fun test(connection: AiConnection, transcription: Boolean) = Unit
-            override fun transcribe(connection: AiConnection, reference: AudioReference): String {
-                assertTrue(File(reference.location).length() > 44); transcriptions++; return transcript
-            }
+            override fun test(connection: AiConnection) = Unit
+
             override fun analyze(connection: AiConnection, transcript: String): CallAnalysis {
                 analyses++
                 return CallAnalysis(name = "李明", department = "财务部", position = "经理", region = "杭州",
@@ -48,11 +49,11 @@ class SilentCallEnrichmentDeviceTest : InstrumentationTestCase() {
         val coordinator = BusinessRevisionCoordinator()
         var core = SqliteCoreStorageResource(context, "$namespace.db")
         fun assembly() = RecordingAssembly(context, namespace, { null }, { null }, {}, coordinator = coordinator,
-            clientFactory = { client }, operationActive = { true }, numberRules = { NumberRuleSnapshot(listOf(NumberRule.DEFAULT),0) }, numberMatcher = PrefixLengthNumberMatcher, findCalls = { _, _ -> emptyList() }, enrichment = CallerEnrichmentService(core.sessions, coordinator) { true })
+            clientFactory = { client }, offlineTranscriber = localTranscriber, operationActive = { true }, numberRules = { NumberRuleSnapshot(listOf(NumberRule.DEFAULT),0) }, numberMatcher = PrefixLengthNumberMatcher, findCalls = { _, _ -> emptyList() }, enrichment = CallerEnrichmentService(core.sessions, coordinator) { true })
         var runtime = assembly()
         try {
             val connection = AiConnection(url = "https://fixture.invalid/v1", apiKey = "fixture", model = "fixture")
-            runtime.store.persistSettings(RecordingSettings(recordingEnabled = true, automaticAnalysis = true, analysis = connection, transcription = connection))
+            runtime.store.persistSettings(RecordingSettings(recordingEnabled = true, automaticAnalysis = true, analysis = connection))
             val call = requireNotNull(runtime.service.observeIncoming(namespace, "31234", System.currentTimeMillis(), null, com.greatwall.callring.domain.calling.NumberMatchFact(0, true)))
             runtime.directory.mkdirs()
             val audio = File(runtime.directory, "fixture.wav")

@@ -270,9 +270,6 @@ private fun AppScaffold(
             composable("leaves") {
                 SettingsRoute(SettingsPage.LEAVES, api, settings, appearanceModel, refreshSignal, back, onCapability, onAppSettings)
             }
-            composable("positions") {
-                SettingsRoute(SettingsPage.POSITIONS, api, settings, appearanceModel, refreshSignal, back, onCapability, onAppSettings)
-            }
             SettingsPage.entries.forEach { page -> composable(UiDestination.Setting(page).route) {
                 SettingsRoute(page, api, settings, appearanceModel, refreshSignal, back, onCapability, onAppSettings,
                     startupUpdateFinished = startupUpdateFinished,

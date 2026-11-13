@@ -16,7 +16,7 @@ internal suspend fun confirmationTarget(api: CallringUiApi, operation: Operation
         OperationId.RECORDINGS_TEST_CONNECTION -> {
             val slot = AiSlot.valueOf(arguments.s("slot"))
             val settings = api.aiSettings.getAiView().requiredValue()
-            ConfirmationTarget.Connection(slot,if(slot == AiSlot.ANALYSIS) settings.analysis else settings.transcription)
+            ConfirmationTarget.Connection(slot,settings.analysis)
         }
         OperationId.RECORDINGS_DELETE -> {
             val archive = api.recordings.getArchive(arguments.l("callId")).requiredValue() ?: missing()

@@ -7,7 +7,7 @@ import com.greatwall.callring.application.conversation.query.json
 import com.greatwall.callring.application.conversation.operation.*
 import com.greatwall.callring.contracts.ai.*
 
-data class DiscoveryPage(val tools:List<OperationDefinition>,val nextCursor:String?,val complete:Boolean,val catalogVersion:String="4") {
+data class DiscoveryPage(val tools:List<OperationDefinition>,val nextCursor:String?,val complete:Boolean,val catalogVersion:String="5") {
     fun json()=aiObject("catalogVersion" to aiString(catalogVersion),"tools" to AiJson.Arr(tools.map{aiObject("id" to aiString(it.operationCode),"name" to aiString(it.name),"description" to aiString(it.description),"write" to aiBool(it.write),"schema" to it.schema)}),"nextCursor" to (nextCursor?.let(::aiString)?:AiJson.Null),"complete" to aiBool(complete))
 }
 class CapabilityCatalog(private val registry:ToolRegistry) {

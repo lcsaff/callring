@@ -126,7 +126,7 @@ class ConversationService(
             val current=connectionFingerprint(configuration)
             if(fingerprint.isNotEmpty()&&fingerprint!=current)context.clear()
             fingerprint=current
-            sanitizer=SecretRedactor(listOf(configuration.analysis.apiKey,configuration.transcription.apiKey))
+            sanitizer=SecretRedactor(listOf(configuration.analysis.apiKey))
             queries.clearObservations()
             context.begin(ConversationMessage("user",sanitizer.text(text),presentationKey=if(resuming!=null)"conversation.continue"else null))
             synchronized(lock){state.value=state.value.copy(target=sanitizer.text("${configuration.analysis.url} · ${configuration.analysis.model} · ${resolveConversationProfile(configuration.analysis,configuration.conversationCompatibility)}"))}

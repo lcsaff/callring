@@ -32,7 +32,6 @@ internal class CoreAssembly(
     private val conversation: () -> ConversationAssembly,
     private val update: () -> AppUpdateApi,
     private val backup: () -> com.greatwall.callring.contracts.backup.BackupApi,
-    private val storage: () -> com.greatwall.callring.contracts.storage.StorageManagementApi,
 ) : AutoCloseable {
     val playbackState = PlaybackStateTracker { coordinator.publishRuntime(setOf("runtime:ringtonePlayback")) }
     val playbackCommands by lazy {
@@ -115,7 +114,7 @@ internal class CoreAssembly(
             conversationProvider = { conversation().service },
             aiSettingsProvider = { command -> if (command == null) recordings().aiSettings else recordings().aiSettings.bound(command) },
             updateProvider = { update() },
-            backupProvider = backup, storageProvider = storage,
+            backupProvider = backup,
             snapshotsProvider = { conversation().snapshots },
             recordingsProvider = { command -> if (command == null) recordings().service else recordings().service.bound(command) }, persistenceActive = persistenceActive, numberMatcher = configuration.numberMatcher)
     }

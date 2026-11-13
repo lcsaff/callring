@@ -20,6 +20,15 @@ import java.util.concurrent.CancellationException
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [33], manifest = Config.NONE)
 class SystemRecordingDiscoveryTest {
+    @Test fun noVisibleCallNeverObservesOrImportsIndependentSystemAudio() {
+        Fixture("no-visible-call").use { f ->
+            f.calls = emptyList()
+            f.discovery.discover { false }; f.time += 10_000; f.discovery.discover { false }
+            assertEquals(0,f.imports)
+            assertNull(f.store.sourceBinding("a"))
+        }
+    }
+
     @Test fun sealingDuringFinalOutgoingObservationCannotRegisterSource() {
         Fixture("seal-final-outgoing").use { f ->
             f.calls = listOf(f.knownCall())
@@ -32,7 +41,7 @@ class SystemRecordingDiscoveryTest {
     }
     @Test fun sealingDuringLateLinkObservationCannotWriteStatisticsLink() {
         Fixture("seal-final-late-link").use { f ->
-            f.discovery.discover { false }; f.time += 10_000; f.discovery.discover { false }
+            f.seedLegacy()
             f.calls = listOf(f.knownCall())
             val sealAt = f.outgoingChecks + 2
             f.onOutgoing = { if (it == sealAt) f.discovery.seal() }
@@ -79,7 +88,7 @@ class SystemRecordingDiscoveryTest {
     @Test fun completedIndependentOutgoingSourceCannotLinkToLaterIncomingHistory() {
         Fixture("outgoing-late-link").use { f ->
             f.files[0] = f.files.single().copy(file = f.files.single().file.copy(name = "31234_20261104120008.mp3"))
-            f.discovery.discover { false }; f.time += 10_000; f.discovery.discover { false }
+            f.seedLegacy()
             assertEquals(1, f.imports)
             f.calls = listOf(f.knownCall()); f.outgoingCloser = true
             f.discovery.discover { false }
@@ -91,7 +100,7 @@ class SystemRecordingDiscoveryTest {
             val file = f.files.single().file
             f.files[0] = ScannedSystemRecording("a", file.copy(name = "31234_20261104120036.mp3"))
             f.files += ScannedSystemRecording("z", file.copy(uri = "content://z", name = "31234_20261104120008.mp3"))
-            f.discovery.discover { false }; f.time += 10_000; f.discovery.discover { false }
+            f.seedLegacy()
             assertEquals(2, f.imports)
             val nearest = f.store.sourceBinding("z")!!.id
             f.calls = listOf(f.knownCall())
@@ -214,13 +223,14 @@ class SystemRecordingDiscoveryTest {
     }
     @Test fun historicalFileWithoutExistingCallIsSkipped() {
         Fixture("history-unmatched").use { f ->
+            f.calls = emptyList()
             f.time += 90L * 86_400_000
             f.discovery.discover { false }; f.time += 10_000; f.discovery.discover { false }
             assertEquals(0, f.imports)
             assertNull(f.store.sourceBinding("a"))
         }
     }
-    @Test fun acceptedIndependentFileCanAgeOutsideWindowWhileCallIsActive() {
+    @Test fun visibleHistoricalFileCanWaitWhileCallIsActive() {
         Fixture("independent-window-edge").use { f ->
             f.time = f.knownCall().startedAt + 7L * 86_400_000 - 15_000
             f.activeRecordingCallId = 99
@@ -229,7 +239,7 @@ class SystemRecordingDiscoveryTest {
             f.time += 10_000; f.activeRecordingCallId = null
             f.discovery.discover { false }
             assertEquals(1, f.imports)
-            assertTrue(f.store.sourceBinding("a")!!.id < 0)
+            assertEquals(42L,f.store.sourceBinding("a")!!.id)
         }
     }
     @Test fun historicalTargetRemovedAfterEnumerationCannotCreateIndependentArchive() {
@@ -279,7 +289,7 @@ class SystemRecordingDiscoveryTest {
             f.discovery.discover { false }
             assertEquals(1, f.imports)
             val id = f.store.sourceBinding("a")!!.id
-            assertTrue(id < 0)
+            assertEquals(42L,id)
             f.discovery.discover { false }
             assertEquals(1, f.imports)
             f.store.delete(id)
@@ -311,7 +321,7 @@ class SystemRecordingDiscoveryTest {
             assertEquals(0, f.imports); assertNull(f.store.sourceBinding("a"))
         }
     }
-    @Test fun outOfWindowAndFutureFilesNeverReachCopy() {
+    @Test fun filesWithoutMatchingVisibleCallsNeverReachCopy() {
         Fixture("window").use { f ->
             f.files.clear()
             f.files += ScannedSystemRecording("old", RecordingFile("content://old", "示例(31234)_20261001120000.mp3", 1, 128))
@@ -340,7 +350,7 @@ class SystemRecordingDiscoveryTest {
     }
     @Test fun lateStatisticsLinkDoesNotDependOnCurrentWindowOrFilePresence() {
         Fixture("late-link").use { f ->
-            f.discovery.discover { false }; f.time += 10_000; f.discovery.discover { false }
+            f.seedLegacy()
             val call = f.store.sourceBinding("a")!!
             f.files.clear(); f.time += 30L * 86_400_000
             f.calls = listOf(call.copy(id=42))
@@ -412,6 +422,7 @@ class SystemRecordingDiscoveryTest {
             f.discovery.discover { false }; f.time += 10_000; f.discovery.discover { false }
             assertNull(f.store.sourceBinding("a")); assertEquals(0,f.imports)
             f.installRules(listOf(NumberRule("00",5),NumberRule("31",5)))
+            f.calls = listOf(f.knownCall(),f.knownCall().copy(id=43,number="00123"))
             f.files += ScannedSystemRecording("leading-zero",RecordingFile("content://zero","示例(00123)_20261104120000.mp3",1,128))
             f.files += ScannedSystemRecording("wrong-prefix",RecordingFile("content://prefix","示例(12345)_20261104120000.mp3",1,128))
             f.files += ScannedSystemRecording("wrong-length",RecordingFile("content://length","示例(312345)_20261104120000.mp3",1,128))
@@ -455,7 +466,7 @@ class SystemRecordingDiscoveryTest {
     }
     @Test fun independentRecordingConfirmedOutgoingUpdatesEveryCanonicalIdentity() {
         Fixture("late-outgoing").use { f ->
-            f.discovery.discover { false }; f.time += 10_000; f.discovery.discover { false }
+            f.seedLegacy()
             val independent = checkNotNull(f.store.sourceBinding("a"))
             assertEquals(com.greatwall.callring.domain.model.CallDirection.UNKNOWN, independent.direction)
             f.calls = listOf(f.knownCall().copy(direction = com.greatwall.callring.domain.model.CallDirection.OUTGOING))
@@ -489,7 +500,7 @@ class SystemRecordingDiscoveryTest {
     }
     @Test fun uniqueIncomingConfirmationQueuesOnlyUnpausedIndependentAudio() {
         for (paused in listOf(false,true)) Fixture("incoming-confirm-$paused").use { f ->
-            f.discovery.discover { false }; f.time += 10_000; f.discovery.discover { false }
+            f.seedLegacy()
             val id = f.store.sourceBinding("a")!!.id
             if (paused) {
                 val archive = f.store.get(id)!!
@@ -516,7 +527,7 @@ class SystemRecordingDiscoveryTest {
         var beforeCommit: () -> Unit = {}
         var enumerationFailure = false
         var scanEnd: () -> Unit = {}
-        var calls = emptyList<com.greatwall.callring.domain.calling.RecordingCall>()
+        var calls = listOf(knownCall())
         fun knownCall() = RecordingCall(42, "31234", Instant.parse("2026-11-04T04:00:00Z").toEpochMilli(), null)
         var onFind: () -> Unit = {}
         var revision = 0L
@@ -531,6 +542,17 @@ class SystemRecordingDiscoveryTest {
         val files = mutableListOf(ScannedSystemRecording("a", RecordingFile("content://a", "示例(31234)_20261104120000.mp3", 1, 128)))
         val cipher = object : RecordingCipher { override fun encrypt(value: String) = value; override fun decrypt(value: String) = value.also { decryptions++ } }
         val store = AndroidRecordingStore(RuntimeEnvironment.getApplication(), "discovery-$name", cipher) { 0 }
+        fun seedLegacy() {
+            calls = emptyList()
+            files.forEach { entry ->
+                val parsed = checkNotNull(com.greatwall.callring.domain.recording.SystemRecordingNameParser.parse(entry.file.name,ZoneId.of("Asia/Shanghai")))
+                val registered = store.seedLegacySystemSource(entry.sourceKey,parsed) {
+                    CallArchive(it.id,it.number,it.startedAt,generation=1,status=ArchiveStatus.READY,audioPath="owned",direction=com.greatwall.callring.contracts.callers.CallDirection.UNKNOWN)
+                }
+                store.completeSystemSource(entry.sourceKey)
+                imports++
+            }
+        }
         private val scan = object : SystemRecordingScanPort {
             override fun scan(folder: String, cancelled: () -> Boolean, visit: (ScannedSystemRecording) -> Unit) {
                 files.forEach { if(cancelled()) throw CancellationException(); visit(it) }

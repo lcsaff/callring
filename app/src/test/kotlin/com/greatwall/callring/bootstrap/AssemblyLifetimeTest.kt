@@ -267,7 +267,6 @@ class AssemblyLifetimeTest {
             bound.settings.saveAppearance(appearance.copy(colorMode = ColorMode.DARK)),
             bound.widgets.saveBinding(9, "31234"),
             settings.patchRecording(recording, RecordingSettingsPatch(recordingEnabled = PatchField.Set(true))),
-            settings.copyConnection(AiSlot.ANALYSIS, AiSlot.TRANSCRIPTION, ai.revision),
             ringtone.setEnabled(false), ringtone.restoreBuiltIn(), ringtone.startPreview(),
             runtime.requestCallLogSync(),
         )

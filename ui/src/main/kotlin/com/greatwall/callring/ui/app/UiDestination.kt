@@ -15,7 +15,6 @@ sealed class UiDestination(val route: String) {
     data object Conversation : UiDestination("conversation")
     data object Lookup : UiDestination("lookup")
     data object Leaves : UiDestination("leaves")
-    data object Positions : UiDestination("positions")
     data object Setup : UiDestination("setup")
     data class EditCaller(val number: String? = null, val field: CallerProfileField? = null) : UiDestination(
         "edit?number=${number?.encoded().orEmpty()}" + (field?.let { "&field=${it.name}" } ?: ""),
@@ -35,7 +34,6 @@ sealed class UiDestination(val route: String) {
             "edit" -> EditCaller(number?.takeIf { it.isNotBlank() })
             "lookup" -> Lookup
             "leaves" -> Leaves
-            "positions" -> Positions
             "setup" -> Setup
             "setting" -> SettingsPage.entries.firstOrNull { it.name == page }?.let(::Setting) ?: Settings
             else -> Home

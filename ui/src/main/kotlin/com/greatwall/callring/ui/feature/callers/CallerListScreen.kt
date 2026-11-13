@@ -8,7 +8,7 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import com.greatwall.callring.ui.designsystem.components.pagerGesturePriority
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.List
+import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
@@ -28,13 +28,12 @@ import androidx.compose.ui.platform.testTag
     state: LoadState<Page<CallerProfile>>, query: CallerSearch, check: NumberCheck?,
     onSearch: (String) -> Unit, onPage: (Int) -> Unit, onRetry: () -> Unit,
     onAdd: () -> Unit, onCaller: (String) -> Unit, onReport: (String) -> Unit,
-    onPositions: () -> Unit = {}, onHistory: () -> Unit = {},
+    onHistory: () -> Unit = {},
 ) {
     val focus = LocalFocusManager.current
     ScreenFrame("号码档案", compactTitle = true, actions = {
-        TextButton(onClick = onHistory) { Text("通话记录") }
-        IconButton(onClick = onPositions) {
-            Icon(Icons.Filled.List, contentDescription = "职位管理")
+        IconButton(onClick = onHistory) {
+            Icon(Icons.AutoMirrored.Filled.List, contentDescription = "通话记录")
         }
         IconButton(onClick = onAdd) {
             Icon(Icons.Filled.Add, contentDescription = "新增档案")
@@ -48,7 +47,7 @@ import androidx.compose.ui.platform.testTag
         // Any exact saved profile keeps this entry hidden; substring matches must not suppress it.
         val showReportAction = normalized != null && query.text.isNotBlank() && state.loaded && !state.loading &&
             page?.items?.none { it.number == normalized } == true
-        if (showReportAction && normalized != null) {
+        if (showReportAction) {
             TextButton(onClick = { onReport(normalized) }) { Text("查看该号码的报表") }
             Text(
                 "规范号码 $normalized · ${if (check.matchesRule) "符合规则号码" else "不符合规则号码"}",

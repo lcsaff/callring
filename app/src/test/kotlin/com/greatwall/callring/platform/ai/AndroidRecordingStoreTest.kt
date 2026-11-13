@@ -16,26 +16,21 @@ import org.robolectric.annotation.Config
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [33], manifest = Config.NONE)
 class AndroidRecordingStoreTest {
-    @Test fun thirtyImportDaysPersistAcrossStoreReopen() {
-        val settings = RecordingSettings(systemImportDays = 30)
-        AndroidRecordingStore(context, "import-days-reopen", cipher, recordingVersion = { 0L }).use {
-            it.persistSettings(settings)
-        }
-        AndroidRecordingStore(context, "import-days-reopen", cipher, recordingVersion = { 0L }).use {
-            assertEquals(settings, it.settings())
-        }
+    @Test fun legacyCloudAndImportWindowSettingsAreIgnoredWithoutLosingAnalysis() {
+        val current = RecordingSettings(automaticAnalysis=true,analysis=AiConnection(url="https://example.test/v1",apiKey="analysis-private",model="saved-analysis"))
+        val legacy = RecordingJson.settings(current).put("transcription", org.json.JSONObject().put("url","https://cloud.invalid").put("key","retired-private").put("model","old-transcriber").put("protocol","OPENAI")).put("systemImportDays",30)
+        val restored = RecordingJson.settings(legacy)
+        assertEquals(current,restored)
+        restored.validate()
+        val encoded = RecordingJson.settings(restored)
+        assertFalse(encoded.has("transcription"))
+        assertFalse(encoded.has("systemImportDays"))
+        assertFalse(encoded.toString().contains("retired-private"))
     }
 
-    @Test fun importDaysCodecDefaultsOnlyWhenMissingAndRejectsMalformedPresentValues() {
-        val settings = RecordingSettings(systemImportDays = Int.MAX_VALUE)
-        assertEquals(settings, RecordingJson.settings(RecordingJson.settings(settings)))
-        val legacy = RecordingJson.settings(settings).apply { remove("systemImportDays") }
-        assertEquals(7, RecordingJson.settings(legacy).systemImportDays)
-        for (invalid in listOf<Any>(0, -1, 2147483648L, "7", true, 1.5, org.json.JSONObject.NULL)) {
-            val json = RecordingJson.settings(settings).put("systemImportDays", invalid)
-            assertThrows(IllegalArgumentException::class.java) { RecordingJson.settings(json) }
-        }
-    }
+
+
+
 
     @Test fun ineligibleIdentityBaselineIsExplicitAndSurvivesCodec() {
         val entry = CallArchive(-91, "１２３", 1, enrichmentBaseline = CallerIdentityBaseline("", emptyMap(), eligible = false))
@@ -137,7 +132,7 @@ class AndroidRecordingStoreTest {
         val a = AndroidRecordingStore(context, "a", cipher, recordingVersion = { 0L })
         val b = AndroidRecordingStore(context, "b", cipher, recordingVersion = { 0L })
         val connection = AiConnection(url = "https://example.com/prefix/v1", apiKey = "unique-private-key", model = "custom")
-        a.persistSettings(RecordingSettings(analysis = connection, transcription = connection))
+        a.persistSettings(RecordingSettings(analysis = connection))
         assertFalse(context.getSharedPreferences("a_recording", 0).all.toString().contains("unique-private-key"))
         assertEquals("unique-private-key", AndroidRecordingStore(context, "a", cipher, recordingVersion = { 0L }).settings().analysis.apiKey)
         assertEquals("", b.settings().analysis.apiKey)

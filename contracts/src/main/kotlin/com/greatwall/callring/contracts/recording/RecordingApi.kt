@@ -75,7 +75,7 @@ interface RecordingApi {
     suspend fun getIdentity(callId: Long): ApiResult<RecordingIdentity>
     suspend fun queryArchives(query: ArchiveListQuery = ArchiveListQuery()): ApiResult<ArchiveListPage>
     suspend fun getArchive(callId: Long): ApiResult<CallArchive?>
-    suspend fun importRecording(callId: Long, number: String, startedAt: Long, document: DocumentRef, source: RecordingSource = RecordingSource.IMPORTED, offlineOnly: Boolean = false): ApiResult<CallArchive>
+    suspend fun importRecording(callId: Long, number: String, startedAt: Long, document: DocumentRef, source: RecordingSource = RecordingSource.IMPORTED): ApiResult<CallArchive>
     suspend fun transcribeOffline(callId: Long): ApiResult<Long>
     suspend fun cancelOfflineTranscription(callId: Long, runId: Long): ApiResult<Unit>
     suspend fun analyzeTranscript(callId: Long): ApiResult<Unit>

@@ -35,22 +35,21 @@ class RecordingScreensTest {
             ArchiveScreen(LoadState(loaded = true), LoadState(), MutationState(), {}, {}, { imports++ }, {}, {},
                 {}, {}, {}, {}, {}, history = LoadState(CallHistoryEntry(call, recording.value), loaded = true))
         }
-        assertHeading("通话信息")
-        compose.onNodeWithText("号码：31234").assertExists()
+        compose.onNodeWithText("31234").assertExists()
         compose.onNodeWithText("1970-01-01 08:00:00").assertExists()
         compose.onNodeWithText("时长：未知").assertExists()
         compose.onNodeWithText("工作分类：非工作时段").assertExists()
         compose.onNodeWithText("未接听").assertExists()
-        assertHeading("录音与转写")
-        compose.onNodeWithText("等待录音，尚无本次通话归档").assertExists()
-        compose.onNodeWithText("播放").assertDoesNotExist()
-        assertHeading("归档管理")
-        compose.onNodeWithText("导入音频文件").performScrollTo().performClick()
+        assertHeading("录音")
+        compose.onNodeWithText("暂无本次通话录音").assertExists()
+        compose.onNodeWithContentDescription("播放录音").assertDoesNotExist()
+        compose.onNodeWithContentDescription("更多操作").performClick()
+        compose.onNodeWithText("导入音频文件").performClick()
         compose.runOnIdle { assertEquals(1, imports) }
         compose.onNodeWithText("可导入已有录音", substring = true).assertDoesNotExist()
         compose.runOnIdle { recording.value = recording.value.copy(availability = CallArchiveAvailability.INDEXING) }
         compose.onNodeWithText("正在读取归档状态").assertExists()
-        compose.onNodeWithText("等待录音，尚无本次通话归档").assertDoesNotExist()
+        compose.onNodeWithText("暂无本次通话录音").assertDoesNotExist()
         compose.runOnIdle { recording.value = recording.value.copy(availability = CallArchiveAvailability.UNREADABLE) }
         compose.onNodeWithText("录音归档无法读取").assertExists()
     }
@@ -64,7 +63,7 @@ class RecordingScreensTest {
             ArchiveScreen(LoadState(archive.value, loaded = true), LoadState(), MutationState(), {}, {}, {}, {}, {},
                 {}, {}, { plays++ }, {}, {}, playback = playback.value, onAnalyze = { analyses++ })
         }
-        compose.onNodeWithText("播放").performScrollTo().performClick()
+        compose.onNodeWithContentDescription("播放录音").performScrollTo().performClick()
         compose.runOnIdle {
             assertEquals(1, plays)
             playback.value = MutationState(error = ApiError(ErrorCode.STORAGE_FAILURE, "recording.missing_audio"))
@@ -74,13 +73,12 @@ class RecordingScreensTest {
         compose.onNodeWithText("转为文本").assertIsEnabled()
         compose.onNodeWithText("AI 分析").assertDoesNotExist()
         compose.runOnIdle { archive.value = archive.value.copy(audioPath = null, transcript = "本地全文") }
-        assertHeading("分析与档案补全")
-        compose.onNodeWithText("播放").assertDoesNotExist()
-        compose.onNodeWithText("录音：缺少音频").assertExists()
+        assertHeading("内容分析")
+        compose.onNodeWithContentDescription("播放录音").assertDoesNotExist()
+        compose.onNodeWithText("缺少音频").assertExists()
         compose.onNodeWithText("转写：已有文字").assertDoesNotExist()
-        compose.onNodeWithText("展开转写").performScrollTo().performClick()
         compose.onNodeWithText("本地全文").assertExists()
-        compose.onNodeWithText("可能按服务商价格收费", substring = true).assertExists()
+        compose.onNodeWithText("可能产生费用", substring = true).assertExists()
         compose.runOnIdle { assertEquals(0, analyses) }
         compose.onNodeWithText("AI 分析").performScrollTo().performClick()
         compose.runOnIdle {
@@ -94,6 +92,7 @@ class RecordingScreensTest {
                 analysis = CallAnalysis(name = "张三", evidence = "我是张三", summary = "商量会议"),
                 manualAnalysisState = ManualAnalysisState.CONFIRMED)
         }
+        compose.onNodeWithText("分析依据与其他信息").performScrollTo().performClick()
         compose.onNodeWithText("自述依据：我是张三").assertExists()
         compose.onNodeWithText("已确认写入档案").assertExists()
         compose.onNodeWithText("确认写入档案").assertDoesNotExist()
@@ -106,15 +105,15 @@ class RecordingScreensTest {
         compose.setContent {
             ArchiveScreen(LoadState(CallArchive(-7, "31234", 0), loaded = true), files.value, MutationState(),
                 {}, {}, { actions += "file" }, { files.value = LoadState(listOf(file), loaded = true) },
-                { actions += it.uri }, {}, {}, {}, {}, {}, onImportOffline = { actions += "offline" })
+                { actions += it.uri }, {}, {}, {}, {}, {})
         }
-        compose.onNodeWithText("通话录音归档").assertIsDisplayed()
-        assertHeading("归档管理")
-        compose.onNodeWithText("导入音频文件").performScrollTo().performClick()
-        compose.onNodeWithText("导入用于离线转写").performScrollTo().performClick()
-        compose.onNodeWithText("选择系统录音").performScrollTo().performClick()
+        compose.onNodeWithText("录音详情").assertIsDisplayed()
+        compose.onNodeWithContentDescription("更多操作").performClick()
+        compose.onNodeWithText("导入音频文件").performClick()
+        compose.onNodeWithContentDescription("更多操作").performClick()
+        compose.onNodeWithText("选择系统录音").performClick()
         compose.onNodeWithText(file.name).performScrollTo().performClick()
-        compose.runOnIdle { assertEquals(listOf("file", "offline", file.uri), actions) }
+        compose.runOnIdle { assertEquals(listOf("file", file.uri), actions) }
     }
 
     private fun assertHeading(text: String) {
@@ -135,14 +134,13 @@ class RecordingScreensTest {
         assertEquals(1, starts)
         compose.runOnIdle { archive.value = archive.value.copy(
             offlineTranscription = OfflineTranscriptionRun(7, OfflineTranscriptionPhase.TRANSCRIBING)) }
-        compose.onNodeWithText("正在离线转写").assertExists()
-        compose.onNodeWithText("取消离线转写").performScrollTo().performClick()
+        compose.onNodeWithText("正在本地转写").assertExists()
+        compose.onNodeWithText("取消转写").performScrollTo().performClick()
         assertEquals(7L, cancelled)
         compose.runOnIdle { archive.value = archive.value.copy(
             offlineTranscription = OfflineTranscriptionRun(7, OfflineTranscriptionPhase.FAILED, "recording.silent_audio")) }
-        compose.onNodeWithText("重试离线转写").assertIsEnabled()
+        compose.onNodeWithText("重试转写").assertIsEnabled()
         compose.runOnIdle { archive.value = archive.value.copy(transcript = "本地全文", offlineTranscription = null) }
-        compose.onNodeWithText("展开转写").performScrollTo().performClick()
         compose.onNodeWithText("本地全文").assertExists()
         compose.onNodeWithText("AI 分析").assertIsEnabled()
     }
@@ -206,7 +204,7 @@ class RecordingScreensTest {
             requestedDestination = com.greatwall.callring.ui.app.UiDestination.RecordingArchives,
             onCapability = {}, onPinWidget = {}, onAppSettings = {}) }
         compose.onNodeWithText("10086").performClick()
-        compose.onNodeWithText("通话录音归档").assertIsDisplayed()
+        compose.onNodeWithText("录音详情").assertIsDisplayed()
         compose.waitUntil { requestedId != null }
         assertEquals(-91L, requestedId)
     }
@@ -235,31 +233,18 @@ class RecordingScreensTest {
         compose.runOnIdle { assertEquals(true, enabled) }
     }
 
-    @Test fun importDaysInputPreservesInvalidDraftAndExplainsRecentWindow() {
-        val draft = mutableStateOf("7")
-        val view = RecordingSettingsView(false, false, CaptureMode.SYSTEM_ONLY, false, 1)
-        compose.setContent { CallringTheme(DefaultAppearance.rememberAppearanceThemeSpec(androidx.compose.foundation.isSystemInDarkTheme())) {
-            RecordingSettingsScreen(LoadState(view, loaded = true), MutationState(), {}, {}, {}, {}, {}, {},
-                draft.value, { draft.value = it })
-        } }
-        compose.onNodeWithText("系统录音自动导入天数").performScrollTo().performTextReplacement("0")
-        compose.onNodeWithText("请输入大于 0 的整数天数").assertExists()
-        compose.onNodeWithText("已有通话记录会匹配全部历史录音，不受天数和当前号码规则限制；找不到则跳过。").assertExists()
-        compose.runOnIdle { assertEquals("0", draft.value) }
-        compose.onNodeWithText("系统录音自动导入天数").performTextReplacement("2147483647")
-        compose.onNodeWithText("没有对应通话记录的录音按此范围导入，默认 7 天").assertExists()
-    }
-
     @Test fun deletingArchiveRequiresExplicitConfirmation() {
         var deletes = 0
         compose.setContent { CallringTheme(DefaultAppearance.rememberAppearanceThemeSpec(androidx.compose.foundation.isSystemInDarkTheme())) {
             ArchiveScreen(LoadState(CallArchive(1, "10086", 0), loaded = true), LoadState(), MutationState(),
                 {}, {}, {}, {}, {}, {}, { deletes++ }, {}, {}, {})
         } }
-        compose.onNodeWithText("删除本次归档").performScrollTo().performClick()
+        compose.onNodeWithContentDescription("更多操作").performClick()
+        compose.onNodeWithText("删除本次归档").performClick()
         assertEquals(0, deletes)
         compose.onNodeWithText("取消").performClick()
         assertEquals(0, deletes)
+        compose.onNodeWithContentDescription("更多操作").performClick()
         compose.onNodeWithText("删除本次归档").performClick()
         compose.onNodeWithText("删除", useUnmergedTree = true).performClick()
         assertEquals(1, deletes)

@@ -24,22 +24,20 @@ internal class SystemRecordingImports(private val db: SQLiteDatabase) {
             db.execSQL("DELETE FROM system_recording_scan")
         }
     }
-    fun begin(signature: String, at: Long, days: Int, zone: String): SystemRecordingScan = transaction {
-        data class Previous(val generation: Long,val signature: String,val at: Long,val days: Int,val zone: String,val complete: Boolean)
-        val old = db.rawQuery("SELECT generation,signature,started,days,zone,complete FROM system_recording_scan WHERE id=1", null).use { c ->
-            if (!c.moveToFirst()) null else Previous(c.getLong(0),c.getString(1),c.getLong(2),c.getInt(3),c.getString(4),c.getInt(5)==1)
+    fun begin(signature: String, at: Long, zone: String): SystemRecordingScan = transaction {
+        data class Previous(val generation: Long,val signature: String,val at: Long,val zone: String,val complete: Boolean)
+        val old = db.rawQuery("SELECT generation,signature,started,zone,complete FROM system_recording_scan WHERE id=1", null).use { c ->
+            if (!c.moveToFirst()) null else Previous(c.getLong(0),c.getString(1),c.getLong(2),c.getString(3),c.getInt(4)==1)
         }
         val generation = (old?.generation ?: 0) + 1
         val resume = old?.takeIf { it.signature == signature && !it.complete }
-        val round = SystemRecordingScan(generation,resume?.at ?: at,resume?.days ?: days,resume?.zone ?: zone)
-        db.execSQL("INSERT OR REPLACE INTO system_recording_scan(id,generation,signature,started,days,zone,complete,next_at,failures) VALUES(1,?,?,?,?,?,0,NULL,0)", arrayOf<Any>(round.id, signature, round.at, round.days, round.zone))
+        val round = SystemRecordingScan(generation,resume?.at ?: at,resume?.zone ?: zone)
+        // The retired days column is retained for database compatibility and no longer interpreted.
+        db.execSQL("INSERT OR REPLACE INTO system_recording_scan(id,generation,signature,started,days,zone,complete,next_at,failures) VALUES(1,?,?,?,?,?,0,NULL,0)", arrayOf<Any>(round.id, signature, round.at, 0, round.zone))
         // A different configuration cannot inherit accepted candidates or stability observations.
         db.delete("system_recording_inventory", "signature<>?", arrayOf(signature))
         round
     }
-    fun accepted(signature: String, key: String, parsed: ParsedSystemRecording): Boolean = db.rawQuery(
-        "SELECT 1 FROM system_recording_inventory WHERE source_key=? AND signature=? AND number=? AND started=? AND known=1 AND size>0 AND observed-stable_since>=10000", arrayOf(key, signature, normalized(parsed.number), parsed.startedAtEpochMillis.toString())).use { it.moveToFirst() }
-
     fun observe(id: Long, entry: ScannedSystemRecording, parsed: ParsedSystemRecording, at: Long) = transaction {
         val signature = db.rawQuery("SELECT signature FROM system_recording_scan WHERE id=1 AND generation=? AND complete=0", arrayOf(id.toString())).use { check(it.moveToFirst()) { "recording.scan_changed" }; it.getString(0) }
         val file = entry.file
@@ -65,22 +63,17 @@ internal class SystemRecordingImports(private val db: SQLiteDatabase) {
                     ParsedSystemRecording(c.getString(6), c.getLong(7)), c.getLong(8), c.getLong(9)))
             } }
     }
-    fun conflicting(id: Long, key: String, parsed: ParsedSystemRecording, target: RecordingCall?): Boolean {
-        if (target != null) {
-            // Keep the durable choice, including retries after a failed copy. A newly
-            // discovered alternate must not replace an already-bound recording.
-            val bound = db.rawQuery("SELECT source_key FROM system_recording_sources WHERE archive_id=? LIMIT 1", arrayOf(target.id.toString())).use { if(it.moveToFirst()) it.getString(0) else null }
-            if (bound != null) return bound != key
-            val range = SystemRecordingAssociation.recordingStarts(target.startedAt)
-            // Multiple recordings can belong to one call. Select only a uniquely closest
-            // start; an equally close file remains ambiguous. Include unstable competitors
-            // so a shorter/farther file cannot win before the preferred file settles.
-            return db.rawQuery("SELECT 1 FROM system_recording_inventory WHERE signature=(SELECT signature FROM system_recording_scan WHERE generation=?) AND source_key<>? AND number=? AND started BETWEEN ? AND ? AND known=1 AND size>0 AND ABS(started-?)<=CAST(? AS INTEGER) LIMIT 1",
-                arrayOf(id.toString(),key,normalized(parsed.number),range.first.toString(),range.last.toString(),target.startedAt.toString(),kotlin.math.abs(parsed.startedAtEpochMillis-target.startedAt).toString())).use { it.moveToFirst() }
-        }
-        val args = arrayOf(id.toString(), key, normalized(parsed.number), (parsed.startedAtEpochMillis - 6000).toString(), (parsed.startedAtEpochMillis + 6000).toString())
-        return db.rawQuery("SELECT 1 FROM system_recording_inventory WHERE signature=(SELECT signature FROM system_recording_scan WHERE generation=?) AND source_key<>? AND number=? AND started BETWEEN ? AND ? LIMIT 1", args).use { it.moveToFirst() } ||
-            db.rawQuery("SELECT 1 FROM system_recording_sources WHERE source_key<>? AND number=? AND started BETWEEN ? AND ? LIMIT 1", args.drop(1).toTypedArray()).use { it.moveToFirst() }
+    fun conflicting(id: Long, key: String, parsed: ParsedSystemRecording, target: RecordingCall): Boolean {
+        // Keep the durable choice, including retries after a failed copy. A newly
+        // discovered alternate must not replace an already-bound recording.
+        val bound = db.rawQuery("SELECT source_key FROM system_recording_sources WHERE archive_id=? LIMIT 1", arrayOf(target.id.toString())).use { if(it.moveToFirst()) it.getString(0) else null }
+        if (bound != null) return bound != key
+        val range = SystemRecordingAssociation.recordingStarts(target.startedAt)
+        // Multiple recordings can belong to one call. Select only a uniquely closest
+        // start; an equally close file remains ambiguous. Include unstable competitors
+        // so a shorter/farther file cannot win before the preferred file settles.
+        return db.rawQuery("SELECT 1 FROM system_recording_inventory WHERE signature=(SELECT signature FROM system_recording_scan WHERE generation=?) AND source_key<>? AND number=? AND started BETWEEN ? AND ? AND known=1 AND size>0 AND ABS(started-?)<=CAST(? AS INTEGER) LIMIT 1",
+            arrayOf(id.toString(),key,normalized(parsed.number),range.first.toString(),range.last.toString(),target.startedAt.toString(),kotlin.math.abs(parsed.startedAtEpochMillis-target.startedAt).toString())).use { it.moveToFirst() }
     }
     fun binding(key: String): RecordingCall? = db.rawQuery("SELECT archive_id,number,started,direction FROM system_recording_sources WHERE source_key=?", arrayOf(key)).use { if(it.moveToFirst()) RecordingCall(it.getLong(0),it.getString(1),it.getLong(2),null,com.greatwall.callring.domain.model.CallDirection.valueOf(it.getString(3))) else null }
     fun completed(key: String): Boolean = db.rawQuery("SELECT completed FROM system_recording_sources WHERE source_key=?", arrayOf(key)).use { it.moveToFirst() && it.getInt(0) == 1 }

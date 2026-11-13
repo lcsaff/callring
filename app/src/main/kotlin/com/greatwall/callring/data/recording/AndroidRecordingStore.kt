@@ -218,14 +218,13 @@ class AndroidRecordingStore(context: Context, namespace: String,
         RecordingMetadataReads(readableDatabase, readCounters, cancelled).earliestPendingAt()
     @Synchronized override fun dueCandidates(at: Long, afterId: Long?, limit: Int, cancelled: () -> Boolean) =
         RecordingMetadataReads(readableDatabase, readCounters, cancelled).dueCandidates(at, afterId, limit)
-    @Synchronized override fun beginSystemScan(signature: String, at: Long, days: Int, zone: String) = SystemRecordingImports(writableDatabase).begin(signature, at, days, zone)
+    @Synchronized override fun beginSystemScan(signature: String, at: Long, zone: String) = SystemRecordingImports(writableDatabase).begin(signature, at, zone)
     @Synchronized override fun prepareSystemMatches(cancelled: () -> Boolean): Boolean =
         !RecordingArchivePages(writableDatabase,listIncarnation,readCounters,cancelled).query(ArchiveListQuery(limit=1)).preparing
-    @Synchronized override fun acceptedSystemFile(signature: String, key: String, parsed: ParsedSystemRecording) = SystemRecordingImports(readableDatabase).accepted(signature, key, parsed)
     @Synchronized override fun observeSystemFile(scanId: Long, entry: ScannedSystemRecording, parsed: ParsedSystemRecording, at: Long) = SystemRecordingImports(writableDatabase).observe(scanId, entry, parsed, at)
     @Synchronized override fun finishSystemScan(scanId: Long) = SystemRecordingImports(writableDatabase).finish(scanId)
     @Synchronized override fun systemCandidates(scanId: Long, afterKey: String?, limit: Int) = SystemRecordingImports(readableDatabase).candidates(scanId, afterKey, limit)
-    @Synchronized override fun hasConflictingSystemSource(scanId: Long, sourceKey: String, parsed: ParsedSystemRecording, target: RecordingCall?) = SystemRecordingImports(readableDatabase).conflicting(scanId, sourceKey, parsed, target)
+    @Synchronized override fun hasConflictingSystemSource(scanId: Long, sourceKey: String, parsed: ParsedSystemRecording, target: RecordingCall) = SystemRecordingImports(readableDatabase).conflicting(scanId, sourceKey, parsed, target)
     @Synchronized override fun hasConflictingSystemLink(sourceKey: String, source: RecordingCall, target: RecordingCall) = SystemRecordingImports(readableDatabase).conflictingLink(sourceKey,source,target)
     @Synchronized override fun releaseUnimportedSystemSource(sourceKey: String, callId: Long): Boolean {
         if (isDeleted(callId) || metadata(callId) { false }?.hasAudio == true) return false
@@ -273,7 +272,7 @@ class AndroidRecordingStore(context: Context, namespace: String,
             return changed
         } finally { db.endTransaction() }
     }
-    @Synchronized override fun registerSystemSource(sourceKey: String, parsed: ParsedSystemRecording, existing: RecordingCall?, initial: (RecordingCall) -> CallArchive): RecordingRegistration {
+    @Synchronized override fun registerSystemSource(sourceKey: String, parsed: ParsedSystemRecording, existing: RecordingCall, initial: (RecordingCall) -> CallArchive): RecordingRegistration {
         val db = writableDatabase
         db.beginTransaction()
         try {
@@ -282,15 +281,8 @@ class AndroidRecordingStore(context: Context, namespace: String,
                 db.setTransactionSuccessful()
                 return RecordingRegistration(bound,false,false)
             }
-            val result = if (existing == null) {
-                val registered = insertIncoming("system-file:$sourceKey", parsed.number, parsed.startedAtEpochMillis, null) { initial(it.copy(direction = com.greatwall.callring.domain.model.CallDirection.UNKNOWN)) }
-                db.execSQL("UPDATE recording_events SET direction='UNKNOWN' WHERE id=?", arrayOf(-registered.call.id))
-                registered.copy(call = registered.call.copy(direction = com.greatwall.callring.domain.model.CallDirection.UNKNOWN))
-            }
-            else {
-                val inserted = !isDeleted(existing.id) && generation(existing.id) == null && compareAndSet(existing.id,null,initial(existing))
-                RecordingRegistration(existing,false,inserted)
-            }
+            val inserted = !isDeleted(existing.id) && generation(existing.id) == null && compareAndSet(existing.id,null,initial(existing))
+            val result = RecordingRegistration(existing,false,inserted)
             SystemRecordingImports(db).bind(sourceKey,result.call)
             db.setTransactionSuccessful()
             return result
@@ -358,18 +350,12 @@ internal object RecordingJson {
     private fun connection(v: AiConnection) = JSONObject().put("protocol", v.protocol.name).put("url", v.url).put("key", v.apiKey).put("model", v.model).put("thinkingMode", v.thinkingMode.name)
     private fun connection(v: JSONObject) = AiConnection(AiProtocol.valueOf(v.getString("protocol")), v.getString("url"), v.getString("key"), v.getString("model"), ThinkingMode.valueOf(v.optString("thinkingMode", ThinkingMode.DISABLED.name)))
     fun settings(v: RecordingSettings): JSONObject = JSONObject().put("recording", v.recordingEnabled).put("automatic", v.automaticAnalysis)
-        .put("analysis", connection(v.analysis)).put("transcription", connection(v.transcription)).put("mode", v.captureMode.name).put("folder", v.systemFolder).put("systemImportDays", v.systemImportDays)
+        .put("analysis", connection(v.analysis)).put("mode", v.captureMode.name).put("folder", v.systemFolder)
         .put("conversation", JSONObject().put("version", 1).put("context", v.conversationBudget.context).put("output", v.conversationBudget.output).put("compatibility",v.conversationCompatibility.normalized().name))
     fun settings(v: JSONObject) = RecordingSettings(v.getBoolean("recording"), v.getBoolean("automatic"), connection(v.getJSONObject("analysis")),
-        connection(v.getJSONObject("transcription")), CaptureMode.valueOf(v.getString("mode")), v.nullableString("folder"),
+        CaptureMode.valueOf(v.getString("mode")), v.nullableString("folder"),
         v.optJSONObject("conversation")?.let { require(it.getInt("version") == 1); ConversationBudget(it.getLong("context"), it.getLong("output")).also { b -> b.validate() } } ?: ConversationBudget(),
-        v.optJSONObject("conversation")?.optString("compatibility", "AUTO")?.let(ConversationCompatibility::valueOf)?.normalized() ?: ConversationCompatibility.AUTO,
-        if (!v.has("systemImportDays")) 7 else v.get("systemImportDays").let { days ->
-            require(days is Int || days is Long) { "recording.invalid_import_days" }
-            val number = (days as Number).toLong()
-            require(number in 1..Int.MAX_VALUE.toLong()) { "recording.invalid_import_days" }
-            number.toInt()
-        })
+        v.optJSONObject("conversation")?.optString("compatibility", "AUTO")?.let(ConversationCompatibility::valueOf)?.normalized() ?: ConversationCompatibility.AUTO)
     private fun analysis(v: CallAnalysis) = JSONObject().put("name", v.name).put("organization", v.organization).put("position", v.position)
         .put("purpose", v.purpose).put("evidence", v.evidence).put("identity", v.inferredIdentity).put("summary", v.summary).put("actions", JSONArray(v.actionItems)).put("department", v.department).put("region", v.region).put("fieldEvidence", JSONObject(v.fieldEvidence))
     private fun analysis(v: JSONObject) = CallAnalysis(v.getString("name"), v.getString("organization"), v.getString("position"), v.getString("purpose"),

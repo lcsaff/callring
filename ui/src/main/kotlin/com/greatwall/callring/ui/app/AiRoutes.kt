@@ -11,13 +11,11 @@ import com.greatwall.callring.ui.feature.conversation.*
     val model: AiSettingsViewModel = uiViewModel { AiSettingsViewModel(api) }
     val state by model.state.collectAsStateWithLifecycle(); val mutation by model.mutation.collectAsStateWithLifecycle()
     var credential by remember { mutableStateOf<CredentialDraft?>(null) }
-    var copy by remember { mutableStateOf<Pair<AiSlot,AiSlot>?>(null) }
     AiSettingsScreen(state, mutation, onBack, model::refresh,
-        model::editAnalysis, model::analysisProtocol, model::editTranscription,
+        model::editAnalysis, model::analysisProtocol,
         model::thinkingMode, model::budget, model::automaticAnalysis,
-        { credential = model.credentialInput(it) }, { from,to -> copy = from to to }, model::test)
+        { credential = model.credentialInput(it) }, model::test)
     credential?.let { input -> CredentialDialog(api.aiSettings,input.slot,input) { saved -> credential = null; if(saved) model.credentialSaved() else model.credentialCancelled() } }
-    copy?.let { request->CopyConnectionDialog(api.aiSettings,request.first,request.second) { saved->copy = null; if(saved)model.credentialSaved()else model.credentialCancelled() } }
 }
 @Composable internal fun ConversationRoute(
     api: CallringUiApi,

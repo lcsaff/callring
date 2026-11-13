@@ -23,20 +23,14 @@ data class RecordingSettings(
     val recordingEnabled: Boolean = false,
     val automaticAnalysis: Boolean = false,
     val analysis: AiConnection = AiConnection(),
-    val transcription: AiConnection = AiConnection(),
     val captureMode: CaptureMode = CaptureMode.SYSTEM_ONLY,
     val systemFolder: String? = null,
     val conversationBudget: ConversationBudget = ConversationBudget(),
     val conversationCompatibility: ConversationCompatibility = ConversationCompatibility.AUTO,
-    val systemImportDays: Int = 7,
 ) {
     fun validate() {
-        require(systemImportDays > 0) { "recording.invalid_import_days" }
         conversationBudget.validate()
-        require(transcription.protocol == AiProtocol.OPENAI) { "ai.transcription_requires_openai" }
-        require(transcription.thinkingMode == ThinkingMode.DISABLED) { "ai.transcription_thinking_disabled" }
         if (analysis.url.isNotBlank() || analysis.apiKey.isNotBlank() || analysis.model.isNotBlank()) analysis.validate()
-        if (transcription.url.isNotBlank() || transcription.apiKey.isNotBlank() || transcription.model.isNotBlank()) transcription.validate()
-        if (automaticAnalysis) { analysis.validate(); transcription.validate() }
+        if (automaticAnalysis) analysis.validate()
     }
 }

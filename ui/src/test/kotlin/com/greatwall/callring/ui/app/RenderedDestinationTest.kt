@@ -23,7 +23,7 @@ class RenderedDestinationTest {
     @get:Rule val compose = createComposeRule()
     @Test fun clickCarriesRenderedConnectionEvenWhenVmHasReceivedANewerOne() {
         val old = AiConnectionView(AiProtocol.OPENAI,"https://old.example","old",true)
-        val config = MutableStateFlow(AiSettingsView(old,old,ConversationBudget(),0))
+        val config = MutableStateFlow(AiSettingsView(old,ConversationBudget(),0))
         val changes = TestChangeFeed()
         val attempts = mutableListOf<AiConnectionView>()
         var reads = 0

@@ -148,7 +148,7 @@ internal class HomePageModels(
     val check by model.check.collectAsStateWithLifecycle()
     CallerListScreen(state, query, check, model::search, model::page, model::refresh,
         { open(UiDestination.EditCaller()) }, { open(UiDestination.Report(it)) },
-        { open(UiDestination.Report(it)) }, { open(UiDestination.Positions) }, { open(UiDestination.CallHistory) })
+        { open(UiDestination.Report(it)) }, { open(UiDestination.CallHistory) })
 }
 
 @Composable private fun SettingsPage(model: SettingsSummaryViewModel, open: (UiDestination) -> Unit) {

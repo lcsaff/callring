@@ -41,7 +41,6 @@ import com.greatwall.callring.ui.feature.ai.ScopedRecordingSettingsViewModel
     val model: ScopedRecordingSettingsViewModel = uiViewModel { ScopedRecordingSettingsViewModel(api) }
     val state by model.state.collectAsStateWithLifecycle()
     val mutation by model.mutation.collectAsStateWithLifecycle()
-    val importDaysDraft by model.importDaysDraft.collectAsStateWithLifecycle()
     var permissionError by remember { mutableStateOf<String?>(null) }
     val folder = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri ->
         if (uri != null) model.folder(DocumentRef(uri.toString()))
@@ -52,7 +51,7 @@ import com.greatwall.callring.ui.feature.ai.ScopedRecordingSettingsViewModel
     }
     RecordingSettingsScreen(state, mutation, onBack, model::refresh, model::enabled, model::captureMode,
         { try { folder.launch(null) } catch (_: ActivityNotFoundException) { permissionError = "系统没有可用的目录选择器" } },
-        { microphone.launch(Manifest.permission.RECORD_AUDIO) }, importDaysDraft, model::systemImportDays)
+        { microphone.launch(Manifest.permission.RECORD_AUDIO) })
     permissionError?.let { message -> androidx.compose.material3.AlertDialog(onDismissRequest = { permissionError = null },
         title = { androidx.compose.material3.Text("权限提示") }, text = { androidx.compose.material3.Text(message) },
         confirmButton = { androidx.compose.material3.TextButton(onClick = { permissionError = null }) { androidx.compose.material3.Text("知道了") } }) }
@@ -68,13 +67,13 @@ import com.greatwall.callring.ui.feature.ai.ScopedRecordingSettingsViewModel
     val history by model.history.collectAsStateWithLifecycle()
     val files by model.files.collectAsStateWithLifecycle()
     val mutation by model.mutation.collectAsStateWithLifecycle()
+    val feedbackSection by model.feedbackSection.collectAsStateWithLifecycle()
     val playback by model.playback.mutation.collectAsStateWithLifecycle()
     val playing by model.playback.state.collectAsStateWithLifecycle()
     val suggestions by model.suggestions.state.collectAsStateWithLifecycle()
     val timeZone: RecordingTimeZoneViewModel = uiViewModel { RecordingTimeZoneViewModel(api.settings, api.changes) }
     val zone by timeZone.state.collectAsStateWithLifecycle()
     val picker = rememberImportPicker(arrayOf("audio/*")) { model.import(it) }
-    val offlinePicker = rememberImportPicker(arrayOf("audio/*")) { model.import(it, offlineOnly = true) }
     DisposableEffect(model) { onDispose { model.playback.stopForExit() } }
     val isPlaying = playing.data?.callId?.let {
         it == callId || it == state.data?.callId || it == history.data?.linkedScreeningCallId
@@ -83,9 +82,9 @@ import com.greatwall.callring.ui.feature.ai.ScopedRecordingSettingsViewModel
         { model.import(DocumentRef(it.uri), RecordingSource.SYSTEM) }, model::retry, model::delete,
         model::togglePlayback, model::togglePlayback,
         { (history.data?.call?.number ?: number)?.let(onEdit) }, zone, timeZone::refresh,
-        offlinePicker, model::transcribeOffline, model::cancelOffline,
+        model::transcribeOffline, model::cancelOffline,
         history = if (historyDetail) history else null, isPlaying = isPlaying,
-        playback = playback, playbackError = playing.error,
+        playback = playback, playbackError = playing.error, feedbackSection = feedbackSection,
         onAnalyze = model::analyze, suggestions = suggestions, onRetrySuggestions = model.suggestions::refresh,
         onConfirmSuggestions = model.suggestions::confirm)
 }

@@ -38,13 +38,15 @@ class HomeStructureJvmTest {
         compose.runOnIdle { assertEquals(1, leaves) }
     }
 
-    @Test fun settingsContainsConfigurationAndNoLeaveOrPositionManagement() {
+    @Test fun settingsContainsPositionManagementWithoutRetiredDataManagement() {
         val summary = runBlocking { (UiFakeApi().getSummary() as ApiResult.Success).value }
         var page: SettingsPage? = null
         compose.setContent { CallringTheme(DefaultAppearance.rememberAppearanceThemeSpec(androidx.compose.foundation.isSystemInDarkTheme())) {
             SettingsOverviewScreen(LoadState(summary, loaded = true), MutationState(), null, {}, {}, { page = it })
         } }
-        compose.onNodeWithText("职位管理").assertDoesNotExist()
+        compose.onNodeWithText("数据管理").assertDoesNotExist()
+        compose.onNodeWithText("职位管理").performScrollTo().performClick()
+        compose.runOnIdle { assertEquals(SettingsPage.POSITIONS, page) }
         compose.onNodeWithText("请假管理").assertDoesNotExist()
         compose.onNodeWithText("我的职位").performScrollTo().performClick()
         compose.runOnIdle { assertEquals(SettingsPage.MY_POSITION, page) }
@@ -52,17 +54,17 @@ class HomeStructureJvmTest {
         compose.runOnIdle { assertEquals(SettingsPage.CALENDAR, page) }
     }
 
-    @Test fun homeLeavesAndCallerPositionsReturnToTheirOwnTabs() {
+    @Test fun homeLeavesAndSettingsPositionsReturnToTheirOwnTabs() {
         compose.setContent { CallringApp(UiFakeApi(), onCapability = {}, onPinWidget = {}, onAppSettings = {}) }
         compose.onNodeWithTag("home-leaves").performScrollTo().performClick()
         compose.onNodeWithText("添加请假").assertExists()
         compose.onNodeWithContentDescription("返回").performClick()
         compose.onNodeWithTag("home-status").assertExists()
-        compose.onNodeWithTag("tab-callers").performClick()
-        compose.onNodeWithContentDescription("职位管理").performClick()
+        compose.onNodeWithTag("tab-settings").performClick()
+        compose.onNodeWithText("职位管理").performScrollTo().performClick()
         compose.onNodeWithText("添加职位").assertExists()
         compose.onNodeWithContentDescription("返回").performClick()
-        compose.onNodeWithTag("tab-callers").assertIsSelected()
+        compose.onNodeWithTag("tab-settings").assertIsSelected()
     }
 
     @Test fun personalPositionSelectionDoesNotExposeListEditing() {

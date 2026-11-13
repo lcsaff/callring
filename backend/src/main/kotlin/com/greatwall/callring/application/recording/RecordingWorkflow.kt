@@ -125,12 +125,6 @@ class RecordingWorkflow(
         }
     }
     fun isRunning(callId: Long): Boolean = callId in running
-    /** Cleanup holds this only for local deletion. Candidate admission never retains it for IO. */
-    fun <T> withIdle(callId: Long, block: () -> T): T = synchronized(activityFence) {
-        check(!closed) { "recording.closed" }
-        check(callId !in running) { "recording.busy" }
-        block()
-    }
     fun activityObservation() = RecordingActivityObservation(running.size.toLong(), activeClients.size.toLong(), cancelledOperations.values.count{it.get()}.toLong())
     private fun version(previous: Long = 0): Long = versions.updateAndGet { maxOf(it + 1, previous + 1) }
 
@@ -139,7 +133,7 @@ class RecordingWorkflow(
         offlineStates.remove(callId)
     }
 
-    fun attach(callId: Long, number: String, startedAt: Long, path: String, source: RecordingSource, duration: Long, command: CommandContext?, playbackStopped: Boolean, offlineOnly: Boolean = false, direction: com.greatwall.callring.contracts.callers.CallDirection = com.greatwall.callring.contracts.callers.CallDirection.INCOMING): CallArchive {
+    fun attach(callId: Long, number: String, startedAt: Long, path: String, source: RecordingSource, duration: Long, command: CommandContext?, playbackStopped: Boolean, direction: com.greatwall.callring.contracts.callers.CallDirection = com.greatwall.callring.contracts.callers.CallDirection.INCOMING): CallArchive {
         check(!closed) { "recording.closed" }
         require(callId != 0L && number.isNotBlank() && duration > 0) { "recording.invalid_attachment" }
         val previousGeneration = store.generation(callId)
@@ -148,7 +142,7 @@ class RecordingWorkflow(
         activeClients[callId]?.cancel()
         val settings = store.settings()
         val value = CallArchive(callId, number, startedAt, version(previousGeneration ?: 0),
-            if (!offlineOnly && settings.automaticAnalysis && direction == com.greatwall.callring.contracts.callers.CallDirection.INCOMING) ArchiveStatus.QUEUED else ArchiveStatus.READY,
+            if (settings.automaticAnalysis && direction == com.greatwall.callring.contracts.callers.CallDirection.INCOMING) ArchiveStatus.QUEUED else ArchiveStatus.READY,
             source, path, if (source == RecordingSource.MICROPHONE) "recording.microphone_unverified" else "recording.unverified",
             duration, direction = direction)
         check(commands.compareAndSet(callId, previousGeneration, value, command, playbackStopped)) { "recording.changed" }
@@ -157,10 +151,6 @@ class RecordingWorkflow(
 
     private fun validateConnections(archive: CallArchive, config: com.greatwall.callring.application.recording.model.RecordingSettings) {
         config.analysis.validate()
-        if (archive.transcript.isBlank()) {
-            config.transcription.validate()
-            require(config.transcription.protocol == AiProtocol.OPENAI) { "ai.transcription_requires_openai" }
-        }
     }
 
     fun queueTranscriptAnalysis(callId: Long, checkActive: () -> Unit) {
@@ -254,7 +244,13 @@ class RecordingWorkflow(
         if (interrupted) Thread.currentThread().interrupt()
     }
 
-    fun nextRunAt(): Long? { check(!closed) { "recording.closed" }; return store.earliestPendingAt { closed } }
+    fun nextRunAt(): Long? {
+        check(!closed) { "recording.closed" }
+        val pending = store.earliestPendingAt { closed } ?: return null
+        return synchronized(activityFence) {
+            if (offlineWork != null) maxOf(pending, now() + 60_000) else pending
+        }
+    }
 
     /** Candidate pages are consumed before network work; no storage cursor spans an AI request. */
     fun processPending(cancelled: () -> Boolean = { false }, allowNetwork: Boolean = true) {
@@ -345,6 +341,14 @@ class RecordingWorkflow(
             }
             return
         }
+        var localModelClaimed = false
+        fun releaseLocalModel() = synchronized(activityFence) {
+            if (localModelClaimed) {
+                offlineWork = null
+                localModelClaimed = false
+                activityFence.notifyAll()
+            }
+        }
         try {
             if (!config.automaticAnalysis && current.analysisIntent in setOf(
                     ArchiveAnalysisIntent.AUTOMATIC, ArchiveAnalysisIntent.LEGACY_UNCLASSIFIED) && !current.manualAnalysis) {
@@ -353,6 +357,14 @@ class RecordingWorkflow(
             if (current.analysisIntent == ArchiveAnalysisIntent.MANUAL_TEXT && current.transcript.isBlank())
                 throw AiFailure("recording.transcript_required")
             validateConnections(current, config)
+            if (current.transcript.isBlank()) {
+                synchronized(activityFence) {
+                    // Contention is scheduling, not a failed model attempt. Keep durable work queued.
+                    if (closed || offlineWork != null) return
+                    offlineWork = current.callId to cancellation
+                    localModelClaimed = true
+                }
+            }
             if (!manual && current.enrichmentBaseline == null) {
                 var baselineSaved = false
                 val live = commands.withCurrent(current.callId, current.generation) {
@@ -366,9 +378,15 @@ class RecordingWorkflow(
                     if (current.transcript.isBlank()) ArchiveStatus.TRANSCRIBING else ArchiveStatus.ANALYZING))) return
             if (isCancelled()) throw AiFailure("recording.cancelled")
             if (current.transcript.isBlank()) {
-                val text = operation.transcribe(config.transcription, AudioReference(requireNotNull(current.audioPath)))
-                if (text.isBlank()) throw AiFailure("ai.empty_transcript")
-                if (!update(current.copy(transcript = text, transcriptionModel = config.transcription.model,
+                val transcriber = offlineTranscriber ?: throw AiFailure("recording.offline_model_unavailable")
+                val transcript = try {
+                    transcriber.transcribe(AudioReference(requireNotNull(current.audioPath)), isCancelled) {}
+                } finally {
+                    releaseLocalModel()
+                }
+                if (isCancelled()) throw AiFailure("recording.cancelled")
+                if (transcript.text.isBlank()) throw AiFailure("recording.silent_audio")
+                if (!update(current.copy(transcript = transcript.text, transcriptionModel = transcript.model,
                         status = ArchiveStatus.ANALYZING))) return
             }
             if (isCancelled()) throw AiFailure("recording.cancelled")
@@ -402,6 +420,8 @@ class RecordingWorkflow(
             update(current.copy(status = ArchiveStatus.FAILED,
                 error = (failure as? AiFailure)?.reason ?: "ai.configuration_or_storage",
                 nextAttemptAt = if (retryable && current.attempts < 4) now() + (60_000L shl current.attempts.coerceAtMost(4)) else Long.MAX_VALUE))
+        } finally {
+            releaseLocalModel()
         }
     }
 

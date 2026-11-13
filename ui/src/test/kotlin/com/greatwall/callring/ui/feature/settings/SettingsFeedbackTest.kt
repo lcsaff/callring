@@ -51,10 +51,10 @@ class SettingsFeedbackTest {
 
     @Test fun aiRefreshKeepsSettingsVisibleWithoutProgress() {
         val connection = AiConnectionView(AiProtocol.OPENAI, "https://example.com", "model", false)
-        val ai = AiSettingsView(connection, connection, ConversationBudget(), 1)
+        val ai = AiSettingsView(connection, ConversationBudget(), 1)
         compose.setContent { CallringTheme(DefaultAppearance.rememberAppearanceThemeSpec(false)) {
             AiSettingsScreen(LoadState(AiSettingsUi(ai, recording), loading = true, loaded = true),
-                MutationState(busy = true), {}, {}, {}, {}, {}, {}, {}, {}, {}, { _, _ -> }, {})
+                MutationState(busy = true), {}, {}, {}, {}, {}, {}, {}, {}, {})
         } }
         compose.onAllNodes(progress).assertCountEquals(0)
         compose.onNodeWithText("内容分析与沟通").assertExists()

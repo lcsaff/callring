@@ -27,12 +27,7 @@ class CoreSnapshotProjectionTest {
         assertTrue((statistics["numbers"] as AiJson.Arr).values.isEmpty())
         assertEquals(1, (result.getValue("D04") as AiJson.Arr).values.size)
     }
-    @Test fun recordingImportDaysRemainsLocalWithoutChangingD13Protocol() {
-        val view = com.greatwall.callring.contracts.recording.RecordingSettingsView(false, false,
-            com.greatwall.callring.contracts.recording.CaptureMode.SYSTEM_ONLY, false, 1)
-        assertEquals(com.greatwall.callring.application.conversation.query.safeValue(view),
-            com.greatwall.callring.application.conversation.query.safeValue(view.copy(systemImportDays = 30)))
-    }
+
 
     @Test fun numberRuleSettingsHaveExactSafeProjection() {
         val saved = com.greatwall.callring.contracts.settings.NumberRuleSettings(listOf(com.greatwall.callring.contracts.settings.NumberRuleEntry("8",6)),17)

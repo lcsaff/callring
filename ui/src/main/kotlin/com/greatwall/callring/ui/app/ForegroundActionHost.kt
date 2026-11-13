@@ -86,7 +86,7 @@ class ForegroundActionHost(private val activity: ComponentActivity, private val 
             ForegroundActionKind.SELECT_FOLDER -> register(ticket,ActivityResultContracts.OpenDocumentTree(),null) { document(ticket,it,true) }
             ForegroundActionKind.EXPORT_CSV -> register(ticket,ActivityResultContracts.CreateDocument("text/csv"),"callring-report.csv") { document(ticket,it,false) }
             ForegroundActionKind.PIN_WIDGET -> launch = { deliver(ticket,pinWidget()) }
-            ForegroundActionKind.CONFIRM, ForegroundActionKind.CREDENTIAL, ForegroundActionKind.COPY_CONNECTION, ForegroundActionKind.TEST_CONNECTION -> launch = { }
+            ForegroundActionKind.CONFIRM, ForegroundActionKind.CREDENTIAL, ForegroundActionKind.TEST_CONNECTION -> launch = { }
         }
     }
     private fun document(ticket: ForegroundTicket, uri: Uri?, tree: Boolean) {
@@ -137,7 +137,6 @@ class ForegroundActionHost(private val activity: ComponentActivity, private val 
         fun finish(saved: Boolean) { api.conversation.foreground.deliver(current.requestId,ForegroundHostResult(if(saved) ForegroundResultStatus.VERIFIED else ForegroundResultStatus.CANCELLED)) }
         when(current.kind) {
             ForegroundActionKind.CREDENTIAL -> CredentialDialog(bound.aiSettings,AiSlot.valueOf(current.parameters["slot"].string()),onFinished = ::finish)
-            ForegroundActionKind.COPY_CONNECTION -> CopyConnectionDialog(bound.aiSettings,AiSlot.valueOf(current.parameters["from"].string()),AiSlot.valueOf(current.parameters["to"].string()),::finish)
             ForegroundActionKind.CONFIRM, ForegroundActionKind.TEST_CONNECTION -> {
                 val target = current.confirmation
                 if (target is ConfirmationTarget.NumberDeletion) {
@@ -181,7 +180,7 @@ class ForegroundActionHost(private val activity: ComponentActivity, private val 
             Text("录音 #${target.id}：${target.number}"); Text("来电时间：${time(target.startedAt)}")
         }
         is ConfirmationTarget.Connection -> {
-            Text(if(target.slot == AiSlot.ANALYSIS) "内容分析连接" else "录音转写连接")
+            Text("内容分析连接")
             Text("${target.connection.protocol} · ${target.connection.url}"); Text("模型：${target.connection.model}")
             Text(if(target.connection.keyConfigured) "密钥已配置" else "密钥未配置")
         }

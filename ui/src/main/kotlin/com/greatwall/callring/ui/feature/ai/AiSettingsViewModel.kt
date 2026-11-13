@@ -39,7 +39,6 @@ class AiSettingsViewModel(
     private var writing = false
     private var refreshRequested = false
     private var pendingAnalysis: AiConnectionView? = null
-    private var pendingTranscription: AiConnectionView? = null
     private val observation = ChangeObserver(api.changes, ChangeSubscription(setOf(DataDomain.AI_SETTINGS, DataDomain.RECORDING_SETTINGS, DataDomain.RUNTIME), mapOf(DataDomain.RUNTIME to setOf("recordingFolder"))))
     private val refreshCoordinator = RefreshCoordinator(scope, observation::token, { loadForm() }, { result ->
         when (result) {
@@ -61,16 +60,6 @@ class AiSettingsViewModel(
             if (patch == ConnectionPatch()) ApiResult.Success(form)
             else patchAi(form, AiSettingsPatch(analysis = patch))
         }, onSuccess = { if (pendingAnalysis == connection) pendingAnalysis = null }))
-    }
-
-    fun editTranscription(connection: AiConnectionView) {
-        pendingTranscription = connection
-        scheduleDebounced(Queued({ form ->
-            val base = form.ai.transcription
-            val patch = connectionPatch(base, connection)
-            if (patch == ConnectionPatch()) ApiResult.Success(form)
-            else patchAi(form, AiSettingsPatch(transcription = patch))
-        }, onSuccess = { if (pendingTranscription == connection) pendingTranscription = null }))
     }
 
     fun analysisProtocol(protocol: AiProtocol) = submit(Queued({ form ->
@@ -100,17 +89,10 @@ class AiSettingsViewModel(
         }
     }))
 
-    fun copyConnection(from: AiSlot, to: AiSlot) = submit(Queued({ form ->
-        when (val result = attempt { api.aiSettings.copyConnection(from, to, form.ai.revision) }) {
-            is ApiResult.Success -> ApiResult.Success(form.copy(ai = result.value))
-            is ApiResult.Failure -> result
-        }
-    }))
-
     fun test(slot: AiSlot) = submit(Queued({ form ->
         fun current(connection: AiConnectionView) = ConnectionPatch(
             PatchField.Set(connection.protocol), PatchField.Set(connection.url), PatchField.Set(connection.model))
-        val patch = AiSettingsPatch(current(form.ai.analysis), current(form.ai.transcription))
+        val patch = AiSettingsPatch(analysis = current(form.ai.analysis))
         when (val result = attempt { api.aiSettings.testDraft(form.ai, patch, slot) }) {
             is ApiResult.Success -> ApiResult.Success(form)
             is ApiResult.Failure -> result
@@ -120,13 +102,11 @@ class AiSettingsViewModel(
     fun credentialSaved() {
         // The credential dialog writes through patchCombined itself; the page only reloads both snapshots.
         pendingAnalysis = null
-        pendingTranscription = null
     }
 
     /** Cancelling the key dialog keeps the typed connection edits and schedules their normal commit again. */
     fun credentialCancelled() {
         pendingAnalysis?.let { editAnalysis(it) }
-        pendingTranscription?.let { editTranscription(it) }
     }
 
     /**
@@ -137,11 +117,7 @@ class AiSettingsViewModel(
         val form = mutableState.value.data ?: return null
         debounceJob?.cancel()
         debounced = null
-        val connection = when (slot) {
-            AiSlot.ANALYSIS -> pendingAnalysis?.let { connectionPatch(form.ai.analysis, it) } ?: ConnectionPatch()
-            AiSlot.TRANSCRIPTION -> pendingTranscription?.let { connectionPatch(form.ai.transcription, it) }
-                ?: ConnectionPatch()
-        }
+        val connection = pendingAnalysis?.let { connectionPatch(form.ai.analysis, it) } ?: ConnectionPatch()
         return CredentialDraft(slot, form.ai, connection)
     }
 
@@ -228,58 +204,29 @@ class AiSettingsViewModel(
     }
 }
 
-/** Recording controls share a serial writer; numeric drafts coalesce after 500 ms. */
+/** Recording controls share a serial writer. */
 class ScopedRecordingSettingsViewModel(
     private val api: CallringUiApi,
     testScope: CoroutineScope? = null,
 ) : UiViewModel(testScope) {
     private var base: RecordingSettingsView? = null
-    private val draft = MutableStateFlow<String?>(null)
-    val importDaysDraft = draft.asStateFlow()
-    private var dirty = false
-    private var draftBase: RecordingSettingsView? = null
-    private var rebaseDraftOnLoad = false
-    private var debounce: Job? = null
     private val mutableMutation = MutableStateFlow(MutationState())
     val mutation = mutableMutation.asStateFlow()
-    private data class Pending(val patch: RecordingSettingsPatch = RecordingSettingsPatch(), val text: String? = null, val folder: DocumentRef? = null)
+    private data class Pending(val patch: RecordingSettingsPatch = RecordingSettingsPatch(), val folder: DocumentRef? = null)
     private val queue = ArrayDeque<Pending>()
     private var writing = false
     private val loader = ObservedQuery(scope, api.changes, ChangeSubscription(setOf(DataDomain.RECORDING_SETTINGS, DataDomain.RUNTIME), mapOf(DataDomain.RUNTIME to setOf("recordingFolder"))),
         load = { api.aiSettings.getRecordingView() }, onSuccess = {
             if (base == null || it.revision >= base!!.revision) base = it
-            if(rebaseDraftOnLoad) { draftBase = base; rebaseDraftOnLoad = false }
-            if (!dirty) draft.value = base!!.systemImportDays.toString()
         })
     val state = loader.state
     init { loader.start(scope) }
-    fun refresh() { rebaseDraftOnLoad = true; loader.request(force = true) }
+    fun refresh() { loader.request(force = true) }
 
     fun enabled(value: Boolean) = patch(RecordingSettingsPatch(recordingEnabled = PatchField.Set(value)))
     fun captureMode(mode: CaptureMode) = patch(RecordingSettingsPatch(captureMode = PatchField.Set(mode)))
 
-    fun systemImportDays(text: String) {
-        if(!dirty) draftBase = base
-        draft.value = text
-        dirty = true
-        debounce?.cancel()
-        val days = text.takeIf { it.isNotEmpty() && it.all { c -> c in '0'..'9' } }?.toIntOrNull()?.takeIf { it > 0 }
-        if (days == null) {
-            mutableMutation.value = mutableMutation.value.copy(error = ApiError(ErrorCode.VALIDATION, "请输入大于 0 的整数天数"))
-            return
-        }
-        mutableMutation.value = mutableMutation.value.copy(error = null)
-        debounce = scope.launch {
-            delay(500)
-            // Keep at most the latest numeric draft behind any in-flight write.
-            queue.removeAll { it.text != null }
-            patch(RecordingSettingsPatch(systemImportDays = PatchField.Set(days)), text)
-        }
-    }
-
-    private fun patch(patch: RecordingSettingsPatch, submittedDraft: String? = null) {
-        enqueue(Pending(patch, submittedDraft))
-    }
+    private fun patch(patch: RecordingSettingsPatch) = enqueue(Pending(patch))
 
     private fun enqueue(pending: Pending) {
         if (base == null) return
@@ -289,10 +236,8 @@ class ScopedRecordingSettingsViewModel(
         scope.launch {
             try {
                 while (queue.isNotEmpty()) {
-                    val (next, text, folder) = queue.removeFirst()
-                    // A later invalid draft must never cause an older queued numeric edit to commit.
-                    if (text != null && text != draft.value) continue
-                    val original = (if(text != null) draftBase else base) ?: continue
+                    val (next, folder) = queue.removeFirst()
+                    val original = base ?: continue
                     mutableMutation.value = mutableMutation.value.copy(busy = true, error = null, message = null)
                     val result = try {
                         if (folder == null) api.aiSettings.patchRecording(original, next)
@@ -306,8 +251,6 @@ class ScopedRecordingSettingsViewModel(
                     when (result) {
                         is ApiResult.Success -> {
                             if(base == null || result.value.revision >= base!!.revision) base = result.value
-                            if(text != null) draftBase = result.value
-                            if (text != null && text == draft.value) { dirty = false; draftBase = null; draft.value = base!!.systemImportDays.toString() }
                             mutableMutation.value = mutableMutation.value.copy(error = null, message = null)
                         }
                         is ApiResult.Failure -> {

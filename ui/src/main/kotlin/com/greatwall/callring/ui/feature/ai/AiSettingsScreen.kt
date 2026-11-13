@@ -29,10 +29,9 @@ fun AiSettingsScreen(
     state: LoadState<AiSettingsUi>, mutation: MutationState,
     onBack: () -> Unit, onRetry: () -> Unit,
     onAnalysisChange: (AiConnectionView) -> Unit, onAnalysisProtocol: (AiProtocol) -> Unit,
-    onTranscriptionChange: (AiConnectionView) -> Unit,
     onThinkingMode: (ThinkingMode) -> Unit, onBudget: (ConversationBudget) -> Unit,
     onAutomaticAnalysis: (Boolean) -> Unit,
-    onCredential: (AiSlot) -> Unit, onCopy: (AiSlot, AiSlot) -> Unit, onTest: (AiSlot) -> Unit,
+    onCredential: (AiSlot) -> Unit, onTest: (AiSlot) -> Unit,
 ) {
     var test by remember { mutableStateOf<AiSlot?>(null) }
     var advanced by rememberSaveable { mutableStateOf(false) }
@@ -51,34 +50,19 @@ fun AiSettingsScreen(
                         onCredential(AiSlot.ANALYSIS)
                     }
                     ThinkingModeRow(data.ai.analysis, onThinkingMode)
-                    Row {
-                        TextButton(onClick = { onCopy(AiSlot.TRANSCRIPTION, AiSlot.ANALYSIS) }, enabled = !mutation.busy) {
-                            Text("从转写配置复制")
-                        }
-                        TextButton(onClick = { test = AiSlot.ANALYSIS }) { Text("测试分析连接") }
-                    }
+                    TextButton(onClick = { test = AiSlot.ANALYSIS }) { Text("测试分析连接") }
                 }
-                AiGroup("录音转写") {
-                    ConnectionFields(data.ai.transcription, false, {}, onTranscriptionChange) {
-                        onCredential(AiSlot.TRANSCRIPTION)
-                    }
-                    Row {
-                        TextButton(onClick = { onCopy(AiSlot.ANALYSIS, AiSlot.TRANSCRIPTION) }, enabled = !mutation.busy) {
-                            Text("从分析配置复制")
-                        }
-                        TextButton(onClick = { test = AiSlot.TRANSCRIPTION }) { Text("测试转写连接") }
-                    }
-                    Text("复制会在本地预览并保存，并在本地复制密钥；复制至转写时保持 OpenAI 协议。")
+                AiGroup("本地转写与自动分析") {
+                    Text("录音使用内置模型在设备内转写，无需配置转写连接。单条音频最长 10 分钟。")
                     SwitchSettingRow("录音就绪后自动分析", data.recording.automaticAnalysis, onAutomaticAnalysis,
-                        "自动分析会将录音发送到转写服务，将转写文字发送到分析服务，可能按服务商价格收费。")
+                        "先在本地转写，再将文字发送到分析服务；音频不上传，文字分析可能产生费用。")
                 }
                 AdvancedSettings(data.ai.budget, mutation, advanced, { advanced = it }, onBudget)
             }
         }
     }
     test?.let { slot -> AlertDialog(onDismissRequest = { test = null }, title = { Text("发送连接测试？") },
-        text = { Text(if (slot == AiSlot.TRANSCRIPTION) "将发送固定测试音频到当前保存的转写地址，可能产生费用；不会发送通话录音。"
-            else "将发送固定测试文字到当前保存的分析地址，可能产生费用；不会发送业务数据。") },
+        text = { Text("将发送固定测试文字到当前保存的分析地址，可能产生费用；不会发送业务数据。") },
         confirmButton = { TextButton(onClick = { test = null; onTest(slot) }) { Text("发送测试") } },
         dismissButton = { TextButton(onClick = { test = null }) { Text("取消") } }) }
 }

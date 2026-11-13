@@ -13,14 +13,13 @@ import com.greatwall.callring.contracts.runtime.*
 import kotlinx.coroutines.flow.MutableStateFlow
 
 object FixtureAiSettingsApi : AiSettingsApi {
-    override suspend fun patchCombined(recordingBase: RecordingSettingsView, recording: RecordingSettingsPatch, aiBase: AiSettingsView, ai: AiSettingsPatch, analysisSecret: LocalSecretChange, transcriptionSecret: LocalSecretChange): ApiResult<Unit> = throw AssertionError("Unexpected fixture operation: patchCombined")
+    override suspend fun patchCombined(recordingBase: RecordingSettingsView, recording: RecordingSettingsPatch, aiBase: AiSettingsView, ai: AiSettingsPatch, analysisSecret: LocalSecretChange): ApiResult<Unit> = throw AssertionError("Unexpected fixture operation: patchCombined")
     override suspend fun testDraft(base: AiSettingsView, patch: AiSettingsPatch, slot: AiSlot): ApiResult<Unit> = throw AssertionError("Unexpected fixture operation: testDraft")
 
     override suspend fun getRecordingView() = fixtureFailure()
     override suspend fun patchRecording(base: RecordingSettingsView, patch: RecordingSettingsPatch) = fixtureFailure()
     override suspend fun getAiView() = fixtureFailure()
-    override suspend fun patchAi(base: AiSettingsView, patch: AiSettingsPatch, analysisSecret: LocalSecretChange, transcriptionSecret: LocalSecretChange) = fixtureFailure()
-    override suspend fun copyConnection(from: AiSlot, to: AiSlot, expectedRevision: Long) = fixtureFailure()
+    override suspend fun patchAi(base: AiSettingsView, patch: AiSettingsPatch, analysisSecret: LocalSecretChange) = fixtureFailure()
     override suspend fun testSlot(slot: AiSlot) = fixtureFailure()
 }
 
@@ -70,7 +69,7 @@ object FixtureRecordingApi : RecordingApi {
 
     private fun unavailable() = ApiResult.Failure(ApiError(ErrorCode.SYSTEM_UNAVAILABLE, "recording.unavailable"))
     override suspend fun getArchive(callId: Long) = unavailable()
-    override suspend fun importRecording(callId: Long, number: String, startedAt: Long, document: DocumentRef, source: RecordingSource, offlineOnly: Boolean) = unavailable()
+    override suspend fun importRecording(callId: Long, number: String, startedAt: Long, document: DocumentRef, source: RecordingSource) = unavailable()
     override suspend fun transcribeOffline(callId: Long) = unavailable()
     override suspend fun cancelOfflineTranscription(callId: Long, runId: Long) = unavailable()
     override suspend fun analyzeTranscript(callId: Long) = unavailable()

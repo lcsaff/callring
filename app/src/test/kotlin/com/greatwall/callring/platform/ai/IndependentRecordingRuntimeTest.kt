@@ -32,7 +32,7 @@ import java.time.format.DateTimeFormatter
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [33], manifest = Config.NONE)
 class IndependentRecordingRuntimeTest {
-    @Test fun authorizedFolderDiscoveryImportsOwnEventAndRespectsDeletionWithoutStatistics() = checkFolder(false)
+    @Test fun folderWithoutVisibleCallNeedsExplicitImportAndPreservesDeletion() = checkFolder(false)
     @Test fun restoredPendingSourceRequiresExplicitImportThenNeverReplaysIt() = checkFolder(true)
     private fun checkFolder(paused: Boolean) = runBlocking {
         val namespace = if(paused) "folder_paused" else "folder_independent"
@@ -80,10 +80,8 @@ class IndependentRecordingRuntimeTest {
         assertNull((runtime.service.getArchive(call.id) as ApiResult.Success).value!!.audioPath)
         scanTime += 10_000
         runtime.service.discoverSystemRecordings()
-        if(paused) {
-            assertNull(store.get(call.id)!!.audioPath); assertEquals(0,copies)
-            assertTrue(runtime.service.importRecording(call.id,call.number,call.startedAt,DocumentRef(available.single().uri),RecordingSource.SYSTEM) is ApiResult.Success)
-        }
+        assertNull(store.get(call.id)!!.audioPath); assertEquals(0,copies)
+        assertTrue(runtime.service.importRecording(call.id,call.number,call.startedAt,DocumentRef(available.single().uri),RecordingSource.SYSTEM) is ApiResult.Success)
         val imported = (runtime.service.getArchive(call.id) as ApiResult.Success).value!!
         if (imported.audioPath == null) {
             val explicit = runtime.service.importRecording(call.id, call.number, call.startedAt, DocumentRef(available.single().uri), RecordingSource.SYSTEM)

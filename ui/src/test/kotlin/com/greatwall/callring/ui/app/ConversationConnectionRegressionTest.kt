@@ -15,7 +15,7 @@ import org.junit.Test
 class ConversationConnectionRegressionTest {
     @Test fun passiveRefreshNeverCallsPaidProbeAndQueuedSendIsNotProofOfConnection() = runTest {
         val connection = AiConnectionView(AiProtocol.OPENAI, "https://example.test/v1", "test", true)
-        var view = AiSettingsView(connection, connection, ConversationBudget(), 0)
+        var view = AiSettingsView(connection, ConversationBudget(), 0)
         var probes = 0
         val feed = TestChangeFeed()
         val conversationState = MutableStateFlow(ConversationState("session"))

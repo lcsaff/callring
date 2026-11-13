@@ -12,7 +12,7 @@ import com.greatwall.callring.ui.feature.settings.components.*
 import com.greatwall.callring.ui.state.LoadState
 import com.greatwall.callring.ui.state.MutationState
 
-enum class SettingsPage { NUMBER_RULE, QUIET, POSITIONS, MY_POSITION, WORK, CALENDAR, LEAVES, SCORE, RINGTONE, RUNTIME, APPEARANCE, RECORDING, AI, UPDATE, STORAGE, BACKUP }
+enum class SettingsPage { NUMBER_RULE, QUIET, POSITIONS, MY_POSITION, WORK, CALENDAR, LEAVES, SCORE, RINGTONE, RUNTIME, APPEARANCE, RECORDING, AI, UPDATE, BACKUP }
 
 /** QA builds must not offer the in-app update entry (their applicationId cannot match a release). */
 internal fun updateEntryVisible(packageName: String): Boolean = !packageName.endsWith(".backendqa")
@@ -33,7 +33,8 @@ fun SettingsOverviewScreen(
     val versionName = remember(context) { installedVersionName(context) }
     val showUpdate = remember(context) { updateEntryVisible(context.packageName) }
     SettingsLayout("设置", state, mutation, onBack, onRetry, compactTitle = true) { data ->
-        SettingsCard("个人信息") {
+        SettingsCard("个人信息与档案") {
+            SettingRow("职位管理", "维护号码档案使用的职位与级别", { onNavigate(SettingsPage.POSITIONS) })
             SettingRow("我的职位", data.myPosition?.let { it.name + if (it.active) "" else "（已停用）" } ?: "尚未设置",
                 { onNavigate(SettingsPage.MY_POSITION) })
         }
@@ -52,14 +53,13 @@ fun SettingsOverviewScreen(
             SettingRow("录音设置", "录音来源与目录授权", { onNavigate(SettingsPage.RECORDING) })
         }
         SettingsCard("AI") {
-            SettingRow("AI 设置", "分析、转写连接、思考模式与上下文预算", { onNavigate(SettingsPage.AI) })
+            SettingRow("AI 设置", "分析连接、自动分析与上下文预算", { onNavigate(SettingsPage.AI) })
         }
         SettingsCard("显示") {
             SettingRow("外观", "主题色与深浅模式", { onNavigate(SettingsPage.APPEARANCE) })
         }
         SettingsCard("系统与支持") {
             SettingRow("备份与恢复", "加密导出、校验预览与替换恢复", { onNavigate(SettingsPage.BACKUP) })
-            SettingRow("数据管理", "查看占用、清理录音及清空全部号码档案", { onNavigate(SettingsPage.STORAGE) })
             SettingRow("运行状态与权限", "权限授权与运行诊断", { onNavigate(SettingsPage.RUNTIME) })
             if (showUpdate) {
                 SettingRow("检查更新", versionName?.let { "当前版本 $it" }, { onNavigate(SettingsPage.UPDATE) })

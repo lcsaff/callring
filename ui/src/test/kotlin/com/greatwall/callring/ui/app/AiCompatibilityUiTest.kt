@@ -16,8 +16,7 @@ import org.junit.Test
 class AiCompatibilityUiTest {
     private val analysis = AiConnectionView(AiProtocol.OPENAI, "https://dashscope.aliyuncs.com/compatible-mode/v1",
         "qwen3.8-flash", true)
-    private val transcription = AiConnectionView(AiProtocol.OPENAI, "https://api.example.com/v1", "whisper-1", true)
-    private val ai = AiSettingsView(analysis, transcription, ConversationBudget(65536, 8192), 1)
+    private val ai = AiSettingsView(analysis, ConversationBudget(65536, 8192), 1)
     private val recording = RecordingSettingsView(false, false, CaptureMode.SYSTEM_ONLY, false, 1)
 
     private fun api(
@@ -30,10 +29,9 @@ class AiCompatibilityUiTest {
             override suspend fun getAiView() = ApiResult.Success(onAiView())
             override suspend fun getRecordingView() = ApiResult.Success(onRecordingView())
             override suspend fun patchAi(base: AiSettingsView, patch: AiSettingsPatch,
-                analysisSecret: LocalSecretChange, transcriptionSecret: LocalSecretChange) = onPatchAi(patch)
+                analysisSecret: LocalSecretChange) = onPatchAi(patch)
             override suspend fun patchCombined(recordingBase: RecordingSettingsView, recording: RecordingSettingsPatch,
-                aiBase: AiSettingsView, ai: AiSettingsPatch, analysisSecret: LocalSecretChange,
-                transcriptionSecret: LocalSecretChange) = onPatchCombined(recording, ai)
+                aiBase: AiSettingsView, ai: AiSettingsPatch, analysisSecret: LocalSecretChange) = onPatchCombined(recording, ai)
         }
     }
 

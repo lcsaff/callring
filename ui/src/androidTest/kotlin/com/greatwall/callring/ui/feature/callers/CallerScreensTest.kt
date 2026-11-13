@@ -53,11 +53,12 @@ class CallerScreensTest {
         compose.setContent { CallringTheme(DefaultAppearance.rememberAppearanceThemeSpec(androidx.compose.foundation.isSystemInDarkTheme())) {
             CallerListScreen(page(), CallerSearch(), null,
                 onSearch = {}, onPage = {}, onRetry = {}, onAdd = {}, onCaller = {}, onReport = {},
-                onPositions = { positions++ })
+                onHistory = { positions++ })
         } }
         compose.onNodeWithText("按号码查看报表").assertDoesNotExist()
         compose.onNodeWithText("通话录音").assertDoesNotExist()
-        compose.onNodeWithContentDescription("职位管理").assertHeightIsEqualTo(40.dp).performClick()
+        compose.onNodeWithContentDescription("职位管理").assertDoesNotExist()
+        compose.onNodeWithContentDescription("通话记录").assertHeightIsEqualTo(40.dp).performClick()
         compose.onNodeWithContentDescription("新增档案").assertHeightIsEqualTo(40.dp).assertHasClickAction()
         compose.runOnIdle { assertEquals(1, positions) }
     }

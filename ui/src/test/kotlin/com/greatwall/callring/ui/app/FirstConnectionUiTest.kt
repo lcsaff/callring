@@ -19,21 +19,20 @@ import org.robolectric.annotation.Config
 class FirstConnectionUiTest {
     @get:Rule val compose = createComposeRule()
     @Test fun analysisDraftAndLocalKeyReachTheSameSaveAndCancelWritesNothing() = exercise(AiSlot.ANALYSIS)
-    @Test fun transcriptionDraftAndLocalKeyReachTheSameSaveAndCancelWritesNothing() = exercise(AiSlot.TRANSCRIPTION)
     private fun exercise(slot: AiSlot) {
         val index = if(slot == AiSlot.ANALYSIS) 0 else 1
         val empty = AiConnectionView(AiProtocol.OPENAI,"","",false)
-        var view = AiSettingsView(empty,empty,ConversationBudget(),0)
+        var view = AiSettingsView(empty,ConversationBudget(),0)
         val changes = TestChangeFeed()
-        val submitted = mutableListOf<Triple<AiSettingsPatch,LocalSecretChange,LocalSecretChange>>()
+        val submitted = mutableListOf<Pair<AiSettingsPatch,LocalSecretChange>>()
         val settings = object : AiSettingsApi by FixtureAiSettingsApi {
             override suspend fun getAiView() = ApiResult.Success(view)
             override suspend fun getRecordingView() = ApiResult.Success(RecordingSettingsView(false,false,CaptureMode.SYSTEM_ONLY,false,0))
-            override suspend fun patchCombined(recordingBase: RecordingSettingsView, recording: RecordingSettingsPatch, aiBase: AiSettingsView, ai: AiSettingsPatch, analysisSecret: LocalSecretChange, transcriptionSecret: LocalSecretChange): ApiResult<Unit> {
-                submitted += Triple(ai,analysisSecret,transcriptionSecret)
+            override suspend fun patchCombined(recordingBase: RecordingSettingsView, recording: RecordingSettingsPatch, aiBase: AiSettingsView, ai: AiSettingsPatch, analysisSecret: LocalSecretChange): ApiResult<Unit> {
+                submitted += ai to analysisSecret
                 if(submitted.size == 1) return ApiResult.Failure(ApiError(ErrorCode.STORAGE_FAILURE,"test-storage-failed"))
                 val saved = AiConnectionView(AiProtocol.OPENAI,"https://first.example/v1","first-model",true)
-                view = if(slot == AiSlot.ANALYSIS) view.copy(analysis = saved,revision = 1) else view.copy(transcription = saved,revision = 1)
+                view = view.copy(analysis = saved,revision = 1)
                 changes.publish(setOf(com.greatwall.callring.contracts.change.DataDomain.AI_SETTINGS))
                 return ApiResult.Success(Unit)
             }
@@ -55,14 +54,11 @@ class FirstConnectionUiTest {
         compose.onNodeWithText("保存密钥").performClick()
         compose.runOnIdle {
             assertEquals(2,submitted.size)
-            val (patch,analysisKey,transcriptionKey) = submitted.last()
-            val connection = if(slot == AiSlot.ANALYSIS) patch.analysis else patch.transcription
-            val key = if(slot == AiSlot.ANALYSIS) analysisKey else transcriptionKey
-            val other = if(slot == AiSlot.ANALYSIS) transcriptionKey else analysisKey
+            val (patch,key) = submitted.last()
+            val connection = patch.analysis
             assertEquals(PatchField.Set("https://first.example/v1"),connection.url)
             assertEquals(PatchField.Set("first-model"),connection.model)
             assertEquals("local-sentinel",(key as LocalSecretChange.Replace).value)
-            assertEquals(LocalSecretChange.Keep,other)
         }
         compose.onAllNodesWithText("密钥已配置").assertCountEquals(1)
         compose.onNodeWithText("保存 AI 设置").assertDoesNotExist()

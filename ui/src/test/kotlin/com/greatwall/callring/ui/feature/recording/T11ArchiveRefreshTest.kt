@@ -3,6 +3,7 @@ package com.greatwall.callring.ui.feature.recording
 import com.greatwall.callring.contracts.change.*
 import com.greatwall.callring.contracts.common.*
 import com.greatwall.callring.contracts.recording.*
+import com.greatwall.callring.contracts.callers.*
 import com.greatwall.callring.ui.testing.*
 import kotlinx.coroutines.*
 import kotlinx.coroutines.test.*
@@ -11,6 +12,38 @@ import org.junit.Test
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class T11ArchiveRefreshTest {
+    @Test fun profileRenameRefreshesHeaderWithoutReloadingTranscriptOrUnrelatedNumbers() = runTest {
+        val feed = TestChangeFeed()
+        val classification = ClassificationFact(true, WorkReason.WORKING, null, true, "UTC", 0, null, 0)
+        val call = CallDetail(1, "31234", 0, null, null, CallResult.MISSED, CallDecision.NORMAL_RINGING,
+            CallSource.SYSTEM_CALL_LOG, false, classification, classification, false, null)
+        var name = "原姓名"
+        var facts = 0
+        var payloads = 0
+        val callers = object : UiFakeApi() {
+            override suspend fun getCallHistoryDetail(callId: Long): ApiResult<CallHistoryEntry> {
+                facts++
+                return ApiResult.Success(CallHistoryEntry(call,
+                    CallHistoryRecording(-1, CallArchiveAvailability.AVAILABLE, true, true), callerName = name))
+            }
+        }
+        val recordings = object : RecordingApi by FixtureRecordingApi {
+            override suspend fun getArchive(callId: Long): ApiResult<CallArchive?> {
+                payloads++
+                return ApiResult.Success(CallArchive(-1, "31234", 0, transcript = "已保存的全文"))
+            }
+        }
+        val model = ArchiveViewModel(recordings, 1, "31234", 0, backgroundScope, changes = feed, callers = callers)
+        runCurrent()
+        assertEquals(1, facts); assertEquals(1, payloads)
+        name = "新姓名"
+        feed.entity(DataDomain.CALLERS, "99999"); runCurrent()
+        assertEquals(1, facts)
+        feed.entity(DataDomain.CALLERS, "31234"); runCurrent()
+        assertEquals("新姓名", model.history.value.data?.callerName)
+        assertEquals(2, facts); assertEquals(1, payloads)
+    }
+
     @Test fun positiveAliasMovesToCanonicalAndNullArchiveKeepsItsIdentitySubscription() = runTest {
         val feed = TestChangeFeed()
         val data = mutableMapOf<Long, CallArchive>(1L to CallArchive(1, "A", 0), -2L to CallArchive(-2, "B", 0))

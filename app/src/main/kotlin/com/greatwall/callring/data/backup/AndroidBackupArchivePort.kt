@@ -65,7 +65,7 @@ internal class AndroidBackupArchivePort(
             SqliteBackupCopy.copy(sourceRecording, File(stage, "recording.db"), check = check)
             val settings = graph.recordings.store.settings().let { it.copy(
                 automaticAnalysis = false, systemFolder = null,
-                analysis = it.analysis.copy(apiKey = ""), transcription = it.transcription.copy(apiKey = ""),
+                analysis = it.analysis.copy(apiKey = ""),
             ) }
             val preferences = JSONObject().put("appearance", preferenceJson(appearance, appearanceKeys))
                 .put("ringtone", preferenceJson(ring, ringtoneKeys)).put("recording", RecordingJson.settings(settings))
@@ -354,8 +354,8 @@ internal class AndroidBackupArchivePort(
             ensure(if (key in setOf("enabled", "custom")) value is Boolean else value is String)
         }
         val settings = RecordingJson.settings(prefs.getJSONObject("recording"))
-        ensure(!settings.automaticAnalysis && settings.systemFolder == null && settings.analysis.apiKey.isEmpty() && settings.transcription.apiKey.isEmpty())
-        settings.copy(analysis = settings.analysis.copy(url = "", model = ""), transcription = settings.transcription.copy(url = "", model = "")).validate()
+        ensure(!settings.automaticAnalysis && settings.systemFolder == null && settings.analysis.apiKey.isEmpty())
+        settings.copy(analysis = settings.analysis.copy(url = "", model = "")).validate()
         jsonPreferences(prefs.getJSONObject("appearance")); jsonPreferences(prefs.getJSONObject("ringtone"))
     }
     private fun summary(stage: File, created: Long, audio: Boolean, custom: Boolean, totals: Pair<Long, Long>) = BackupSummary(created,

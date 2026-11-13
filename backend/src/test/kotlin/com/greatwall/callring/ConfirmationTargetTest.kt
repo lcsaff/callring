@@ -38,7 +38,7 @@ class ConfirmationTargetTest {
             }
             val safe = AiConnectionView(AiProtocol.OPENAI,"https://actual.example/v1","actual-model",true)
             val settings = object : AiSettingsApi by FixtureAiSettingsApi {
-                override suspend fun getAiView() = ApiResult.Success(AiSettingsView(safe,safe,ConversationBudget(),0))
+                override suspend fun getAiView() = ApiResult.Success(AiSettingsView(safe,ConversationBudget(),0))
                 override suspend fun testSlot(slot: AiSlot): ApiResult<Unit> { effects++; return ApiResult.Success(Unit) }
             }
             fun root(context: CommandContext? = null): CallringUiApi = object : CallringUiApi by (context?.let(f.backend::commandApi) ?: f.backend) {

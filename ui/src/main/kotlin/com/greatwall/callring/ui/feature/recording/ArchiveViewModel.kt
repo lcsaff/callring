@@ -8,6 +8,8 @@ import com.greatwall.callring.ui.state.*
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.*
 
+enum class ArchiveFeedbackSection { RECORDING, TRANSCRIPT, ANALYSIS }
+
 class ArchiveViewModel(private val api: RecordingApi, private val callId: Long,
     private val number: String?, private val startedAt: Long?, testScope: CoroutineScope? = null,
     private val cleanupDispatcher: CoroutineDispatcher = Dispatchers.IO,
@@ -62,8 +64,11 @@ class ArchiveViewModel(private val api: RecordingApi, private val callId: Long,
     private fun factsSubscription(entry: CallHistoryEntry? = facts.value.data): ChangeSubscription {
         val ids = listOfNotNull(callId, entry?.linkedScreeningCallId, entry?.recording?.archiveId)
         val entities = mutableMapOf(DataDomain.RECORDING_ARCHIVES to ids.flatMap { listOf(it.toString(), "statistics:$it") }.toSet())
-        (entry?.call?.number ?: number)?.let { entities[DataDomain.CALLS] = setOf(it) }
-        return ChangeSubscription(setOf(DataDomain.CALLS, DataDomain.RECORDING_ARCHIVES), entities)
+        (entry?.call?.number ?: number)?.let {
+            entities[DataDomain.CALLS] = setOf(it)
+            entities[DataDomain.CALLERS] = setOf(it)
+        }
+        return ChangeSubscription(setOf(DataDomain.CALLS, DataDomain.CALLERS, DataDomain.RECORDING_ARCHIVES), entities)
     }
     private var factsToken: InvalidationToken? = null
     private data class HistoryRead(val before: InvalidationSnapshot, val result: ApiResult<CallHistoryEntry>)
@@ -103,6 +108,13 @@ class ArchiveViewModel(private val api: RecordingApi, private val callId: Long,
     val files = fileLoader.state
     private val writer = MutationRunner(scope)
     val mutation = writer.state
+    private val feedback = MutableStateFlow(ArchiveFeedbackSection.RECORDING)
+    val feedbackSection = feedback.asStateFlow()
+    private fun <T> write(section: ArchiveFeedbackSection, request: suspend () -> ApiResult<T>, message: String = "", onSuccess: (T) -> Unit = {}) {
+        if (mutation.value.busy) return
+        feedback.value = section
+        writer.run(request, message, onSuccess)
+    }
     init {
         scope.launch(start = CoroutineStart.UNDISPATCHED) {
             changes.snapshots().collect { snapshot ->
@@ -123,20 +135,20 @@ class ArchiveViewModel(private val api: RecordingApi, private val callId: Long,
         refreshHistory()
     }
     fun listSystem() = fileLoader.load { api.systemRecordings() }
-    fun import(document: DocumentRef, source: RecordingSource = RecordingSource.IMPORTED, offlineOnly: Boolean = false) {
+    fun import(document: DocumentRef, source: RecordingSource = RecordingSource.IMPORTED) {
         val call = history.value.data?.call
         val targetNumber = call?.number ?: number ?: return
         val targetStartedAt = call?.startedAtEpochMillis ?: startedAt ?: return
-        writer.run({ api.importRecording(callId, targetNumber, targetStartedAt, document, source, offlineOnly) }, "录音已导入")
+        write(ArchiveFeedbackSection.RECORDING, { api.importRecording(callId, targetNumber, targetStartedAt, document, source) }, "录音已导入")
     }
     private fun archiveTarget() = facts.value.data?.recording?.archiveId ?: state.value.data?.callId ?: callId
-    fun transcribeOffline() = writer.run({ api.transcribeOffline(archiveTarget()) }, "")
-    fun cancelOffline(runId: Long) = writer.run({ api.cancelOfflineTranscription(archiveTarget(), runId) }, "")
-    fun retry() = writer.run({ api.retry(archiveTarget()) }, "已提交档案补全（不调用模型）")
+    fun transcribeOffline() = write(ArchiveFeedbackSection.TRANSCRIPT, { api.transcribeOffline(archiveTarget()) }, "")
+    fun cancelOffline(runId: Long) = write(ArchiveFeedbackSection.TRANSCRIPT, { api.cancelOfflineTranscription(archiveTarget(), runId) }, "")
+    fun retry() = write(ArchiveFeedbackSection.ANALYSIS, { api.retry(archiveTarget()) }, "已提交档案补全（不调用模型）")
     fun analyze() {
         val baseline = state.value.data
         val target = archiveTarget()
-        writer.run({ api.analyzeTranscript(target) }, "已提交 AI 分析") {
+        write(ArchiveFeedbackSection.ANALYSIS, { api.analyzeTranscript(target) }, "已提交 AI 分析") {
             if (state.value.data == baseline) suggestions.show(null)
         }
     }
@@ -145,6 +157,6 @@ class ArchiveViewModel(private val api: RecordingApi, private val callId: Long,
         val linked = history.value.data?.linkedScreeningCallId
         playback.toggle(archiveTarget(), linked?.takeIf { it == playing } ?: callId)
     }
-    fun delete() = writer.run({ api.delete(archiveTarget()) }, "本次归档已删除")
+    fun delete() = write(ArchiveFeedbackSection.RECORDING, { api.delete(archiveTarget()) }, "本次归档已删除")
 
 }

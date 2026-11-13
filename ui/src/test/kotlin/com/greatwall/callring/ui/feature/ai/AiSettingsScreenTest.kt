@@ -32,7 +32,7 @@ class AiSettingsScreenTest {
 
     private fun defaultAi(support: ThinkingSupport = ThinkingSupport.AVAILABLE,
         notice: String = "", mode: ThinkingMode = ThinkingMode.DISABLED) =
-        AiSettingsView(connection(support, notice, mode), connection(support, notice),
+        AiSettingsView(connection(support, notice, mode),
             ConversationBudget(), 1)
 
     private val recording = RecordingSettingsView(false, false, CaptureMode.SYSTEM_ONLY, false, 1)
@@ -45,14 +45,14 @@ class AiSettingsScreenTest {
     ) {
         compose.setContent { CallringTheme(DefaultAppearance.rememberAppearanceThemeSpec(androidx.compose.foundation.isSystemInDarkTheme())) {
             AiSettingsScreen(LoadState(AiSettingsUi(ai, recording), loaded = true), MutationState(), {},
-                {}, {}, {}, {}, onThinkingMode, onBudget, onAutomaticAnalysis, {}, { _, _ -> }, {})
+                {}, {}, {}, onThinkingMode, onBudget, onAutomaticAnalysis, {}, {})
         } }
     }
 
     @Test fun threeGroupsAppearInOrderWithoutCompatibilityOrSaveActions() {
         show()
         val first = compose.onNodeWithText("内容分析与沟通").fetchSemanticsNode().positionInRoot.y
-        val second = compose.onNodeWithText("录音转写").fetchSemanticsNode().positionInRoot.y
+        val second = compose.onNodeWithText("本地转写与自动分析").fetchSemanticsNode().positionInRoot.y
         val third = compose.onNodeWithText("高级设置").fetchSemanticsNode().positionInRoot.y
         assertTrue(first < second)
         assertTrue(second < third)
@@ -60,6 +60,8 @@ class AiSettingsScreenTest {
         compose.onNodeWithText("保存 AI 设置").assertDoesNotExist()
         compose.onNodeWithTag("settings-save").assertDoesNotExist()
         compose.onNodeWithText("思考模式").assertExists()
+        compose.onNodeWithText("测试转写连接").assertDoesNotExist()
+        compose.onAllNodesWithText("模型名称").assertCountEquals(1)
     }
 
     @Test fun unsupportedThinkingModeIsDisabledWithAReadableReason() {

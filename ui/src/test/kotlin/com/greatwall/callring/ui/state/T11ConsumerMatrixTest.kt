@@ -26,13 +26,13 @@ class T11ConsumerMatrixTest {
     @Test fun aiConflictRebasesFromOneRelevantQueryAndKeepsConflictFeedback() = runTest {
         val feed = TestChangeFeed(); var reads = 0
         val connection = AiConnectionView(AiProtocol.OPENAI, "https://old.example", "model", false)
-        var view = AiSettingsView(connection, connection, ConversationBudget(), 0)
+        var view = AiSettingsView(connection, ConversationBudget(), 0)
         val api = object : UiFakeApi() {
             override val changes: ChangeFeed = feed
             override val aiSettings = object : AiSettingsApi by FixtureAiSettingsApi {
                 override suspend fun getAiView(): ApiResult<AiSettingsView> { reads++; return ApiResult.Success(view) }
                 override suspend fun getRecordingView(): ApiResult<RecordingSettingsView> = ApiResult.Success(RecordingSettingsView(false, false, CaptureMode.SYSTEM_ONLY, false, 0))
-                override suspend fun patchAi(base: AiSettingsView, patch: AiSettingsPatch, analysisSecret: LocalSecretChange, transcriptionSecret: LocalSecretChange): ApiResult<AiSettingsView> {
+                override suspend fun patchAi(base: AiSettingsView, patch: AiSettingsPatch, analysisSecret: LocalSecretChange): ApiResult<AiSettingsView> {
                     view = view.copy(analysis = connection.copy(url = "https://external.example"), revision = 1)
                     feed.publish(setOf(DataDomain.AI_SETTINGS)); yield()
                     return ApiResult.Failure(ApiError(ErrorCode.CONFLICT, "settings.conflict"))
@@ -63,7 +63,7 @@ class T11ConsumerMatrixTest {
                 override suspend fun getAiView(): ApiResult<AiSettingsView> {
                     count("ai")
                     val connection = AiConnectionView(AiProtocol.OPENAI, "", "", false)
-                    return ApiResult.Success(AiSettingsView(connection, connection, ConversationBudget(), 0))
+                    return ApiResult.Success(AiSettingsView(connection, ConversationBudget(), 0))
                 }
                 override suspend fun getRecordingView(): ApiResult<RecordingSettingsView> = ApiResult.Success(RecordingSettingsView(false, false, CaptureMode.SYSTEM_ONLY, false, 0))
             }

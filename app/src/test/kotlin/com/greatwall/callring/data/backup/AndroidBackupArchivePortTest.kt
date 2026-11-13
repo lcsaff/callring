@@ -30,23 +30,6 @@ import java.util.UUID
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [33], manifest = Config.NONE)
 class AndroidBackupArchivePortTest {
-    @Test fun resetOpaque() = runBlocking {
-        Fixture().use { f ->
-            val call=f.graph.recordings.registrations.registerIncoming("legacy-private","*",123,null,null)
-            val old=f.graph.recordings.store.get(call.id)!!
-            f.graph.recordings.store.compareAndSet(call.id,old.generation,old.copy(generation=old.generation+1,status=ArchiveStatus.COMPLETE,transcript="retained private transcript"))
-            val reset=AndroidNumberProfileResetPort(f.context,f.graph,f.configuration,f.owner,
-                {RestoreJournal(File(f.root,"reset"),f.context.dataDir,syncDirectory={})})
-            val p=reset.preview {};reset.confirm(p.token,true){}
-            f.newGraph().use { restored ->
-                val backup=AndroidBackupArchivePort(f.context,restored,f.configuration,f.owner,f.cipher,
-                    {RestoreJournal(File(f.root,"restore-opaque"),f.context.dataDir,syncDirectory={})})
-                assertEquals(1L,backup.export(f.document,"password".toCharArray(),false){}.archives)
-                val preview=backup.preview(f.document,"password".toCharArray()){}
-                assertEquals(1L,preview.summary.archives)
-            }
-        }
-    }
     @Test fun roundTrip() = runBlocking {
         for (includeAudio in listOf(false, true)) Fixture().use { fixture ->
             val graph = fixture.graph
@@ -80,7 +63,7 @@ class AndroidBackupArchivePortTest {
                 if (includeAudio) assertArrayEquals(byteArrayOf(1, 2, 3, 4), File(restored.audioPath!!).readBytes()) else { assertNull(restored.audioPath); assertEquals("recording.audio_not_restored", restored.error) }
                 val settings = it.settings()
                 assertFalse(settings.automaticAnalysis); assertNull(settings.systemFolder)
-                assertEquals("", settings.analysis.apiKey); assertEquals("", settings.transcription.apiKey)
+                assertEquals("", settings.analysis.apiKey)
                 val next = com.greatwall.callring.application.recording.RecordingRegistrationService(it, com.greatwall.callring.application.coordination.BusinessRevisionCoordinator()).registerIncoming("next", "31234", 124, null, null)
                 assertEquals(call.id - 1, next.id)
             }
@@ -210,11 +193,11 @@ class AndroidBackupArchivePortTest {
         Fixture().use { fixture ->
             val store = fixture.graph.recordings.store
             val parsed = com.greatwall.callring.domain.recording.ParsedSystemRecording("12345", 1000)
-            val call = store.registerSystemSource("source", parsed, null) { CallArchive(it.id, it.number, it.startedAt, status = ArchiveStatus.COMPLETE, transcript = "already analyzed") }.call
+            val call = store.seedLegacySystemSource("source", parsed) { CallArchive(it.id, it.number, it.startedAt, status = ArchiveStatus.COMPLETE, transcript = "already analyzed") }.call
             store.completeSystemSource("source")
-            val deleted = store.registerSystemSource("deleted", parsed.copy(startedAtEpochMillis = 20000), null) { CallArchive(it.id,it.number,it.startedAt) }.call
+            val deleted = store.seedLegacySystemSource("deleted", parsed.copy(startedAtEpochMillis = 20000)) { CallArchive(it.id,it.number,it.startedAt) }.call
             store.delete(deleted.id)
-            val scan = store.beginSystemScan("settings", 20000, 30, "UTC")
+            val scan = store.beginSystemScan("settings", 20000, "UTC")
             store.observeSystemFile(scan.id, com.greatwall.callring.application.ports.recording.ScannedSystemRecording("pending", RecordingFile("content://private/name", "private.wav", 1, 128)), parsed, 20000)
             fixture.port.export(fixture.document, "password".toCharArray(), false) {}
             val decoded = File(fixture.root,"decoded").apply { mkdir() }
@@ -235,7 +218,7 @@ class AndroidBackupArchivePortTest {
             val preview=fixture.port.preview(fixture.document,"password".toCharArray()) {}
             fixture.port.restore(preview.token) {}
             AndroidRecordingStore(fixture.context,fixture.configuration.databaseName,fixture.cipher,recordingVersion={0}).use {
-                assertEquals(30,it.settings().systemImportDays)
+
                 assertTrue(it.sourceCompleted("source")); assertTrue(it.isDeleted(deleted.id))
                 val restored=it.get(call.id)!!
                 assertEquals(ArchiveStatus.COMPLETE,restored.status); assertNull(restored.audioPath)
@@ -246,7 +229,7 @@ class AndroidBackupArchivePortTest {
 
     @Test fun badSystemSources() = runBlocking {
         for (mutation in listOf("archive_id=999", "source_key='content://private/path'", "number='not-a-number'", "completed=2")) Fixture().use { fixture ->
-            fixture.graph.recordings.store.registerSystemSource("source", com.greatwall.callring.domain.recording.ParsedSystemRecording("12345",1000),null) { CallArchive(it.id,it.number,it.startedAt) }
+            fixture.graph.recordings.store.seedLegacySystemSource("source", com.greatwall.callring.domain.recording.ParsedSystemRecording("12345",1000)) { CallArchive(it.id,it.number,it.startedAt) }
             fixture.port.export(fixture.document,"password".toCharArray(),false) {}
             val decoded=File(fixture.root,"decoded").apply { mkdir() }
             fixture.archive.inputStream().use { EncryptedBackupFormat.read(it,decoded,"password".toCharArray()) }
@@ -278,7 +261,7 @@ class AndroidBackupArchivePortTest {
             assertEquals(1L,preview.summary.archives)
             fixture.port.restore(preview.token) {}
             AndroidRecordingStore(fixture.context,fixture.configuration.databaseName,fixture.cipher,recordingVersion={0}).use {
-                assertEquals(7,it.settings().systemImportDays)
+
                 assertNotNull(it.get(call.id))
                 assertNull(it.sourceBinding("missing"))
             }

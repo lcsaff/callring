@@ -161,7 +161,6 @@ class CallringActivity : ComponentActivity() {
                 is UiDestination.EditCaller -> "edit"
                 UiDestination.Lookup -> "lookup"
                 UiDestination.Leaves -> "leaves"
-                UiDestination.Positions -> "positions"
                 UiDestination.Setup -> "setup"
                 is UiDestination.Setting -> "setting"
                 UiDestination.Home -> "home"

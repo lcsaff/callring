@@ -10,7 +10,6 @@ import com.greatwall.callring.application.recording.RecordingWorkflow
 import com.greatwall.callring.data.recording.AndroidRecordingStore
 import com.greatwall.callring.data.recording.CallHistoryProjectionRepair
 import com.greatwall.callring.platform.recording.SherpaOfflineTranscriber
-import com.greatwall.callring.platform.recording.AndroidAudioTranscriber
 import com.greatwall.callring.platform.recording.AndroidRecordingAudio
 import com.greatwall.callring.platform.recording.AndroidRecordingPlayback
 import com.greatwall.callring.platform.recording.SystemRecordingSource
@@ -35,6 +34,7 @@ class RecordingAssembly(
     metadataReader: ((File) -> Pair<Long, String>)? = null,
     private val coordinator: BusinessRevisionCoordinator = BusinessRevisionCoordinator(),
     clientFactory: (() -> AiClient)? = null,
+    private val offlineTranscriber: com.greatwall.callring.application.ports.recording.OfflineTranscriber = SherpaOfflineTranscriber(context.assets),
     private val operationActive: () -> Boolean,
     private val enrichment: com.greatwall.callring.application.ports.recording.RecordingIdentityEnrichment,
     findCalls: (String, Long) -> List<RecordingCall>,
@@ -79,22 +79,17 @@ class RecordingAssembly(
         importAudio = { call,candidate,validate,copyActive,inspect -> service.importDiscovered(call,candidate,validate,copyActive,inspect) }) }
     private val clientAccess = com.greatwall.callring.platform.ownership.OwnedFileAccess()
     private val clientDelegate = lazy {
-        val instance = clientFactory?.invoke() ?: CompatibleAiClient(testAudio = {
-            clientAccess.checkOpen()
-            val file = File(context.cacheDir, "ai-connection-test.wav")
-            if (!file.isFile) context.assets.open("ai-test.wav").use { input -> file.outputStream().use { input.copyTo(it) } }
-            file
-        })
+        val instance = clientFactory?.invoke() ?: CompatibleAiClient()
         try { clientAccess.checkOpen(); instance } catch (failure: Throwable) { instance.cancel(); throw failure }
     }
     private val client get() = clientDelegate.value
     private val aiSettingsDelegate = lazy { AiSettingsService(store, coordinator,
         { context.checkSelfPermission(android.Manifest.permission.RECORD_AUDIO) == android.content.pm.PackageManager.PERMISSION_GRANTED },
-        { connection, transcription -> clientAccess.acquire().use { client.test(connection, transcription); clientAccess.checkOpen() } },
+        { connection -> clientAccess.acquire().use { client.test(connection); clientAccess.checkOpen() } },
         afterSave = { old, next ->
-            if(old.recordingEnabled != next.recordingEnabled || old.systemFolder != next.systemFolder || old.systemImportDays != next.systemImportDays) cancelDiscovery()
+            if(old.recordingEnabled != next.recordingEnabled || old.systemFolder != next.systemFolder) cancelDiscovery()
             if (!next.recordingEnabled) context.stopService(android.content.Intent(context, com.greatwall.callring.CallCaptureService::class.java))
-            if (next.recordingEnabled && next.systemFolder != null && (old.recordingEnabled != next.recordingEnabled || old.systemFolder != next.systemFolder || old.systemImportDays != next.systemImportDays)) schedule(0)
+            if (next.recordingEnabled && next.systemFolder != null && (old.recordingEnabled != next.recordingEnabled || old.systemFolder != next.systemFolder)) schedule(0)
         }, folderView = sources::describe, operationActive = operationActive) }
     val aiSettings get() = owned { aiSettingsDelegate.value }
     suspend fun reobserveFolder() {
@@ -106,13 +101,13 @@ class RecordingAssembly(
     }
     private val archiveCommandsDelegate = lazy { RecordingArchiveCommands(store, store, coordinator) }
     private val registrationsDelegate = lazy { RecordingRegistrationService(store, coordinator) }
-    private val workflowDelegate = lazy { RecordingWorkflow(store, archiveCommands, AndroidAudioTranscriber(client, File(context.cacheDir, namespace + "_ai_audio")), directionResolver = { archive ->
+    private val workflowDelegate = lazy { RecordingWorkflow(store, archiveCommands, client, directionResolver = { archive ->
         val direct = if (archive.callId > 0) findCall(archive.callId) else null
         val known = direct ?: findCalls(archive.number,archive.startedAtEpochMillis).singleOrNull()?.takeIf {
             (store.linkedRecording(it.id)?.id ?: it.id) == archive.callId
         }
         known?.let { com.greatwall.callring.contracts.callers.CallDirection.valueOf(it.direction.name) } ?: archive.direction
-    }, enrichment = enrichment, offlineTranscriber = SherpaOfflineTranscriber(context.assets)) }
+    }, enrichment = enrichment, offlineTranscriber = offlineTranscriber) }
     private val audioDelegate = lazy { AndroidRecordingAudio(context, directory, metadataReader) }
     private val audio get() = audioDelegate.value
     private val playbackDelegate: Lazy<AndroidRecordingPlayback> = lazy { AndroidRecordingPlayback(directory) { service.playbackFinished() } }

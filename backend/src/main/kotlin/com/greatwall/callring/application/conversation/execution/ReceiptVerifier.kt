@@ -79,7 +79,7 @@ class ReceiptVerifier(private val q:QueryService,private val catalog:OperationCa
                 OperationId.RECORDINGS_SET_SYSTEM_FOLDER ->sameValue(get(AiDomain.D13)["folderConfigured"],aiBool(true))
                 OperationId.AI_PATCH_SETTINGS ->compareAi(get(AiDomain.D14),a)
                 OperationId.SYSTEM_REQUEST_CAPABILITY ->{val runtime=get(AiDomain.D19)["runtime"] as? AiJson.Obj;val capabilities=runtime?.get("capabilities") as? AiJson.Obj;capabilities?.get(a.s("capability")) in setOf(aiString("GRANTED"),aiString("NOT_REQUIRED"))}
-                OperationId.AI_EDIT_CREDENTIAL, OperationId.AI_COPY_CONNECTION ->{val value=get(AiDomain.D14);val expected=receiptObject();expected.fields.isNotEmpty()&&compare(value,expected)}
+                OperationId.AI_EDIT_CREDENTIAL ->{val value=get(AiDomain.D14);val expected=receiptObject();expected.fields.isNotEmpty()&&compare(value,expected)}
                 OperationId.CALLERS_DELETE_NUMBER -> {
                     val filter = QueryFilter(number = a.s("number"))
                     val profileGone = absent(AiDomain.D01, a.s("number"))
@@ -102,7 +102,7 @@ class ReceiptVerifier(private val q:QueryService,private val catalog:OperationCa
     private fun compareAi(actual:AiJson.Obj,patch:AiJson.Obj):Boolean=patch.fields.filterKeys{it !in setOf("taskId","dependsOn")}.all{(key,value)->
         when(key){
             "context","output"->sameValue((actual["budget"] as? AiJson.Obj)?.get(key)?:AiJson.Null,value)
-            "analysis","transcription"->{val view=actual[key] as? AiJson.Obj;view!=null&&(value as AiJson.Obj).fields.all{(f,v)->sameValue(view[f],v,f)}}
+            "analysis"->{val view=actual[key] as? AiJson.Obj;view!=null&&(value as AiJson.Obj).fields.all{(f,v)->sameValue(view[f],v,f)}}
             else->sameValue(actual[key],value,key)
         }
     }

@@ -241,7 +241,7 @@ class DomainRegressionTest {
             recordingHistoryReconciler = com.greatwall.callring.application.ports.recording.RecordingHistoryReconciler { }, callHistoryRecordings = com.greatwall.callring.application.callers.CallHistoryRecordingReads { _, _ -> error("unexpected call history") }, numberRecordings = com.greatwall.callring.EmptyNumberRecordings,
             operationActive = { true },
             conversationProvider = { unusedPort() }, aiSettingsProvider = { unusedPort() },
-            updateProvider = { unusedPort() }, snapshotsProvider = { unusedPort() }, storageProvider = { com.greatwall.callring.testing.FixtureStorageApi }, backupProvider = { com.greatwall.callring.testing.FixtureBackupApi }, recordingsProvider = { unusedPort() }, persistenceActive = { true }).also { kotlinx.coroutines.runBlocking { it.prepareNumberRule().requiredValue() } }
+            updateProvider = { unusedPort() }, snapshotsProvider = { unusedPort() },  backupProvider = { com.greatwall.callring.testing.FixtureBackupApi }, recordingsProvider = { unusedPort() }, persistenceActive = { true }).also { kotlinx.coroutines.runBlocking { it.prepareNumberRule().requiredValue() } }
     }
 
     @Suppress("UNCHECKED_CAST")

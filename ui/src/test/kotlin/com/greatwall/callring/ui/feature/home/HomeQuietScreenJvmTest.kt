@@ -78,7 +78,7 @@ class HomeQuietScreenJvmTest {
             SettingsOverviewScreen(LoadState(summary, loaded = true), MutationState(), null, {}, {}, {})
         } }
         compose.onNodeWithText("免打扰").assertDoesNotExist()
-        assertTrue(compose.onNodeWithText("个人信息").fetchSemanticsNode().boundsInRoot.top <
+        assertTrue(compose.onNodeWithText("个人信息与档案").fetchSemanticsNode().boundsInRoot.top <
             compose.onNodeWithText("来电处理").fetchSemanticsNode().boundsInRoot.top)
     }
 

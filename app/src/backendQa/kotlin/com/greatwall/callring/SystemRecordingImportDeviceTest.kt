@@ -41,23 +41,24 @@ class SystemRecordingImportDeviceTest : InstrumentationTestCase() {
         val expectedTranscript = "Synthetic system recording."
         var transcriptions = 0; var analyses = 0
         var matchedCalls = emptyList<RecordingCall>()
-        val client = object : AiClient {
-            override fun operation(cancelled: () -> Boolean) = this
-            override fun cancel() = Unit
-            override fun test(connection: AiConnection, transcription: Boolean) = Unit
-            override fun transcribe(connection: AiConnection, reference: AudioReference): String {
+        val localTranscriber = OfflineTranscriber { reference, _, _ ->
                 val decoded = File(reference.location)
                 assertTrue(decoded.isFile && decoded.length() > 44)
                 decoded.inputStream().use { input -> assertEquals("RIFF", String(ByteArray(4).also { input.read(it) }, Charsets.US_ASCII)) }
-                transcriptions++; return expectedTranscript
-            }
+            transcriptions++; OfflineTranscript(expectedTranscript,"local-qa")
+        }
+        val client = object : AiClient {
+            override fun operation(cancelled: () -> Boolean) = this
+            override fun cancel() = Unit
+            override fun test(connection: AiConnection) = Unit
+
             override fun analyze(connection: AiConnection, transcript: String): CallAnalysis {
                 assertEquals(expectedTranscript, transcript)
                 analyses++; return CallAnalysis(summary = "Synthetic summary")
             }
         }
         fun assembly() = RecordingAssembly(context,namespace,{id->matchedCalls.singleOrNull { it.id==id }},{null},{},coordinator=coordinator,
-            clientFactory={client},operationActive={true},numberRules = { NumberRuleSnapshot(listOf(NumberRule.DEFAULT),0) }, numberMatcher = PrefixLengthNumberMatcher, findCalls={_,_->matchedCalls},now={time},
+            clientFactory={client},offlineTranscriber=localTranscriber,operationActive={true},numberRules = { NumberRuleSnapshot(listOf(NumberRule.DEFAULT),0) }, numberMatcher = PrefixLengthNumberMatcher, findCalls={_,_->matchedCalls},now={time},
             enrichment=CallerEnrichmentService(core.sessions,coordinator){true})
         var runtime = assembly()
         var granted = false
@@ -74,8 +75,8 @@ class SystemRecordingImportDeviceTest : InstrumentationTestCase() {
             granted = true
             assertTrue(context.contentResolver.persistedUriPermissions.any { it.uri == tree && it.isReadPermission })
             val connection = AiConnection(url="https://fixture.invalid/v1",apiKey="fixture",model="fixture")
-            runtime.store.persistSettings(RecordingSettings(recordingEnabled=true,automaticAnalysis=true,analysis=connection,transcription=connection,systemFolder=tree.toString()))
-            // A valid date/filename inside the window is insufficient without a number-rule match.
+            runtime.store.persistSettings(RecordingSettings(recordingEnabled=true,automaticAnalysis=true,analysis=connection,systemFolder=tree.toString()))
+            // A valid date/filename is insufficient without a current rule and visible call.
             SystemRecordingQaProvider.recordingName = name.replace("31234","12345")
             runtime.service.runScheduled { false }; time += 10_000; runtime.service.runScheduled { false }
             assertNull(runtime.store.sourceBinding(SystemRecordingScanner.sourceKey(authority,"valid")))
@@ -84,25 +85,21 @@ class SystemRecordingImportDeviceTest : InstrumentationTestCase() {
             assertEquals(0,transcriptions); assertEquals(0,analyses)
             SystemRecordingQaProvider.recordingName = name
             val rowsBefore = SystemRecordingQaProvider.rowsEmitted.get()
-            val firstDue = runtime.service.runScheduled { false }
-            assertNotNull(firstDue)
-            assertEquals(0,SystemRecordingQaProvider.opens.get())
-            assertEquals(2001,SystemRecordingQaProvider.rowsEmitted.get() - rowsBefore)
+            assertNull(runtime.service.runScheduled { false })
             time += 10_000
-            runtime.service.runScheduled { false }
-            runtime.workflow.processPending()
+            assertNull(runtime.service.runScheduled { false })
             val key = SystemRecordingScanner.sourceKey(authority,"valid")
-            val pendingCall = requireNotNull(runtime.store.sourceBinding(key))
-            val pending = requireNotNull(runtime.store.get(pendingCall.id))
-            assertEquals(ArchiveStatus.READY, pending.status)
-            assertEquals(com.greatwall.callring.contracts.callers.CallDirection.UNKNOWN, pending.direction)
+            assertNull(runtime.store.sourceBinding(key))
+            assertEquals(0,SystemRecordingQaProvider.opens.get())
             assertEquals(0,transcriptions); assertEquals(0,analyses)
-            matchedCalls = listOf(RecordingCall(101, pendingCall.number, pendingCall.startedAt, 1, CallDirection.INCOMING))
-            runtime.service.runScheduled { false }
-            runtime.workflow.processPending()
+            matchedCalls = listOf(RecordingCall(101,"31234",started,1,CallDirection.INCOMING))
+            assertNotNull(runtime.service.runScheduled { false })
+            assertEquals(0,SystemRecordingQaProvider.opens.get())
+            time += 10_000
+            runtime.service.runScheduled { false }; runtime.workflow.processPending()
             val call = requireNotNull(runtime.store.sourceBinding(key))
-            assertTrue(call.id < 0)
-            assertEquals(CallDirection.INCOMING, call.direction)
+            assertEquals(101L,call.id)
+            assertEquals(CallDirection.INCOMING,call.direction)
             val saved = requireNotNull(runtime.store.get(call.id))
             assertEquals(ArchiveStatus.COMPLETE,saved.status)
             assertEquals(expectedTranscript,saved.transcript)

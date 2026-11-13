@@ -22,8 +22,8 @@ class ThinkingToolApiCompatibilityTest {
     private fun tool(id: OperationId) = registry.definitions.first { it.id == id }
 
     @Test fun operationSetAndNumbersStayUnchanged() {
-        assertEquals(((1..72).filterNot { it in setOf(13, 63, 70, 71) }.map { "O%02d".format(it) } + (1..13).map { "X%02d".format(it) }).toSet(), registry.definitions.map { it.operationCode }.toSet())
-        assertEquals(81, registry.definitions.map { it.name }.toSet().size)
+        assertEquals(((1..72).filterNot { it in setOf(13, 63, 70, 71, 72) }.map { "O%02d".format(it) } + (1..13).map { "X%02d".format(it) }).toSet(), registry.definitions.map { it.operationCode }.toSet())
+        assertEquals(80, registry.definitions.map { it.name }.toSet().size)
     }
 
     @Test fun legacyCompatibilityArgumentStillAccepted() {
@@ -51,22 +51,10 @@ class ThinkingToolApiCompatibilityTest {
         assertTrue(runCatching { registry.validate(call) }.exceptionOrNull() is BackendFailure)
     }
 
-    @Test fun transcriptionCannotEnableThinking() {
-        val enabled = AiConnection(
-            protocol = AiProtocol.OPENAI,
-            url = "https://api.deepseek.com/v1",
-            apiKey = "test-key",
-            model = "deepseek-flash",
-            thinkingMode = ThinkingMode.ENABLED,
-        )
-        val failure = runCatching { RecordingSettings(transcription = enabled).validate() }.exceptionOrNull()
-        assertTrue(failure is IllegalArgumentException)
-        assertEquals("ai.transcription_thinking_disabled", failure?.message)
-    }
+
 
     @Test fun legacySettingsDefaultToThinkingDisabled() {
         assertEquals(ThinkingMode.DISABLED, AiConnection().thinkingMode)
         assertEquals(ThinkingMode.DISABLED, RecordingSettings().analysis.thinkingMode)
-        assertEquals(ThinkingMode.DISABLED, RecordingSettings().transcription.thinkingMode)
     }
 }

@@ -15,10 +15,6 @@ class RecordingServiceTest {
             connection.copy(url = "https://user:pass@example.com/v1").validate()
         }
     }
-    @Test fun transcriptionCannotUseAnthropicProtocol() {
-        val connection = AiConnection(AiProtocol.ANTHROPIC, "https://example.com/v1", "key", "model")
-        assertThrows(IllegalArgumentException::class.java) { RecordingSettings(transcription = connection).validate() }
-    }
     @Test fun emptyConfigurationCanBeSavedWhileDisabled() {
         RecordingSettings().validate()
         assertThrows(IllegalArgumentException::class.java) { RecordingSettings(automaticAnalysis = true).validate() }

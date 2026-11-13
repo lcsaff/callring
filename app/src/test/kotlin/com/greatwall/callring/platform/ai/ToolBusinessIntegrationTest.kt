@@ -89,9 +89,8 @@ class ToolBusinessIntegrationTest {
         override fun operation(cancelled: () -> Boolean): AiClient = this
         override fun cancel() = Unit
         var tests = 0
-        override fun test(connection: AiConnection, transcription: Boolean) { connection.validate(); if(transcription) require(connection.protocol == AiProtocol.OPENAI); tests++ }
+        override fun test(connection: AiConnection) { connection.validate(); tests++ }
         override fun analyze(connection: AiConnection, transcript: String): CallAnalysis = error("No paid analysis in tools test")
-        override fun transcribe(connection: AiConnection, reference: com.greatwall.callring.application.ports.recording.AudioReference): String = error("No paid transcription in tools test")
     }
     private inner class Fixture(namespaceTag: String) : AutoCloseable {
         val namespace = "tool_${namespaceTag}"
@@ -115,7 +114,7 @@ class ToolBusinessIntegrationTest {
             override fun getInstalledWidgets() = WidgetInstallState(listOf(1),AccessState.GRANTED)
         },audio,object : SyncScheduler { override fun requestSync(atEpochMillis: Long) = SyncRequestReceipt(SyncRequestState.QUEUED,atEpochMillis) },Clock.fixed(Instant.ofEpochMilli(now),ZoneOffset.UTC),calendarSource = CalendarSource { year -> CalendarImport(CalendarYear(year,"fixture","2026-01-01","v1").toDomain(),mapOf(LocalDate.of(year,1,1) to "fixture holiday"),emptySet()) },coordinator = coordinator, coreTransactions = store.sessions, recordingHistoryReconciler = com.greatwall.callring.application.ports.recording.RecordingHistoryReconciler { }, callHistoryRecordings = com.greatwall.callring.application.callers.CallHistoryRecordingReads { _, _ -> error("unexpected call history") }, numberRecordings = object : com.greatwall.callring.application.callers.NumberDeletionRecordingReads {
             override suspend fun archives(number: String) = runtime.service.numberArchives(number)
-        }, operationActive = { true }, conversationProvider = { com.greatwall.callring.testing.FixtureConversationApi }, aiSettingsProvider = { com.greatwall.callring.testing.FixtureAiSettingsApi }, updateProvider = { com.greatwall.callring.testing.FixtureAppUpdateApi }, snapshotsProvider = { com.greatwall.callring.testing.FixtureAiSnapshotApi }, storageProvider = { com.greatwall.callring.testing.FixtureStorageApi }, backupProvider = { com.greatwall.callring.testing.FixtureBackupApi }, recordingsProvider = { com.greatwall.callring.testing.FixtureRecordingApi }, persistenceActive = { true })
+        }, operationActive = { true }, conversationProvider = { com.greatwall.callring.testing.FixtureConversationApi }, aiSettingsProvider = { com.greatwall.callring.testing.FixtureAiSettingsApi }, updateProvider = { com.greatwall.callring.testing.FixtureAppUpdateApi }, snapshotsProvider = { com.greatwall.callring.testing.FixtureAiSnapshotApi },  backupProvider = { com.greatwall.callring.testing.FixtureBackupApi }, recordingsProvider = { com.greatwall.callring.testing.FixtureRecordingApi }, persistenceActive = { true })
         val recordingStore = AndroidRecordingStore(context,namespace,object : RecordingCipher { override fun encrypt(value: String) = java.util.Base64.getEncoder().encodeToString(value.toByteArray()); override fun decrypt(value: String) = String(java.util.Base64.getDecoder().decode(value)) }, recordingVersion = { coordinator.capture().values.getValue("recording") })
         val runtime = RecordingAssembly(context,namespace,{ null },{ null },{}, { recordingStore },metadataReader = { 1000L to "wav" },coordinator = coordinator,clientFactory = { client }, operationActive = { true }, numberRules = { NumberRuleSnapshot(listOf(NumberRule.DEFAULT),0) }, numberMatcher = PrefixLengthNumberMatcher, findCalls = { _, _ -> emptyList() }, enrichment = com.greatwall.callring.application.callers.CallerEnrichmentService(store.sessions, coordinator) { true })
         val diagnostics = AndroidDiagnosticsStore(context.getSharedPreferences("${namespace}_diagnostics",0),Clock.fixed(Instant.ofEpochMilli(now),ZoneOffset.UTC),coordinator)
@@ -168,7 +167,7 @@ class ToolBusinessIntegrationTest {
             backend.settings.saveDateOverride(DateOverride(LocalDate.parse("2026-10-19"),DateOverrideKind.REST,emptyList())).requiredValue()
             backend.widgets.saveBinding(1,"31234").requiredValue()
             val connection = AiConnection(url = "https://example.com/v1",apiKey = "fixture-secret-one",model = "fixture")
-            recordingStore.persistSettings(RecordingSettings(recordingEnabled = true,analysis = connection,transcription = connection.copy(apiKey = "fixture-secret-two")))
+            recordingStore.persistSettings(RecordingSettings(recordingEnabled = true,analysis = connection))
             val identity = runtime.service.observeIncoming("session","31234",now, null, com.greatwall.callring.domain.calling.NumberMatchFact(0, true))!!
             recordingId = identity.id
             runtime.service.importRecording(identity.id,identity.number,identity.startedAt,DocumentRef("content://tool-fixture/audio")).requiredValue()
@@ -284,9 +283,8 @@ class ToolBusinessIntegrationTest {
                     }
                     if(ticket.kind == ForegroundActionKind.CREDENTIAL) {
                         val base = local.aiSettings.getAiView().requiredValue()
-                        local.aiSettings.patchAi(base,AiSettingsPatch(),transcriptionSecret = LocalSecretChange.Replace("fixture-secret-new")).requiredValue()
+                        local.aiSettings.patchAi(base,AiSettingsPatch(),analysisSecret=LocalSecretChange.Replace("fixture-secret-new")).requiredValue()
                     }
-                    if(ticket.kind == ForegroundActionKind.COPY_CONNECTION) local.aiSettings.copyConnection(AiSlot.ANALYSIS,AiSlot.TRANSCRIPTION,local.aiSettings.getAiView().requiredValue().revision).requiredValue()
                     val status = if(ticket.kind in setOf(ForegroundActionKind.PIN_WIDGET)) ForegroundResultStatus.LAUNCHED else ForegroundResultStatus.VERIFIED
                     fixture.foreground.deliver(ticket.requestId,ForegroundHostResult(status,document))
                 }
@@ -299,7 +297,7 @@ class ToolBusinessIntegrationTest {
             val receipt = withTimeout(10000) { engine.execute(listOf(call)).single() }
             assertTrue("${definition.id} ${definition.name}: $receipt",receipt.status in setOf(ToolStatus.READ,ToolStatus.COMMITTED,ToolStatus.QUEUED,ToolStatus.LAUNCHED))
             assertNull("${definition.id}: ${receipt.error}",receipt.error)
-            val expected = when(definition.id) { OperationId.CALLERS_SAVE_PROFILE -> "edits.profile"; OperationId.SETTINGS_SAVE_APPEARANCE -> "edits.appearance"; OperationId.RECORDINGS_GET_SETTINGS -> "ai.getRecordingView"; OperationId.RECORDINGS_SAVE_SETTINGS -> "ai.patchCombined"; OperationId.RECORDINGS_TEST_CONNECTION -> "ai.testSlot"; OperationId.AI_GET_SETTINGS -> "ai.getAiView"; OperationId.AI_PATCH_SETTINGS -> "ai.patchAi"; OperationId.AI_EDIT_CREDENTIAL -> "ai.patchAi"; OperationId.SYSTEM_REQUEST_CAPABILITY,OperationId.SYSTEM_OPEN_APPLICATION_SETTINGS -> "runtime.getStatus"; OperationId.SYSTEM_PIN_WIDGET -> "widgets.listBindings"; OperationId.AI_COPY_CONNECTION -> "ai.copyConnection"; else -> definition.name.replace('_','.') }
+            val expected = when(definition.id) { OperationId.CALLERS_SAVE_PROFILE -> "edits.profile"; OperationId.SETTINGS_SAVE_APPEARANCE -> "edits.appearance"; OperationId.RECORDINGS_GET_SETTINGS -> "ai.getRecordingView"; OperationId.RECORDINGS_SAVE_SETTINGS -> "ai.patchCombined"; OperationId.RECORDINGS_TEST_CONNECTION -> "ai.testSlot"; OperationId.AI_GET_SETTINGS -> "ai.getAiView"; OperationId.AI_PATCH_SETTINGS -> "ai.patchAi"; OperationId.AI_EDIT_CREDENTIAL -> "ai.patchAi"; OperationId.SYSTEM_REQUEST_CAPABILITY,OperationId.SYSTEM_OPEN_APPLICATION_SETTINGS -> "runtime.getStatus"; OperationId.SYSTEM_PIN_WIDGET -> "widgets.listBindings"; else -> definition.name.replace('_','.') }
             if(definition.execution==ExecutionStrategy.SOURCE) {
                 assertTrue("${definition.id} must access authoritative source",fixture.queries.sourceQueries.get()>beforeSourceQueries)
                 assertTrue("${definition.id} missing source proof",receipt.value!=AiJson.Null)
@@ -349,7 +347,6 @@ class ToolBusinessIntegrationTest {
             if(definition.id==OperationId.RECORDINGS_IMPORT_RECORDING) assertNotNull(fixture.recordingStore.get(fixture.recordingId)!!.audioPath)
             if(definition.id==OperationId.RECORDINGS_RETRY) assertEquals(ArchiveStatus.QUEUED,fixture.recordingStore.get(fixture.recordingId)!!.status)
             if(definition.id==OperationId.RECORDINGS_DELETE) assertTrue(fixture.recordingStore.isDeleted(fixture.recordingId))
-            if(definition.id==OperationId.AI_COPY_CONNECTION) assertEquals("fixture-secret-one",fixture.recordingStore.settings().transcription.apiKey)
             val before = fixture.coordinator.capture()
             val invalid = executor.execute(call.copy(id = "invalid",arguments = AiJson.Obj(call.arguments.fields + ("unexpected" to aiBool(true)))),scope("invalid-op"))
             assertEquals(ToolStatus.FAILED,invalid.status)
@@ -358,7 +355,7 @@ class ToolBusinessIntegrationTest {
             println("TOOL_PROOF ${definition.id} ${definition.name} status=${receipt.status} api=$expected invalid=FAILED")
             host.cancelAndJoin()
         }
-        assertEquals(72,covered.size)
+        assertEquals(71,covered.size)
     }
     @Test fun allExtensionsExecuteThroughShuffledCatalogAndCompositeChildReadback()=runBlocking {
         provider()
@@ -475,9 +472,8 @@ class ToolBusinessIntegrationTest {
         OperationId.RECORDINGS_TEST_CONNECTION -> """{"slot":"ANALYSIS"}"""
         OperationId.RECORDINGS_GET_ARCHIVE,OperationId.RECORDINGS_IMPORT_RECORDING,OperationId.RECORDINGS_RETRY,OperationId.RECORDINGS_DELETE,OperationId.RECORDINGS_PLAY -> """{"callId":$recordingId}"""
         OperationId.AI_PATCH_SETTINGS -> """{"context":65536}"""
-        OperationId.AI_EDIT_CREDENTIAL -> """{"slot":"TRANSCRIPTION"}"""
+        OperationId.AI_EDIT_CREDENTIAL -> """{"slot":"ANALYSIS"}"""
         OperationId.SYSTEM_REQUEST_CAPABILITY -> """{"capability":"MICROPHONE"}"""
-        OperationId.AI_COPY_CONNECTION -> """{"from":"ANALYSIS","to":"TRANSCRIPTION"}"""
         else -> "{}"
     }
 }

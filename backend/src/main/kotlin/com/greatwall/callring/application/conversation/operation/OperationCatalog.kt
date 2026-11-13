@@ -65,9 +65,9 @@ private object OperationSchemas {
     private val window = shape("startMinute" to integer, "endMinute" to integer)
     private val windows = array(window)
     private val weekly = aiObject("type" to aiString("object"), "propertyNames" to aiObject("enum" to AiJson.Arr((1..7).map { aiString(it.toString()) })), "additionalProperties" to windows)
-    private val slot = choice("ANALYSIS", "TRANSCRIPTION")
+    private val slot = choice("ANALYSIS")
     private val connection = shape("?protocol" to choice("OPENAI", "ANTHROPIC"), "?url" to string, "?model" to string, "?thinkingMode" to choice("ENABLED", "DISABLED"))
-    private val ai = shape("?analysis" to connection, "?transcription" to connection, "?context" to integer, "?output" to integer, "?compatibility" to choice("AUTO","STANDARD","QWEN_FAST"))
+    private val ai = shape("?analysis" to connection, "?context" to integer, "?output" to integer, "?compatibility" to choice("AUTO","STANDARD","QWEN_FAST"))
     private val recording = shape("?recordingEnabled" to boolean, "?automaticAnalysis" to boolean, "?captureMode" to choice("SYSTEM_ONLY", "MICROPHONE_EXPERIMENTAL"))
     private val range = shape("startDate" to string, "endDateInclusive" to string, "?zoneId" to string)
     private val page = shape("?pageIndex" to integer, "?pageSize" to integer)
@@ -675,15 +675,6 @@ private object OperationSchemas {
             runtimeDefaults = "No optional business arguments; required fields must be supplied. dependsOn omitted: []; write taskId omitted: auto-plan only when batch has exactly one write, otherwise explicit plan required.",
             write = true, sharedApi = "ForegroundActionService", receiptPolicy = ReceiptPolicy.FOREGROUND_OBSERVATION,
             confirmation = ConfirmationPolicy.NO_SEPARATE_CONFIRM, execution = ExecutionStrategy.DIRECT_WRITE,
-            scope = ScopeStrategy.DIRECT, verification = VerificationStrategy.DIRECT, readSource = null,
-        ),
-        OperationDefinition(
-            id = OperationId.AI_COPY_CONNECTION, name = "ai_copyConnection", operationCode = "O72", legacyIndex = 72, displayOrder = 72,
-            schema = commandShape(true, "from" to slot, "to" to slot),
-            description = "本地确认复制from/to连接，转写到分析会重置AUTO并取消旧会话",
-            runtimeDefaults = "No optional business arguments; required fields must be supplied. dependsOn omitted: []; write taskId omitted: auto-plan only when batch has exactly one write, otherwise explicit plan required.",
-            write = true, sharedApi = "aiSettings.copyConnection via foreground", receiptPolicy = ReceiptPolicy.FOREGROUND_OBSERVATION,
-            confirmation = ConfirmationPolicy.LOCAL_CONNECTION_COPY_CONFIRM, execution = ExecutionStrategy.DIRECT_WRITE,
             scope = ScopeStrategy.DIRECT, verification = VerificationStrategy.DIRECT, readSource = null,
         ),
         OperationDefinition(

@@ -50,8 +50,7 @@ class RealIncomingRecordingDeviceTest : InstrumentationTestCase() {
         val client = object : AiClient {
             override fun operation(cancelled: () -> Boolean) = this
             override fun cancel() = Unit
-            override fun test(connection: AiConnection, transcription: Boolean) { modelCalls++; error("qa.no_model_calls") }
-            override fun transcribe(connection: AiConnection, reference: AudioReference): String { modelCalls++; error("qa.no_model_calls") }
+            override fun test(connection: AiConnection) { modelCalls++; error("qa.no_model_calls") }
             override fun analyze(connection: AiConnection, transcript: String): CallAnalysis { modelCalls++; error("qa.no_model_calls") }
         }
         try {
@@ -78,7 +77,7 @@ class RealIncomingRecordingDeviceTest : InstrumentationTestCase() {
                     enrichment = CallerEnrichmentService(core.sessions, coordinator) { true },
                     findCalls = { number, at -> findSystemRecordingCalls(core.sessions, number, at) },
                     numberRules = { rules }, numberMatcher = PrefixLengthNumberMatcher).use { runtime ->
-                    runtime.store.persistSettings(RecordingSettings(recordingEnabled = true, automaticAnalysis = false, systemFolder = tree.toString(), systemImportDays = 1))
+                    runtime.store.persistSettings(RecordingSettings(recordingEnabled = true, automaticAnalysis = false, systemFolder = tree.toString()))
                     val selected = linkedSetOf<Long>()
                     val copied = linkedSetOf<Long>()
                     val scanner = SystemRecordingScanner(context.contentResolver)

@@ -6,15 +6,20 @@ The facade is `com.greatwall.callring.contracts.CallringUiApi` in `CallringApi.k
 
 ## Current operation catalog (T12)
 
-`backend/application/conversation/operation/OperationCatalog` owns all 81 explicit `OperationDefinition` records. `OperationId` is business identity; `operationCode`, `legacyIndex` and `displayOrder` are protocol metadata, with displayOrder used only for discovery sorting. `ToolRegistry.definitions` is the sole 81-item discovery entry point. Registry validation, execution, source reads, scopes, authoritative confirmation, batch orchestration and receipts resolve the same injected catalog. `ConversationRequest.tools` carries OperationDefinition, with no ToolDefinition alias or old constructor.
+`backend/application/conversation/operation/OperationCatalog` owns all 80 explicit `OperationDefinition` records. `OperationId` is business identity; `operationCode`, `legacyIndex` and `displayOrder` are protocol metadata, with displayOrder used only for discovery sorting. `ToolRegistry.definitions` is the sole 80-item discovery entry point. Registry validation, execution, source reads, scopes, authoritative confirmation, batch orchestration and receipts resolve the same injected catalog. `ConversationRequest.tools` carries OperationDefinition, with no ToolDefinition alias or old constructor.
 
-The catalog declares 46 writes and 35 nonwrites (31 source reads, two update observations, one catalog read, one in-memory plan). The 45 direct writes use direct scopes/readback; `CALLERS_SAVE_PROFILES` is a composite using each `CALLERS_SAVE_PROFILE` child's scope, confirmation policy and persisted readback, classified `BATCH_CHILD_PERSISTED_READBACK`. Startup rejects duplicate identities/protocol metadata, missing definitions/execution and incomplete or inconsistent read/write policies. Executor/ConversationService require QueryService and document readback verification; the old UI-read executor branch is deleted. All external schema/default/description text remains pinned by the frozen 81-operation golden.
+The catalog declares 45 writes and 35 nonwrites (31 source reads, two update observations, one catalog read, one in-memory plan). The 44 direct writes use direct scopes/readback; `CALLERS_SAVE_PROFILES` is a composite using each `CALLERS_SAVE_PROFILE` child's scope, confirmation policy and persisted readback, classified `BATCH_CHILD_PERSISTED_READBACK`. Startup rejects duplicate identities/protocol metadata, missing definitions/execution and incomplete or inconsistent read/write policies. Executor/ConversationService require QueryService and document readback verification; the old UI-read executor branch is deleted. All external schema/default/description text remains pinned by the reviewed 80-operation golden.
 
 The architecture guard rejects operation dispatch through numeric index/ordinal, discovery order or parsed O/X codes in registry consumers and the catalog itself. Fixed schema limits, capacity values, explicit protocol metadata, uniqueness checks and discovery sorting remain legal. The localized-text guard permits only a literal named `description` argument on a named OperationDefinition in the actual OperationCatalog; unrelated strings and computed descriptions are rejected, with no file-wide exemption.
 
 ## Approved internal signature changes
 
-Number admission, direction and profile reset (2026-11-13): `CallDetail`, `CallArchive`, `RecordingIdentity` and archive-list rows carry an explicit `CallDirection`; legacy values default to INCOMING and newly discovered independent recordings use UNKNOWN until a unique call establishes direction. `CallArchive.resetPaused` is persisted internal processing state and is excluded from external AI views. `StorageManagementApi.previewNumberProfiles/confirmNumberProfiles/discardNumberProfiles` expose a local preview and confirmed application-only reset, with snapshot counts and an explicit recording-retention choice. Storage assembly requires a narrow reset service/port; live recording admission requires the original `NumberMatchFact`, automatic workflows require an authoritative direction resolver, and call-log import requires retained-recording reconciliation. Production and test consumers migrate together. Core schema 6 and recording schema 8 retain legacy data through the shared migration paths. The frozen external AI catalog, schemas and field shapes remain unchanged.
+Streamlined recording/settings review (2026-11-13): `AiSlot` contains ANALYSIS only. `AiSettingsView` and `AiSettingsPatch` expose analysis, budget and compatibility; `patchAi` and `patchCombined` accept only the analysis secret. `copyConnection`, `AiConnectionView.copyToAnalysisProfile` and the COPY_CONNECTION foreground action are retired. `RecordingSettingsView/Patch` no longer expose systemImportDays; `RecordingApi.importRecording` no longer accepts offlineOnly and consistently honors automaticAnalysis. `CallringUiApi.storage` and all StorageManagementApi/reset/inventory/batch-cleanup DTOs are removed with their final consumers. Backup, low-space protection and individual deletion retain their formal interfaces. Legacy archive text/model/analysis encodings and resetPaused remain readable; obsolete cloud settings and import-window fields are ignored by the sole settings codec and never re-emitted.
+
+Automatic analysis uses the shared local OfflineTranscriber before sending text to AiClient; the upload method and platform conversion wrapper are deleted. Discovery admits only current-rule matching existing visible calls across all history, preserving legacy archive links, source tombstones, stability and ambiguity protections. Its scan port no longer exposes days/accepted-window eligibility; the old SQLite days column remains a compatibility placeholder. Reviewed breaking AI catalog revision 5 removes O72, removes transcription patches from O52/O65 and restricts O53/O66 to ANALYSIS without renumbering other operations. Only those five operation records and catalogVersion change in the external baseline.
+
+
+Earlier number admission, direction and profile reset review (superseded above for reset, 2026-11-13): `CallDetail`, `CallArchive`, `RecordingIdentity` and archive-list rows carry an explicit `CallDirection`; legacy values default to INCOMING and newly discovered independent recordings use UNKNOWN until a unique call establishes direction. `CallArchive.resetPaused` is persisted internal processing state and is excluded from external AI views. `StorageManagementApi.previewNumberProfiles/confirmNumberProfiles/discardNumberProfiles` expose a local preview and confirmed application-only reset, with snapshot counts and an explicit recording-retention choice. Storage assembly requires a narrow reset service/port; live recording admission requires the original `NumberMatchFact`, automatic workflows require an authoritative direction resolver, and call-log import requires retained-recording reconciliation. Production and test consumers migrate together. Core schema 6 and recording schema 8 retain legacy data through the shared migration paths. The frozen external AI catalog, schemas and field shapes remain unchanged.
 
 Real-device history/import correction (2026-11-12): `CallingReader.callerDeletedAt(number: String): Long?` reads the existing deletion boundary inside the calling transaction; `CallLogSyncJobController` no longer takes a statistics-start callback because history discovery is independent of score admission. `SystemRecordingImportStore.hasConflictingSystemSource` takes the nullable canonical `RecordingCall` target to distinguish independent-file ambiguity from selecting one recording for an existing call. All production/test consumers migrate together. No public contracts, external AI schemas, stored encodings or database schema change.
 
@@ -24,7 +29,7 @@ CallHistoryQuery and CallHistoryCursor carry the optional exact number scope. Ca
 
 Unified call history (2026-11-10) adds CallersApi.queryCallHistory and CallersApi.getCallHistoryDetail with a cursor bound to calls and recording-archive revisions. RecordingApi adds owned playback sessions (getPlaybackSession, playOwned, stopPlaybackSession), analyzeTranscript, getCallerSuggestions and confirmCallerSuggestions. Archive analysis intent and confirmation state are stored in the local archive payload. The AI operation catalog continues to use recordings.retry and exposes no caller confirmation command.
 
-System recording import window (2026-11-04): RecordingSettingsView appends systemImportDays=7 and RecordingSettingsPatch appends PatchField<Int>. Validation and field conflicts remain in AiSettingsService; external D13 projection and AI write schemas retain their reviewed shapes. Internal CallingReader.systemRecordingCalls adds a bounded number/time lookup; recording discovery uses explicit scan/import ports without widening CallringUiApi.
+Historical system recording import window (retired above, 2026-11-04): RecordingSettingsView appends systemImportDays=7 and RecordingSettingsPatch appends PatchField<Int>. Validation and field conflicts remain in AiSettingsService; external D13 projection and AI write schemas retain their reviewed shapes. Internal CallingReader.systemRecordingCalls adds a bounded number/time lookup; recording discovery uses explicit scan/import ports without widening CallringUiApi.
 
 T11 makes `ChangeFeed.snapshots(): StateFlow<InvalidationSnapshot>` mandatory and removes `DataChange`, `observe()` and nullable/default feed implementations. Every production consumer uses cumulative tokens. `ChangeSubscription.entities` is a domain-local map of nonempty entity sets; each selected domain token is the maximum of its selected entity/wide revisions. Missing selectors mean the actual whole domain, while empty selectors are rejected. All selected domains must belong to the subscription. Epoch/incarnation invalidate every token. No single-string overload or legacy notification bridge remains. External tool schemas, D identities and persisted formats are unchanged.
 
@@ -72,13 +77,13 @@ CallerProfile/CallerDraft expose selfReportedPosition, region and four-field ide
 
 CallAnalysis adds department, region and fieldEvidence; CallArchive adds the durable identity baseline/source generation. The baseline explicitly marks ineligible recording numbers; these bypass profile storage while transcription and analysis continue, and legacy baselines default to eligible. ENRICHING/ENRICHMENT_FAILED distinguish local completion from paid analysis. Old JSON reads with empty new claims/evidence and no baseline, so it is not silently backfilled. Database version 4 upgrades legacy callers without changing department/position/whitelist, and historical core backups migrate in private staging before schema and content verification.
 
-Offline transcription adds the internal `RecordingApi.transcribeOffline` and `cancelOfflineTranscription` commands. The detail projection carries transient run state, and `importRecording` accepts a default-false offline-only intent. These changes retain the stored archive encoding and external AI operation schema.
+The earlier offline transcription review added the internal `RecordingApi.transcribeOffline` and `cancelOfflineTranscription` commands. The detail projection carries transient run state, and previously gave `importRecording` a default-false offline-only intent (retired above). These changes retain the stored archive encoding and external AI operation schema.
 
 <!-- contract-inventory -->
 ```json
 {
   "CallringApi.kt": {
-    "sha256": "926c6b4b044cf0f30adf2fc10b4ab2017c21e704c770dece9a456142e3243752",
+    "sha256": "199b87ffcfe6d8ea32ca8c53fea5782f27d1a4f90260009ce16c74944e1006b4",
     "declarations": [
       "CallringUiApi"
     ]
@@ -119,7 +124,7 @@ Offline transcription adds the internal `RecordingApi.transcribeOffline` and `ca
     ]
   },
   "ai/AiSettingsApi.kt": {
-    "sha256": "91ee4435d4cbdc9973d270bd5ed97268e5979593f6f3fb28ee7ff3db44d4f8b8",
+    "sha256": "853acfe2d827ef5e93624848dc01f26225db3b69cb404a7849e30cde1fff8f46",
     "declarations": [
       "PatchField",
       "LocalSecretChange",
@@ -142,7 +147,7 @@ Offline transcription adds the internal `RecordingApi.transcribeOffline` and `ca
     ]
   },
   "ai/ConversationApi.kt": {
-    "sha256": "07f170e57221769998ceb96dffe11d5032ff5842495a0b4d0101991a4a4ae5ab",
+    "sha256": "ce30883b9d737d6c8fd17995454b558d0f202a566f7d67fc84f03acb1e3845e6",
     "declarations": [
       "ConversationPhase",
       "ToolStatus",
@@ -281,7 +286,7 @@ Offline transcription adds the internal `RecordingApi.transcribeOffline` and `ca
     ]
   },
   "recording/RecordingApi.kt": {
-    "sha256": "32c2b42651441cf288412ea23c8495dae7b3db955b4fd1a35155cd9cbd1d2f4a",
+    "sha256": "76f402b0672695f7c93b025f4d8a9bc55f3b7409e23138f21810c815fe23e869",
     "declarations": [
       "CaptureMode",
       "ArchiveStatus",
@@ -309,7 +314,7 @@ Offline transcription adds the internal `RecordingApi.transcribeOffline` and `ca
     ]
   },
   "recording/RecordingSettingsView.kt": {
-    "sha256": "db33e8f4b1c6cf57b0c3f3b492f005014febb5b3a6677186da90ec282db38637",
+    "sha256": "73978a216255befd5c8dafb1f3eedacff101bbc676a6e49ab44bd7192ff3ed62",
     "declarations": [
       "RecordingFolderView",
       "RecordingSettingsView",
@@ -399,21 +404,6 @@ Offline transcription adds the internal `RecordingApi.transcribeOffline` and `ca
     "declarations": [
       "ThemePreset",
       "ThemePresets"
-    ]
-  },
-  "storage/StorageManagementApi.kt": {
-    "sha256": "30568a70005cc857483730747bffbd23299243adf4794caca5f713b4c95a50a4",
-    "declarations": [
-      "StorageInventory",
-      "ArchiveCleanupSelection",
-      "CleanupTarget",
-      "ArchiveCleanupPreview",
-      "CleanupItemStatus",
-      "CleanupItemReceipt",
-      "ArchiveCleanupReceipt",
-      "NumberProfileResetPreview",
-      "NumberProfileResetReceipt",
-      "StorageManagementApi"
     ]
   },
   "widget/WidgetBindingsApi.kt": {

@@ -27,12 +27,4 @@ class SystemRecordingNameParserTest {
     @Test fun fourDigitYearIsNotLimitedToThisCentury() {
         assertNotNull(SystemRecordingNameParser.parse("12345_19990101_120000.mp3", zone))
     }
-    @Test fun windowUsesElapsedDaysInclusiveBoundsAndLongArithmetic() {
-        val now = Instant.parse("2026-11-04T04:00:00Z").toEpochMilli()
-        val window = SystemRecordingWindow(now, 7)
-        assertTrue(window.contains(now)); assertTrue(window.contains(now - 7L * 86_400_000))
-        assertFalse(window.contains(now + 1)); assertFalse(window.contains(window.since - 1))
-        assertEquals(now - Int.MAX_VALUE.toLong() * 86_400_000, SystemRecordingWindow(now, Int.MAX_VALUE).since)
-        assertThrows(IllegalArgumentException::class.java) { SystemRecordingWindow(now, 0) }
-    }
 }

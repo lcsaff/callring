@@ -31,6 +31,6 @@ fun completeSnapshotApi(
         ObservedCompleteSnapshotSource({ backend.widgets.listBindings() }, { backend.runtime.getStatus() },
             { recordings.service.playbackStatus() }, diagnostics::captureStoredText)::capture,
     ),
-    { ensureOpen(); recordings.store.settings().let { listOf(it.analysis.apiKey, it.transcription.apiKey) } },
+    { ensureOpen(); recordings.store.settings().let { listOf(it.analysis.apiKey) } },
     clock,
 )

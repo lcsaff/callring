@@ -21,7 +21,7 @@ class AiSettingsService(
     private val store: RecordingSettingsStore,
     private val coordinator: BusinessRevisionCoordinator,
     private val microphoneGranted: () -> Boolean,
-    private val testConnection: (AiConnection, Boolean) -> Unit,
+    private val testConnection: (AiConnection) -> Unit,
     private val command: CommandContext? = null,
     private val afterSave: (RecordingSettings, RecordingSettings) -> Unit = { _, _ -> },
     private val folderView: (String?) -> RecordingFolderView,
@@ -78,12 +78,12 @@ class AiSettingsService(
             ThinkingSupport.CUSTOM_GATEWAY -> "thinking.custom_gateway"
             else -> policy.reason
         }
-        return AiConnectionView(protocol, url, model, apiKey.isNotEmpty(), resolveConversationProfile(this, compatibility), thinkingMode, policy.support, notice, resolveConversationProfile(this, ConversationCompatibility.AUTO))
+        return AiConnectionView(protocol, url, model, apiKey.isNotEmpty(), resolveConversationProfile(this, compatibility), thinkingMode, policy.support, notice)
     }
-    private fun RecordingSettings.aiView(version: Long) = AiSettingsView(analysis.view(conversationCompatibility), transcription.view(), conversationBudget, version, conversationCompatibility)
+    private fun RecordingSettings.aiView(version: Long) = AiSettingsView(analysis.view(conversationCompatibility), conversationBudget, version, conversationCompatibility)
     private fun RecordingSettings.recordingView(version: Long): RecordingSettingsView {
         val folder = folderObservations.observed(systemFolder, folderView(systemFolder))
-        return RecordingSettingsView(recordingEnabled, automaticAnalysis, captureMode, systemFolder != null, version,folder.displayName,folder.access,systemImportDays)
+        return RecordingSettingsView(recordingEnabled, automaticAnalysis, captureMode, systemFolder != null, version,folder.displayName,folder.access)
     }
     private suspend fun <T> result(block: suspend () -> T): ApiResult<T> = withContext(Dispatchers.IO) {
         try { requireOperationActive(operationActive); ApiResult.Success(block()) }
@@ -105,7 +105,7 @@ class AiSettingsService(
         val saved = updateSettings { old ->
             val mode = field(base.captureMode, old.captureMode, patch.captureMode)
             if (mode == CaptureMode.MICROPHONE_EXPERIMENTAL && !microphoneGranted()) throw BackendFailure(ApiError(ErrorCode.PERMISSION_REQUIRED, "capability.required", requiredCapabilities = setOf(Capability.MICROPHONE)))
-            old.copy(recordingEnabled = field(base.recordingEnabled, old.recordingEnabled, patch.recordingEnabled), automaticAnalysis = field(base.automaticAnalysis, old.automaticAnalysis, patch.automaticAnalysis), captureMode = mode, systemImportDays = field(base.systemImportDays, old.systemImportDays, patch.systemImportDays))
+            old.copy(recordingEnabled = field(base.recordingEnabled, old.recordingEnabled, patch.recordingEnabled), automaticAnalysis = field(base.automaticAnalysis, old.automaticAnalysis, patch.automaticAnalysis), captureMode = mode)
         }
         notifySaved(saved)
         saved.settings.recordingView(saved.recordingRevision)
@@ -116,44 +116,30 @@ class AiSettingsService(
             else -> { val marker=coordinator.domainMarker("aiConfig",baseRevision)?:conflict();if(!coordinator.unchanged(setOf("ai:$slot:key"),marker))conflict(); if (secret is LocalSecretChange.Replace) secret.value else "" }
         }
         val mode = field(base.thinkingMode, current.thinkingMode, patch.thinkingMode)
-        if (slot == AiSlot.TRANSCRIPTION && mode != ThinkingMode.DISABLED) throw BackendFailure(ApiError(ErrorCode.VALIDATION, "ai.transcription_thinking_disabled"))
         return current.copy(protocol = field(base.protocol, current.protocol, patch.protocol), url = field(base.url, current.url, patch.url), model = field(base.model, current.model, patch.model), apiKey = key, thinkingMode = mode)
     }
-    override suspend fun patchAi(base: AiSettingsView, patch: AiSettingsPatch, analysisSecret: LocalSecretChange, transcriptionSecret: LocalSecretChange) = result {
+    override suspend fun patchAi(base: AiSettingsView, patch: AiSettingsPatch, analysisSecret: LocalSecretChange) = result {
         updateSettings { old -> old.copy(
             analysis = connection(base.analysis, old.analysis, patch.analysis, analysisSecret, base.revision,AiSlot.ANALYSIS),
-            transcription = connection(base.transcription, old.transcription, patch.transcription, transcriptionSecret, base.revision,AiSlot.TRANSCRIPTION),
             conversationBudget = field(base.budget, old.conversationBudget, patch.budget),
             conversationCompatibility = field(base.compatibility,old.conversationCompatibility,patch.compatibility).normalized(),
         ) }.let { it.settings.aiView(it.aiRevision) }
     }
-    override suspend fun copyConnection(from: AiSlot, to: AiSlot, expectedRevision: Long) = result {
-        require(from != to)
-        updateSettings { old ->
-            val marker=coordinator.domainMarker("aiConfig",expectedRevision)?:conflict()
-            val keys=listOf(from,to).flatMap{slot->listOf("protocol","url","model","key","thinkingMode").map{"ai:$slot:$it"}}.toSet()+if(to==AiSlot.ANALYSIS)setOf("ai:compatibility")else emptySet()
-            if(!coordinator.unchanged(keys,marker))conflict()
-            val value = if (from == AiSlot.ANALYSIS) old.analysis else old.transcription
-            if (to == AiSlot.ANALYSIS) old.copy(analysis = value.copy(thinkingMode = ThinkingMode.DISABLED), conversationCompatibility = ConversationCompatibility.AUTO) else old.copy(transcription = value.copy(protocol = AiProtocol.OPENAI, thinkingMode = ThinkingMode.DISABLED))
-        }.let { it.settings.aiView(it.aiRevision) }
-    }
     override suspend fun testSlot(slot: AiSlot) = result { val current = coordinator.guard(command) {
-            requireOperationActive(operationActive); store.settings() }; testConnection(if (slot == AiSlot.ANALYSIS) current.analysis else current.transcription, slot == AiSlot.TRANSCRIPTION) }
+            requireOperationActive(operationActive); store.settings() }; testConnection(current.analysis) }
     override suspend fun testDraft(base: AiSettingsView, patch: AiSettingsPatch, slot: AiSlot) = result {
         val value = coordinator.guard(command) {
             requireOperationActive(operationActive); val current = store.settings();
-            if(slot == AiSlot.ANALYSIS) connection(base.analysis,current.analysis,patch.analysis,LocalSecretChange.Keep,base.revision,AiSlot.ANALYSIS).also{resolveConversationProfile(it,field(base.compatibility,current.conversationCompatibility,patch.compatibility))}
-            else connection(base.transcription,current.transcription,patch.transcription,LocalSecretChange.Keep,base.revision,AiSlot.TRANSCRIPTION)
+            connection(base.analysis,current.analysis,patch.analysis,LocalSecretChange.Keep,base.revision,AiSlot.ANALYSIS).also{resolveConversationProfile(it,field(base.compatibility,current.conversationCompatibility,patch.compatibility))}
         }
-        testConnection(value,slot == AiSlot.TRANSCRIPTION)
+        testConnection(value)
     }
-    override suspend fun patchCombined(recordingBase: RecordingSettingsView, recording: RecordingSettingsPatch, aiBase: AiSettingsView, ai: AiSettingsPatch, analysisSecret: LocalSecretChange, transcriptionSecret: LocalSecretChange): ApiResult<Unit> = result {
+    override suspend fun patchCombined(recordingBase: RecordingSettingsView, recording: RecordingSettingsPatch, aiBase: AiSettingsView, ai: AiSettingsPatch, analysisSecret: LocalSecretChange): ApiResult<Unit> = result {
         val saved = updateSettings { old ->
             val mode = field(recordingBase.captureMode, old.captureMode, recording.captureMode)
             if(mode == CaptureMode.MICROPHONE_EXPERIMENTAL && !microphoneGranted()) throw BackendFailure(ApiError(ErrorCode.PERMISSION_REQUIRED, "capability.required", requiredCapabilities = setOf(Capability.MICROPHONE)))
-            old.copy(recordingEnabled = field(recordingBase.recordingEnabled, old.recordingEnabled, recording.recordingEnabled), automaticAnalysis = field(recordingBase.automaticAnalysis, old.automaticAnalysis, recording.automaticAnalysis), captureMode = mode, systemImportDays = field(recordingBase.systemImportDays, old.systemImportDays, recording.systemImportDays),
+            old.copy(recordingEnabled = field(recordingBase.recordingEnabled, old.recordingEnabled, recording.recordingEnabled), automaticAnalysis = field(recordingBase.automaticAnalysis, old.automaticAnalysis, recording.automaticAnalysis), captureMode = mode,
                 analysis = connection(aiBase.analysis, old.analysis, ai.analysis, analysisSecret, aiBase.revision,AiSlot.ANALYSIS),
-                transcription = connection(aiBase.transcription, old.transcription, ai.transcription, transcriptionSecret, aiBase.revision,AiSlot.TRANSCRIPTION),
                 conversationBudget = field(aiBase.budget, old.conversationBudget, ai.budget),
                 conversationCompatibility = field(aiBase.compatibility,old.conversationCompatibility,ai.compatibility).normalized())
         }

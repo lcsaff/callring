@@ -21,7 +21,7 @@ class HomePagerFixture : UiFakeApi() {
     override val aiSettings = object : AiSettingsApi by FixtureAiSettingsApi {
         override suspend fun getAiView(): ApiResult<AiSettingsView> {
             aiReads++
-            return ApiResult.Success(AiSettingsView(target, target, ConversationBudget(), 0))
+            return ApiResult.Success(AiSettingsView(target, ConversationBudget(), 0))
         }
     }
     override val conversation = object : ConversationApi by FixtureConversationApi {

@@ -212,7 +212,6 @@ class ToolExecutor(
                 }
                 OperationId.SYSTEM_OPEN_APPLICATION_SETTINGS -> { status = ToolStatus.LAUNCHED; action(ForegroundActionKind.APP_SETTINGS); bound.runtime.getStatus().requiredValue() }
                 OperationId.SYSTEM_PIN_WIDGET -> { status = ToolStatus.LAUNCHED; action(ForegroundActionKind.PIN_WIDGET); bound.widgets.listBindings().requiredValue() }
-                OperationId.AI_COPY_CONNECTION -> { action(ForegroundActionKind.COPY_CONNECTION); api().aiSettings.getAiView().requiredValue() }
                 OperationId.CALLERS_DELETE_NUMBER -> {
                     val impact = bound.numberDeletion.impact(a.s("number")).requiredValue()
                     confirm()
@@ -255,6 +254,6 @@ private fun AiJson.Obj.windows(key: String): List<TimeWindow> = (get(key) as AiJ
 private fun AiJson.Obj.weekly(key: String): Map<Int, List<TimeWindow>> = obj(key).let { values -> values.fields.keys.associate { it.toInt() to values.windows(it) } }
 private fun <T> AiJson.Obj.patch(key: String, read: (AiJson) -> T): PatchField<T> = if(has(key)) PatchField.Set(read(get(key))) else PatchField.Keep
 private fun AiJson.Obj.connectionPatch() = ConnectionPatch(patch("protocol") { AiProtocol.valueOf(it.string()) }, patch("url") { it.string() }, patch("model") { it.string() }, patch("thinkingMode") { ThinkingMode.valueOf(it.string()) })
-private fun AiJson.Obj.aiPatch(base: ConversationBudget): AiSettingsPatch = AiSettingsPatch(optObj("analysis")?.connectionPatch() ?: ConnectionPatch(), optObj("transcription")?.connectionPatch() ?: ConnectionPatch(),
+private fun AiJson.Obj.aiPatch(base: ConversationBudget): AiSettingsPatch = AiSettingsPatch(optObj("analysis")?.connectionPatch() ?: ConnectionPatch(),
     if(has("context") || has("output")) PatchField.Set(ConversationBudget(optL("context") ?: base.context, optL("output") ?: base.output)) else PatchField.Keep,patch("compatibility"){ConversationCompatibility.valueOf(it.string())})
 private fun AiJson.Obj.recordingPatch() = RecordingSettingsPatch(patch("recordingEnabled") { it.boolean() }, patch("automaticAnalysis") { it.boolean() }, patch("captureMode") { CaptureMode.valueOf(it.string()) })

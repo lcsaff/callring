@@ -27,9 +27,9 @@ internal object CallerSuggestionsScreenCases {
             )
         }
         compose.onNodeWithText("播放").assertDoesNotExist()
-        compose.onNodeWithText("展开转写").performScrollTo().performClick()
         compose.onNodeWithText("我是张三，在技术部工作。").assertExists()
         compose.onNodeWithText("AI 分析").performScrollTo().performClick()
+        compose.onNodeWithText("档案建议 · 待确认").performScrollTo().performClick()
         compose.onNodeWithText("当前：李四").assertExists()
         compose.onNodeWithText("建议：张三").assertExists()
         compose.onNodeWithText("原文：我是张三").assertExists()

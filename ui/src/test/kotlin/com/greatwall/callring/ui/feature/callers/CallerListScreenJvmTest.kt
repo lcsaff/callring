@@ -31,11 +31,11 @@ class CallerListScreenJvmTest {
 
     private fun show(
         state: LoadState<Page<CallerProfile>>, query: String, check: NumberCheck?,
-        onAdd: () -> Unit = {}, onReport: (String) -> Unit = {}, onPositions: () -> Unit = {},
+        onAdd: () -> Unit = {}, onReport: (String) -> Unit = {}, onHistory: () -> Unit = {},
     ) {
         compose.setContent { CallringTheme(DefaultAppearance.rememberAppearanceThemeSpec(androidx.compose.foundation.isSystemInDarkTheme())) {
             CallerListScreen(state, CallerSearch(query), check, onSearch = {}, onPage = {}, onRetry = {},
-                onAdd = onAdd, onCaller = {}, onReport = onReport, onPositions = onPositions)
+                onAdd = onAdd, onCaller = {}, onReport = onReport, onHistory = onHistory)
         } }
     }
 
@@ -88,15 +88,17 @@ class CallerListScreenJvmTest {
 
     @Test fun titleActionsAreIconButtonsWithAccessibleNamesAndNoLegacyBodyEntries() {
         var adds = 0
-        var positions = 0
-        show(loadedPage(emptyList()), "", null, onAdd = { adds++ }, onPositions = { positions++ })
+        var histories = 0
+        show(loadedPage(emptyList()), "", null, onAdd = { adds++ }, onHistory = { histories++ })
         compose.onNodeWithText("按号码查看报表").assertDoesNotExist()
         compose.onNodeWithText("通话录音").assertDoesNotExist()
         compose.onNodeWithText("新增").assertDoesNotExist()
-        compose.onNodeWithContentDescription("职位管理").performClick()
+        compose.onNodeWithContentDescription("职位管理").assertDoesNotExist()
+        compose.onNodeWithText("通话记录").assertDoesNotExist()
+        compose.onNodeWithContentDescription("通话记录").assertExists().performClick()
         compose.onNodeWithContentDescription("新增档案").performClick()
         compose.runOnIdle {
-            assertEquals(1, positions)
+            assertEquals(1, histories)
             assertEquals(1, adds)
         }
     }

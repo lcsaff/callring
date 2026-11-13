@@ -33,9 +33,8 @@ class BundledOfflineTranscriptionDeviceTest : InstrumentationTestCase() {
         val client = object : AiClient {
             override fun operation(cancelled: () -> Boolean): AiClient = error("Unexpected online operation")
             override fun cancel() = Unit
-            override fun transcribe(connection: AiConnection, reference: AudioReference): String = error("Unexpected online transcription")
             override fun analyze(connection: AiConnection, transcript: String): Nothing = error("Unexpected online analysis")
-            override fun test(connection: AiConnection, transcription: Boolean) = error("Unexpected online connection test")
+            override fun test(connection: AiConnection) = error("Unexpected online connection test")
         }
         val enrichment = object : RecordingIdentityEnrichment {
     override fun suggestions(archive: com.greatwall.callring.contracts.recording.CallArchive): com.greatwall.callring.contracts.recording.CallerSuggestions? = error("unused")
@@ -59,7 +58,7 @@ class BundledOfflineTranscriptionDeviceTest : InstrumentationTestCase() {
             val uri = FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", staged)
             val archive = runBlocking {
                 when (val imported = runtime.service.importRecording(call.id, call.number, call.startedAt,
-                    DocumentRef(uri.toString()), offlineOnly = true)) {
+                    DocumentRef(uri.toString()))) {
                     is ApiResult.Success -> imported.value
                     is ApiResult.Failure -> error("Offline import failed: ${imported.error}")
                 }

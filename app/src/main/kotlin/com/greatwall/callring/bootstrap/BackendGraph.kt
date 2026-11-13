@@ -40,7 +40,7 @@ class BackendGraph(
         SqliteCoreStorageResource(application, configuration.databaseName, configuration.sqlAccessProbe)
     }
     private val core: CoreAssembly = CoreAssembly(application, configuration, coordinator, store, ui,
-        ::ensureOpen, { !closed }, { !persistenceClosed }, { recordings }, { conversation }, { update }, { backup }, { storage })
+        ::ensureOpen, { !closed }, { !persistenceClosed }, { recordings }, { conversation }, { update }, { backup })
     private val conversation: ConversationAssembly = ConversationAssembly(application, configuration, core,
         { recordings }, ui, { api }, ::ensureOpen, lifetime)
     internal val fullSnapshotReader: com.greatwall.callring.application.ports.store.FullSnapshotReader get() = store
@@ -75,11 +75,6 @@ class BackendGraph(
     private val backupDelegate = lazy { ensureOpen(); com.greatwall.callring.application.backup.BackupService(
         com.greatwall.callring.data.backup.AndroidBackupArchivePort(application, this, configuration, backupOwner), configuration.dispatcher, { !closed }) }
     val backup get() = synchronized(lifetime) { ensureOpen(); backupDelegate.value }
-    private val storageDelegate = lazy { ensureOpen(); com.greatwall.callring.application.storage.StorageManagementService(
-        recordings.service, com.greatwall.callring.platform.storage.AndroidStorageInventory(application, recordings.directory),
-        com.greatwall.callring.application.storage.NumberProfileResetService(com.greatwall.callring.data.backup.AndroidNumberProfileResetPort(application,this,configuration,backupOwner),configuration.dispatcher,{ !closed }),
-        operationActive = { !closed }) }
-    val storage get() = synchronized(lifetime) { ensureOpen(); storageDelegate.value }
     internal fun acquireBackupReadLease(): java.io.Closeable { ensureOpen(); return backupAccess.acquire() }
     internal fun prepareBackupStorage() { ensureOpen(); store.prepareBackupStorage(); recordings.store.archiveStamp() }
     val api: CallringUiApi get() = backend

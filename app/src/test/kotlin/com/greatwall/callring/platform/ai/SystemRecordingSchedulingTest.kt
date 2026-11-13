@@ -29,7 +29,7 @@ class SystemRecordingSchedulingTest {
         val cipher = object : RecordingCipher { override fun encrypt(value: String) = value; override fun decrypt(value: String) = value }
         val store = AndroidRecordingStore(context,namespace,cipher,recordingVersion = { coordinator.capture().values.getValue("recording") })
         val connection = AiConnection(url="https://fixture.invalid/v1",apiKey="fixture",model="fixture")
-        store.persistSettings(RecordingSettings(analysis=connection,transcription=connection))
+        store.persistSettings(RecordingSettings(analysis=connection))
         val schedules = mutableListOf<Long>()
         val enrichment = object : RecordingIdentityEnrichment {
     override fun suggestions(archive: com.greatwall.callring.contracts.recording.CallArchive): com.greatwall.callring.contracts.recording.CallerSuggestions? = error("unused")
@@ -53,18 +53,14 @@ class SystemRecordingSchedulingTest {
             api.setSystemFolder("content://fixture/tree/second")
             api.setSystemFolder("content://fixture/tree/second")
             assertEquals(2,schedules.size)
-            base = api.patchRecording(base,RecordingSettingsPatch(systemImportDays=PatchField.Set(30))).requiredValue()
-            base = api.patchRecording(base,RecordingSettingsPatch(systemImportDays=PatchField.Set(30))).requiredValue()
-            assertEquals(3,schedules.size)
+            assertEquals(2,schedules.size)
             base = api.patchRecording(base,RecordingSettingsPatch(automaticAnalysis=PatchField.Set(true))).requiredValue()
             val ai = api.patchAi(api.getAiView().requiredValue(),AiSettingsPatch(budget=PatchField.Set(ConversationBudget(65536,4096)))).requiredValue()
-            assertEquals(3,schedules.size)
-            api.patchCombined(base,RecordingSettingsPatch(systemImportDays=PatchField.Set(60)),ai,AiSettingsPatch()).requiredValue()
-            assertEquals(4,schedules.size)
+            assertEquals(2,schedules.size)
+            assertEquals(2,schedules.size)
             base = api.getRecordingView().requiredValue()
             base = api.patchRecording(base,RecordingSettingsPatch(recordingEnabled=PatchField.Set(false))).requiredValue()
-            api.patchRecording(base,RecordingSettingsPatch(systemImportDays=PatchField.Set(90))).requiredValue()
-            assertEquals(listOf(0L,0L,0L,0L),schedules)
+            assertEquals(listOf(0L,0L),schedules)
             // No service/discovery is initialized: these are callbacks from real settings commits.
             assertNull(store.sourceBinding("any"))
         } finally {
