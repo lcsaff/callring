@@ -5,10 +5,28 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import com.greatwall.callring.contracts.common.ApiError
 import com.greatwall.callring.contracts.recording.ArchiveStatus
+import com.greatwall.callring.contracts.recording.CallArchive
 import com.greatwall.callring.ui.state.MutationState
 
 internal fun ArchiveStatus.processing() = this in setOf(ArchiveStatus.QUEUED, ArchiveStatus.TRANSCRIBING,
     ArchiveStatus.ANALYZING, ArchiveStatus.ENRICHING)
+
+/** Old archives retain decoder error codes from before local transcription used its own namespace. */
+private fun localTranscriptionFailure(error: String) = error.startsWith("recording.offline_") || error in setOf(
+    "recording.unsupported_audio", "recording.audio_decode_failed", "recording.audio_too_long", "recording.silent_audio",
+    "ai.unsupported_audio", "ai.audio_decode_failed", "ai.audio_too_long", "ai.transcript_too_large",
+)
+
+internal fun archiveErrorSection(archive: CallArchive): ArchiveFeedbackSection? {
+    val error = archive.error ?: return null
+    return when {
+        archive.status == ArchiveStatus.WAITING_RECORDING || error in setOf("recording.audio_not_restored", "recording.missing_audio") -> ArchiveFeedbackSection.RECORDING
+        archive.transcript.isBlank() && localTranscriptionFailure(error) -> ArchiveFeedbackSection.TRANSCRIPT
+        error.startsWith("ai.") || archive.transcript.isNotBlank() ||
+            archive.status in setOf(ArchiveStatus.ENRICHING, ArchiveStatus.ENRICHMENT_FAILED) -> ArchiveFeedbackSection.ANALYSIS
+        else -> ArchiveFeedbackSection.RECORDING
+    }
+}
 
 internal fun archiveStatusLabel(status: ArchiveStatus): String = when (status) {
     ArchiveStatus.WAITING_RECORDING -> "等待录音"
@@ -46,9 +64,15 @@ fun recordingMessage(key: String): String = when (key) {
     "recording.missing_audio" -> "录音文件缺失，请重新导入"
     "recording.offline_busy" -> "归档已有处理任务，请等任务结束后重试"
     "recording.offline_model_unavailable" -> "当前设备无法加载内置离线模型"
+    "recording.offline_failed" -> "本地转写未完成，请确认录音可以正常播放后重试。"
+    "recording.unsupported_audio", "ai.unsupported_audio" -> "本机不支持这份录音的音频格式，请转换格式后重新导入。"
+    "recording.audio_decode_failed", "ai.audio_decode_failed" -> "录音解码失败，请确认文件完整且可以正常播放，或转换格式后重新导入。"
+    "recording.audio_too_long", "ai.audio_too_long" -> "录音超过可处理的时长上限，请使用较短的录音片段重试。"
     "recording.silent_audio" -> "录音中没有识别到语音"
     "recording.offline_audio_too_long" -> "离线转写目前支持最长 10 分钟的录音"
     "ai.transcript_too_large" -> "转写结果超出保存上限"
+    "ai.empty_transcript" -> "此前处理未生成转写文本，可重新进行本地转写。"
+    "ai.configuration_or_storage" -> "此前自动处理未完成，可能是配置或本地处理、存储异常；可先单独尝试本地转写。"
     "recording.transcript_required" -> "请先将录音转为文本，再进行 AI 分析"
     "recording.not_found" -> "尚无归档，请先导入录音"
     "recording.microphone_unverified", "recording.microphone_limited" -> "实验性麦克风录音，可能只有本机一方声音"

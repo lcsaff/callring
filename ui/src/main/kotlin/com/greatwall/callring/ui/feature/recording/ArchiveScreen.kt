@@ -62,10 +62,10 @@ import java.time.ZoneId
                 val offlineActive = offline != null && offline.phase != OfflineTranscriptionPhase.FAILED
                 val processing = archive?.status?.processing() == true
                 val hasTranscript = !archive?.transcript.isNullOrBlank()
-                val recordingError = archive?.error?.takeIf {
-                    archive.status == ArchiveStatus.WAITING_RECORDING || archive.audioPath == null &&
-                        (!hasTranscript || it in setOf("recording.audio_not_restored", "recording.missing_audio"))
-                }
+                val errorSection = archive?.let(::archiveErrorSection)
+                val recordingError = archive?.error?.takeIf { errorSection == ArchiveFeedbackSection.RECORDING }
+                val transcriptError = archive?.error?.takeIf { errorSection == ArchiveFeedbackSection.TRANSCRIPT }
+                val analysisError = archive?.error?.takeIf { errorSection == ArchiveFeedbackSection.ANALYSIS }
                 ArchiveContentSection("录音") {
                     if (feedbackSection == ArchiveFeedbackSection.RECORDING) RecordingFeedback(null, mutation)
                     state.error?.let { ArchiveError(it.message) }
@@ -87,7 +87,8 @@ import java.time.ZoneId
                 if (archive != null) {
                     ArchiveContentSection("转写文本") {
                         if (feedbackSection == ArchiveFeedbackSection.TRANSCRIPT) RecordingFeedback(null, mutation)
-                        if (archive.status == ArchiveStatus.FAILED && !hasTranscript && archive.audioPath != null) archive.error?.let { ArchiveError(it) }
+                        // The current local run supersedes a saved failure from an older background attempt.
+                        if (offline == null && !hasTranscript) transcriptError?.let { ArchiveError(it) }
                         when {
                             offlineActive -> {
                                 Text(when (offline.phase) {
@@ -106,16 +107,16 @@ import java.time.ZoneId
                                     color = MaterialTheme.colorScheme.onSurfaceVariant)
                                 offline?.error?.let { ArchiveError(it) }
                                 if (archive.audioPath != null) BrandButton(onTranscribeOffline, enabled = !processing && !mutation.busy) {
-                                    Text(if (offline?.error == null) "转为文本" else "重试转写")
+                                    Text(if (offline?.error == null && transcriptError == null) "转为文本" else "重试转写")
                                 }
                             }
                         }
                     }
-                    if (hasTranscript || archive.analysis != null || processing || archive.status == ArchiveStatus.ENRICHMENT_FAILED) {
+                    if (hasTranscript || archive.analysis != null || processing || analysisError != null || archive.status == ArchiveStatus.ENRICHMENT_FAILED) {
                         ArchiveAnalysisSection(archive, mutation, processing || offlineActive, suggestions,
                             onAnalyze, onRetry, onEdit, onRetrySuggestions, onConfirmSuggestions,
                             showFeedback = feedbackSection == ArchiveFeedbackSection.ANALYSIS,
-                            error = archive.error?.takeUnless { it == recordingError })
+                            error = analysisError)
                     }
                 }
             }

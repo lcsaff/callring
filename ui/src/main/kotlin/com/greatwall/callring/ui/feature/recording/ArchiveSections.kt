@@ -98,8 +98,9 @@ import java.time.ZoneId
 ) {
     ArchiveContentSection(if (archive.analysis == null) "内容分析" else "分析结果") {
         if (showFeedback) RecordingFeedback(null, mutation)
-        if (archive.status in setOf(ArchiveStatus.QUEUED, ArchiveStatus.ANALYZING, ArchiveStatus.ENRICHING, ArchiveStatus.ENRICHMENT_FAILED) || archive.status == ArchiveStatus.FAILED && archive.transcript.isNotBlank()) {
+        if (error != null || archive.status in setOf(ArchiveStatus.QUEUED, ArchiveStatus.ANALYZING, ArchiveStatus.ENRICHING, ArchiveStatus.ENRICHMENT_FAILED) || archive.status == ArchiveStatus.FAILED && archive.transcript.isNotBlank()) {
             Text(archiveStatusLabel(archive.status)); error?.let { ArchiveError(it) }
+            if (error != null && archive.transcript.isBlank()) Text("这是此前自动处理保存的失败状态，本地转写仍可单独重试。", style = MaterialTheme.typography.bodySmall)
         }
         val ineligible = archive.enrichmentBaseline?.eligible == false
         if (ineligible) Text("此号码暂不支持建立档案，转写与分析已保留。")

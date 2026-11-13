@@ -9,7 +9,7 @@ import java.nio.ByteOrder
 
 internal class AndroidPcmDecoder {
     fun decode(audio: java.io.File, cancelled: () -> Boolean, maxSamples: Long,
-        lengthError: String = "ai.audio_too_long", onSample: (Short) -> Unit) {
+        lengthError: String = "recording.audio_too_long", onSample: (Short) -> Unit) {
         fun checkCancellation() { if (cancelled()) throw AiFailure("recording.cancelled") }
         checkCancellation()
         val extractor = MediaExtractor()
@@ -18,9 +18,9 @@ internal class AndroidPcmDecoder {
             extractor.setDataSource(audio.absolutePath)
             val track = (0 until extractor.trackCount).firstOrNull {
                 extractor.getTrackFormat(it).getString(MediaFormat.KEY_MIME)?.startsWith("audio/") == true
-            } ?: throw AiFailure("ai.unsupported_audio")
+            } ?: throw AiFailure("recording.unsupported_audio")
             val format = extractor.getTrackFormat(track)
-            val mime = format.getString(MediaFormat.KEY_MIME) ?: throw AiFailure("ai.unsupported_audio")
+            val mime = format.getString(MediaFormat.KEY_MIME) ?: throw AiFailure("recording.unsupported_audio")
             extractor.selectTrack(track)
             val decoder = MediaCodec.createDecoderByType(mime)
             codec = decoder
@@ -55,7 +55,7 @@ internal class AndroidPcmDecoder {
                         rate = out.getInteger(MediaFormat.KEY_SAMPLE_RATE); channels = out.getInteger(MediaFormat.KEY_CHANNEL_COUNT)
                         pcm = if (out.containsKey(MediaFormat.KEY_PCM_ENCODING)) out.getInteger(MediaFormat.KEY_PCM_ENCODING) else AudioFormat.ENCODING_PCM_16BIT
                         if (rate !in 8_000..192_000 || channels !in 1..8 || pcm !in setOf(AudioFormat.ENCODING_PCM_16BIT, AudioFormat.ENCODING_PCM_FLOAT))
-                            throw AiFailure("ai.unsupported_audio")
+                            throw AiFailure("recording.unsupported_audio")
                         advanced = true
                     }
                     else -> if (index >= 0) {
@@ -82,14 +82,14 @@ internal class AndroidPcmDecoder {
                     }
                 }
                 stalls = if (advanced) 0 else stalls + 1
-                if (stalls > 1000) throw AiFailure("ai.audio_decode_failed")
+                if (stalls > 1000) throw AiFailure("recording.audio_decode_failed")
             }
         } catch (failure: AiFailure) {
             throw failure
         } catch (failure: java.io.InterruptedIOException) {
             throw failure
         } catch (_: Exception) {
-            throw AiFailure("ai.audio_decode_failed")
+            throw AiFailure("recording.audio_decode_failed")
         } finally {
             try { codec?.stop() } catch (_: Exception) {}
             try { codec?.release() } finally { extractor.release() }

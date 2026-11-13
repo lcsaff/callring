@@ -24,6 +24,36 @@ import org.robolectric.annotation.Config
 class ArchiveLayoutTest {
     @get:Rule val compose = createAndroidComposeRule<androidx.activity.ComponentActivity>()
 
+    @Test fun savedLegacyDecodeFailureExplainsLocalAudioInsteadOfOnlineCredentials() {
+        show(CallArchive(1, "31234", 0, status = ArchiveStatus.FAILED, audioPath = "owned", error = "ai.unsupported_audio"))
+        compose.onNode(hasText("本机不支持这份录音的音频格式，请转换格式后重新导入。") and
+            hasAnyAncestor(hasTestTag("archive-section-转写文本"))).assertExists()
+        compose.onNodeWithText("AI 请求失败，请检查服务地址、密钥、模型、网络或服务额度后重试").assertDoesNotExist()
+    }
+
+    @Test fun savedOnlineFailureWithoutTranscriptBelongsToAnalysis() {
+        show(CallArchive(1, "31234", 0, status = ArchiveStatus.FAILED, audioPath = "owned", error = "ai.http_401"))
+        compose.onNode(hasText(recordingMessage("ai.http_401")) and
+            hasAnyAncestor(hasTestTag("archive-section-内容分析"))).assertExists()
+        compose.onNodeWithText("转为文本").assertExists()
+    }
+
+    @Test fun currentLocalFailureReplacesSavedBackgroundFailure() {
+        show(CallArchive(1, "31234", 0, status = ArchiveStatus.FAILED, audioPath = "owned", error = "ai.audio_decode_failed",
+            offlineTranscription = OfflineTranscriptionRun(2, OfflineTranscriptionPhase.FAILED, "recording.silent_audio")))
+        compose.onNodeWithText(recordingMessage("recording.silent_audio")).assertExists()
+        compose.onNodeWithText(recordingMessage("ai.audio_decode_failed")).assertDoesNotExist()
+        compose.onNodeWithText("AI 请求失败，请检查服务地址、密钥、模型、网络或服务额度后重试").assertDoesNotExist()
+    }
+
+    @Test fun retryInProgressDoesNotKeepShowingSavedFailure() {
+        show(CallArchive(1, "31234", 0, status = ArchiveStatus.FAILED, audioPath = "owned", error = "ai.unsupported_audio",
+            offlineTranscription = OfflineTranscriptionRun(2, OfflineTranscriptionPhase.TRANSCRIBING)))
+        compose.onNodeWithText("正在本地转写").assertExists()
+        compose.onNodeWithText(recordingMessage("ai.unsupported_audio")).assertDoesNotExist()
+        compose.onNodeWithText("AI 请求失败，请检查服务地址、密钥、模型、网络或服务额度后重试").assertDoesNotExist()
+    }
+
     @Test fun transcriptionFailureAppearsInsideTranscriptSection() {
         compose.setContent {
             ArchiveScreen(LoadState(CallArchive(1, "31234", 0, status = ArchiveStatus.FAILED,
