@@ -8,7 +8,7 @@ import android.database.sqlite.SQLiteDatabase
 import android.database.sqlite.SQLiteOpenHelper
 import com.greatwall.callring.domain.model.defaultWorkSchedule
 
-internal const val CORE_SCHEMA_VERSION = 5
+internal const val CORE_SCHEMA_VERSION = 6
 internal const val VISIBLE_NUMBER_HISTORY_INDEX =
     "CREATE INDEX calls_visible_number_time ON calls(number,time DESC,id DESC) WHERE hidden=0"
 
@@ -61,7 +61,7 @@ internal class CallringDatabase(private val context: Context, name: String) :
             "CREATE TRIGGER calendar_audit_no_delete BEFORE DELETE ON calendar_audit BEGIN SELECT RAISE(ABORT,'Audit is immutable'); END"
         )
         db.execSQL(
-            "CREATE TABLE calls(id INTEGER PRIMARY KEY AUTOINCREMENT,number TEXT NOT NULL REFERENCES callers(number) ON DELETE RESTRICT,time INTEGER NOT NULL,duration INTEGER CHECK(duration IS NULL OR duration>=0),result TEXT NOT NULL,decision TEXT NOT NULL,source TEXT NOT NULL,log_id TEXT UNIQUE,screening_key TEXT UNIQUE,counted INTEGER NOT NULL CHECK(counted IN(0,1)),working INTEGER NOT NULL,verified INTEGER NOT NULL,reason TEXT NOT NULL,original_working INTEGER NOT NULL,original_verified INTEGER NOT NULL,original_reason TEXT NOT NULL,config_version INTEGER NOT NULL REFERENCES config_versions(id),original_config_version INTEGER NOT NULL REFERENCES config_versions(id),calendar_version TEXT NOT NULL,original_calendar_version TEXT NOT NULL,leave_version INTEGER NOT NULL,original_leave_version INTEGER NOT NULL,zone TEXT NOT NULL,original_zone TEXT NOT NULL,account TEXT,hidden INTEGER NOT NULL DEFAULT 0 CHECK(hidden IN(0,1)),linked_screen_id INTEGER REFERENCES calls(id) ON DELETE RESTRICT)"
+            "CREATE TABLE calls(id INTEGER PRIMARY KEY AUTOINCREMENT,number TEXT NOT NULL REFERENCES callers(number) ON DELETE RESTRICT,time INTEGER NOT NULL,duration INTEGER CHECK(duration IS NULL OR duration>=0),result TEXT NOT NULL,decision TEXT NOT NULL,source TEXT NOT NULL,log_id TEXT UNIQUE,screening_key TEXT UNIQUE,counted INTEGER NOT NULL CHECK(counted IN(0,1)),working INTEGER NOT NULL,verified INTEGER NOT NULL,reason TEXT NOT NULL,original_working INTEGER NOT NULL,original_verified INTEGER NOT NULL,original_reason TEXT NOT NULL,config_version INTEGER NOT NULL REFERENCES config_versions(id),original_config_version INTEGER NOT NULL REFERENCES config_versions(id),calendar_version TEXT NOT NULL,original_calendar_version TEXT NOT NULL,leave_version INTEGER NOT NULL,original_leave_version INTEGER NOT NULL,zone TEXT NOT NULL,original_zone TEXT NOT NULL,account TEXT,hidden INTEGER NOT NULL DEFAULT 0 CHECK(hidden IN(0,1)),linked_screen_id INTEGER REFERENCES calls(id) ON DELETE RESTRICT,direction TEXT NOT NULL DEFAULT 'INCOMING' CHECK(direction IN('INCOMING','OUTGOING')))"
         )
         db.execSQL("CREATE INDEX calls_number_time ON calls(number,time)")
         db.execSQL("CREATE INDEX calls_visible_time ON calls(time DESC,id DESC) WHERE hidden=0")

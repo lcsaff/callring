@@ -7,7 +7,7 @@ import java.io.Reader
 /** Scans one persisted JSON object in fixed pages; long transcript/analysis values are skipped. */
 internal object ArchiveBackupFields {
     data class Field(val start: Long, val end: Long, val scalar: String?, val present: Boolean = true)
-    private val selected = setOf("id", "number", "started", "generation", "status", "audio", "manual", "next", "error", "source", "protocol", "duration", "attempts", "analyzed", "analysisIntent", "manualAnalysisState", "manualAnalysisResultVersion", "analysis")
+    private val selected = setOf("id", "number", "started", "generation", "status", "audio", "manual", "next", "error", "source", "protocol", "duration", "attempts", "analyzed", "analysisIntent", "manualAnalysisState", "manualAnalysisResultVersion", "analysis", "direction", "resetPaused")
     fun fields(db: SQLiteDatabase, id: Long, check: () -> Unit): Map<String, Field> {
         try {
             val reader = PagedPayload(db, id, check)
@@ -25,6 +25,7 @@ internal object ArchiveBackupFields {
                     throw BackupFormatException()
             } else if (version != "null") throw BackupFormatException()
             if (fields["manual"]?.scalar !in setOf("true", "false")) throw BackupFormatException()
+            if (fields["resetPaused"]?.present==true&&fields["resetPaused"]?.scalar !in setOf("true","false"))throw BackupFormatException()
             return fields
         } catch (cancelled: java.util.concurrent.CancellationException) { throw cancelled }
         catch (_: Exception) { throw BackupFormatException() }
@@ -194,7 +195,7 @@ internal object ArchiveBackupFields {
             }
             val closing = offset
             expect('}'); whitespace()
-            val optional = setOf("manual", "audio", "error", "protocol", "duration", "analyzed", "analysisIntent", "manualAnalysisState", "manualAnalysisResultVersion", "analysis")
+            val optional = setOf("manual", "audio", "error", "protocol", "duration", "analyzed", "analysisIntent", "manualAnalysisState", "manualAnalysisResultVersion", "analysis", "direction", "resetPaused")
             if (current != -1 || !output.keys.containsAll(selected - optional)) throw BackupFormatException()
             optional.forEach { key -> output.putIfAbsent(key, Field(closing, closing, if (key == "manual") "false" else "null", present = false)) }
             return output

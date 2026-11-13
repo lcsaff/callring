@@ -10,6 +10,8 @@ import com.greatwall.callring.application.ports.recording.RecordingRegistrationS
 import com.greatwall.callring.application.ports.recording.RecordingSettingsStore
 import com.greatwall.callring.application.ports.recording.RecordingWorkflowReads
 import com.greatwall.callring.application.ports.recording.SystemRecordingImportStore
+import com.greatwall.callring.application.ports.recording.RetainedRecordingLinks
+import com.greatwall.callring.application.ports.recording.RetainedRecordingOrigin
 import com.greatwall.callring.application.ports.recording.ScannedSystemRecording
 import com.greatwall.callring.domain.recording.ParsedSystemRecording
 import com.greatwall.callring.data.query.RecordingScopedReadAdapter
@@ -70,11 +72,11 @@ class KeystoreRecordingCipher(private val alias: String) : RecordingCipher {
 class AndroidRecordingStore(context: Context, namespace: String,
     private val cipher: RecordingCipher = KeystoreRecordingCipher("callring.recording.$namespace"),
     private val recordingVersion: () -> Long,
-) : RecordingIdentityReads, RecordingArchiveState, RecordingArchiveMutations, RecordingWorkflowReads, RecordingSettingsStore, RecordingRegistrationStore, SystemRecordingImportStore, AutoCloseable {
+) : RecordingIdentityReads, RecordingArchiveState, RecordingArchiveMutations, RecordingWorkflowReads, RecordingSettingsStore, RecordingRegistrationStore, SystemRecordingImportStore, RetainedRecordingLinks, AutoCloseable {
     val readCounters = RecordingReadCounters()
     private val preferences = context.getSharedPreferences(namespace + "_recording", Context.MODE_PRIVATE)
     private val listIncarnation = java.util.UUID.randomUUID().toString()
-    private val helper = object : SQLiteOpenHelper(context, namespace + "_recording.db", null, 6) {
+    private val helper = object : SQLiteOpenHelper(context, namespace + "_recording.db", null, 8) {
         override fun onCreate(db: SQLiteDatabase) {
             db.execSQL("CREATE TABLE archives (call_id INTEGER PRIMARY KEY, generation INTEGER NOT NULL, payload TEXT NOT NULL)")
             db.execSQL("CREATE TABLE deleted_archives (call_id INTEGER PRIMARY KEY)")
@@ -82,10 +84,11 @@ class AndroidRecordingStore(context: Context, namespace: String,
             ArchiveProjectionIndex.create(db)
             RecordingArchivePages.create(db, initiallyReady = true)
             SystemRecordingImports.create(db)
+            RetainedRecordingHistory.create(db)
         }
         override fun onUpgrade(db: SQLiteDatabase, oldVersion: Int, newVersion: Int) { RecordingSchema.upgrade(db, oldVersion) }
         private fun createEvents(db: SQLiteDatabase) {
-            db.execSQL("CREATE TABLE recording_events (id INTEGER PRIMARY KEY AUTOINCREMENT, session_id TEXT NOT NULL UNIQUE, number TEXT NOT NULL, started INTEGER NOT NULL, account TEXT)")
+            db.execSQL("CREATE TABLE recording_events (id INTEGER PRIMARY KEY AUTOINCREMENT, session_id TEXT NOT NULL UNIQUE, number TEXT NOT NULL, started INTEGER NOT NULL, account TEXT,direction TEXT NOT NULL DEFAULT 'INCOMING' CHECK(direction IN('INCOMING','OUTGOING','UNKNOWN')))")
             db.execSQL("CREATE TABLE recording_statistics_links (statistics_id INTEGER PRIMARY KEY, session_id TEXT NOT NULL)")
         }
     }
@@ -103,8 +106,8 @@ class AndroidRecordingStore(context: Context, namespace: String,
         try {
             val row = ContentValues().apply { put("session_id", sessionId); put("number", number); put("started", at); put("account", account) }
             val eventInserted = db.insertWithOnConflict("recording_events", null, row, SQLiteDatabase.CONFLICT_IGNORE) != -1L
-            val call = db.rawQuery("SELECT id,number,started FROM recording_events WHERE session_id=?", arrayOf(sessionId)).use {
-                check(it.moveToFirst()); RecordingCall(-it.getLong(0), it.getString(1), it.getLong(2), null)
+            val call = db.rawQuery("SELECT id,number,started,direction FROM recording_events WHERE session_id=?", arrayOf(sessionId)).use {
+                check(it.moveToFirst()); RecordingCall(-it.getLong(0), it.getString(1), it.getLong(2), null, com.greatwall.callring.domain.model.CallDirection.valueOf(it.getString(3)))
             }
             require(call.number == number && call.startedAt == at) { "recording.session_conflict" }
             var archiveInserted = false
@@ -128,8 +131,8 @@ class AndroidRecordingStore(context: Context, namespace: String,
     }
     @Synchronized override fun findRecording(id: Long): RecordingCall? {
         if (id >= 0 || id == Long.MIN_VALUE) return null
-        return readableDatabase.rawQuery("SELECT id,number,started FROM recording_events WHERE id=?", arrayOf((-id).toString())).use {
-            if (it.moveToFirst()) RecordingCall(-it.getLong(0), it.getString(1), it.getLong(2), null) else null
+        return readableDatabase.rawQuery("SELECT id,number,started,direction FROM recording_events WHERE id=?", arrayOf((-id).toString())).use {
+            if (it.moveToFirst()) RecordingCall(-it.getLong(0), it.getString(1), it.getLong(2), null, com.greatwall.callring.domain.model.CallDirection.valueOf(it.getString(3))) else null
         }
     }
     @Synchronized override fun insertStatisticsLink(statisticsId: Long, sessionId: String): Boolean {
@@ -138,17 +141,48 @@ class AndroidRecordingStore(context: Context, namespace: String,
         return writableDatabase.insertWithOnConflict("recording_statistics_links", null, row, SQLiteDatabase.CONFLICT_IGNORE) != -1L
     }
     @Synchronized override fun sessionRecording(sessionId: String): RecordingCall? = readableDatabase.rawQuery(
-        "SELECT id,number,started FROM recording_events WHERE session_id=?", arrayOf(sessionId)).use {
-            if (it.moveToFirst()) RecordingCall(-it.getLong(0), it.getString(1), it.getLong(2), null) else null
+        "SELECT id,number,started,direction FROM recording_events WHERE session_id=?", arrayOf(sessionId)).use {
+            if (it.moveToFirst()) RecordingCall(-it.getLong(0), it.getString(1), it.getLong(2), null, com.greatwall.callring.domain.model.CallDirection.valueOf(it.getString(3))) else null
         }
     @Synchronized override fun linkedRecording(statisticsId: Long): RecordingCall? = readableDatabase.rawQuery(
-        "SELECT e.id,e.number,e.started FROM recording_events e JOIN recording_statistics_links l ON e.session_id=l.session_id WHERE l.statistics_id=?",
-        arrayOf(statisticsId.toString())).use { if (it.moveToFirst()) RecordingCall(-it.getLong(0), it.getString(1), it.getLong(2), null) else null }
+        "SELECT e.id,e.number,e.started,e.direction FROM recording_events e JOIN recording_statistics_links l ON e.session_id=l.session_id WHERE l.statistics_id=?",
+        arrayOf(statisticsId.toString())).use { if (it.moveToFirst()) RecordingCall(-it.getLong(0), it.getString(1), it.getLong(2), null, com.greatwall.callring.domain.model.CallDirection.valueOf(it.getString(3))) else null }
     @Synchronized override fun isDeleted(callId: Long): Boolean = readableDatabase.rawQuery(
         "SELECT 1 FROM deleted_archives WHERE call_id=?", arrayOf(callId.toString())).use { it.moveToFirst() }
     override fun settings(): RecordingSettings = synchronized(preferences) { ensureOpen(); preferences.getString("config", null)?.let {
         RecordingJson.settings(JSONObject(cipher.decrypt(it)))
     } ?: RecordingSettings() }
+    @Synchronized override fun hasRetainedHistory(): Boolean=readableDatabase.rawQuery("SELECT 1 FROM recording_retained_events LIMIT 1",null).use {it.moveToFirst()}
+    @Synchronized override fun retainedOrigin(logId: String): RetainedRecordingOrigin? = readableDatabase.rawQuery(
+        "SELECT event_id,number,call_started,direction FROM recording_retained_origins WHERE log_id=?",arrayOf(logId)).use { c ->
+        if(c.moveToFirst())RetainedRecordingOrigin(c.getLong(0),c.getString(1),c.getLong(2),com.greatwall.callring.domain.model.CallDirection.valueOf(c.getString(3)))else null
+    }
+    @Synchronized override fun retainedCandidates(number: String, at: Long, direction: com.greatwall.callring.domain.model.CallDirection): List<RecordingCall> {
+        val range=com.greatwall.callring.domain.recording.SystemRecordingAssociation.recordingStarts(at)
+        return readableDatabase.rawQuery("SELECT e.id,e.number,e.started,e.direction FROM recording_retained_events r JOIN recording_events e ON e.id=r.event_id WHERE r.number=? AND r.started BETWEEN ? AND ? AND e.direction IN(?,'UNKNOWN') AND (EXISTS(SELECT 1 FROM archives a WHERE a.call_id=-e.id) OR EXISTS(SELECT 1 FROM deleted_archives d WHERE d.call_id=-e.id)) ORDER BY ABS(e.started-?) LIMIT 3",arrayOf(number.filter(Char::isDigit),range.first.toString(),range.last.toString(),direction.name,at.toString())).use { c -> buildList {while(c.moveToNext())add(RecordingCall(-c.getLong(0),c.getString(1),c.getLong(2),null,com.greatwall.callring.domain.model.CallDirection.valueOf(c.getString(3))))} }
+    }
+    @Synchronized override fun linkRetained(statisticsId: Long,eventId: Long,direction: com.greatwall.callring.domain.model.CallDirection): Boolean {
+        require(statisticsId>0&&eventId>0)
+        val db=writableDatabase;db.beginTransaction()
+        try {
+            val session=db.rawQuery("SELECT e.session_id FROM recording_events e JOIN recording_retained_events r ON r.event_id=e.id WHERE e.id=? AND (EXISTS(SELECT 1 FROM archives a WHERE a.call_id=-e.id) OR EXISTS(SELECT 1 FROM deleted_archives d WHERE d.call_id=-e.id))",arrayOf(eventId.toString())).use { c -> if(c.moveToFirst())c.getString(0)else null }?:return false
+            if(generation(statisticsId)!=null||isDeleted(statisticsId))return false
+            val inserted=insertStatisticsLink(statisticsId,session)
+            if(inserted&&findRecording(-eventId)?.direction==com.greatwall.callring.domain.model.CallDirection.UNKNOWN&&direction!=com.greatwall.callring.domain.model.CallDirection.UNKNOWN) {
+                db.execSQL("UPDATE recording_events SET direction=? WHERE id=?",arrayOf<Any>(direction.name,eventId))
+                db.execSQL("UPDATE system_recording_sources SET direction=? WHERE archive_id=?",arrayOf<Any>(direction.name,-eventId))
+                if(generation(-eventId)!=null) {
+                    val fields=com.greatwall.callring.data.backup.ArchiveBackupFields.fields(db,-eventId,{})
+                    val generation=Math.addExact(fields.getValue("generation").scalar!!.toLong(),1)
+                    com.greatwall.callring.data.backup.ArchiveBackupFields.replace(db,-eventId,fields,mapOf("direction" to JSONObject.quote(direction.name),"generation" to generation.toString()))
+                    db.execSQL("UPDATE archives SET generation=? WHERE call_id=?",arrayOf(generation,-eventId))
+                    ArchiveProjectionIndex(db).remove(-eventId)
+                    db.execSQL("UPDATE archive_list_state SET ready=0")
+                }
+            }
+            db.setTransactionSuccessful();return inserted
+        } finally {db.endTransaction()}
+    }
     override fun persistSettings(value: RecordingSettings) = synchronized(preferences) {
         ensureOpen()
         updatePreferences(preferences, mapOf("config" to cipher.encrypt(RecordingJson.settings(value).toString())))
@@ -199,18 +233,45 @@ class AndroidRecordingStore(context: Context, namespace: String,
     }
     @Synchronized override fun sourceBinding(sourceKey: String): RecordingCall? {
         val bound = SystemRecordingImports(readableDatabase).binding(sourceKey) ?: return null
-        return if (bound.id < 0) findRecording(bound.id) else metadata(bound.id) { false }?.let { RecordingCall(it.callId,it.number,it.startedAtEpochMillis,it.durationMillis?.div(1000)) } ?: bound
+        return (if (bound.id < 0) findRecording(bound.id) else metadata(bound.id) { false }?.let { RecordingCall(it.callId,it.number,it.startedAtEpochMillis,it.durationMillis?.div(1000)) } ?: bound)?.copy(direction = bound.direction)
     }
     @Synchronized override fun sourceCompleted(sourceKey: String) = SystemRecordingImports(readableDatabase).completed(sourceKey)
     @Synchronized override fun completeSystemSource(sourceKey: String) = SystemRecordingImports(writableDatabase).complete(sourceKey)
     @Synchronized override fun matchingRecordingEvents(parsed: ParsedSystemRecording) = SystemRecordingImports(readableDatabase).matching(parsed)
     @Synchronized override fun systemRetry(at: Long?) = SystemRecordingImports(writableDatabase).retry(at)
     @Synchronized override fun systemSourcePage(afterKey: String?, limit: Int) = SystemRecordingImports(readableDatabase).sourcePage(afterKey,limit)
-    @Synchronized override fun linkSystemStatistics(sourceKey: String, statisticsId: Long): Boolean {
+    @Synchronized override fun linkSystemStatistics(sourceKey: String, target: RecordingCall): Boolean {
         val call = sourceBinding(sourceKey) ?: return false
-        if (call.id >= 0 || isDeleted(call.id) || generation(statisticsId) != null || isDeleted(statisticsId)) return false
-        val session = readableDatabase.rawQuery("SELECT session_id FROM recording_events WHERE id=?", arrayOf((-call.id).toString())).use { if(it.moveToFirst()) it.getString(0) else null } ?: return false
-        return insertStatisticsLink(statisticsId, session)
+        if (isDeleted(call.id) || isDeleted(target.id)) return false
+        val db = writableDatabase
+        db.beginTransaction()
+        try {
+            var changed = false
+            if (call.id < 0) {
+                if (generation(target.id) != null) return false
+                val session = db.rawQuery("SELECT session_id FROM recording_events WHERE id=?", arrayOf((-call.id).toString())).use { if(it.moveToFirst()) it.getString(0) else null } ?: return false
+                val linked = linkedRecording(target.id)
+                if (linked != null && linked.id != call.id) return false
+                changed = insertStatisticsLink(target.id, session)
+            } else if (call.id != target.id) return false
+            if (call.direction != target.direction) {
+                db.execSQL("UPDATE system_recording_sources SET direction=? WHERE source_key=?", arrayOf(target.direction.name,sourceKey))
+                if (call.id < 0) db.execSQL("UPDATE recording_events SET direction=? WHERE id=?", arrayOf<Any>(target.direction.name,-call.id))
+                get(call.id)?.let { archive ->
+                    val direction = com.greatwall.callring.contracts.callers.CallDirection.valueOf(target.direction.name)
+                    val automatic = !archive.manualAnalysis && archive.analysisIntent in setOf(ArchiveAnalysisIntent.AUTOMATIC,ArchiveAnalysisIntent.LEGACY_UNCLASSIFIED)
+                    val status = when {
+                        automatic && direction != com.greatwall.callring.contracts.callers.CallDirection.INCOMING -> if (archive.audioPath != null) ArchiveStatus.READY else ArchiveStatus.WAITING_RECORDING
+                        automatic && !archive.resetPaused && call.direction == com.greatwall.callring.domain.model.CallDirection.UNKNOWN && archive.audioPath != null && archive.status == ArchiveStatus.READY && archive.nextAttemptAt != Long.MAX_VALUE && settings().automaticAnalysis -> ArchiveStatus.QUEUED
+                        else -> archive.status
+                    }
+                    check(compareAndSet(call.id,archive.generation,archive.copy(generation=archive.generation+1,direction=direction,status=status,nextAttemptAt=archive.nextAttemptAt.takeIf { it == Long.MAX_VALUE } ?: 0)))
+                }
+                changed = true
+            }
+            db.setTransactionSuccessful()
+            return changed
+        } finally { db.endTransaction() }
     }
     @Synchronized override fun registerSystemSource(sourceKey: String, parsed: ParsedSystemRecording, existing: RecordingCall?, initial: (RecordingCall) -> CallArchive): RecordingRegistration {
         val db = writableDatabase
@@ -221,7 +282,11 @@ class AndroidRecordingStore(context: Context, namespace: String,
                 db.setTransactionSuccessful()
                 return RecordingRegistration(bound,false,false)
             }
-            val result = if (existing == null) insertIncoming("system-file:$sourceKey", parsed.number, parsed.startedAtEpochMillis, null, initial)
+            val result = if (existing == null) {
+                val registered = insertIncoming("system-file:$sourceKey", parsed.number, parsed.startedAtEpochMillis, null) { initial(it.copy(direction = com.greatwall.callring.domain.model.CallDirection.UNKNOWN)) }
+                db.execSQL("UPDATE recording_events SET direction='UNKNOWN' WHERE id=?", arrayOf(-registered.call.id))
+                registered.copy(call = registered.call.copy(direction = com.greatwall.callring.domain.model.CallDirection.UNKNOWN))
+            }
             else {
                 val inserted = !isDeleted(existing.id) && generation(existing.id) == null && compareAndSet(existing.id,null,initial(existing))
                 RecordingRegistration(existing,false,inserted)
@@ -246,7 +311,7 @@ class AndroidRecordingStore(context: Context, namespace: String,
                     else -> throw IllegalArgumentException("snapshot.recording_invalid")
                 } }))
             }) }
-            val events = aiObject("events" to rows("SELECT * FROM recording_events ORDER BY id"), "links" to rows("SELECT * FROM recording_statistics_links ORDER BY statistics_id"), "deleted" to rows("SELECT * FROM deleted_archives ORDER BY call_id"))
+            val events = aiObject("events" to rows("SELECT id,session_id,number,started,account FROM recording_events ORDER BY id"), "links" to rows("SELECT * FROM recording_statistics_links ORDER BY statistics_id"), "deleted" to rows("SELECT * FROM deleted_archives ORDER BY call_id"))
             val archives = db.rawQuery("SELECT payload FROM archives ORDER BY call_id", null).use { c -> AiJson.Arr(buildList {
                 while (c.moveToNext()) { val text = c.getString(0); com.greatwall.callring.data.codec.StrictJson.validate(text); add(com.greatwall.callring.application.conversation.query.safeValue(RecordingJson.archive(JSONObject(text)))) }
             }) }
@@ -316,8 +381,9 @@ internal object RecordingJson {
         .put("attempts", v.attempts).put("next", v.nextAttemptAt).put("analyzed", v.analyzedAt).put("analysisModel", v.analysisModel)
         .put("transcriptionModel", v.transcriptionModel).put("protocol", v.analysisProtocol?.name).put("manual", v.manualAnalysis).put("enrichmentBaseline", v.enrichmentBaseline?.let { JSONObject().put("epoch", it.epoch).put("revisions", JSONObject(it.revisions)).put("eligible", it.eligible) }).put("enrichmentSourceGeneration", v.enrichmentSourceGeneration)
         .put("analysisIntent", v.analysisIntent.name).put("manualAnalysisState", v.manualAnalysisState?.name)
-        .put("manualAnalysisResultVersion", v.manualAnalysisResultVersion)
+        .put("manualAnalysisResultVersion", v.manualAnalysisResultVersion).put("direction", v.direction.name).put("resetPaused", v.resetPaused)
     fun archive(v: JSONObject): CallArchive {
+        require(!v.has("resetPaused")||v.get("resetPaused") is Boolean) {"recording.invalid_reset_pause"}
         val archive = CallArchive(v.getLong("id"), v.getString("number"), v.getLong("started"), v.getLong("generation"),
         ArchiveStatus.valueOf(v.getString("status")), RecordingSource.valueOf(v.getString("source")), v.nullableString("audio"), v.getString("quality"),
         v.nullableLong("duration"), v.getString("transcript"), v.optJSONObject("analysis")?.let(::analysis), v.nullableString("error"), v.getInt("attempts"),
@@ -326,7 +392,8 @@ internal object RecordingJson {
         v.nullableLong("enrichmentSourceGeneration"),
         analysisIntent = v.nullableString("analysisIntent")?.let(ArchiveAnalysisIntent::valueOf) ?: ArchiveAnalysisIntent.AUTOMATIC,
         manualAnalysisState = v.nullableString("manualAnalysisState")?.let(ManualAnalysisState::valueOf),
-        manualAnalysisResultVersion = v.nullableLong("manualAnalysisResultVersion"))
+        manualAnalysisResultVersion = v.nullableLong("manualAnalysisResultVersion"),
+        direction = com.greatwall.callring.contracts.callers.CallDirection.valueOf(v.optString("direction", "INCOMING")), resetPaused = v.optBoolean("resetPaused", false))
         return if (v.has("analysisIntent")) archive else RecordingSchema.decodeLegacyAnalysis(archive)
     }
     private fun JSONObject.nullableString(key: String) = if (isNull(key)) null else getString(key)

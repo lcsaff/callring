@@ -15,7 +15,15 @@ data class ArchiveCleanupPreview(val token: String, val targets: List<CleanupTar
 enum class CleanupItemStatus { COMMITTED, FAILED, UNSTARTED }
 data class CleanupItemReceipt(val target: CleanupTarget, val status: CleanupItemStatus, val error: ApiError? = null)
 data class ArchiveCleanupReceipt(val items: List<CleanupItemReceipt>, val cancelled: Boolean)
+data class NumberProfileResetPreview(val token: String, val profileCount: Long, val callCount: Long,
+    val widgetBindingCount: Long, val archiveCount: Long, val audioBytes: Long?, val expiresAtEpochMillis: Long)
+data class NumberProfileResetReceipt(val profileCount: Long, val callCount: Long,
+    val widgetBindingCount: Long, val archiveCount: Long, val audioBytes: Long?,
+    val keepRecordings: Boolean, val applicationRestartRequested: Boolean)
 interface StorageManagementApi {
+    suspend fun previewNumberProfiles(): ApiResult<NumberProfileResetPreview>
+    suspend fun confirmNumberProfiles(token: String, keepRecordings: Boolean): ApiResult<NumberProfileResetReceipt>
+    suspend fun discardNumberProfiles(token: String): ApiResult<Unit>
     suspend fun inventory(): ApiResult<StorageInventory>
     suspend fun preview(selection: ArchiveCleanupSelection): ApiResult<ArchiveCleanupPreview>
     /** Explicit confirmation of the exact preview; repeated confirmation returns its original receipt. */

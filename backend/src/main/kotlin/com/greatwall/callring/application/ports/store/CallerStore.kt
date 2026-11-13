@@ -70,6 +70,7 @@ data class CallerOverviewFact(
     val counted: Boolean,
     val working: Boolean,
     val calendarVerified: Boolean,
+    val direction: com.greatwall.callring.domain.model.CallDirection = com.greatwall.callring.domain.model.CallDirection.INCOMING,
 )
 
 interface CallerCallReader {

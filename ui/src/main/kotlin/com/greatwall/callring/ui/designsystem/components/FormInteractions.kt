@@ -8,16 +8,19 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.ui.focus.FocusDirection
 
 @Composable
 fun ConfirmationDialog(
     title: String, message: String, confirmLabel: String,
     onConfirm: () -> Unit, onDismiss: () -> Unit, busy: Boolean = false, dismissLabel: String = "取消",
+    content: (@Composable () -> Unit)? = null,
 ) {
     AlertDialog(
         onDismissRequest = { if (!busy) onDismiss() },
-        title = { Text(title) }, text = { Text(message) },
+        title = { Text(title) }, text = { Column(Modifier.verticalScroll(rememberScrollState())) { Text(message);content?.invoke() } },
         confirmButton = { TextButton(onClick = { if (!busy) onConfirm() }, enabled = !busy) { Text(confirmLabel) } },
         dismissButton = { TextButton(onClick = onDismiss, enabled = !busy) { Text(dismissLabel) } },
     )

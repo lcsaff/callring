@@ -65,6 +65,10 @@ class RecordingAssembly(
         return repair.resolve(batch)
     }
     val directory = File(context.filesDir, namespace + "_recordings")
+    internal fun reconcileRetainedHistory(records: List<com.greatwall.callring.domain.model.SystemCallRecord>, calls: com.greatwall.callring.application.ports.store.CallingTransactions) {
+        val persistence=owned { storeDelegate.value }
+        RetainedRecordingReconciler(calls,persistence,coordinator,operationActive).reconcile(records)
+    }
     private val sources by lazy { SystemRecordingSource(context.contentResolver) }
     private val scannerDelegate = lazy { com.greatwall.callring.platform.recording.SystemRecordingScanner(context.contentResolver) }
     private val discoveryDelegate = lazy { SystemRecordingDiscovery(store,store,store::settings,
@@ -102,7 +106,13 @@ class RecordingAssembly(
     }
     private val archiveCommandsDelegate = lazy { RecordingArchiveCommands(store, store, coordinator) }
     private val registrationsDelegate = lazy { RecordingRegistrationService(store, coordinator) }
-    private val workflowDelegate = lazy { RecordingWorkflow(store, archiveCommands, AndroidAudioTranscriber(client, File(context.cacheDir, namespace + "_ai_audio")), enrichment = enrichment, offlineTranscriber = SherpaOfflineTranscriber(context.assets)) }
+    private val workflowDelegate = lazy { RecordingWorkflow(store, archiveCommands, AndroidAudioTranscriber(client, File(context.cacheDir, namespace + "_ai_audio")), directionResolver = { archive ->
+        val direct = if (archive.callId > 0) findCall(archive.callId) else null
+        val known = direct ?: findCalls(archive.number,archive.startedAtEpochMillis).singleOrNull()?.takeIf {
+            (store.linkedRecording(it.id)?.id ?: it.id) == archive.callId
+        }
+        known?.let { com.greatwall.callring.contracts.callers.CallDirection.valueOf(it.direction.name) } ?: archive.direction
+    }, enrichment = enrichment, offlineTranscriber = SherpaOfflineTranscriber(context.assets)) }
     private val audioDelegate = lazy { AndroidRecordingAudio(context, directory, metadataReader) }
     private val audio get() = audioDelegate.value
     private val playbackDelegate: Lazy<AndroidRecordingPlayback> = lazy { AndroidRecordingPlayback(directory) { service.playbackFinished() } }

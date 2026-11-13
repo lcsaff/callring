@@ -302,7 +302,7 @@ internal class SqliteCallerStore(private val sql: SqlAccess, private val lease: 
         sql.rawQuery(
                 QueryTag.SCOPED_ROWS,
                 setOf(SqlTable.CALLS),
-                "SELECT id,time,duration,result,counted,working,verified FROM calls WHERE number=? AND hidden=0 ORDER BY time,id",
+                "SELECT id,time,duration,result,counted,working,verified,direction FROM calls WHERE number=? AND hidden=0 ORDER BY time,id",
                 arrayOf(number),
             )
             .use { c ->
@@ -315,6 +315,7 @@ internal class SqliteCallerStore(private val sql: SqlAccess, private val lease: 
                         c.getInt(4) != 0,
                         c.getInt(5) != 0,
                         c.getInt(6) != 0,
+                        com.greatwall.callring.domain.model.CallDirection.valueOf(c.getString(7)),
                     ),
                 )
             }

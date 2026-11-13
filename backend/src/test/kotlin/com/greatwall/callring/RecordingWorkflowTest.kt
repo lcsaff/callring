@@ -22,13 +22,80 @@ import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 
 class RecordingWorkflowTest {
+    @Test fun resetPauseRequiresSuccessfulExplicitResumeAndReusesExistingTranscript() {
+        configure()
+        val original=CallArchive(1,"31234",100,generation=1,status=ArchiveStatus.FAILED,
+            transcript="already transcribed",nextAttemptAt=Long.MAX_VALUE,resetPaused=true)
+        assertTrue(store.compareAndSet(1,null,original))
+        workflow.processPending();assertEquals(original,store.get(1));assertEquals(0,analyses)
+        store.seedSettings(RecordingSettings())
+        assertThrows(IllegalArgumentException::class.java){workflow.retry(1,null)}
+        assertTrue(store.get(1)!!.resetPaused)
+        configure();workflow.retry(1,null);assertFalse(store.get(1)!!.resetPaused)
+        workflow.processPending();assertEquals(0,transcriptions);assertEquals(1,analyses)
+    }
+    @Test fun successfulOfflineTranscriptionClearsResetPauseWithoutNetwork() {
+        configure()
+        val original=CallArchive(1,"31234",100,generation=1,status=ArchiveStatus.FAILED,
+            audioPath="owned",nextAttemptAt=Long.MAX_VALUE,resetPaused=true)
+        assertTrue(store.compareAndSet(1,null,original))
+        val local=RecordingWorkflow(store,commands,client,{1000L},directionResolver={it.direction},enrichment=localEnrichment,
+            offlineTranscriber={_,_,_->OfflineTranscript("offline saved","offline")})
+        try {local.startOffline(1);waitForOffline(local);assertFalse(store.get(1)!!.resetPaused);assertEquals(0,transcriptions);assertEquals(0,analyses)}finally{local.close()}
+    }
+    @Test fun persistedNonincomingAutomaticQueueIsNormalizedWithoutAi() {
+        configure()
+        for ((index,direction) in listOf(com.greatwall.callring.contracts.callers.CallDirection.OUTGOING,
+                com.greatwall.callring.contracts.callers.CallDirection.UNKNOWN).withIndex()) {
+            val id = index.toLong()+1
+            assertTrue(store.compareAndSet(id,null,CallArchive(id,"31234",100,generation=1,
+                status=ArchiveStatus.QUEUED,audioPath="owned",direction=direction)))
+        }
+        workflow.processPending()
+        assertEquals(0,transcriptions)
+        assertEquals(0,analyses)
+        assertTrue(listOf(1L,2L).all { store.get(it)!!.status == ArchiveStatus.READY })
+    }
+
+    @Test fun correctedOutgoingDirectionStopsExistingAutomaticQueueBeforeAi() {
+        configure()
+        val local = RecordingWorkflow(store,commands,client,{ 1000L },enrichment=testEnrichment,
+            directionResolver = { com.greatwall.callring.contracts.callers.CallDirection.OUTGOING })
+        local.attach(1,"31234",100,"owned",RecordingSource.SYSTEM,1000,null,false)
+        local.processPending()
+        assertEquals(0,transcriptions)
+        assertEquals(0,analyses)
+        assertEquals(ArchiveStatus.READY,store.get(1)!!.status)
+        assertEquals(com.greatwall.callring.contracts.callers.CallDirection.OUTGOING,store.get(1)!!.direction)
+    }
+
+    @Test fun outgoingCorrectionDuringTranscriptionCannotSaveOrEnrichLateResult() {
+        configure()
+        var direction = com.greatwall.callring.contracts.callers.CallDirection.INCOMING
+        val changing = object : AiClient by client {
+            override fun operation(cancelled: () -> Boolean): AiClient = this
+            override fun transcribe(connection: AiConnection, reference: com.greatwall.callring.application.ports.recording.AudioReference): String {
+                direction = com.greatwall.callring.contracts.callers.CallDirection.OUTGOING
+                return "Caller says hello"
+            }
+        }
+        val local = RecordingWorkflow(store,commands,changing,{ 1000L },enrichment=testEnrichment,directionResolver={ direction })
+        local.attach(1,"31234",100,"owned",RecordingSource.SYSTEM,1000,null,false)
+        local.processPending()
+        assertEquals("",store.get(1)!!.transcript)
+        assertEquals(0,analyses)
+        local.processPending()
+        assertEquals(ArchiveStatus.READY,store.get(1)!!.status)
+        assertEquals(com.greatwall.callring.contracts.callers.CallDirection.OUTGOING,store.get(1)!!.direction)
+    }
+
     @Test fun transcriptOnlyAnalysisAndCoreReceiptRecoverAfterArchiveWritebackFailure() {
         configure(auto = false)
         val coordinator = BusinessRevisionCoordinator()
         val archiveCommands = RecordingArchiveCommands(store, store, coordinator)
         val core = MemoryCoreUnitOfWork()
         fun newOwner() = RecordingWorkflow(store, archiveCommands, client, { 1000L },
-            enrichment = com.greatwall.callring.application.callers.CallerEnrichmentService(core, coordinator) { true })
+            directionResolver = { it.direction }, enrichment = com.greatwall.callring.application.callers.CallerEnrichmentService(core, coordinator) { true })
         val first = newOwner()
         val seed = CallArchive(-1, "31234", 100, generation = 1, status = ArchiveStatus.READY,
             transcript = "Caller says hello")
@@ -69,7 +136,7 @@ class RecordingWorkflowTest {
         val coordinator = BusinessRevisionCoordinator()
         val core = MemoryCoreUnitOfWork()
         val workflow = RecordingWorkflow(store, RecordingArchiveCommands(store, store, coordinator), client, { 1000L },
-            enrichment = com.greatwall.callring.application.callers.CallerEnrichmentService(core, coordinator) { true })
+            directionResolver = { it.direction }, enrichment = com.greatwall.callring.application.callers.CallerEnrichmentService(core, coordinator) { true })
         val seed = CallArchive(-1, "31234", 100, generation = 1, status = ArchiveStatus.READY,
             transcript = "Caller says hello")
         assertTrue(store.compareAndSet(seed.callId, null, seed))
@@ -108,7 +175,7 @@ class RecordingWorkflowTest {
                 entered.countDown(); check(release.await(5, TimeUnit.SECONDS)); return "late transcript"
             }
         }
-        val owned = RecordingWorkflow(store, commands, blocking, enrichment = testEnrichment)
+        val owned = RecordingWorkflow(store, commands, blocking, directionResolver = { it.direction }, enrichment = testEnrichment)
         owned.attach(1,"31234",100,"/private/test.m4a",RecordingSource.IMPORTED,1000,null,false)
         val worker = Thread { owned.processPending() }.apply { start() }
         assertTrue(entered.await(2, TimeUnit.SECONDS))
@@ -235,7 +302,7 @@ class RecordingWorkflowTest {
         workflow.attach(1, "31234", 100, "/private/test.m4a", RecordingSource.IMPORTED, 1000, null, false)
         workflow.processPending()
         workflow.retry(1, null)
-        val restarted = RecordingWorkflow(store, commands, client, { 1000L }, enrichment = localEnrichment)
+        val restarted = RecordingWorkflow(store, commands, client, { 1000L }, directionResolver = { it.direction }, enrichment = localEnrichment)
         restarted.processPending()
         assertEquals(1, localCaptures)
         assertEquals(1, localAttempts)
@@ -282,12 +349,12 @@ class RecordingWorkflowTest {
         }
     }
     private val commands = RecordingArchiveCommands(store, store, BusinessRevisionCoordinator())
-    private val workflow = RecordingWorkflow(store, commands, client, { 1000L }, enrichment = localEnrichment)
+    private val workflow = RecordingWorkflow(store, commands, client, { 1000L }, directionResolver = { it.direction }, enrichment = localEnrichment)
     private fun configure(auto: Boolean = true) {
         store.seedSettings(RecordingSettings(automaticAnalysis = auto, analysis = connection, transcription = connection))
     }
     @Test fun offlineImportAndTranscriptionNeverRequireAnOnlineConnection() {
-        val local = RecordingWorkflow(store, commands, client, { 1000L }, enrichment = localEnrichment,
+        val local = RecordingWorkflow(store, commands, client, { 1000L }, directionResolver = { it.direction }, enrichment = localEnrichment,
             offlineTranscriber = { _, _, decoding ->
                 decoding()
                 OfflineTranscript("本地全文", "fixture-offline")
@@ -318,7 +385,7 @@ class RecordingWorkflowTest {
     @Test fun offlineCancellationDiscardsLateResultsAndDoesNotAffectTheNextRun() {
         val entered = CountDownLatch(1)
         val release = CountDownLatch(1)
-        val local = RecordingWorkflow(store, commands, client, { 1000L }, enrichment = localEnrichment,
+        val local = RecordingWorkflow(store, commands, client, { 1000L }, directionResolver = { it.direction }, enrichment = localEnrichment,
             offlineTranscriber = { _, _, decoding ->
                 decoding()
                 entered.countDown()
@@ -401,7 +468,7 @@ class RecordingWorkflowTest {
             override fun operation(cancelled: () -> Boolean): AiClient = this
             override fun transcribe(connection: AiConnection, reference: com.greatwall.callring.application.ports.recording.AudioReference): String = throw AiFailure("ai.authentication")
         }
-        val brokenWorkflow = RecordingWorkflow(store, commands, brokenClient, { 1000L }, enrichment = testEnrichment)
+        val brokenWorkflow = RecordingWorkflow(store, commands, brokenClient, { 1000L }, directionResolver = { it.direction }, enrichment = testEnrichment)
         brokenWorkflow.attach(1, "31234", 100, "/private/test.m4a", RecordingSource.IMPORTED, 1000, null, false)
         brokenWorkflow.processPending()
         assertEquals(Long.MAX_VALUE, store.get(1)!!.nextAttemptAt)
@@ -429,7 +496,7 @@ class RecordingWorkflowTest {
             }
             lateinit var deleting: RecordingWorkflow
         }
-        val deletingWorkflow = RecordingWorkflow(store, commands, cancelClient, enrichment = testEnrichment)
+        val deletingWorkflow = RecordingWorkflow(store, commands, cancelClient, directionResolver = { it.direction }, enrichment = testEnrichment)
         cancelClient.deleting = deletingWorkflow
         deletingWorkflow.attach(1, "31234", 100, "/private/test.m4a", RecordingSource.IMPORTED, 1000, null, false)
         deletingWorkflow.processPending()
@@ -446,7 +513,7 @@ class RecordingWorkflowTest {
                 throw AiFailure("recording.cancelled")
             }
         }
-        val resumable = RecordingWorkflow(store, commands, cancellable, enrichment = testEnrichment)
+        val resumable = RecordingWorkflow(store, commands, cancellable, directionResolver = { it.direction }, enrichment = testEnrichment)
         resumable.attach(1, "31234", 100, "/private/test.m4a", RecordingSource.IMPORTED, 1000, null, false)
         resumable.processPending(cancelled = { stopped })
         assertEquals(ArchiveStatus.QUEUED, store.get(1)!!.status)
@@ -464,7 +531,7 @@ class RecordingWorkflowTest {
                 return CallAnalysis(summary = "late result")
             }
         }
-        val resumable = RecordingWorkflow(store, commands, late, enrichment = testEnrichment)
+        val resumable = RecordingWorkflow(store, commands, late, directionResolver = { it.direction }, enrichment = testEnrichment)
         resumable.attach(1, "31234", 100, "/private/test.m4a", RecordingSource.IMPORTED, 1000, null, false)
         resumable.processPending(cancelled = { stopped })
         assertEquals(ArchiveStatus.QUEUED, store.get(1)!!.status)

@@ -30,6 +30,7 @@ class RecordingWorkflow(
     private val client: AiClient,
     private val now: () -> Long = System::currentTimeMillis,
     private val enrichment: com.greatwall.callring.application.ports.recording.RecordingIdentityEnrichment,
+    private val directionResolver: (CallArchive) -> com.greatwall.callring.contracts.callers.CallDirection,
     private val offlineTranscriber: OfflineTranscriber? = null,
 ) {
     private val running = ConcurrentHashMap.newKeySet<Long>()
@@ -81,7 +82,7 @@ class RecordingWorkflow(
                             commands.compareAndSet(callId, archive.generation, archive.copy(
                                 generation = version(archive.generation), status = ArchiveStatus.READY,
                                 transcript = transcript.text, transcriptionModel = transcript.model,
-                                error = null, nextAttemptAt = 0,
+                                error = null, nextAttemptAt = 0, resetPaused = false,
                             ), null, false)
                             offlineStates.remove(callId)
                         }
@@ -138,7 +139,7 @@ class RecordingWorkflow(
         offlineStates.remove(callId)
     }
 
-    fun attach(callId: Long, number: String, startedAt: Long, path: String, source: RecordingSource, duration: Long, command: CommandContext?, playbackStopped: Boolean, offlineOnly: Boolean = false): CallArchive {
+    fun attach(callId: Long, number: String, startedAt: Long, path: String, source: RecordingSource, duration: Long, command: CommandContext?, playbackStopped: Boolean, offlineOnly: Boolean = false, direction: com.greatwall.callring.contracts.callers.CallDirection = com.greatwall.callring.contracts.callers.CallDirection.INCOMING): CallArchive {
         check(!closed) { "recording.closed" }
         require(callId != 0L && number.isNotBlank() && duration > 0) { "recording.invalid_attachment" }
         val previousGeneration = store.generation(callId)
@@ -147,9 +148,9 @@ class RecordingWorkflow(
         activeClients[callId]?.cancel()
         val settings = store.settings()
         val value = CallArchive(callId, number, startedAt, version(previousGeneration ?: 0),
-            if (!offlineOnly && settings.automaticAnalysis) ArchiveStatus.QUEUED else ArchiveStatus.READY,
+            if (!offlineOnly && settings.automaticAnalysis && direction == com.greatwall.callring.contracts.callers.CallDirection.INCOMING) ArchiveStatus.QUEUED else ArchiveStatus.READY,
             source, path, if (source == RecordingSource.MICROPHONE) "recording.microphone_unverified" else "recording.unverified",
-            duration)
+            duration, direction = direction)
         check(commands.compareAndSet(callId, previousGeneration, value, command, playbackStopped)) { "recording.changed" }
         return value
     }
@@ -204,7 +205,7 @@ class RecordingWorkflow(
         check(callId !in running) { "recording.busy" }
         val value = requireNotNull(store.get(callId)) { "recording.not_found" }
         if (value.status in setOf(ArchiveStatus.ENRICHING, ArchiveStatus.ENRICHMENT_FAILED)) {
-            check(commands.compareAndSet(callId, value.generation, value.copy(generation = version(value.generation), status = ArchiveStatus.ENRICHING, nextAttemptAt = 0, error = null), command, false)) { "recording.changed" }
+            check(commands.compareAndSet(callId, value.generation, value.copy(generation = version(value.generation), status = ArchiveStatus.ENRICHING, nextAttemptAt = 0, error = null, resetPaused = false), command, false)) { "recording.changed" }
             return
         }
         if (value.status == ArchiveStatus.COMPLETE && value.manualAnalysisState == ManualAnalysisState.PENDING_CONFIRMATION &&
@@ -224,6 +225,7 @@ class RecordingWorkflow(
             generation = version(archive.generation), status = ArchiveStatus.QUEUED, attempts = 0,
             nextAttemptAt = 0, error = null, manualAnalysis = true, analysisIntent = intent,
             enrichmentBaseline = null, enrichmentSourceGeneration = null,
+            resetPaused = false,
         ), command, false)) { "recording.changed" }
     }
 
@@ -274,16 +276,27 @@ class RecordingWorkflow(
 
     private fun process(initial: RecordingCandidate, cancelled: () -> Boolean, allowNetwork: Boolean) {
         var current = store.get(initial.callId) ?: return
+        if(current.resetPaused) return
         if (current.generation != initial.generation) return
+        val resolvedDirection = directionResolver(current)
+        if (resolvedDirection != current.direction) {
+            val automatic = !current.manualAnalysis && current.analysisIntent in setOf(ArchiveAnalysisIntent.AUTOMATIC, ArchiveAnalysisIntent.LEGACY_UNCLASSIFIED)
+            val changed = current.copy(generation = version(current.generation), direction = resolvedDirection,
+                status = if (automatic && resolvedDirection != com.greatwall.callring.contracts.callers.CallDirection.INCOMING) ArchiveStatus.READY else current.status,
+                nextAttemptAt = 0)
+            if (!commands.compareAndSet(current.callId,current.generation,changed,null,false)) return
+            current = changed
+        }
         val config = store.settings()
         val cancellation = AtomicBoolean(false)
         cancelledOperations[current.callId] = cancellation
         val isCancelled = { closed || cancelled() || cancellation.get() }
         val localOnly = current.status in setOf(ArchiveStatus.ENRICHING, ArchiveStatus.ENRICHMENT_FAILED)
         val manual = current.analysisIntent != ArchiveAnalysisIntent.AUTOMATIC || current.manualAnalysis
+        val directionRestricted = !current.manualAnalysis && current.analysisIntent !in setOf(ArchiveAnalysisIntent.MANUAL_TEXT, ArchiveAnalysisIntent.MANUAL_LEGACY)
         val operation by lazy { client.operation(isCancelled).also { activeClients[current.callId] = it } }
         fun update(value: CallArchive): Boolean {
-            if (closed) return false
+            if (closed || (directionRestricted && directionResolver(current) != com.greatwall.callring.contracts.callers.CallDirection.INCOMING)) return false
             val generation = version(current.generation)
             val next = value.copy(generation = generation,
                 enrichmentSourceGeneration = value.enrichmentSourceGeneration ?: generation.takeIf { value.status == ArchiveStatus.ENRICHING },
@@ -291,6 +304,12 @@ class RecordingWorkflow(
                     ?: generation.takeIf { value.manualAnalysisState == ManualAnalysisState.PENDING_CONFIRMATION })
             if (!commands.compareAndSet(current.callId, current.generation, next, null, false)) return false
             current = next; return true
+        }
+        if (current.direction != com.greatwall.callring.contracts.callers.CallDirection.INCOMING && directionRestricted) {
+            commands.compareAndSet(current.callId,current.generation,current.copy(
+                generation = version(current.generation),status = ArchiveStatus.READY,
+                nextAttemptAt = current.nextAttemptAt.takeIf { it == Long.MAX_VALUE } ?: 0,error = null),null,false)
+            return
         }
         if (current.status == ArchiveStatus.COMPLETE) {
             // A compatibility-decoded local result may still have the old durable queue status.
@@ -300,7 +319,7 @@ class RecordingWorkflow(
         if (!localOnly && !allowNetwork) return
 
         fun enrich() {
-            if (isCancelled()) return
+            if (isCancelled() || (directionRestricted && directionResolver(current) != com.greatwall.callring.contracts.callers.CallDirection.INCOMING)) return
             checkNotNull(current.analysis) { "recording.analysis_missing" }
             if (manual) {
                 update(current.copy(status = ArchiveStatus.COMPLETE, error = null, nextAttemptAt = 0,
@@ -314,7 +333,7 @@ class RecordingWorkflow(
             }
             val candidates = current.validatedCallerCandidates()
             if (!commands.withCurrent(current.callId, current.generation) {
-                    if (isCancelled()) throw AiFailure("recording.cancelled")
+                    if (isCancelled() || directionResolver(current) != com.greatwall.callring.contracts.callers.CallDirection.INCOMING) throw AiFailure("recording.cancelled")
                     enrichment.apply(current.number, baseline, current.callId, current.enrichmentSourceGeneration ?: current.generation, candidates)
                 }) return
             if (!isCancelled()) update(current.copy(status = ArchiveStatus.COMPLETE, error = null, nextAttemptAt = 0))

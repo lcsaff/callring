@@ -138,7 +138,7 @@ internal class RecordingArchivePages(
             if (current != revision) throw BackendFailure(ApiError(ErrorCode.CONFLICT, "recording.page_changed", retryable = true))
             // Two index seeks avoid SQLite scanning the skipped prefix for an OR predicate.
             // The second seek fills only the remaining slots, so total candidates <= limit+1.
-            fun select(condition: String, args: Array<String>?, limit: Int): List<ArchiveListItem> = db.rawQuery("SELECT p.metadata,(SELECT substr(t.text,1,160) FROM archive_text_chunks t WHERE t.call_id=p.call_id AND t.generation=p.generation AND t.field='analysis.summary' AND t.start=0) " +
+            fun select(condition: String, args: Array<String>?, limit: Int): List<ArchiveListItem> = db.rawQuery("SELECT p.metadata,(SELECT substr(t.text,1,160) FROM archive_text_chunks t WHERE t.call_id=p.call_id AND t.generation=p.generation AND t.field='analysis.summary' AND t.start=0),p.direction " +
                 "FROM archive_projection p JOIN archives a ON a.call_id=p.call_id AND a.generation=p.generation" + condition +
                 " ORDER BY p.started DESC,p.call_id ASC LIMIT $limit", args).use { c ->
                 buildList {
@@ -150,7 +150,7 @@ internal class RecordingArchivePages(
                             value.getLong("startedAtEpochMillis"), ArchiveStatus.valueOf(value.getString("status")),
                             RecordingSource.valueOf(value.getString("source")),
                             if (value.isNull("durationMillis")) null else value.getLong("durationMillis"), value.getBoolean("audioPresent"),
-                            if (c.isNull(1)) "" else c.getString(1)))
+                            if (c.isNull(1)) "" else c.getString(1), com.greatwall.callring.contracts.callers.CallDirection.valueOf(c.getString(2))))
                     }
                 }
             }

@@ -114,6 +114,7 @@ class CallingMigrationTest {
             )
             stripCallerEnrichmentForFixture(db)
             rejectIncidentalWrites(db)
+            com.greatwall.callring.data.stripDirectionForFixture(db)
             db.version = 1
         }
         store = SqliteCoreStorageResource(RuntimeEnvironment.getApplication(), database)
@@ -136,7 +137,7 @@ class CallingMigrationTest {
             assertEquals(1L, provider.linkedScreenId)
         }
         fixture().use { db ->
-            assertEquals(5, db.version)
+            assertEquals(6, db.version)
             assertEquals(0L, db.scalar("SELECT COUNT(*) FROM pragma_foreign_key_check"))
         }
     }
@@ -174,6 +175,7 @@ class CallingMigrationTest {
             db.execSQL("UPDATE calls SET working=0,reason='工作时段外' WHERE id=1")
             stripCallerEnrichmentForFixture(db)
             rejectIncidentalWrites(db)
+            com.greatwall.callring.data.stripDirectionForFixture(db)
             db.version = 2
         }
         store = SqliteCoreStorageResource(RuntimeEnvironment.getApplication(), database)

@@ -60,10 +60,10 @@ internal class SqliteCallStore(
     }
 
     override fun correlationCalls(number: String) = rows("number=?", arrayOf(number))
-    override fun systemRecordingCalls(number: String, from: Long, to: Long): List<RawCallRecord> {
+    override fun systemRecordingCalls(number: String, from: Long, to: Long, direction: com.greatwall.callring.domain.model.CallDirection?): List<RawCallRecord> {
         checkActive(false)
         return sql.rawQuery(QueryTag.SCOPED_ROWS,setOf(SqlTable.CALLS),
-            "SELECT * FROM calls WHERE number=? AND time>=? AND time<=? AND hidden=0 ORDER BY time,id LIMIT 2",args(number,from,to)).use { cursor ->
+            "SELECT * FROM calls WHERE number=? AND time>=? AND time<=? AND hidden=0"+(if(direction==null)"" else " AND direction=?")+" ORDER BY time,id LIMIT 2",if(direction==null)args(number,from,to) else args(number,from,to,direction.name)).use { cursor ->
             buildList { while(cursor.moveToNext()) add(CallingRowCodec.decode(cursor)) }
         }
     }

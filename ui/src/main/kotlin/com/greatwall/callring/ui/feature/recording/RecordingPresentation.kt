@@ -31,6 +31,7 @@ fun recordingMessage(key: String): String = when (key) {
     "recording.enrichment_failed" -> "分析已保存，档案补全未完成；重试只处理本地保存，不重复调用模型"
     "recording.audio_not_restored" -> "原音频未随备份恢复；转写与分析已保留，可重新导入音频。"
     "recording.restore_retry_required" -> "恢复后已暂停未完成的处理，请检查连接后手动重试。"
+    "recording.reset_retry_required" -> "清空号码档案后已暂停旧录音处理；录音、转写和分析已保留，可手动重试继续处理。"
     "ai.invalid_url" -> "服务地址须为 HTTPS，不能包含账户、查询参数或片段"
     "ai.invalid_key" -> "请填写有效 API 密钥"
     "ai.invalid_model" -> "请填写模型名称（最多 256 字）"

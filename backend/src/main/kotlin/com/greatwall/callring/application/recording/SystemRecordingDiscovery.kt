@@ -110,6 +110,7 @@ class SystemRecordingDiscovery(
         fun blockedByOutgoing(parsed: ParsedSystemRecording, target: RecordingCall): Boolean {
             // Keep the original core timestamp for the comparison: an independent archive's
             // canonical start may be the recording start itself and would erase the delay.
+            if (target.direction == com.greatwall.callring.domain.model.CallDirection.OUTGOING) return false
             val original = findCalls(parsed.number,parsed.startedAtEpochMillis).singleOrNull() ?: return false
             val canonical = reads.linkedRecording(original.id) ?: original
             return canonical.id == target.id && outgoingConflict(original.number,parsed.startedAtEpochMillis,original.startedAt)
@@ -129,14 +130,16 @@ class SystemRecordingDiscovery(
             if(page.isEmpty()) break
             for((key, call) in page) {
                 active(); linkedAfter = key
-                if(call.id >= 0) continue
+                if(!checkNumber(call.number,rules,numberMatcher).matchesRule) continue
                 val match = findCalls(call.number,call.startedAt).singleOrNull() ?: continue
-                if(store.hasConflictingSystemLink(key,call,match) || outgoingConflict(match.number,call.startedAt,match.startedAt)) continue
+                if (call.direction != com.greatwall.callring.domain.model.CallDirection.UNKNOWN && call.direction != match.direction &&
+                    (reads.linkedRecording(match.id)?.id ?: match.id) != call.id) continue
+                if(store.hasConflictingSystemLink(key,call,match) || (match.direction == com.greatwall.callring.domain.model.CallDirection.INCOMING && outgoingConflict(match.number,call.startedAt,match.startedAt))) continue
                 commit {
                     if(findCalls(call.number,call.startedAt).singleOrNull() != match) return@commit
-                    if(store.hasConflictingSystemLink(key,call,match) || outgoingConflict(match.number,call.startedAt,match.startedAt)) return@commit
+                    if(store.hasConflictingSystemLink(key,call,match) || (match.direction == com.greatwall.callring.domain.model.CallDirection.INCOMING && outgoingConflict(match.number,call.startedAt,match.startedAt))) return@commit
                     active()
-                    if(store.linkSystemStatistics(key,match.id)) coordinator.publishResource("recording",setOf("recordingLinks","recordingLink:${match.id}"),
+                    if(store.linkSystemStatistics(key,match)) coordinator.publishResource("recording",setOf("recordingLinks","recordingLink:${match.id}","archive:${call.id}"),
                         ChangeImpact(mapOf(DataDomain.RECORDING_ARCHIVES to setOf(call.id.toString(),"statistics:${match.id}"))))
                 }
             }
@@ -147,7 +150,7 @@ class SystemRecordingDiscovery(
                 val parsed = SystemRecordingNameParser.parse(entry.file.name, ZoneId.of(scan.zone))
                 // Existing call history has no import-age or current-rule cutoff. Keep those
                 // settings only for files that would otherwise create independent recordings.
-                if(parsed != null && (independentEligible(entry.sourceKey,parsed) || matchingCalls(parsed).singleOrNull() != null))
+                if(parsed != null && checkNumber(parsed.number,rules,numberMatcher).matchesRule && (independentEligible(entry.sourceKey,parsed) || matchingCalls(parsed).singleOrNull() != null))
                     commit { store.observeSystemFile(scan.id,entry,parsed,now()) }
             }
             commit { store.finishSystemScan(scan.id) }
@@ -164,7 +167,7 @@ class SystemRecordingDiscovery(
                 active()
                 val key = candidate.entry.sourceKey
                 after = key
-                if(store.sourceCompleted(key)) continue
+                if(store.sourceCompleted(key) || !checkNumber(candidate.parsed.number,rules,numberMatcher).matchesRule) continue
                 val independent = independentEligible(key,candidate.parsed,candidate.stableSince)
                 val historyTarget = if(independent) null else matchingCalls(candidate.parsed).singleOrNull()
                 if(!independent && historyTarget == null) continue
@@ -197,7 +200,7 @@ class SystemRecordingDiscovery(
                     if(currentTargets.size > 1 || currentTargets.singleOrNull() != target || store.hasConflictingSystemSource(scan.id,key,candidate.parsed,target) ||
                         (target != null && store.isDeleted(target.id)) || activeCallId() != null) return@commit null
                     val registered = store.registerSystemSource(key,candidate.parsed,target) { value ->
-                        CallArchive(value.id,value.number,value.startedAt,generation = now() * 1000)
+                        CallArchive(value.id,value.number,value.startedAt,generation = now() * 1000, direction = com.greatwall.callring.contracts.callers.CallDirection.valueOf(value.direction.name))
                     }
                     if(existing == null) coordinator.publishResource("recording",
                         buildSet { add("recordingSources"); if(registered.eventInserted) add("recordingEvents"); if(registered.archiveInserted) add("archive:${registered.call.id}") },
@@ -206,6 +209,7 @@ class SystemRecordingDiscovery(
                 } ?: continue
                 if(!sameRecordingNumber(call.number,candidate.parsed.number) || !SystemRecordingAssociation.matches(call.startedAt,candidate.parsed.startedAtEpochMillis)) continue
                 val metadata = reads.metadata(call.id) { sealed || cancelled() || !operationActive() }
+                if(metadata?.resetPaused==true) continue
                 // Restored/missing audio requires explicit same-identity file selection; a new
                 // folder grant is not permission to resume the restored processing queue.
                 if(metadata != null && !metadata.hasAudio && metadata.nextAttemptAt == Long.MAX_VALUE) continue

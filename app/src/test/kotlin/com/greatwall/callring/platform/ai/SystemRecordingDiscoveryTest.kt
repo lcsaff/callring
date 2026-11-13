@@ -158,23 +158,23 @@ class SystemRecordingDiscoveryTest {
             assertNull(f.store.get(42)); assertEquals(1, f.imports)
         }
     }
-    @Test fun existingCallImportsDespiteCurrentNumberRules() {
+    @Test fun existingCallDoesNotBypassCurrentNumberRules() {
         Fixture("existing-rejected-rule").use { f ->
             f.files[0] = f.files.single().copy(file = f.files.single().file.copy(name = "示例(12345)_20261104120000.mp3"))
             f.calls = listOf(f.knownCall().copy(number = "12345"))
             f.discovery.discover { false }; f.time += 10_000; f.discovery.discover { false }
-            assertEquals(1, f.imports)
-            assertEquals(42L, f.store.sourceBinding("a")!!.id)
+            assertEquals(0, f.imports)
+            assertNull(f.store.sourceBinding("a"))
         }
     }
-    @Test fun existingHistoricalCallImportsWithEmptyRules() {
+    @Test fun existingHistoricalCallIsRejectedWithEmptyRules() {
         Fixture("existing-empty-rules").use { f ->
             f.installRules(emptyList())
             f.calls = listOf(f.knownCall())
             f.time += 90L * 86_400_000
             f.discovery.discover { false }; f.time += 10_000; f.discovery.discover { false }
-            assertEquals(1, f.imports)
-            assertEquals(42L, f.store.sourceBinding("a")!!.id)
+            assertEquals(0, f.imports)
+            assertNull(f.store.sourceBinding("a"))
         }
     }
     @Test fun historicalMatchReusesExistingCanonicalRecordingIdentity() {
@@ -185,7 +185,6 @@ class SystemRecordingDiscoveryTest {
             }.call
             assertTrue(f.store.insertStatisticsLink(known.id, "existing-session"))
             f.calls = listOf(known)
-            f.installRules(emptyList())
             f.time += 90L * 86_400_000
             f.discovery.discover { false }; f.time += 10_000; f.discovery.discover { false }
             assertEquals(1, f.imports)
@@ -445,6 +444,66 @@ class SystemRecordingDiscoveryTest {
             assertEquals(0,f.imports)
         }
     }
+    @Test fun existingHistoryNeverBypassesCurrentNumberAdmission() {
+        Fixture("history-rule-gate").use { f ->
+            f.calls = listOf(f.knownCall())
+            f.installRules(emptyList())
+            f.discovery.discover { false }; f.time += 10_000; f.discovery.discover { false }
+            assertNull(f.store.sourceBinding("a"))
+            assertEquals(0, f.imports)
+        }
+    }
+    @Test fun independentRecordingConfirmedOutgoingUpdatesEveryCanonicalIdentity() {
+        Fixture("late-outgoing").use { f ->
+            f.discovery.discover { false }; f.time += 10_000; f.discovery.discover { false }
+            val independent = checkNotNull(f.store.sourceBinding("a"))
+            assertEquals(com.greatwall.callring.domain.model.CallDirection.UNKNOWN, independent.direction)
+            f.calls = listOf(f.knownCall().copy(direction = com.greatwall.callring.domain.model.CallDirection.OUTGOING))
+            f.discovery.discover { false }
+            assertEquals(com.greatwall.callring.domain.model.CallDirection.OUTGOING, f.store.sourceBinding("a")!!.direction)
+            assertEquals(com.greatwall.callring.domain.model.CallDirection.OUTGOING, f.store.findRecording(independent.id)!!.direction)
+            assertEquals(com.greatwall.callring.domain.model.CallDirection.OUTGOING, f.store.linkedRecording(42)!!.direction)
+            assertEquals(com.greatwall.callring.contracts.callers.CallDirection.OUTGOING, f.store.get(independent.id)!!.direction)
+            assertEquals(ArchiveStatus.READY, f.store.get(independent.id)!!.status)
+        }
+    }
+    @Test fun outgoingHistoryHasNoAgeLimitOrSelfConflict() {
+        Fixture("out-hist").use { f ->
+            f.calls = listOf(f.knownCall().copy(direction = com.greatwall.callring.domain.model.CallDirection.OUTGOING))
+            f.outgoingCloser = true
+            f.time += 90L * 86_400_000
+            f.discovery.discover { false }; f.time += 10_000; f.discovery.discover { false }
+            assertEquals(1,f.imports)
+            assertEquals(42L,f.store.sourceBinding("a")!!.id)
+            assertEquals(com.greatwall.callring.contracts.callers.CallDirection.OUTGOING,f.store.get(42)!!.direction)
+            assertEquals(0,f.outgoingChecks)
+        }
+    }
+    @Test fun simultaneousIncomingAndOutgoingCannotStealOneRecording() {
+        Fixture("ambiguous-direction").use { f ->
+            f.calls = listOf(f.knownCall(),f.knownCall().copy(id=43,direction=com.greatwall.callring.domain.model.CallDirection.OUTGOING))
+            f.discovery.discover { false }; f.time += 10_000; f.discovery.discover { false }
+            assertEquals(0,f.imports)
+            assertNull(f.store.sourceBinding("a"))
+        }
+    }
+    @Test fun uniqueIncomingConfirmationQueuesOnlyUnpausedIndependentAudio() {
+        for (paused in listOf(false,true)) Fixture("incoming-confirm-$paused").use { f ->
+            f.discovery.discover { false }; f.time += 10_000; f.discovery.discover { false }
+            val id = f.store.sourceBinding("a")!!.id
+            if (paused) {
+                val archive = f.store.get(id)!!
+                assertTrue(f.store.compareAndSet(id,archive.generation,archive.copy(generation=archive.generation+1,nextAttemptAt=Long.MAX_VALUE)))
+            }
+            f.store.persistSettings(f.store.settings().copy(automaticAnalysis=true))
+            f.calls = listOf(f.knownCall())
+            f.discovery.discover { false }
+            val archive = f.store.get(id)!!
+            assertEquals(com.greatwall.callring.contracts.callers.CallDirection.INCOMING,archive.direction)
+            assertEquals(if (paused) ArchiveStatus.READY else ArchiveStatus.QUEUED,archive.status)
+            assertEquals(if (paused) Long.MAX_VALUE else 0L,archive.nextAttemptAt)
+        }
+    }
     private class Fixture(name: String) : AutoCloseable {
         var rules = NumberRuleSnapshot(listOf(NumberRule.DEFAULT),0)
         val coordinator = BusinessRevisionCoordinator()
@@ -495,7 +554,7 @@ class SystemRecordingDiscoveryTest {
             importAudio = { call, _, validate, _, inspect ->
                 inspect()
                 beforeCommit(); validate()
-                store.compareAndSet(call.id,store.generation(call.id), CallArchive(call.id,call.number,call.startedAt,2,status=ArchiveStatus.READY,audioPath="owned"))
+                store.compareAndSet(call.id,store.generation(call.id), CallArchive(call.id,call.number,call.startedAt,2,status=ArchiveStatus.READY,audioPath="owned",direction=com.greatwall.callring.contracts.callers.CallDirection.valueOf(call.direction.name)))
                 imports++
             })
         init { store.persistSettings(RecordingSettings(recordingEnabled=true,systemFolder="content://fixture/tree/root")) }

@@ -119,6 +119,7 @@ class AndroidRecordingStoreTest {
             db.execSQL("CREATE TABLE deleted_archives (call_id INTEGER PRIMARY KEY)")
             db.execSQL("INSERT INTO archives VALUES (?,?,?)", arrayOf<Any>(42L, 7L, RecordingJson.archive(entry).toString()))
             db.execSQL("INSERT INTO deleted_archives VALUES (43)")
+            com.greatwall.callring.data.stripDirectionForFixture(db)
             db.version = 1
         }
         val store = AndroidRecordingStore(context, "migration", cipher, recordingVersion = { 0L })

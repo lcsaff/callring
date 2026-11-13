@@ -41,6 +41,17 @@ import java.io.IOException
 
 /** No Android resource, filesystem, full backend context, or alternate archive publisher. */
 class RecordingApplicationServiceTest {
+    @Test fun discoveredOutgoingAudioNeverQueuesAutomaticAi() {
+        val f = Fixture().seed()
+        f.config = f.config.copy(automaticAnalysis = true)
+        val call = f.events.getValue(-1).copy(direction = com.greatwall.callring.domain.model.CallDirection.OUTGOING)
+        f.events[-1] = call
+        val candidate = discoveredCandidate(call)
+        f.service.importDiscovered(call, candidate, {}, { true }, { candidate.entry.file })
+        assertEquals(ArchiveStatus.READY, f.entries.getValue(-1).status)
+        assertEquals(com.greatwall.callring.contracts.callers.CallDirection.OUTGOING, f.entries.getValue(-1).direction)
+        assertTrue(f.scheduled.isEmpty())
+    }
     @Test fun discoveredCopyUsesLightweightCancellationAndOnlyTwoFullValidations() {
         val f = Fixture().seed()
         f.copyCancellationChecks = 640
@@ -422,7 +433,7 @@ class RecordingApplicationServiceTest {
             override fun transcribe(connection: AiConnection, reference: AudioReference): String { transcriptions++; return "call text" }
             override fun analyze(connection: AiConnection, transcript: String) = CallAnalysis(summary = "done")
         }
-        private val workflow = RecordingWorkflow(this, commands, client, enrichment = testEnrichment)
+        private val workflow = RecordingWorkflow(this, commands, client, directionResolver = { it.direction }, enrichment = testEnrichment)
         private val ai = AiSettingsService(this, coordinator, { true }, { _, _ -> }, folderView = { error("unused") }, operationActive = { true })
         val service: RecordingService = RecordingService(this, this, ::settings, { workflow }, commands, RecordingRegistrationService(this, coordinator), ai,
             this, this, this, { legacyReads += it; legacy }, { -1 }, { scheduled += it }, coordinator, operationActive = { true }, captureBusy = { capturing }, networkAvailable = { online },

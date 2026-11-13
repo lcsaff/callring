@@ -65,8 +65,8 @@ class RecordingService(
         }
         catch (_: Exception) { ApiResult.Failure(ApiError(ErrorCode.IO_FAILURE, "recording.storage_or_network", retryable = true)) }
     }
-    fun observeIncoming(sessionId: String, number: String, at: Long, account: String?): RecordingCall? = coordinator.guard {
-        if (!settings().recordingEnabled || number.isBlank()) null else registrations.registerIncoming(sessionId, number, at, account, null)
+    fun observeIncoming(sessionId: String, number: String, at: Long, account: String?, numberMatch: com.greatwall.callring.domain.calling.NumberMatchFact): RecordingCall? = coordinator.guard {
+        if (!numberMatch.matched || !settings().recordingEnabled || number.isBlank()) null else registrations.registerIncoming(sessionId, number, at, account, null)
     }
     fun linkStatistics(sessionId: String, statisticsId: Long) {
         registrations.linkStatistics(sessionId, statisticsId, null)
@@ -74,12 +74,12 @@ class RecordingService(
     private fun recordingCall(callId: Long): RecordingCall? {
         if (callId < 0) return reads.findRecording(callId)
         reads.linkedRecording(callId)?.let { return it }
-        reads.metadata(callId) { false }?.let { return RecordingCall(it.callId, it.number, it.startedAtEpochMillis, it.durationMillis?.div(1000)) }
+        reads.metadata(callId) { false }?.let { return RecordingCall(it.callId, it.number, it.startedAtEpochMillis, it.durationMillis?.div(1000), com.greatwall.callring.domain.model.CallDirection.valueOf(it.direction.name)) }
         val legacy = findCall(callId) ?: return null
         return reads.linkedRecording(legacy.id) ?: legacy
     }
     private fun archiveId(callId: Long): Long = recordingCall(callId)?.id ?: callId
-    override suspend fun getIdentity(callId: Long) = result { val call = requireNotNull(recordingCall(callId)); RecordingIdentity(call.id, call.number, call.startedAt) }
+    override suspend fun getIdentity(callId: Long) = result { val call = requireNotNull(recordingCall(callId)); RecordingIdentity(call.id, call.number, call.startedAt, com.greatwall.callring.contracts.callers.CallDirection.valueOf(call.direction.name)) }
     override suspend fun queryArchives(query: ArchiveListQuery) = result {
         val caller = currentCoroutineContext()
         require(query.limit in 1..100)
@@ -122,7 +122,7 @@ class RecordingService(
         source: RecordingSource, automatic: Boolean = false, command: CommandContext? = null, callerActive: () -> Boolean = { true }, validatePrepared: () -> Unit = {}, offlineOnly: Boolean = false): CallArchive {
         val saved = reads.metadata(callId) { false }?.takeIf { it.number == number && it.startedAtEpochMillis == startedAt }
         val request = requireNotNull(if (callId < 0) reads.findRecording(callId) else saved?.let {
-            RecordingCall(it.callId, it.number, it.startedAtEpochMillis, it.durationMillis?.div(1000))
+            RecordingCall(it.callId, it.number, it.startedAtEpochMillis, it.durationMillis?.div(1000), com.greatwall.callring.domain.model.CallDirection.valueOf(it.direction.name))
         } ?: findCall(callId))
         require(request.number == number && request.startedAt == startedAt)
         val call = requireNotNull(recordingCall(callId))
@@ -176,7 +176,7 @@ class RecordingService(
         playbackGeneration.incrementAndGet()
         val stopped = playback.stop()
         val archive = try {
-            workflow().attach(call.id, call.number, call.startedAt, reference.location, source, prepared.durationMillis, command, stopped, offlineOnly)
+            workflow().attach(call.id, call.number, call.startedAt, reference.location, source, prepared.durationMillis, command, stopped, offlineOnly, com.greatwall.callring.contracts.callers.CallDirection.valueOf(call.direction.name))
         } catch (failure: Exception) {
             if (stopped) playbackFinished()
             throw failure

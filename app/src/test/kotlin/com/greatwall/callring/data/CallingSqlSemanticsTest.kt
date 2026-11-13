@@ -71,8 +71,8 @@ class CallingSqlSemanticsTest {
                     assertEquals(accept,assessment.matched)
                     assertEquals(accept,assessment.statisticsEnabled)
                     assertEquals(accept,api.recordIncoming(n,at+i,CallDecision.NORMAL_RINGING,numberMatch=assessment.numberMatch)>0)
-                    assertEquals(setOf(n),api.importSystemCalls(listOf(provider("log$i",n,at+100+i))))
-                    assertEquals(accept, graph.fullSnapshotReader.capture().calls.values.single { it.logId == "log$i" }.counted)
+                    assertEquals(if (accept) setOf(n) else emptySet<String>(),api.importSystemCalls(listOf(provider("log$i",n,at+100+i))))
+                    assertEquals(accept, graph.fullSnapshotReader.capture().calls.values.any { it.logId == "log$i" && it.counted })
                 }
             } finally { graph.close() }
         }
@@ -162,7 +162,7 @@ class CallingSqlSemanticsTest {
             Clock.fixed(Instant.ofEpochMilli(at + 60000), ZoneOffset.UTC),
             Dispatchers.Unconfined,
             coordinator = c,
-            coreTransactions = store.sessions, callHistoryRecordings = com.greatwall.callring.application.callers.CallHistoryRecordingReads { _, _ -> error("unexpected call history") }, numberRecordings = com.greatwall.callring.EmptyNumberRecordings, operationActive = { true }, conversationProvider = { com.greatwall.callring.testing.FixtureConversationApi }, aiSettingsProvider = { com.greatwall.callring.testing.FixtureAiSettingsApi }, updateProvider = { com.greatwall.callring.testing.FixtureAppUpdateApi }, snapshotsProvider = { com.greatwall.callring.testing.FixtureAiSnapshotApi }, storageProvider = { com.greatwall.callring.testing.FixtureStorageApi }, backupProvider = { com.greatwall.callring.testing.FixtureBackupApi }, recordingsProvider = { com.greatwall.callring.testing.FixtureRecordingApi }, calendarSource = com.greatwall.callring.application.ports.platform.CalendarSource { throw AssertionError("Unexpected calendar source") }, persistenceActive = { true })
+            coreTransactions = store.sessions, recordingHistoryReconciler = com.greatwall.callring.application.ports.recording.RecordingHistoryReconciler { }, callHistoryRecordings = com.greatwall.callring.application.callers.CallHistoryRecordingReads { _, _ -> error("unexpected call history") }, numberRecordings = com.greatwall.callring.EmptyNumberRecordings, operationActive = { true }, conversationProvider = { com.greatwall.callring.testing.FixtureConversationApi }, aiSettingsProvider = { com.greatwall.callring.testing.FixtureAiSettingsApi }, updateProvider = { com.greatwall.callring.testing.FixtureAppUpdateApi }, snapshotsProvider = { com.greatwall.callring.testing.FixtureAiSnapshotApi }, storageProvider = { com.greatwall.callring.testing.FixtureStorageApi }, backupProvider = { com.greatwall.callring.testing.FixtureBackupApi }, recordingsProvider = { com.greatwall.callring.testing.FixtureRecordingApi }, calendarSource = com.greatwall.callring.application.ports.platform.CalendarSource { throw AssertionError("Unexpected calendar source") }, persistenceActive = { true })
     }
 
     private fun enabled(store: SqliteCoreStorageResource) {
@@ -299,17 +299,17 @@ class CallingSqlSemanticsTest {
     @Test fun fullHistoryRespectsPersistedDeletionBoundaryAndSkipsUnknownNumbers() {
         val name = "calling-full-history.db"
         SqliteCoreStorageResource(context, name).use { store ->
-            store.sessions.writeCaller { it.markCallerDeleted("13800138000", at) }
+            store.sessions.writeCaller { it.markCallerDeleted("31234", at) }
         }
         SqliteCoreStorageResource(context, name).use { store ->
             val api = backend(store)
-            api.importSystemCalls(listOf(provider("old", "13800138000", at - 1),
-                provider("boundary", "13800138000", at), provider("unknown", "", at - 1),
+            api.importSystemCalls(listOf(provider("old", "31234", at - 1),
+                provider("boundary", "31234", at), provider("unknown", "", at - 1),
                 provider("restricted", "-1", at - 1), provider("nonstandard", "private", at - 1),
-                provider("new", "13800138000", at + 1)))
+                provider("new", "31234", at + 1)))
             assertEquals(setOf("new"), calls(store).values.map { it.logId }.toSet())
             assertTrue(calls(store).values.all { !it.hidden && !it.counted })
-            assertEquals(setOf("13800138000"), store.fullSnapshot.capture().profiles.keys)
+            assertEquals(setOf("31234"), store.fullSnapshot.capture().profiles.keys)
         }
     }
 

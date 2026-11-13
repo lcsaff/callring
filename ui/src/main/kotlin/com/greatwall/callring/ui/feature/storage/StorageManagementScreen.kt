@@ -22,22 +22,29 @@ private fun storageError(key: String): String = when(key) {
     "storage.selection_too_large" -> "本次最多选择 1,000 条，请缩小日期或状态范围。"
     "storage.preview_changed", "storage.preview_missing", "recording.page_changed" -> "录音或使用状态已变化，或预览已过期，请重新预览。"
     "storage.invalid_selection" -> "请选择有效日期范围和至少一种状态。"
+    "storage.reset_preview_changed" -> "数据已变化或预览已过期，请重新生成清空预览。"
+    "backup.call_active" -> "通话或录音进行中，请结束后重试。"
+    "backup.phone_state_required" -> "请先授权读取电话状态，再清空应用数据。"
     else -> "无法完成存储操作，请刷新后重试。"
 }
 
 @Composable fun StorageManagementScreen(state: LoadState<StorageInventory>, cleanup: StorageCleanupUiState,
     zone: ZoneId?, onBack: () -> Unit, onRefresh: () -> Unit, onPreview: (ArchiveCleanupSelection) -> Unit,
-    onDiscard: () -> Unit, onConfirm: () -> Unit, onCancel: () -> Unit) {
+    onDiscard: () -> Unit, onConfirm: () -> Unit, onCancel: () -> Unit,
+    numberReset: NumberProfileResetUiState, onPreviewNumberProfiles: () -> Unit,
+    onDiscardNumberProfiles: () -> Unit, onConfirmNumberProfiles: (Boolean) -> Unit) {
     var from by rememberSaveable { mutableStateOf("1970-01-01") }
     var before by rememberSaveable { mutableStateOf("") }
     var selectedNames by rememberSaveable { mutableStateOf(listOf("COMPLETE", "FAILED", "READY")) }
     val selected = selectedNames.map(ArchiveStatus::valueOf).toSet()
     var invalidDates by remember { mutableStateOf(false) }
     var confirm by rememberSaveable { mutableStateOf(false) }
+    var confirmNumberReset by rememberSaveable(numberReset.preview?.token) { mutableStateOf(false) }
+    var keepRecordings by rememberSaveable(numberReset.preview?.token) { mutableStateOf(true) }
     LaunchedEffect(zone) { if (before.isEmpty() && zone != null) before = LocalDate.now(zone).plusDays(1).toString() }
     val preview = cleanup.preview
-    ScreenFrame("存储管理", onBack, actions = {
-        TextButton(onClick = onRefresh, enabled = !cleanup.busy) { Text("刷新") }
+    ScreenFrame("数据管理", onBack, actions = {
+        TextButton(onClick = onRefresh, enabled = !cleanup.busy&&!numberReset.busy) { Text("刷新") }
     }) {
         if (state.loading && state.data == null) LinearProgressIndicator(Modifier.fillMaxWidth())
         LazyColumn(Modifier.fillMaxSize().testTag("storage-content"), verticalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -51,6 +58,24 @@ private fun storageError(key: String): String = when(key) {
                 }
                 if (state.error != null) Text("存储占用读取失败，请重试。", color = MaterialTheme.colorScheme.error)
                 Text("删除数据库记录后空间可在应用内复用，数据库文件不一定立即缩小。临时文件与更新缓存仅显示占用。")
+            }
+            item {
+                Text("临时操作：清空全部号码档案",style=MaterialTheme.typography.titleMedium)
+                Text("删除应用内全部号码档案、通话记录和桌面组件号码绑定。设备通话记录和系统原录音保留；之后可重新同步历史。")
+                Button(onClick=onPreviewNumberProfiles,enabled=!numberReset.busy&&!cleanup.busy) {Text("预览清空全部号码档案")}
+                if(numberReset.busy)Text("正在准备或清空数据，请稍候…")
+                numberReset.error?.let {Text(storageError(it.message),color=MaterialTheme.colorScheme.error)}
+                numberReset.preview?.let {p ->
+                    Text("将清空 ${p.profileCount} 个号码档案、${p.callCount} 条通话记录和 ${p.widgetBindingCount} 个组件绑定。")
+                    Text("关联录音归档 ${p.archiveCount} 条，应用音频 ${storageBytes(p.audioBytes)}。预览五分钟有效。")
+                    Text("下一步可选择是否保留录音、转写和分析。清空完成后会重新打开应用。")
+                    Row(horizontalArrangement=Arrangement.spacedBy(8.dp)) {
+                        OutlinedButton(onClick=onDiscardNumberProfiles,enabled=!numberReset.busy){Text("放弃清空")}
+                        Button(onClick={confirmNumberReset=true},enabled=!numberReset.busy&&!cleanup.busy){Text("继续清空全部档案")}
+                    }
+                }
+            }
+            item {
                 Text("手动清理录音归档", style = MaterialTheme.typography.titleMedium)
                 Text("按工作时间配置的时区选择日期。每次最多 1,000 条，预览五分钟有效。不会自动按保留期删除。")
                 if (zone == null) Text("请等待工作时区加载。") else Text("时区：${zone.id}")
@@ -110,4 +135,17 @@ private fun storageError(key: String): String = when(key) {
     }
     if (confirm && preview != null) ConfirmationDialog("确认删除录音归档", "永久删除 ${preview.targets.size} 条归档及应用自有音频、转写和分析。此操作无法撤销。", "确认删除",
         onConfirm={ confirm=false; onConfirm() }, onDismiss={ confirm=false }, busy=cleanup.busy)
+    if(confirmNumberReset&&numberReset.preview!=null) ConfirmationDialog(
+        "再次确认清空全部号码档案",
+        "全部号码档案、应用内通话记录和组件号码绑定将被删除，无法撤销。设备通话记录和系统原录音不会删除。",
+        "确认清空",onConfirm={confirmNumberReset=false;onConfirmNumberProfiles(keepRecordings)},
+        onDismiss={confirmNumberReset=false},busy=numberReset.busy,
+        content={
+            Row {
+                Checkbox(keepRecordings,{keepRecordings=it},enabled=!numberReset.busy,modifier=Modifier.testTag("reset-keep-recordings"))
+                Text("保留录音、转写和分析",Modifier.padding(top=12.dp))
+            }
+            Text(if(keepRecordings)"保留应用内录音内容并暂停旧任务。重新同步匹配历史时复用已有内容。" else "同时删除应用内录音归档、应用自有音频、转写和分析。系统原录音保留，可重新导入。")
+        },
+    )
 }

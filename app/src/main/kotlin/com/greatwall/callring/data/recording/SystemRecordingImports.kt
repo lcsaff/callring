@@ -11,7 +11,7 @@ import com.greatwall.callring.domain.recording.SystemRecordingAssociation
 internal class SystemRecordingImports(private val db: SQLiteDatabase) {
     companion object {
         fun create(db: SQLiteDatabase) {
-            db.execSQL("CREATE TABLE system_recording_sources(source_key TEXT PRIMARY KEY,archive_id INTEGER NOT NULL,number TEXT NOT NULL,started INTEGER NOT NULL,completed INTEGER NOT NULL DEFAULT 0)")
+            db.execSQL("CREATE TABLE system_recording_sources(source_key TEXT PRIMARY KEY,archive_id INTEGER NOT NULL,number TEXT NOT NULL,started INTEGER NOT NULL,completed INTEGER NOT NULL DEFAULT 0,direction TEXT NOT NULL DEFAULT 'INCOMING' CHECK(direction IN('INCOMING','OUTGOING','UNKNOWN')))")
             db.execSQL("CREATE INDEX system_sources_time ON system_recording_sources(started,number)")
             db.execSQL("CREATE TABLE system_recording_scan(id INTEGER PRIMARY KEY CHECK(id=1),generation INTEGER NOT NULL,signature TEXT NOT NULL,started INTEGER NOT NULL,days INTEGER NOT NULL,zone TEXT NOT NULL,complete INTEGER NOT NULL,next_at INTEGER,failures INTEGER NOT NULL DEFAULT 0)")
             db.execSQL("CREATE TABLE system_recording_inventory(source_key TEXT PRIMARY KEY,scan_id INTEGER NOT NULL,signature TEXT NOT NULL,uri TEXT NOT NULL,name TEXT NOT NULL,modified INTEGER NOT NULL,size INTEGER,known INTEGER NOT NULL,number TEXT NOT NULL,started INTEGER NOT NULL,stable_since INTEGER NOT NULL,observed INTEGER NOT NULL)")
@@ -82,7 +82,7 @@ internal class SystemRecordingImports(private val db: SQLiteDatabase) {
         return db.rawQuery("SELECT 1 FROM system_recording_inventory WHERE signature=(SELECT signature FROM system_recording_scan WHERE generation=?) AND source_key<>? AND number=? AND started BETWEEN ? AND ? LIMIT 1", args).use { it.moveToFirst() } ||
             db.rawQuery("SELECT 1 FROM system_recording_sources WHERE source_key<>? AND number=? AND started BETWEEN ? AND ? LIMIT 1", args.drop(1).toTypedArray()).use { it.moveToFirst() }
     }
-    fun binding(key: String): RecordingCall? = db.rawQuery("SELECT archive_id,number,started FROM system_recording_sources WHERE source_key=?", arrayOf(key)).use { if(it.moveToFirst()) RecordingCall(it.getLong(0),it.getString(1),it.getLong(2),null) else null }
+    fun binding(key: String): RecordingCall? = db.rawQuery("SELECT archive_id,number,started,direction FROM system_recording_sources WHERE source_key=?", arrayOf(key)).use { if(it.moveToFirst()) RecordingCall(it.getLong(0),it.getString(1),it.getLong(2),null,com.greatwall.callring.domain.model.CallDirection.valueOf(it.getString(3))) else null }
     fun completed(key: String): Boolean = db.rawQuery("SELECT completed FROM system_recording_sources WHERE source_key=?", arrayOf(key)).use { it.moveToFirst() && it.getInt(0) == 1 }
     fun conflictingLink(key: String, source: RecordingCall, target: RecordingCall): Boolean {
         val range = SystemRecordingAssociation.recordingStarts(target.startedAt)
@@ -94,7 +94,7 @@ internal class SystemRecordingImports(private val db: SQLiteDatabase) {
     fun complete(key: String) { db.execSQL("UPDATE system_recording_sources SET completed=1 WHERE source_key=?", arrayOf(key)) }
     fun bind(key: String, call: RecordingCall) {
         check(!db.rawQuery("SELECT 1 FROM system_recording_sources WHERE archive_id=? AND source_key<>? LIMIT 1",arrayOf(call.id.toString(),key)).use { it.moveToFirst() }) { "recording.source_ambiguous" }
-        db.execSQL("INSERT INTO system_recording_sources(source_key,archive_id,number,started) VALUES(?,?,?,?)", arrayOf<Any>(key, call.id, normalized(call.number), call.startedAt))
+        db.execSQL("INSERT INTO system_recording_sources(source_key,archive_id,number,started,direction) VALUES(?,?,?,?,?)", arrayOf<Any>(key, call.id, normalized(call.number), call.startedAt, call.direction.name))
     }
     fun matching(parsed: ParsedSystemRecording): List<RecordingCall> {
         val close = matching(parsed, parsed.startedAtEpochMillis - 3000, parsed.startedAtEpochMillis + 3000)
@@ -104,15 +104,15 @@ internal class SystemRecordingImports(private val db: SQLiteDatabase) {
     private fun matching(parsed: ParsedSystemRecording, start: Long, end: Long): List<RecordingCall> {
         val from = start.toString(); val to = end.toString()
         val result = linkedMapOf<Long, RecordingCall>()
-        db.rawQuery("SELECT id,number,started FROM recording_events WHERE started BETWEEN ? AND ? ORDER BY id", arrayOf(from,to)).use { c ->
+        db.rawQuery("SELECT id,number,started,direction FROM recording_events WHERE started BETWEEN ? AND ? ORDER BY id", arrayOf(from,to)).use { c ->
             while(c.moveToNext()) if(normalized(c.getString(1)) == normalized(parsed.number)) {
-                result[-c.getLong(0)] = RecordingCall(-c.getLong(0),c.getString(1),c.getLong(2),null)
+                result[-c.getLong(0)] = RecordingCall(-c.getLong(0),c.getString(1),c.getLong(2),null,com.greatwall.callring.domain.model.CallDirection.valueOf(c.getString(3)))
                 if(result.size >= 2) return result.values.toList()
             }
         }
-        db.rawQuery("SELECT p.call_id,p.number,p.started FROM archive_projection p JOIN archives a ON a.call_id=p.call_id AND a.generation=p.generation WHERE p.started BETWEEN ? AND ? ORDER BY p.call_id", arrayOf(from,to)).use { c ->
+        db.rawQuery("SELECT p.call_id,p.number,p.started,COALESCE((SELECT s.direction FROM system_recording_sources s WHERE s.archive_id=p.call_id LIMIT 1),'INCOMING') FROM archive_projection p JOIN archives a ON a.call_id=p.call_id AND a.generation=p.generation WHERE p.started BETWEEN ? AND ? ORDER BY p.call_id", arrayOf(from,to)).use { c ->
             while(c.moveToNext()) if(normalized(c.getString(1)) == normalized(parsed.number)) {
-                result[c.getLong(0)] = RecordingCall(c.getLong(0),c.getString(1),c.getLong(2),null)
+                result[c.getLong(0)] = RecordingCall(c.getLong(0),c.getString(1),c.getLong(2),null,com.greatwall.callring.domain.model.CallDirection.valueOf(c.getString(3)))
                 if(result.size >= 2) break
             }
         }
@@ -124,8 +124,8 @@ internal class SystemRecordingImports(private val db: SQLiteDatabase) {
     }
     fun sourcePage(after: String?, limit: Int): List<Pair<String,RecordingCall>> {
         require(limit in 1..64)
-        return db.rawQuery("SELECT source_key,archive_id,number,started FROM system_recording_sources" + (if(after == null) "" else " WHERE source_key>?") + " ORDER BY source_key LIMIT $limit", after?.let { arrayOf(it) }).use { c -> buildList {
-            while(c.moveToNext()) add(c.getString(0) to RecordingCall(c.getLong(1),c.getString(2),c.getLong(3),null))
+        return db.rawQuery("SELECT source_key,archive_id,number,started,direction FROM system_recording_sources" + (if(after == null) "" else " WHERE source_key>?") + " ORDER BY source_key LIMIT $limit", after?.let { arrayOf(it) }).use { c -> buildList {
+            while(c.moveToNext()) add(c.getString(0) to RecordingCall(c.getLong(1),c.getString(2),c.getLong(3),null,com.greatwall.callring.domain.model.CallDirection.valueOf(c.getString(4))))
         } }
     }
     private fun <T> transaction(block: () -> T): T { db.beginTransaction(); try { return block().also { db.setTransactionSuccessful() } } finally { db.endTransaction() } }

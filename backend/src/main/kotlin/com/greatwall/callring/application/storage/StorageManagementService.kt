@@ -12,6 +12,7 @@ import java.util.Collections
 import java.util.concurrent.atomic.AtomicBoolean
 
 class StorageManagementService(private val archives: StorageArchiveAccess, private val inventory: StorageInventoryPort,
+    private val numberProfiles: NumberProfileResetService,
     private val now: () -> Long = System::currentTimeMillis,
     private val operationActive: () -> Boolean) : StorageManagementApi {
     private class Ticket(val preview: ArchiveCleanupPreview, val stamp: String) {
@@ -20,6 +21,9 @@ class StorageManagementService(private val archives: StorageArchiveAccess, priva
         var receipt: ArchiveCleanupReceipt? = null
     }
     private val tickets = linkedMapOf<String, Ticket>()
+    override suspend fun previewNumberProfiles() = numberProfiles.preview()
+    override suspend fun confirmNumberProfiles(token: String, keepRecordings: Boolean) = numberProfiles.confirm(token, keepRecordings)
+    override suspend fun discardNumberProfiles(token: String) = numberProfiles.discard(token)
     private val mutation = Mutex()
     private fun active() { if (!operationActive()) throw CancellationException("storage.closed") }
     private fun failure(key: String, code: ErrorCode = ErrorCode.CONFLICT) = ApiResult.Failure(ApiError(code, key, retryable = true))

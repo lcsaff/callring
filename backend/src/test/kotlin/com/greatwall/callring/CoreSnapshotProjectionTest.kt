@@ -13,6 +13,20 @@ import org.junit.Assert.*
 import org.junit.Test
 
 class CoreSnapshotProjectionTest {
+    @Test fun outgoingOnlyNumbersNeverEnterFullStatisticsSnapshot() = runBlocking {
+        val fixture = ConversationFixtures()
+        val fact = ClassificationFact(true, WorkReason.WORKING, null, false, "UTC", 1, null, 0).toDomain()
+        fixture.core.calls[1] = RawCallRecord(1, "31234", 1000, 1,
+            com.greatwall.callring.domain.model.CallResult.ANSWERED,
+            com.greatwall.callring.domain.model.CallDecision.SYSTEM_LOG_ONLY,
+            com.greatwall.callring.domain.model.CallSource.SYSTEM_CALL_LOG,
+            "out", null, true, fact, fact,
+            direction = com.greatwall.callring.domain.model.CallDirection.OUTGOING)
+        val result = snapshot(fixture)
+        val statistics = result.getValue("D05") as AiJson.Obj
+        assertTrue((statistics["numbers"] as AiJson.Arr).values.isEmpty())
+        assertEquals(1, (result.getValue("D04") as AiJson.Arr).values.size)
+    }
     @Test fun recordingImportDaysRemainsLocalWithoutChangingD13Protocol() {
         val view = com.greatwall.callring.contracts.recording.RecordingSettingsView(false, false,
             com.greatwall.callring.contracts.recording.CaptureMode.SYSTEM_ONLY, false, 1)

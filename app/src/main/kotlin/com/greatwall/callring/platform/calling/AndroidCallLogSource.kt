@@ -49,7 +49,7 @@ class AndroidCallLogSource(private val resolver: ContentResolver) {
                 CallLog.Calls.PHONE_ACCOUNT_ID,
             )
         val selection =
-            "${CallLog.Calls.DATE} >= ? AND ${CallLog.Calls.DATE} < ? AND ${CallLog.Calls.TYPE} IN (1,3,5,6,7)"
+            "${CallLog.Calls.DATE} >= ? AND ${CallLog.Calls.DATE} < ? AND ${CallLog.Calls.TYPE} IN (1,2,3,5,6,7)"
         val cursor =
             resolver.query(
                 CallLog.Calls.CONTENT_URI,
@@ -65,7 +65,7 @@ class AndroidCallLogSource(private val resolver: ContentResolver) {
                     throw java.io.InterruptedIOException("call_log.cancelled")
                 val result =
                     when (rows.getInt(4)) {
-                        1 -> CallResult.ANSWERED
+                        1, 2 -> CallResult.ANSWERED
                         3 -> CallResult.MISSED
                         5 -> CallResult.REJECTED
                         6 -> CallResult.BLOCKED
@@ -84,6 +84,7 @@ class AndroidCallLogSource(private val resolver: ContentResolver) {
                         duration,
                         result,
                         account,
+                        if (rows.getInt(4) == 2) com.greatwall.callring.domain.model.CallDirection.OUTGOING else com.greatwall.callring.domain.model.CallDirection.INCOMING,
                     )
             }
             results

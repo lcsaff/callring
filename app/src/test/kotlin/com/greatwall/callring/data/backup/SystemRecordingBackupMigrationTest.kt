@@ -19,23 +19,26 @@ class SystemRecordingBackupMigrationTest {
     private val context get() = RuntimeEnvironment.getApplication()
     @Test fun legacySchemas() {
         val installed = current("current")
-        for (version in 1..5) {
+        for (version in 1..7) {
             val source = if (version == 1) File(temporary.root,"legacy-1.db").also { file ->
                 SQLiteDatabase.openOrCreateDatabase(file,null).use { db ->
                     db.execSQL("CREATE TABLE archives (call_id INTEGER PRIMARY KEY, generation INTEGER NOT NULL, payload TEXT NOT NULL)")
                     db.execSQL("CREATE TABLE deleted_archives (call_id INTEGER PRIMARY KEY)")
                     db.execSQL("INSERT INTO archives VALUES(42,3,'retained-payload')")
                     db.execSQL("INSERT INTO deleted_archives VALUES(43)")
+                    com.greatwall.callring.data.stripDirectionForFixture(db)
                     db.version = 1
                 }
             } else current("legacy-$version")
             if (version > 1) SQLiteDatabase.openDatabase(source.path, null, SQLiteDatabase.OPEN_READWRITE).use { db ->
                 db.execSQL("INSERT INTO archives VALUES(42,3,'retained-payload')")
                 db.execSQL("INSERT INTO deleted_archives VALUES(43)")
-                db.execSQL("DROP TABLE system_recording_sources")
-                db.execSQL("DROP TABLE system_recording_inventory")
-                db.execSQL("DROP TABLE system_recording_scan")
-                db.execSQL("DROP INDEX recording_events_time")
+                if(version<6) {
+                    db.execSQL("DROP TABLE system_recording_sources")
+                    db.execSQL("DROP TABLE system_recording_inventory")
+                    db.execSQL("DROP TABLE system_recording_scan")
+                    db.execSQL("DROP INDEX recording_events_time")
+                }
                 if (version < 5) {
                     listOf("archive_list_insert", "archive_list_delete", "archive_list_update").forEach { db.execSQL("DROP TRIGGER $it") }
                     db.execSQL("DROP INDEX archive_list_order"); db.execSQL("DROP TABLE archive_list_state")
@@ -47,6 +50,7 @@ class SystemRecordingBackupMigrationTest {
                     db.execSQL("INSERT INTO recording_events(id,session_id,number,started) VALUES(71,'old','12345',1)")
                     db.execSQL("DELETE FROM recording_events")
                 }
+                if(version<7)com.greatwall.callring.data.stripDirectionForFixture(db) else com.greatwall.callring.data.stripResetForFixture(db)
                 db.version = version
             }
             val original = source.readBytes()
@@ -56,7 +60,7 @@ class SystemRecordingBackupMigrationTest {
             SqliteBackupCopy.validate(candidate, installed)
             assertArrayEquals(original, source.readBytes())
             SQLiteDatabase.openDatabase(candidate.path, null, SQLiteDatabase.OPEN_READWRITE).use { db ->
-                assertEquals(6, db.version)
+                assertEquals(8, db.version)
                 db.rawQuery("SELECT generation,payload FROM archives WHERE call_id=42", null).use { assertTrue(it.moveToFirst()); assertEquals(3, it.getInt(0)); assertEquals("retained-payload", it.getString(1)) }
                 assertEquals(1L, android.database.DatabaseUtils.longForQuery(db, "SELECT count(*) FROM deleted_archives WHERE call_id=43", null))
                 db.execSQL("INSERT INTO recording_events(session_id,number,started) VALUES('new','12345',2)")

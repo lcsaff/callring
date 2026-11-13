@@ -42,6 +42,8 @@ data class CallArchive(
     val analysisIntent: ArchiveAnalysisIntent = ArchiveAnalysisIntent.AUTOMATIC,
     val manualAnalysisState: ManualAnalysisState? = null,
     val manualAnalysisResultVersion: Long? = null,
+    val direction: com.greatwall.callring.contracts.callers.CallDirection = com.greatwall.callring.contracts.callers.CallDirection.INCOMING,
+    val resetPaused: Boolean = false,
 )
 
 enum class ManualAnalysisState { PENDING_CONFIRMATION, CONFIRMED }
@@ -92,13 +94,14 @@ interface RecordingApi {
     suspend fun inspectSystemRecording(document:DocumentRef):ApiResult<RecordingFile>
 }
 
-data class RecordingIdentity(val callId: Long, val number: String, val startedAtEpochMillis: Long)
+data class RecordingIdentity(val callId: Long, val number: String, val startedAtEpochMillis: Long, val direction: com.greatwall.callring.contracts.callers.CallDirection = com.greatwall.callring.contracts.callers.CallDirection.INCOMING)
 
 /** Small list projection. Full transcripts, paths and analysis bodies are detail-only. */
 data class ArchiveListItem(
     val callId: Long, val generation: Long, val number: String, val startedAtEpochMillis: Long,
     val status: ArchiveStatus, val source: RecordingSource, val durationMillis: Long?,
     val hasAudio: Boolean, val summary: String,
+    val direction: com.greatwall.callring.contracts.callers.CallDirection = com.greatwall.callring.contracts.callers.CallDirection.INCOMING,
 )
 
 /** A cursor is valid only for its owner, archive revision and page size. */

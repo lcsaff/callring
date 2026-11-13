@@ -55,7 +55,7 @@ internal class SqliteReportCalls(private val sql: SqlAccess, private val lease: 
     ) {
         val direction = if (ascending) "ASC" else "DESC"
         visit(
-            "AND c.number=? AND c.time>=? AND c.time<?",
+            "AND c.number=? AND c.time>=? AND c.time<? AND c.direction='INCOMING'",
             arrayOf(number, start.toString(), end.toString()),
             "c.time $direction,c.id $direction",
             accept = accept,

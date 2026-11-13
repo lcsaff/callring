@@ -17,7 +17,7 @@ internal class ArchiveProjectionIndex(private val db:SQLiteDatabase,private val 
         fun createProgress(db:SQLiteDatabase){db.execSQL("CREATE TABLE IF NOT EXISTS archive_parse_progress(call_id INTEGER PRIMARY KEY,generation INTEGER NOT NULL,source_offset INTEGER NOT NULL,state TEXT NOT NULL)")}
         fun create(db:SQLiteDatabase){
             createProgress(db)
-            db.execSQL("CREATE TABLE archive_projection(call_id INTEGER PRIMARY KEY,generation INTEGER NOT NULL,number TEXT,started INTEGER,status TEXT,metadata TEXT NOT NULL)")
+            db.execSQL("CREATE TABLE archive_projection(call_id INTEGER PRIMARY KEY,generation INTEGER NOT NULL,number TEXT,started INTEGER,status TEXT,metadata TEXT NOT NULL,direction TEXT NOT NULL DEFAULT 'INCOMING',reset_paused INTEGER NOT NULL DEFAULT 0)")
             db.execSQL("CREATE TABLE archive_text_fields(call_id INTEGER,generation INTEGER,field TEXT,total INTEGER NOT NULL,PRIMARY KEY(call_id,generation,field))")
             db.execSQL("CREATE TABLE archive_text_chunks(call_id INTEGER,generation INTEGER,field TEXT,start INTEGER,end INTEGER,text TEXT NOT NULL,PRIMARY KEY(call_id,generation,field,start))")
             db.execSQL("CREATE TABLE archive_index_progress(call_id INTEGER PRIMARY KEY,generation INTEGER,raw_offset INTEGER NOT NULL)")
@@ -42,10 +42,10 @@ internal class ArchiveProjectionIndex(private val db:SQLiteDatabase,private val 
     }
     private fun saveMetadata(id:Long,generation:Long,metadata:AiJson.Obj){
         require(metadata["callId"].long()==id&&metadata["generation"].long()==generation)
-        db.execSQL("INSERT OR REPLACE INTO archive_projection VALUES(?,?,?,?,?,?)",arrayOf<Any>(id,generation,metadata["number"].string(),metadata["startedAtEpochMillis"].long(),metadata["status"].string(),metadata.encode()))
+        db.execSQL("INSERT OR REPLACE INTO archive_projection VALUES(?,?,?,?,?,?,?,?)",arrayOf<Any>(id,generation,metadata["number"].string(),metadata["startedAtEpochMillis"].long(),metadata["status"].string(),AiJson.Obj(metadata.fields - setOf("direction","resetPaused")).encode(),(metadata.fields["direction"] as? AiJson.Str)?.value ?: "INCOMING",if((metadata.fields["resetPaused"] as? AiJson.Bool)?.value==true)1 else 0))
     }
     /** Caller holds the existing archive business transaction. */
-    fun write(archive:CallArchive){remove(archive.callId);saveMetadata(archive.callId,archive.generation,project(archive.callId,archive.generation,"",safeValue(archive)) as AiJson.Obj)}
+    fun write(archive:CallArchive){remove(archive.callId);saveMetadata(archive.callId,archive.generation,project(archive.callId,archive.generation,"",AiJson.Obj((safeValue(archive) as AiJson.Obj).fields + ("direction" to aiString(archive.direction.name)) + ("resetPaused" to aiBool(archive.resetPaused)))) as AiJson.Obj)}
     fun indexed(id:Long,generation:Long)=DatabaseUtils.longForQuery(db,"SELECT count(*) FROM archive_projection WHERE call_id=? AND generation=?",arrayOf(id.toString(),generation.toString()))==1L
     data class Advance(val complete:Boolean,val sourceBytes:Int,val transactions:Int=0)
     fun advance(id:Long,generation:Long,budget:Int):Advance {

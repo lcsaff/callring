@@ -3,6 +3,9 @@ package com.greatwall.callring
 import com.greatwall.callring.domain.calling.NumberRule
 import com.greatwall.callring.domain.calling.NumberRuleSnapshot
 import com.greatwall.callring.domain.calling.PrefixLengthNumberMatcher
+import com.greatwall.callring.domain.calling.RecordingCall
+import com.greatwall.callring.domain.model.CallDirection
+import android.Manifest
 import android.content.Intent
 import android.provider.DocumentsContract
 import android.test.InstrumentationTestCase
@@ -37,6 +40,7 @@ class SystemRecordingImportDeviceTest : InstrumentationTestCase() {
         val name = "Fixture(31234)_" + DateTimeFormatter.ofPattern("uuuuMMddHHmmss").withZone(ZoneId.systemDefault()).format(Instant.ofEpochMilli(started)) + ".wav"
         val expectedTranscript = "Synthetic system recording."
         var transcriptions = 0; var analyses = 0
+        var matchedCalls = emptyList<RecordingCall>()
         val client = object : AiClient {
             override fun operation(cancelled: () -> Boolean) = this
             override fun cancel() = Unit
@@ -52,11 +56,12 @@ class SystemRecordingImportDeviceTest : InstrumentationTestCase() {
                 analyses++; return CallAnalysis(summary = "Synthetic summary")
             }
         }
-        fun assembly() = RecordingAssembly(context,namespace,{null},{null},{},coordinator=coordinator,
-            clientFactory={client},operationActive={true},numberRules = { NumberRuleSnapshot(listOf(NumberRule.DEFAULT),0) }, numberMatcher = PrefixLengthNumberMatcher, findCalls={_,_->emptyList()},now={time},
+        fun assembly() = RecordingAssembly(context,namespace,{id->matchedCalls.singleOrNull { it.id==id }},{null},{},coordinator=coordinator,
+            clientFactory={client},operationActive={true},numberRules = { NumberRuleSnapshot(listOf(NumberRule.DEFAULT),0) }, numberMatcher = PrefixLengthNumberMatcher, findCalls={_,_->matchedCalls},now={time},
             enrichment=CallerEnrichmentService(core.sessions,coordinator){true})
         var runtime = assembly()
         var granted = false
+        instrumentation.uiAutomation.adoptShellPermissionIdentity(Manifest.permission.READ_CALL_LOG)
         try {
             SystemRecordingQaProvider.reset()
             context.assets.open("ai-test.wav").use { input -> source.outputStream().use { input.copyTo(it) } }
@@ -87,8 +92,17 @@ class SystemRecordingImportDeviceTest : InstrumentationTestCase() {
             runtime.service.runScheduled { false }
             runtime.workflow.processPending()
             val key = SystemRecordingScanner.sourceKey(authority,"valid")
+            val pendingCall = requireNotNull(runtime.store.sourceBinding(key))
+            val pending = requireNotNull(runtime.store.get(pendingCall.id))
+            assertEquals(ArchiveStatus.READY, pending.status)
+            assertEquals(com.greatwall.callring.contracts.callers.CallDirection.UNKNOWN, pending.direction)
+            assertEquals(0,transcriptions); assertEquals(0,analyses)
+            matchedCalls = listOf(RecordingCall(101, pendingCall.number, pendingCall.startedAt, 1, CallDirection.INCOMING))
+            runtime.service.runScheduled { false }
+            runtime.workflow.processPending()
             val call = requireNotNull(runtime.store.sourceBinding(key))
             assertTrue(call.id < 0)
+            assertEquals(CallDirection.INCOMING, call.direction)
             val saved = requireNotNull(runtime.store.get(call.id))
             assertEquals(ArchiveStatus.COMPLETE,saved.status)
             assertEquals(expectedTranscript,saved.transcript)
@@ -117,6 +131,7 @@ class SystemRecordingImportDeviceTest : InstrumentationTestCase() {
             android.util.Log.i("SystemImportQa", "rows=${SystemRecordingQaProvider.rowsEmitted.get()} queries=${SystemRecordingQaProvider.childQueries.get()} opens=${SystemRecordingQaProvider.opens.get()} mockTranscriptions=$transcriptions mockAnalyses=$analyses")
         } finally {
             runtime.close(); core.close()
+            instrumentation.uiAutomation.dropShellPermissionIdentity()
             if(granted) context.contentResolver.releasePersistableUriPermission(tree,Intent.FLAG_GRANT_READ_URI_PERMISSION)
             context.revokeUriPermission(tree,Intent.FLAG_GRANT_READ_URI_PERMISSION)
             source.delete(); SystemRecordingQaProvider.reset()

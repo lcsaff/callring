@@ -57,11 +57,12 @@ internal object CallerRowCodec {
                         com.greatwall.callring.domain.model.CallDecision.UNKNOWN,
                     )
             },
+            direction = com.greatwall.callring.domain.model.CallDirection.valueOf(c.text("direction")),
         )
     }
 
     val callColumns =
-        "id,number,time,duration,result,decision,source,log_id,counted,hidden,linked_screen_id,working,reason,verified,zone,config_version,calendar_version,leave_version,original_working,original_reason,original_verified,original_zone,original_config_version,original_calendar_version,original_leave_version"
+        "id,direction,number,time,duration,result,decision,source,log_id,counted,hidden,linked_screen_id,working,reason,verified,zone,config_version,calendar_version,leave_version,original_working,original_reason,original_verified,original_zone,original_config_version,original_calendar_version,original_leave_version"
 
     private class PrefixedCursor(cursor: Cursor, private val prefix: String) :
         CursorWrapper(cursor) {

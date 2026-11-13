@@ -258,11 +258,11 @@ class RecordingPublicationTest {
         store.persistSettings(com.greatwall.callring.application.recording.model.RecordingSettings(recordingEnabled = true))
         val runtime = RecordingAssembly(RuntimeEnvironment.getApplication(), "one-marker", { null }, { null }, {}, { store }, coordinator = coordinator, operationActive = { true }, numberRules = { NumberRuleSnapshot(listOf(NumberRule.DEFAULT),0) }, numberMatcher = PrefixLengthNumberMatcher, findCalls = { _, _ -> emptyList() }, enrichment = testEnrichment)
         try {
-            val call = runtime.service.observeIncoming("one", "31234", 1000, null)!!
+            val call = runtime.service.observeIncoming("one", "31234", 1000, null, com.greatwall.callring.domain.calling.NumberMatchFact(0, true))!!
             assertEquals("One logical registration has one marker", 1L, coordinator.marker())
             assertEquals(setOf(DataDomain.RECORDING_ARCHIVES), coordinator.invalidations.snapshots.value.let { snapshot -> snapshot.domains.filterValues { it.lastAnyRevision == snapshot.revision }.keys })
             assertEquals(setOf(call.id.toString()), coordinator.invalidations.snapshots.value.domains.getValue(DataDomain.RECORDING_ARCHIVES).entityRevisions.keys)
-            runtime.service.observeIncoming("one", "31234", 1000, null)
+            runtime.service.observeIncoming("one", "31234", 1000, null, com.greatwall.callring.domain.calling.NumberMatchFact(0, true))
             assertEquals(1L, coordinator.marker())
             runtime.service.linkStatistics("one", 42)
             assertEquals(2L, coordinator.marker())

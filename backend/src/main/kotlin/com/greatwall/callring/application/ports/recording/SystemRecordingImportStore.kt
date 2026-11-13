@@ -27,5 +27,5 @@ interface SystemRecordingImportStore {
     fun registerSystemSource(sourceKey: String, parsed: ParsedSystemRecording, existing: RecordingCall?, initial: (RecordingCall) -> CallArchive): RecordingRegistration
     fun systemRetry(at: Long?): Long?
     fun systemSourcePage(afterKey: String?, limit: Int): List<Pair<String, RecordingCall>>
-    fun linkSystemStatistics(sourceKey: String, statisticsId: Long): Boolean
+    fun linkSystemStatistics(sourceKey: String, target: RecordingCall): Boolean
 }

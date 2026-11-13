@@ -22,7 +22,7 @@ class IncomingCallCoordinatorTest {
     @Test fun recordingObservesCallsWhileStatisticsRemainDisabled() {
         val engine = Engine(statisticsEnabled = false)
         val observed = CompletableFuture<List<Any?>>()
-        val coordinator = IncomingCallCoordinator(engine, onIncoming = { session, number, at, account -> observed.complete(listOf(session, number, at, account)); Unit }) {}
+        val coordinator = IncomingCallCoordinator(engine, onIncoming = { session, number, at, account, _ -> observed.complete(listOf(session, number, at, account)); Unit }) {}
         try {
             val session = coordinator.inspect("independent", "31234", 1000, "sim-a")
             assertEquals(-1L, session.record.get(2, TimeUnit.SECONDS))
@@ -32,10 +32,20 @@ class IncomingCallCoordinatorTest {
             assertTrue(engine.completed.isEmpty())
         } finally { engine.release.countDown(); coordinator.close() }
     }
+    @Test fun nonmatchingIncomingDoesNotCreateRecordingIdentity() {
+        val engine = Engine(statisticsEnabled = false, matched = false)
+        val observed = AtomicInteger()
+        val coordinator = IncomingCallCoordinator(engine, onIncoming = { _, _, _, _, _ -> observed.incrementAndGet(); Unit }) {}
+        try {
+            coordinator.inspect("rejected", "812345", 1000, null)
+            coordinator.close()
+            assertEquals(0, observed.get())
+        } finally { engine.release.countDown(); coordinator.close() }
+    }
     @Test fun blockedRecordingObserverDoesNotBlockStatisticsWriter() {
         val engine = Engine()
         val entered = CountDownLatch(1); val releaseObserver = CountDownLatch(1)
-        val coordinator = IncomingCallCoordinator(engine, onIncoming = { _, _, _, _ -> entered.countDown(); check(releaseObserver.await(5, TimeUnit.SECONDS)) }) {}
+        val coordinator = IncomingCallCoordinator(engine, onIncoming = { _, _, _, _, _ -> entered.countDown(); check(releaseObserver.await(5, TimeUnit.SECONDS)) }) {}
         try {
             val session = coordinator.inspect("blocked-observer", "31234", 1000, null)
             assertTrue(entered.await(2, TimeUnit.SECONDS))
@@ -47,7 +57,7 @@ class IncomingCallCoordinatorTest {
     }
     @Test fun recordingObserverFailureDoesNotFailStatistics() {
         val engine = Engine()
-        val coordinator = IncomingCallCoordinator(engine, onIncoming = { _, _, _, _ -> throw IOException("recording.storage_failed") }) {}
+        val coordinator = IncomingCallCoordinator(engine, onIncoming = { _, _, _, _, _ -> throw IOException("recording.storage_failed") }) {}
         try {
             val session = coordinator.inspect("failed-observer", "31234", 1000, null)
             engine.release.countDown()
@@ -98,6 +108,7 @@ class IncomingCallCoordinatorTest {
         private val failRecord: Boolean = false,
         private val failCompletion: Boolean = false,
         private val statisticsEnabled: Boolean = true,
+        private val matched: Boolean = true,
     ) : IncomingCallEngine {
         val writing = CountDownLatch(1)
         val release = CountDownLatch(1)
@@ -106,7 +117,7 @@ class IncomingCallCoordinatorTest {
         override fun normalize(raw: String) = raw
 
         override fun evaluate(number: String, at: Long, initialMatch: com.greatwall.callring.domain.calling.NumberMatchFact?) =
-            IncomingDecision(true, false, true, statisticsEnabled, fact.toDomain(), initialMatch ?: com.greatwall.callring.domain.calling.NumberMatchFact(0, true))
+            IncomingDecision(matched, false, true, statisticsEnabled, fact.toDomain(), initialMatch ?: com.greatwall.callring.domain.calling.NumberMatchFact(0, matched))
 
         override fun record(
             number: String,

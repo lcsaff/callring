@@ -55,6 +55,7 @@ internal class CallLogImportService(
                         // placeholders cannot be represented without inventing a caller identity.
                         if (!identity.validProfileNumber) continue
                         val n = identity.normalized
+                        if (!batchRule.matches(n, matcher)) continue
                         val boundary = deletedAt.getOrPut(n) { writer.callerDeletedAt(n) ?: -1L }
                         if (boundary >= 0 && record.startedAtEpochMillis <= boundary) continue
                         requireField(record.logId.isNotBlank(), "logId", "log_id.required")
@@ -70,11 +71,12 @@ internal class CallLogImportService(
                             previous == null ||
                                 previous.number != n ||
                                 previous.time != record.startedAtEpochMillis ||
-                                previous.account != account
+                                previous.account != account ||
+                                previous.direction != record.direction
                         if (
                             !moved &&
                                 previous.duration == record.durationSeconds &&
-                                previous.result == record.result
+                                previous.result == record.result && previous.direction == record.direction
                         )
                             continue
                         if (writer.ensureCallingProfile(n)) profiles += n
@@ -102,12 +104,13 @@ internal class CallLogImportService(
                                             CallSource.SYSTEM_CALL_LOG,
                                             record.logId,
                                             null,
-                                            batchRule.matches(n, matcher) && statistics.getOrPut(record.startedAtEpochMillis) {
+                                            record.direction == CallDirection.INCOMING && statistics.getOrPut(record.startedAtEpochMillis) {
                                                 writer.statisticsContains(record.startedAtEpochMillis)
                                             },
                                             current,
                                             current,
                                             account,
+                                            direction = record.direction,
                                         ),
                                     )
                                     .also {
@@ -121,6 +124,8 @@ internal class CallLogImportService(
                                     duration = record.durationSeconds,
                                     result = record.result,
                                     account = account,
+                                    direction = record.direction,
+                                    counted = previous.counted && record.direction == CallDirection.INCOMING,
                                     classification = current,
                                     linkedScreenId = if (moved) null else previous.linkedScreenId,
                                     legacyResult = null,
@@ -150,7 +155,7 @@ internal class CallLogImportService(
                     // even if the current rule no longer matches. Existing provider facts keep
                     // their stored counted value across every rescan.
                     pending.values.toList().forEach { row ->
-                        if (row.id in created && row.linkedScreenId != null)
+                        if (row.id in created && row.linkedScreenId != null && row.direction == CallDirection.INCOMING)
                             pending[row.id] = row.copy(counted = true)
                     }
                     val changes =

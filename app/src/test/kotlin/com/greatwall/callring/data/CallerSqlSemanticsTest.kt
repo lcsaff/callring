@@ -86,7 +86,7 @@ class CallerSqlSemanticsTest {
             Clock.fixed(Instant.ofEpochMilli(at + 60000), ZoneOffset.UTC),
             Dispatchers.Unconfined,
             coordinator = c,
-            callHistoryRecordings = callHistoryRecordings,
+            recordingHistoryReconciler = com.greatwall.callring.application.ports.recording.RecordingHistoryReconciler { }, callHistoryRecordings = callHistoryRecordings,
             coreTransactions = store.sessions, numberRecordings = com.greatwall.callring.EmptyNumberRecordings, operationActive = { true }, conversationProvider = { com.greatwall.callring.testing.FixtureConversationApi }, aiSettingsProvider = { com.greatwall.callring.testing.FixtureAiSettingsApi }, updateProvider = { com.greatwall.callring.testing.FixtureAppUpdateApi }, snapshotsProvider = { com.greatwall.callring.testing.FixtureAiSnapshotApi }, storageProvider = { com.greatwall.callring.testing.FixtureStorageApi }, backupProvider = { com.greatwall.callring.testing.FixtureBackupApi }, recordingsProvider = { com.greatwall.callring.testing.FixtureRecordingApi }, calendarSource = com.greatwall.callring.application.ports.platform.CalendarSource { throw AssertionError("Unexpected calendar source") }, persistenceActive = { true })
     }
 

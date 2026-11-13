@@ -18,6 +18,7 @@ internal object StorageMigration {
         check(oldVersion in 1 until CORE_SCHEMA_VERSION && newVersion == CORE_SCHEMA_VERSION) {
             "Database requires an explicit migration"
         }
+        if (oldVersion < 6) db.execSQL("ALTER TABLE calls ADD COLUMN direction TEXT NOT NULL DEFAULT 'INCOMING' CHECK(direction IN('INCOMING','OUTGOING'))")
         if (oldVersion < 3) upgradeToThree(db, oldVersion)
         if (oldVersion < 4) {
             db.execSQL("ALTER TABLE callers ADD COLUMN self_reported_position TEXT NOT NULL DEFAULT ''")
@@ -25,7 +26,7 @@ internal object StorageMigration {
             db.execSQL("ALTER TABLE callers ADD COLUMN identity_metadata TEXT NOT NULL DEFAULT '{}'")
             db.execSQL("ALTER TABLE callers ADD COLUMN identity_epoch TEXT NOT NULL DEFAULT ''")
         }
-        db.execSQL(VISIBLE_NUMBER_HISTORY_INDEX)
+        if (oldVersion < 5) db.execSQL(VISIBLE_NUMBER_HISTORY_INDEX)
     }
 
     private fun upgradeToThree(db: SQLiteDatabase, oldVersion: Int) {

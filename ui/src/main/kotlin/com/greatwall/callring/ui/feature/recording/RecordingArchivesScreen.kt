@@ -31,6 +31,7 @@ import com.greatwall.callring.ui.state.*
                 OutlinedCard(onClick = { onArchive(archive) }, modifier = Modifier.fillMaxWidth()) {
                     Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                         Text(archive.number, style = MaterialTheme.typography.titleMedium)
+                        Text(com.greatwall.callring.ui.format.UiFormat.direction(archive.direction))
                         zone.data?.let { Text(com.greatwall.callring.ui.format.UiFormat.time(archive.startedAtEpochMillis, it)) }
                         Text(archiveStatusLabel(archive.status))
                         archive.summary.takeIf { it.isNotBlank() }?.let { Text(it) }

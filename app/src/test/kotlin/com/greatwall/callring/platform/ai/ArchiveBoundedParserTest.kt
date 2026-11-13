@@ -31,7 +31,7 @@ class ArchiveBoundedParserTest {
             // Recreate the historical schema rather than retaining future import tables.
             listOf("system_recording_sources", "system_recording_inventory", "system_recording_scan").forEach { db.execSQL("DROP TABLE $it") }
             db.execSQL("DROP INDEX recording_events_time")
-            db.execSQL("DROP TABLE archive_parse_progress");db.version=3
+            db.execSQL("DROP TABLE archive_parse_progress");com.greatwall.callring.data.stripDirectionForFixture(db);db.version=3
             db.execSQL("INSERT INTO archives VALUES(2,1,?)",arrayOf(second))
             db.execSQL("INSERT INTO archive_index_progress VALUES(2,1,?)",arrayOf(second.codePointCount(0,second.length)))
             db.execSQL("INSERT INTO archive_raw_chunks VALUES(2,1,0,?)",arrayOf(second.take(16384)))
@@ -44,7 +44,7 @@ class ArchiveBoundedParserTest {
             assertTrue(page.complete);assertEquals(2L,page.matchedTotal);assertEquals(2,page.rows.size)
         }
         SQLiteDatabase.openDatabase(path.path,null,SQLiteDatabase.OPEN_READONLY).use{db->
-            assertEquals(6,db.version);assertEquals(second,DatabaseUtils.stringForQuery(db,"SELECT payload FROM archives WHERE call_id=2",null))
+            assertEquals(8,db.version);assertEquals(second,DatabaseUtils.stringForQuery(db,"SELECT payload FROM archives WHERE call_id=2",null))
             assertEquals(RecordingJson.archive(first).toString(),DatabaseUtils.stringForQuery(db,"SELECT payload FROM archives WHERE call_id=1",null))
             assertEquals(0L,count(db,"archive_raw_chunks"));assertEquals(0L,count(db,"archive_parse_progress"))
         }

@@ -40,7 +40,7 @@ class StorageManagementServiceTest {
         }
     }
     private fun service(data: Data, now: () -> Long = { 100 }) = StorageManagementService(data,
-        StorageInventoryPort { StorageInventory(null, 0, null, 0, null) }, now, operationActive={true})
+        StorageInventoryPort { StorageInventory(null, 0, null, 0, null) }, com.greatwall.callring.testing.fixtureNumberProfileResetService, now, operationActive={true})
     private fun <T> ApiResult<T>.value() = (this as ApiResult.Success).value
 
     @Test fun previewPagesAndExcludesBusyWithoutReadingBodies() = runBlocking {
@@ -86,7 +86,7 @@ class StorageManagementServiceTest {
         val owner=AtomicBoolean(true)
         val api=StorageManagementService(Data(),StorageInventoryPort {
             owner.set(false); StorageInventory(0,0,0,0,0)
-        },operationActive=owner::get)
+        },com.greatwall.callring.testing.fixtureNumberProfileResetService,operationActive=owner::get)
         assertTrue(runCatching { api.inventory() }.exceptionOrNull() is CancellationException)
     }
     @Test fun callerCannotMutatePreviewAuthorizationOrRetainedReceipt() = runBlocking {

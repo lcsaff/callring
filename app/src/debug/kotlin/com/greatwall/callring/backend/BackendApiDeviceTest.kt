@@ -174,7 +174,12 @@ class BackendApiDeviceTest : InstrumentationTestCase() {
         val report = report()
         assertEquals(4L, report.totals.totalCalls)
         assertEquals(7L, report.totals.knownDurationSeconds)
-        assertEquals(4L, report.details.totalItems)
+        assertEquals(6L, report.details.totalItems)
+        assertEquals(4, report.details.items.count { it.counted })
+        assertTrue(report.details.items.filter {
+            it.startedAtEpochMillis >= millis("2026-06-01T11:00:00Z") &&
+                it.startedAtEpochMillis < millis("2026-06-01T12:00:00Z")
+        }.all { !it.counted })
         assertEquals(2, report.details.items.count { it.startedAtEpochMillis == millis("2026-06-01T12:30:00Z") })
         assertNull(success(api.callers.getOverview(OverviewQuery("39999"))).latestCall)
     }

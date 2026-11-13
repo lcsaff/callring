@@ -29,6 +29,35 @@ import org.robolectric.annotation.Config
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk=[33],manifest=Config.NONE)
 class SqliteScopedReadTest {
+    @Test fun outgoingFactsStayVisibleButNeverCreateStatisticsGroupsOrQuality() = runBlocking {
+        SqliteCoreStorageResource(RuntimeEnvironment.getApplication(), "outgoing-statistics.db").use { store ->
+            val fact = ClassificationFact(false, WorkReason.OUTSIDE_WORK_HOURS, null, true, "UTC", 1, null, 0).toDomain()
+            store.fixtureSql { state ->
+                for ((index, number) in listOf("31234", "39999").withIndex()) {
+                    state.seedCaller(ProfileRecord(number))
+                    state.seedCall(RawCallRecord(index + 1L, number, 1000L + index, null,
+                        com.greatwall.callring.domain.model.CallResult.UNRESOLVED,
+                        com.greatwall.callring.domain.model.CallDecision.SYSTEM_LOG_ONLY,
+                        com.greatwall.callring.domain.model.CallSource.SYSTEM_CALL_LOG,
+                        "log$index", null, true, fact, fact,
+                        direction = if (index == 0) com.greatwall.callring.domain.model.CallDirection.INCOMING
+                            else com.greatwall.callring.domain.model.CallDirection.OUTGOING))
+                }
+            }
+            val source = store.fixtureScopedReads(BusinessRevisionCoordinator())
+            val api = QueryService(listOf(source))
+            assertEquals(2L, api.query(QuerySpec(AiDomain.D04)).requiredValue().matchedTotal)
+            val grouped = api.aggregate(AggregateSpec(AiDomain.D05, "reportTotals", groupBy = "number")).requiredValue().value as AiJson.Arr
+            val groups = grouped.values
+            assertEquals(1, groups.size)
+            assertEquals("31234", ((groups.single() as AiJson.Obj)["number"] as AiJson.Str).value)
+            val count = api.aggregate(AggregateSpec(AiDomain.D05)).requiredValue().value as AiJson.Obj
+            assertEquals(1L, (count["count"] as AiJson.Num).value.toLong())
+            val reportRows = mutableListOf<Long>()
+            store.sessions.readReport { it.visitReportCalls("39999", 0, Long.MAX_VALUE, true) { row -> reportRows += row.current.id } }
+            assertTrue(reportRows.isEmpty())
+        }
+    }
 
     @Test fun configurationExposesSavedRuleWithoutCompleteCapture() = runBlocking {
         SqliteCoreStorageResource(RuntimeEnvironment.getApplication(), "scoped-number-rule.db").use { store ->

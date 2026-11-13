@@ -16,6 +16,10 @@ class StorageManagementViewModelTest {
         var cancelled=false
         val api=object:UiFakeApi() {
             override val storage=object:StorageManagementApi {
+ override suspend fun previewNumberProfiles(): ApiResult<com.greatwall.callring.contracts.storage.NumberProfileResetPreview> = error("unused reset")
+ override suspend fun confirmNumberProfiles(token: String, keepRecordings: Boolean): ApiResult<com.greatwall.callring.contracts.storage.NumberProfileResetReceipt> = error("unused reset")
+ override suspend fun discardNumberProfiles(token: String): ApiResult<Unit> = error("unused reset")
+
                 override suspend fun inventory()=ApiResult.Success(StorageInventory(0,0,0,0,0))
                 override suspend fun preview(selection:ArchiveCleanupSelection):ApiResult<ArchiveCleanupPreview> {
                     try { awaitCancellation() } finally { cancelled=true }
@@ -35,6 +39,10 @@ class StorageManagementViewModelTest {
         var confirmations = 0
         val api = object : UiFakeApi() {
             override val storage = object : StorageManagementApi {
+ override suspend fun previewNumberProfiles(): ApiResult<com.greatwall.callring.contracts.storage.NumberProfileResetPreview> = error("unused reset")
+ override suspend fun confirmNumberProfiles(token: String, keepRecordings: Boolean): ApiResult<com.greatwall.callring.contracts.storage.NumberProfileResetReceipt> = error("unused reset")
+ override suspend fun discardNumberProfiles(token: String): ApiResult<Unit> = error("unused reset")
+
                 override suspend fun inventory() = ApiResult.Success(StorageInventory(null,0,0,0,null))
                 override suspend fun preview(selection: ArchiveCleanupSelection) = pending.await()
                 override suspend fun confirm(token: String): ApiResult<ArchiveCleanupReceipt> { confirmations++; return ApiResult.Success(ArchiveCleanupReceipt(emptyList(),false)) }
