@@ -147,7 +147,7 @@ python tools/verify_ui.py --device ADB_SERIAL
 
 ## 版本与交付
 
-- 技能按任务意图区分：普通开发收尾使用 `callring-delivery`，止于验证、提交、集成、推送与 CI，不自动递增版本或发布；只有明确要求发版或续办已授权发布时使用 `publish-release`，由其全程负责发布及必要前置步骤，不重复启动普通收尾。本地打包、Release 变体编译或单独修改版本不等于发布授权。两技能均为项目级，具体参数和约束以本文件为准。
+- 技能按任务意图区分：普通开发收尾使用 `finish-development`，明确发版或续办已授权发布使用 `publish-release`。两技能均放在项目级，内容保持通用、自包含，互不调用，不依赖其他项目文档；执行参数从用户指令、Git 状态、可执行配置和发行记录确认。本地打包、Release 变体编译或单独修改版本不等于发布授权。
 - 根 `version.properties` 是唯一版本来源；versionName 为 MAJOR.MINOR.PATCH，标签为 vMAJOR.MINOR.PATCH。根 Gradle 注入 app，发布工具读取同一文件；不在说明中维护另一份当前版本号。
 - 版本修改使用 `python tools/release/version_tool.py set --code N --name X.Y.Z --published-max M`。修复/小改/内部重构升 PATCH，完整新能力升 MINOR 并清 PATCH；稳定验收后进1.0，之后不兼容升 MAJOR，0.x 不兼容升 MINOR 并说明迁移影响。versionCode 为已发行最高值加1，且高于目标安装；一个 Release 按最大影响定版本。纯文档/测试/开发工具/中间检查点不升版本，已分发版本不覆盖重用。
 - Debug/Release APK 位于 `app/build/outputs/apk/debug/app-debug.apk` / `app/build/outputs/apk/release/app-release.apk`。Release 优先读取 gitignored signing.properties，缺失回退本机 debug keystore；私钥和口令不入库。当前证书 SHA-256 为 `5a901cad57f5590483f362e4752ca8f4a56197340b71d2632ded0195bf8a24b4`；v0.2 密钥已丢失，新包不能覆盖它，同包名/同签名/versionCode递增才可覆盖升级，backendQa 不作正式发行。
